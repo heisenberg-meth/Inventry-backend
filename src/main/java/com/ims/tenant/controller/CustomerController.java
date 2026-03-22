@@ -1,0 +1,60 @@
+package com.ims.tenant.controller;
+
+import com.ims.model.Customer;
+import com.ims.shared.rbac.RequiresRole;
+import com.ims.tenant.service.CustomerService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/tenant/customers")
+@RequiredArgsConstructor
+@Tag(name = "Tenant - Customers")
+@SecurityRequirement(name = "bearerAuth")
+public class CustomerController {
+
+    private final CustomerService customerService;
+
+    @GetMapping
+    @RequiresRole({"ADMIN", "MANAGER"})
+    @Operation(summary = "List customers")
+    public ResponseEntity<Page<Customer>> list(Pageable pageable) {
+        return ResponseEntity.ok(customerService.getCustomers(pageable));
+    }
+
+    @PostMapping
+    @RequiresRole({"ADMIN", "MANAGER"})
+    @Operation(summary = "Create customer")
+    public ResponseEntity<Customer> create(@RequestBody Customer customer) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(customerService.create(customer));
+    }
+
+    @GetMapping("/{id}")
+    @RequiresRole({"ADMIN", "MANAGER"})
+    @Operation(summary = "Get customer")
+    public ResponseEntity<Customer> get(@PathVariable Long id) {
+        return ResponseEntity.ok(customerService.getById(id));
+    }
+
+    @PutMapping("/{id}")
+    @RequiresRole({"ADMIN", "MANAGER"})
+    @Operation(summary = "Update customer")
+    public ResponseEntity<Customer> update(@PathVariable Long id, @RequestBody Customer customer) {
+        return ResponseEntity.ok(customerService.update(id, customer));
+    }
+
+    @DeleteMapping("/{id}")
+    @RequiresRole({"ADMIN"})
+    @Operation(summary = "Delete customer")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        customerService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+}

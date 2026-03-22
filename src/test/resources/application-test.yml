@@ -1,0 +1,37 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    database-platform: org.hibernate.dialect.H2Dialect
+  flyway:
+    enabled: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+app:
+  jwt:
+    secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+    expiry-seconds: 86400
+    refresh-expiry-seconds: 604800
+  cache:
+    product-ttl-minutes: 15
+    stock-ttl-minutes: 5
+    report-ttl-minutes: 30
+    tenant-ttl-hours: 1
+  rate-limit:
+    public-rpm: 100
+    authenticated-rpm: 500
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
