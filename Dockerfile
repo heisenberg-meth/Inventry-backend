@@ -1,11 +1,11 @@
-FROM maven:3.9-eclipse-temurin-17 AS builder
+FROM maven:3.9-eclipse-temurin-21 AS builder
 WORKDIR /app
 COPY pom.xml .
 RUN mvn dependency:go-offline -q
 COPY src ./src
 RUN mvn package -DskipTests -q
 
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 RUN addgroup -S ims && adduser -S ims -G ims
 COPY --from=builder /app/target/*.jar app.jar
