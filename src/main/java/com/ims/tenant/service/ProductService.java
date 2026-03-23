@@ -5,7 +5,6 @@ import com.ims.dto.response.ProductResponse;
 import com.ims.model.Product;
 import com.ims.shared.auth.JwtAuthDetails;
 import com.ims.shared.auth.TenantContext;
-import com.ims.shared.exception.InsufficientStockException;
 import com.ims.tenant.domain.pharmacy.PharmacyProduct;
 import com.ims.tenant.domain.pharmacy.PharmacyProductRepository;
 import com.ims.tenant.domain.warehouse.WarehouseProduct;

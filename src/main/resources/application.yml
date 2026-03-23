@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ims_db}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/ims_db}
     username: ${SPRING_DATASOURCE_USERNAME:ims_user}
-    password: ${SPRING_DATASOURCE_PASSWORD:ims_pass}
+    password: ${SPRING_DATASOURCE_PASSWORD:ims_strong_password_2024}
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
