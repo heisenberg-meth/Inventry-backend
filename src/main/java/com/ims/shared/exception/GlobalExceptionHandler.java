@@ -2,6 +2,10 @@ package com.ims.shared.exception;
 
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,79 +14,91 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex,
-                                                                   HttpServletRequest request) {
-        Map<String, String> fieldErrors = new HashMap<>();
-        ex.getBindingResult().getFieldErrors().forEach(err ->
-                fieldErrors.put(err.getField(), err.getDefaultMessage()));
+  private static final int STATUS_BAD_REQUEST = 400;
+  private static final int STATUS_NOT_FOUND = 404;
+  private static final int STATUS_FORBIDDEN = 403;
+  private static final int STATUS_UNPROCESSABLE = 422;
+  private static final int STATUS_CONFLICT = 409;
+  private static final int STATUS_INTERNAL_ERROR = 500;
 
-        Map<String, Object> body = errorBody(400, "VALIDATION_FAILED",
-                "Validation failed", request.getRequestURI());
-        body.put("fields", fieldErrors);
-        return ResponseEntity.badRequest().body(body);
-    }
 
-    @ExceptionHandler(EntityNotFoundException.class)
-    public ResponseEntity<Map<String, Object>> handleNotFound(EntityNotFoundException ex,
-                                                                 HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(errorBody(404, "NOT_FOUND", ex.getMessage(), request.getRequestURI()));
-    }
+  @ExceptionHandler(MethodArgumentNotValidException.class)
+  public ResponseEntity<Map<String, Object>> handleValidation(
+      MethodArgumentNotValidException ex, HttpServletRequest request) {
+    Map<String, String> fieldErrors = new HashMap<>();
+    ex.getBindingResult()
+        .getFieldErrors()
+        .forEach(err -> fieldErrors.put(err.getField(), err.getDefaultMessage()));
 
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<Map<String, Object>> handleAccessDenied(AccessDeniedException ex,
-                                                                      HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(errorBody(403, "FORBIDDEN", ex.getMessage(), request.getRequestURI()));
-    }
+    Map<String, Object> body =
+        errorBody(
+            STATUS_BAD_REQUEST, "VALIDATION_FAILED", "Validation failed", request.getRequestURI());
+    body.put("fields", fieldErrors);
+    return ResponseEntity.badRequest().body(body);
+  }
 
-    @ExceptionHandler(InsufficientStockException.class)
-    public ResponseEntity<Map<String, Object>> handleInsufficientStock(InsufficientStockException ex,
-                                                                          HttpServletRequest request) {
-        Map<String, Object> body = errorBody(422, "INSUFFICIENT_STOCK",
-                ex.getMessage(), request.getRequestURI());
-        body.put("available_stock", ex.getAvailableStock());
-        body.put("requested_qty", ex.getRequestedQty());
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(body);
-    }
+  @ExceptionHandler(EntityNotFoundException.class)
+  public ResponseEntity<Map<String, Object>> handleNotFound(
+      EntityNotFoundException ex, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(errorBody(STATUS_NOT_FOUND, "NOT_FOUND", ex.getMessage(), request.getRequestURI()));
+  }
 
-    @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<Map<String, Object>> handleDataIntegrity(DataIntegrityViolationException ex,
-                                                                       HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(errorBody(409, "CONFLICT", "Data integrity violation", request.getRequestURI()));
-    }
+  @ExceptionHandler(AccessDeniedException.class)
+  public ResponseEntity<Map<String, Object>> handleAccessDenied(
+      AccessDeniedException ex, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+        .body(errorBody(STATUS_FORBIDDEN, "FORBIDDEN", ex.getMessage(), request.getRequestURI()));
+  }
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, Object>> handleBadRequest(IllegalArgumentException ex,
-                                                                    HttpServletRequest request) {
-        return ResponseEntity.badRequest()
-                .body(errorBody(400, "BAD_REQUEST", ex.getMessage(), request.getRequestURI()));
-    }
+  @ExceptionHandler(InsufficientStockException.class)
+  public ResponseEntity<Map<String, Object>> handleInsufficientStock(
+      InsufficientStockException ex, HttpServletRequest request) {
+    Map<String, Object> body =
+        errorBody(STATUS_UNPROCESSABLE, "INSUFFICIENT_STOCK", ex.getMessage(), request.getRequestURI());
+    body.put("available_stock", ex.getAvailableStock());
+    body.put("requested_qty", ex.getRequestedQty());
+    return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(body);
+  }
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, Object>> handleAll(Exception ex, HttpServletRequest request) {
-        // NEVER expose stack trace in response body
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(errorBody(500, "INTERNAL_ERROR", "An unexpected error occurred", request.getRequestURI()));
-    }
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  public ResponseEntity<Map<String, Object>> handleDataIntegrity(
+      DataIntegrityViolationException ex, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(
+            errorBody(
+                STATUS_CONFLICT, "CONFLICT", "Data integrity violation", request.getRequestURI()));
+  }
 
-    private Map<String, Object> errorBody(int status, String error, String message, String path) {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("status", status);
-        body.put("error", error);
-        body.put("message", message);
-        body.put("path", path);
-        body.put("timestamp", LocalDateTime.now().toString());
-        return body;
-    }
+  @ExceptionHandler(IllegalArgumentException.class)
+  public ResponseEntity<Map<String, Object>> handleBadRequest(
+      IllegalArgumentException ex, HttpServletRequest request) {
+    return ResponseEntity.badRequest()
+        .body(errorBody(STATUS_BAD_REQUEST, "BAD_REQUEST", ex.getMessage(), request.getRequestURI()));
+  }
+
+  @ExceptionHandler(Exception.class)
+  public ResponseEntity<Map<String, Object>> handleAll(Exception ex, HttpServletRequest request) {
+    // NEVER expose stack trace in response body
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+        .body(
+            errorBody(
+                STATUS_INTERNAL_ERROR,
+                "INTERNAL_ERROR",
+                "An unexpected error occurred",
+                request.getRequestURI()));
+  }
+
+  private Map<String, Object> errorBody(int status, String error, String message, String path) {
+    Map<String, Object> body = new LinkedHashMap<>();
+    body.put("status", status);
+    body.put("error", error);
+    body.put("message", message);
+    body.put("path", path);
+    body.put("timestamp", LocalDateTime.now().toString());
+    return body;
+  }
 }

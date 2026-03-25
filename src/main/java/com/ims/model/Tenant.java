@@ -1,8 +1,16 @@
 package com.ims.model;
 
-import jakarta.persistence.*;
-import lombok.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "tenants")
@@ -12,28 +20,28 @@ import java.time.LocalDateTime;
 @Builder
 public class Tenant {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    @Column(nullable = false)
-    private String name;
+  @Column(nullable = false)
+  private String name;
 
-    @Column(unique = true)
-    private String domain;
+  @Column(unique = true)
+  private String domain;
 
-    @Column(name = "business_type", nullable = false)
-    private String businessType;
+  @Column(name = "business_type", nullable = false)
+  private String businessType;
 
-    @Column
-    @Builder.Default
-    private String plan = "FREE";
+  @Column @Builder.Default private String plan = "FREE";
 
-    @Column
-    @Builder.Default
-    private String status = "ACTIVE";
+  @Column @Builder.Default private String status = "ACTIVE";
 
-    @Column(name = "created_at")
-    @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now();
+  @Column(name = "invoice_sequence")
+  @Builder.Default
+  private Integer invoiceSequence = 0;
+
+  @Column(name = "created_at")
+  @Builder.Default
+  private LocalDateTime createdAt = LocalDateTime.now();
 }

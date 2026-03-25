@@ -6,15 +6,15 @@ import lombok.Data;
 
 @Data
 public class CreateTenantRequest {
-    @NotBlank(message = "Name is required")
-    @Size(max = 255)
-    private String name;
+  @NotBlank(message = "Name is required")
+  @Size(max = 255)
+  private String name;
 
-    @Size(max = 255)
-    private String domain;
+  @Size(max = 255)
+  private String domain;
 
-    @NotBlank(message = "Business type is required")
-    private String businessType;
+  @NotBlank(message = "Business type is required")
+  private String businessType;
 
-    private String plan;
+  private String plan;
 }

@@ -1,8 +1,16 @@
 package com.ims.model;
 
-import jakarta.persistence.*;
-import lombok.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "order_items")
@@ -12,30 +20,30 @@ import java.math.BigDecimal;
 @Builder
 public class OrderItem {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    @Column(name = "order_id", nullable = false)
-    private Long orderId;
+  @Column(name = "order_id", nullable = false)
+  private Long orderId;
 
-    @Column(name = "product_id", nullable = false)
-    private Long productId;
+  @Column(name = "product_id", nullable = false)
+  private Long productId;
 
-    @Column(nullable = false)
-    private Integer quantity;
+  @Column(nullable = false)
+  private Integer quantity;
 
-    @Column(name = "unit_price", nullable = false, precision = 10, scale = 2)
-    private BigDecimal unitPrice;
+  @Column(name = "unit_price", nullable = false, precision = 10, scale = 2)
+  private BigDecimal unitPrice;
 
-    @Column(precision = 10, scale = 2)
-    @Builder.Default
-    private BigDecimal discount = BigDecimal.ZERO;
+  @Column(precision = 10, scale = 2)
+  @Builder.Default
+  private BigDecimal discount = BigDecimal.ZERO;
 
-    @Column(name = "tax_rate", precision = 5, scale = 2)
-    @Builder.Default
-    private BigDecimal taxRate = BigDecimal.ZERO;
+  @Column(name = "tax_rate", precision = 5, scale = 2)
+  @Builder.Default
+  private BigDecimal taxRate = BigDecimal.ZERO;
 
-    @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal total;
+  @Column(nullable = false, precision = 10, scale = 2)
+  private BigDecimal total;
 }

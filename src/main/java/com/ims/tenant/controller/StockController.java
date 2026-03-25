@@ -1,20 +1,29 @@
 package com.ims.tenant.controller;
 
+import com.ims.dto.TransferOrderStatusRequest;
 import com.ims.model.StockMovement;
+import com.ims.model.TransferOrder;
 import com.ims.shared.auth.TenantContext;
 import com.ims.shared.rbac.RequiresRole;
+import com.ims.tenant.domain.warehouse.WarehouseProduct;
 import com.ims.tenant.service.StockService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/tenant/stock")
@@ -23,54 +32,84 @@ import java.util.Map;
 @SecurityRequirement(name = "bearerAuth")
 public class StockController {
 
-    private final StockService stockService;
+  private final StockService stockService;
 
-    @PostMapping("/in")
-    @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
-    @Operation(summary = "Record stock received")
-    public ResponseEntity<Map<String, String>> stockIn(@RequestBody Map<String, Object> body) {
-        Long tenantId = TenantContext.get();
-        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        Long productId = Long.valueOf(body.get("product_id").toString());
-        int quantity = Integer.parseInt(body.get("quantity").toString());
-        String notes = body.getOrDefault("notes", "").toString();
+  @GetMapping("/by-location")
+  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @Operation(summary = "List products at storage location")
+  public ResponseEntity<Page<WarehouseProduct>> getByLocation(
+      @RequestParam String location, Pageable pageable) {
+    return ResponseEntity.ok(stockService.getProductsByLocation(location, pageable));
+  }
 
-        stockService.stockIn(tenantId, productId, quantity, notes, userId);
-        return ResponseEntity.ok(Map.of("message", "Stock in recorded successfully"));
-    }
+  @GetMapping("/transfers")
+  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @Operation(summary = "List all transfer orders")
+  public ResponseEntity<Page<TransferOrder>> getTransfers(Pageable pageable) {
+    return ResponseEntity.ok(stockService.getTransferOrders(pageable));
+  }
 
-    @PostMapping("/out")
-    @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
-    @Operation(summary = "Record stock issued")
-    public ResponseEntity<Map<String, String>> stockOut(@RequestBody Map<String, Object> body) {
-        Long tenantId = TenantContext.get();
-        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        Long productId = Long.valueOf(body.get("product_id").toString());
-        int quantity = Integer.parseInt(body.get("quantity").toString());
-        String notes = body.getOrDefault("notes", "").toString();
+  @GetMapping("/transfers/{id}")
+  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @Operation(summary = "Get transfer order detail")
+  public ResponseEntity<TransferOrder> getTransferById(@PathVariable Long id) {
+    return ResponseEntity.ok(stockService.getTransferOrderById(id));
+  }
 
-        stockService.stockOut(tenantId, productId, quantity, notes, userId);
-        return ResponseEntity.ok(Map.of("message", "Stock out recorded successfully"));
-    }
+  @PatchMapping("/transfers/{id}/status")
+  @RequiresRole({"ADMIN", "MANAGER"})
+  @Operation(summary = "Update transfer order status")
+  public ResponseEntity<TransferOrder> updateTransferStatus(
+      @PathVariable Long id, @RequestBody TransferOrderStatusRequest request) {
+    return ResponseEntity.ok(stockService.updateTransferStatus(id, request));
+  }
 
-    @PostMapping("/adjust")
-    @RequiresRole({"ADMIN", "MANAGER"})
-    @Operation(summary = "Manual stock adjustment")
-    public ResponseEntity<Map<String, String>> adjust(@RequestBody Map<String, Object> body) {
-        Long tenantId = TenantContext.get();
-        Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        Long productId = Long.valueOf(body.get("product_id").toString());
-        int quantity = Integer.parseInt(body.get("quantity").toString());
-        String notes = body.getOrDefault("notes", "").toString();
+  @PostMapping("/in")
+  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @Operation(summary = "Record stock received")
+  public ResponseEntity<Map<String, String>> stockIn(@RequestBody Map<String, Object> body) {
+    Long tenantId = TenantContext.get();
+    Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    Long productId = Long.valueOf(body.get("product_id").toString());
+    int quantity = Integer.parseInt(body.get("quantity").toString());
+    String notes = body.getOrDefault("notes", "").toString();
 
-        stockService.stockAdjust(tenantId, productId, quantity, notes, userId);
-        return ResponseEntity.ok(Map.of("message", "Stock adjustment recorded"));
-    }
+    stockService.stockIn(tenantId, productId, quantity, notes, userId);
+    return ResponseEntity.ok(Map.of("message", "Stock in recorded successfully"));
+  }
 
-    @GetMapping("/movements")
-    @RequiresRole({"ADMIN", "MANAGER"})
-    @Operation(summary = "Stock movement log")
-    public ResponseEntity<Page<StockMovement>> getMovements(Pageable pageable) {
-        return ResponseEntity.ok(stockService.getMovements(pageable));
-    }
+  @PostMapping("/out")
+  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @Operation(summary = "Record stock issued")
+  public ResponseEntity<Map<String, String>> stockOut(@RequestBody Map<String, Object> body) {
+    Long tenantId = TenantContext.get();
+    Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    Long productId = Long.valueOf(body.get("product_id").toString());
+    int quantity = Integer.parseInt(body.get("quantity").toString());
+    String notes = body.getOrDefault("notes", "").toString();
+
+    stockService.stockOut(tenantId, productId, quantity, notes, userId);
+    return ResponseEntity.ok(Map.of("message", "Stock out recorded successfully"));
+  }
+
+  @PostMapping("/adjust")
+  @RequiresRole({"ADMIN", "MANAGER"})
+  @Operation(summary = "Manual stock adjustment")
+  public ResponseEntity<Map<String, String>> adjust(@RequestBody Map<String, Object> body) {
+    Long tenantId = TenantContext.get();
+    Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    Long productId = Long.valueOf(body.get("product_id").toString());
+    int quantity = Integer.parseInt(body.get("quantity").toString());
+    String notes = body.getOrDefault("notes", "").toString();
+
+    stockService.stockAdjust(tenantId, productId, quantity, notes, userId);
+    return ResponseEntity.ok(Map.of("message", "Stock adjustment recorded"));
+  }
+
+  @GetMapping("/movements")
+  @RequiresRole({"ADMIN", "MANAGER"})
+  @Operation(summary = "Stock movement log")
+  public ResponseEntity<Page<StockMovement>> getMovements(Pageable pageable) {
+    return ResponseEntity.ok(stockService.getMovements(pageable));
+  }
 }

@@ -1,17 +1,17 @@
 package com.ims.shared.auth;
 
 public class TenantContext {
-    private static final ThreadLocal<Long> TENANT = new ThreadLocal<>();
+  private static final ThreadLocal<Long> TENANT = new ThreadLocal<>();
 
-    public static void set(Long tenantId) {
-        TENANT.set(tenantId);
-    }
+  public static void set(Long tenantId) {
+    TENANT.set(tenantId);
+  }
 
-    public static Long get() {
-        return TENANT.get();
-    }
+  public static Long get() {
+    return TENANT.get();
+  }
 
-    public static void clear() {
-        TENANT.remove();
-    }
+  public static void clear() {
+    TENANT.remove();
+  }
 }

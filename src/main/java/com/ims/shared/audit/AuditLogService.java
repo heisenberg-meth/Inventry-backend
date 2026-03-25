@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class AuditLogService {
 
-    public void log(String action, Long tenantId, Long userId, String details) {
-        log.info("AUDIT: tenant={} user={} action={} details={}", tenantId, userId, action, details);
-    }
+  public void log(String action, Long tenantId, Long userId, String details) {
+    log.info("AUDIT: tenant={} user={} action={} details={}", tenantId, userId, action, details);
+  }
 }

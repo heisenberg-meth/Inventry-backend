@@ -6,22 +6,27 @@ spring:
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
+
   jpa:
     hibernate:
       ddl-auto: validate
     show-sql: false
+    open-in-view: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        # remove dialect if you want; Hibernate auto-detects PostgreSQL
+        # dialect: org.hibernate.dialect.PostgreSQLDialect
+
   flyway:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
+
   data:
     redis:
       host: ${SPRING_REDIS_HOST:localhost}
       port: ${SPRING_REDIS_PORT:6379}
-      password: ${SPRING_REDIS_PASSWORD:}
+      password: ${SPRING_REDIS_PASSWORD:ims_redis_password_2024}
       timeout: 3000ms
       lettuce:
         pool:
@@ -33,11 +38,13 @@ app:
     secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
     expiry-seconds: ${JWT_EXPIRY_SECONDS:86400}
     refresh-expiry-seconds: 604800
+
   cache:
     product-ttl-minutes: 15
     stock-ttl-minutes: 5
     report-ttl-minutes: 30
     tenant-ttl-hours: 1
+
   rate-limit:
     public-rpm: 100
     authenticated-rpm: 500
@@ -56,8 +63,15 @@ springdoc:
 
 server:
   port: 8080
+  error:
+    include-message: always
+    include-stacktrace: always
+    include-binding-errors: always
+    include-exception: true
 
 logging:
   level:
     com.ims: INFO
     org.springframework.security: INFO
+    org.springdoc: DEBUG
+    org.springframework.web: DEBUG
