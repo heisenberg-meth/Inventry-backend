@@ -8,14 +8,20 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/tenant/users")
@@ -24,45 +30,46 @@ import java.util.Map;
 @SecurityRequirement(name = "bearerAuth")
 public class UserController {
 
-    private final UserService userService;
+  private final UserService userService;
 
-    @PostMapping
-    @RequiresRole({"ADMIN"})
-    @Operation(summary = "Create tenant user")
-    public ResponseEntity<UserResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(userService.createUser(request));
-    }
+  @PostMapping
+  @RequiresRole({"ADMIN"})
+  @Operation(summary = "Create tenant user")
+  public ResponseEntity<UserResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
+    return ResponseEntity.status(HttpStatus.CREATED).body(userService.createUser(request));
+  }
 
-    @GetMapping
-    @RequiresRole({"ADMIN", "MANAGER"})
-    @Operation(summary = "List tenant users")
-    public ResponseEntity<Page<UserResponse>> getUsers(Pageable pageable) {
-        return ResponseEntity.ok(userService.getUsers(pageable));
-    }
+  @GetMapping
+  @RequiresRole({"ADMIN", "MANAGER"})
+  @Operation(summary = "List tenant users")
+  public ResponseEntity<Page<UserResponse>> getUsers(Pageable pageable) {
+    return ResponseEntity.ok(userService.getUsers(pageable));
+  }
 
-    @GetMapping("/{id}")
-    @RequiresRole({"ADMIN", "MANAGER"})
-    @Operation(summary = "Get user details")
-    public ResponseEntity<UserResponse> getUser(@PathVariable Long id) {
-        return ResponseEntity.ok(userService.getUserById(id));
-    }
+  @GetMapping("/{id}")
+  @RequiresRole({"ADMIN", "MANAGER"})
+  @Operation(summary = "Get user details")
+  public ResponseEntity<UserResponse> getUser(@PathVariable Long id) {
+    return ResponseEntity.ok(userService.getUserById(id));
+  }
 
-    @PatchMapping("/{id}/role")
-    @RequiresRole({"ADMIN"})
-    @Operation(summary = "Update user role")
-    public ResponseEntity<UserResponse> updateRole(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        String role = body.get("role");
-        if (role == null || role.isBlank()) {
-            throw new IllegalArgumentException("Role is required");
-        }
-        return ResponseEntity.ok(userService.updateRole(id, role));
+  @PatchMapping("/{id}/role")
+  @RequiresRole({"ADMIN"})
+  @Operation(summary = "Update user role")
+  public ResponseEntity<UserResponse> updateRole(
+      @PathVariable Long id, @RequestBody Map<String, String> body) {
+    String role = body.get("role");
+    if (role == null || role.isBlank()) {
+      throw new IllegalArgumentException("Role is required");
     }
+    return ResponseEntity.ok(userService.updateRole(id, role));
+  }
 
-    @DeleteMapping("/{id}")
-    @RequiresRole({"ADMIN"})
-    @Operation(summary = "Deactivate user (soft delete)")
-    public ResponseEntity<Void> deactivateUser(@PathVariable Long id) {
-        userService.deactivateUser(id);
-        return ResponseEntity.noContent().build();
-    }
+  @DeleteMapping("/{id}")
+  @RequiresRole({"ADMIN"})
+  @Operation(summary = "Deactivate user (soft delete)")
+  public ResponseEntity<Void> deactivateUser(@PathVariable Long id) {
+    userService.deactivateUser(id);
+    return ResponseEntity.noContent().build();
+  }
 }

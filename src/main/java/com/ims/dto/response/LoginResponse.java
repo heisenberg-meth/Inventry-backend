@@ -11,20 +11,20 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class LoginResponse {
-    @JsonProperty("access_token")
-    private String accessToken;
+  @JsonProperty("access_token")
+  private String accessToken;
 
-    @JsonProperty("refresh_token")
-    private String refreshToken;
+  @JsonProperty("refresh_token")
+  private String refreshToken;
 
-    @JsonProperty("expires_in")
-    private long expiresIn;
+  @JsonProperty("expires_in")
+  private long expiresIn;
 
-    @JsonProperty("tenant_id")
-    private Long tenantId;
+  @JsonProperty("tenant_id")
+  private Long tenantId;
 
-    private String role;
+  private String role;
 
-    @JsonProperty("business_type")
-    private String businessType;
+  @JsonProperty("business_type")
+  private String businessType;
 }

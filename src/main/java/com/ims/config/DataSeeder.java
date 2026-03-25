@@ -14,25 +14,26 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class DataSeeder implements ApplicationRunner {
 
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+  private final UserRepository userRepository;
+  private final PasswordEncoder passwordEncoder;
 
-    @Override
-    public void run(ApplicationArguments args) {
-        // Seed ROOT user if not exists
-        if (!userRepository.existsByEmail("root@ims.com")) {
-            User root = User.builder()
-                    .name("Root Admin")
-                    .email("root@ims.com")
-                    .passwordHash(passwordEncoder.encode("root123"))
-                    .role("ROOT")
-                    .tenantId(null) // Platform-level user, no tenant
-                    .isActive(true)
-                    .build();
-            userRepository.save(root);
-            log.info("Seed data: ROOT user created (root@ims.com / root123)");
-        } else {
-            log.info("Seed data: ROOT user already exists");
-        }
+  @Override
+  public void run(ApplicationArguments args) {
+    // Seed ROOT user if not exists
+    if (!userRepository.existsByEmail("root@ims.com")) {
+      User root =
+          User.builder()
+              .name("Root Admin")
+              .email("root@ims.com")
+              .passwordHash(passwordEncoder.encode("root123"))
+              .role("ROOT")
+              .tenantId(null) // Platform-level user, no tenant
+              .isActive(true)
+              .build();
+      userRepository.save(root);
+      log.info("Seed data: ROOT user created (root@ims.com / root123)");
+    } else {
+      log.info("Seed data: ROOT user already exists");
     }
+  }
 }

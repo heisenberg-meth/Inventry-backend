@@ -4,12 +4,12 @@ import lombok.Getter;
 
 @Getter
 public class InsufficientStockException extends RuntimeException {
-    private final int availableStock;
-    private final int requestedQty;
+  private final int availableStock;
+  private final int requestedQty;
 
-    public InsufficientStockException(String message, int availableStock, int requestedQty) {
-        super(message);
-        this.availableStock = availableStock;
-        this.requestedQty = requestedQty;
-    }
+  public InsufficientStockException(String message, int availableStock, int requestedQty) {
+    super(message);
+    this.availableStock = availableStock;
+    this.requestedQty = requestedQty;
+  }
 }
