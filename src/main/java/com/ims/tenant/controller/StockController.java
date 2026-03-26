@@ -3,7 +3,6 @@ package com.ims.tenant.controller;
 import com.ims.dto.TransferOrderStatusRequest;
 import com.ims.model.StockMovement;
 import com.ims.model.TransferOrder;
-import com.ims.shared.auth.TenantContext;
 import com.ims.shared.rbac.RequiresRole;
 import com.ims.tenant.domain.warehouse.WarehouseProduct;
 import com.ims.tenant.service.StockService;
@@ -68,13 +67,12 @@ public class StockController {
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Record stock received")
   public ResponseEntity<Map<String, String>> stockIn(@RequestBody Map<String, Object> body) {
-    Long tenantId = TenantContext.get();
     Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     Long productId = Long.valueOf(body.get("product_id").toString());
     int quantity = Integer.parseInt(body.get("quantity").toString());
     String notes = body.getOrDefault("notes", "").toString();
 
-    stockService.stockIn(tenantId, productId, quantity, notes, userId);
+    stockService.stockIn(productId, quantity, notes, userId);
     return ResponseEntity.ok(Map.of("message", "Stock in recorded successfully"));
   }
 
@@ -82,13 +80,12 @@ public class StockController {
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Record stock issued")
   public ResponseEntity<Map<String, String>> stockOut(@RequestBody Map<String, Object> body) {
-    Long tenantId = TenantContext.get();
     Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     Long productId = Long.valueOf(body.get("product_id").toString());
     int quantity = Integer.parseInt(body.get("quantity").toString());
     String notes = body.getOrDefault("notes", "").toString();
 
-    stockService.stockOut(tenantId, productId, quantity, notes, userId);
+    stockService.stockOut(productId, quantity, notes, userId);
     return ResponseEntity.ok(Map.of("message", "Stock out recorded successfully"));
   }
 
@@ -96,13 +93,12 @@ public class StockController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Manual stock adjustment")
   public ResponseEntity<Map<String, String>> adjust(@RequestBody Map<String, Object> body) {
-    Long tenantId = TenantContext.get();
     Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     Long productId = Long.valueOf(body.get("product_id").toString());
     int quantity = Integer.parseInt(body.get("quantity").toString());
     String notes = body.getOrDefault("notes", "").toString();
 
-    stockService.stockAdjust(tenantId, productId, quantity, notes, userId);
+    stockService.stockAdjust(productId, quantity, notes, userId);
     return ResponseEntity.ok(Map.of("message", "Stock adjustment recorded"));
   }
 

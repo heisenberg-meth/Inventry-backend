@@ -45,10 +45,9 @@ public class InvoiceService {
 
   @Transactional
   public Invoice createManual(CreateInvoiceRequest request) {
-    Long tenantId = TenantContext.get();
     Order order =
         orderRepository
-            .findByIdAndTenantId(request.getOrderId(), tenantId)
+            .findById(request.getOrderId())
             .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
     if (!"SALE".equals(order.getType())) {
@@ -61,7 +60,7 @@ public class InvoiceService {
 
     Tenant tenant =
         tenantRepository
-            .findById(tenantId)
+            .findById(TenantContext.get())
             .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
     tenant.setInvoiceSequence(tenant.getInvoiceSequence() + 1);
@@ -69,11 +68,10 @@ public class InvoiceService {
 
     String dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
     String invoiceNumber =
-        String.format("INV-%d-%s-%04d", tenantId, dateStr, tenant.getInvoiceSequence());
+        String.format("INV-%d-%s-%04d", TenantContext.get(), dateStr, tenant.getInvoiceSequence());
 
     Invoice invoice =
         Invoice.builder()
-            .tenantId(tenantId)
             .orderId(order.getId())
             .invoiceNumber(invoiceNumber)
             .amount(order.getTotalAmount())
@@ -91,10 +89,9 @@ public class InvoiceService {
 
   @Transactional
   public Invoice updateStatus(Long id, InvoiceStatusRequest request) {
-    Long tenantId = TenantContext.get();
     Invoice invoice =
         invoiceRepository
-            .findByIdAndTenantId(id, tenantId)
+            .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
 
     String currentStatus = invoice.getStatus();
@@ -118,20 +115,19 @@ public class InvoiceService {
   }
 
   @Transactional
-  public Invoice createFromOrder(Order order, Long tenantId) {
+  public Invoice createFromOrder(Order order) {
     String dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
     int seq = 1;
     try {
-      seq = invoiceRepository.findMaxSequenceByTenantId(tenantId) + 1;
+      seq = invoiceRepository.findMaxSequence() + 1;
     } catch (Exception e) {
       log.trace("Caught expected exception for first invoice sequence: {}", e.getMessage());
     }
 
-    String invoiceNumber = String.format("INV-%d-%s-%04d", tenantId, dateStr, seq);
+    String invoiceNumber = String.format("INV-%d-%s-%04d", TenantContext.get(), dateStr, seq);
 
     Invoice invoice =
         Invoice.builder()
-            .tenantId(tenantId)
             .orderId(order.getId())
             .invoiceNumber(invoiceNumber)
             .amount(order.getTotalAmount())
@@ -145,10 +141,10 @@ public class InvoiceService {
     return invoice;
   }
 
-  public byte[] generatePdf(Long invoiceId, Long tenantId) {
+  public byte[] generatePdf(Long invoiceId) {
     Tenant tenant =
         tenantRepository
-            .findById(tenantId)
+            .findById(TenantContext.get())
             .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
     // Build PDF using simple formatting (iText usage simplified for compilation)
@@ -159,7 +155,7 @@ public class InvoiceService {
 
     Invoice invoice =
         invoiceRepository
-            .findByIdAndTenantId(invoiceId, tenantId)
+            .findById(invoiceId)
             .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
     sb.append("Invoice #: ").append(invoice.getInvoiceNumber()).append("\n");
     sb.append("Date: ").append(invoice.getCreatedAt()).append("\n");
@@ -262,14 +258,12 @@ public class InvoiceService {
   }
 
   public Page<Invoice> getInvoices(Pageable pageable) {
-    Long tenantId = TenantContext.get();
-    return invoiceRepository.findByTenantId(tenantId, pageable);
+    return invoiceRepository.findAll(pageable);
   }
 
   public Invoice getInvoiceById(Long id) {
-    Long tenantId = TenantContext.get();
     return invoiceRepository
-        .findByIdAndTenantId(id, tenantId)
+        .findById(id)
         .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
   }
 }

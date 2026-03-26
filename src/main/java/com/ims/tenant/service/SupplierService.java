@@ -1,7 +1,6 @@
 package com.ims.tenant.service;
 
 import com.ims.model.Supplier;
-import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.repository.SupplierRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -17,18 +16,17 @@ public class SupplierService {
   private final SupplierRepository supplierRepository;
 
   public Page<Supplier> getSuppliers(Pageable pageable) {
-    return supplierRepository.findByTenantId(TenantContext.get(), pageable);
+    return supplierRepository.findAll(pageable);
   }
 
   public Supplier getById(Long id) {
     return supplierRepository
-        .findByIdAndTenantId(id, TenantContext.get())
+        .findById(id)
         .orElseThrow(() -> new EntityNotFoundException("Supplier not found"));
   }
 
   @Transactional
   public Supplier create(Supplier supplier) {
-    supplier.setTenantId(TenantContext.get());
     return supplierRepository.save(supplier);
   }
 

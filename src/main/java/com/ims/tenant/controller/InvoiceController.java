@@ -3,7 +3,6 @@ package com.ims.tenant.controller;
 import com.ims.dto.CreateInvoiceRequest;
 import com.ims.dto.InvoiceStatusRequest;
 import com.ims.model.Invoice;
-import com.ims.shared.auth.TenantContext;
 import com.ims.shared.rbac.RequiresRole;
 import com.ims.tenant.service.InvoiceService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -60,8 +59,7 @@ public class InvoiceController {
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Download invoice PDF")
   public ResponseEntity<byte[]> downloadPdf(@PathVariable Long id) {
-    Long tenantId = TenantContext.get();
-    byte[] pdf = invoiceService.generatePdf(id, tenantId);
+    byte[] pdf = invoiceService.generatePdf(id);
     return ResponseEntity.ok()
         .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=invoice-" + id + ".pdf")
         .contentType(MediaType.APPLICATION_PDF)

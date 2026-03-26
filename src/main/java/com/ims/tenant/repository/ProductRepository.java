@@ -14,39 +14,34 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
-  Optional<Product> findByIdAndTenantId(Long id, Long tenantId);
+  // findById is already provided by JpaRepository and will be tenant-scoped by Hibernate
 
-  Page<Product> findByTenantIdAndIsActiveTrue(Long tenantId, Pageable pageable);
+  Page<Product> findByIsActiveTrue(Pageable pageable);
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
-  @Query("SELECT p FROM Product p WHERE p.id = :id AND p.tenantId = :tenantId")
-  Optional<Product> findByIdAndTenantIdWithLock(
-      @Param("id") Long id, @Param("tenantId") Long tenantId);
+  @Query("SELECT p FROM Product p WHERE p.id = :id")
+  Optional<Product> findByIdWithLock(@Param("id") Long id);
+
+  @Query("SELECT p FROM Product p WHERE p.stock <= p.reorderLevel AND p.isActive = true")
+  List<Product> findLowStock();
 
   @Query(
-      "SELECT p FROM Product p WHERE p.tenantId = :tenantId AND p.stock <= p.reorderLevel AND p.isActive = true")
-  List<Product> findLowStockByTenantId(@Param("tenantId") Long tenantId);
-
-  @Query(
-      "SELECT p FROM Product p WHERE p.tenantId = :tenantId AND p.isActive = true AND "
+      "SELECT p FROM Product p WHERE p.isActive = true AND "
           + "(LOWER(p.name) LIKE LOWER(CONCAT('%', :query, '%')) OR "
           + "LOWER(p.sku) LIKE LOWER(CONCAT('%', :query, '%')) OR "
           + "LOWER(p.barcode) LIKE LOWER(CONCAT('%', :query, '%')))")
-  Page<Product> searchProducts(
-      @Param("tenantId") Long tenantId, @Param("query") String query, Pageable pageable);
+  Page<Product> searchProducts(@Param("query") String query, Pageable pageable);
 
-  @Query("SELECT COUNT(p) FROM Product p WHERE p.tenantId = :tenantId AND p.isActive = true")
-  long countActiveByTenantId(@Param("tenantId") Long tenantId);
+  @Query("SELECT COUNT(p) FROM Product p WHERE p.isActive = true")
+  long countActive();
 
-  @Query(
-      "SELECT COUNT(p) FROM Product p WHERE p.tenantId = :tenantId AND p.stock <= p.reorderLevel AND p.isActive = true")
-  long countLowStockByTenantId(@Param("tenantId") Long tenantId);
+  @Query("SELECT COUNT(p) FROM Product p WHERE p.stock <= p.reorderLevel AND p.isActive = true")
+  long countLowStock();
 
-  @Query(
-      "SELECT COUNT(p) FROM Product p WHERE p.tenantId = :tenantId AND p.stock = 0 AND p.isActive = true")
-  long countOutOfStockByTenantId(@Param("tenantId") Long tenantId);
+  @Query("SELECT COUNT(p) FROM Product p WHERE p.stock = 0 AND p.isActive = true")
+  long countOutOfStock();
 
-  boolean existsByCategoryIdAndTenantId(Long categoryId, Long tenantId);
+  boolean existsByCategoryId(Long categoryId);
 
-  long countByCategoryIdAndTenantId(Long categoryId, Long tenantId);
+  long countByCategoryId(Long categoryId);
 }

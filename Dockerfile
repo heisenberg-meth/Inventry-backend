@@ -11,6 +11,6 @@ RUN addgroup -S ims && adduser -S ims -G ims
 COPY --from=builder /app/target/*.jar app.jar
 USER ims
 EXPOSE 8080
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s \
+HEALTHCHECK --interval=5m --timeout=30s --start-period=10m \
   CMD wget -q --spider http://localhost:8080/actuator/health || exit 1
 ENTRYPOINT ["java", "-jar", "-Xmx512m", "-Xms256m", "app.jar"]

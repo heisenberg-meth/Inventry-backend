@@ -33,40 +33,36 @@ public class StockService {
   private final WarehouseProductRepository warehouseProductRepository;
   private final TransferOrderRepository transferOrderRepository;
 
-  private void checkWarehouseType(Long tenantId) {
-    Tenant tenant = tenantRepository.findById(tenantId).orElseThrow();
+  private void checkWarehouseType() {
+    Tenant tenant = tenantRepository.findById(TenantContext.get()).orElseThrow();
     if (!"WAREHOUSE".equals(tenant.getBusinessType())) {
       throw new IllegalArgumentException("Only available for WAREHOUSE tenants");
     }
   }
 
   public Page<WarehouseProduct> getProductsByLocation(String location, Pageable pageable) {
-    Long tenantId = TenantContext.get();
-    checkWarehouseType(tenantId);
-    return warehouseProductRepository.findByTenantIdAndLocation(tenantId, location, pageable);
+    checkWarehouseType();
+    return warehouseProductRepository.findByLocation(location, pageable);
   }
 
   public Page<TransferOrder> getTransferOrders(Pageable pageable) {
-    Long tenantId = TenantContext.get();
-    checkWarehouseType(tenantId);
-    return transferOrderRepository.findByTenantId(tenantId, pageable);
+    checkWarehouseType();
+    return transferOrderRepository.findAll(pageable);
   }
 
   public TransferOrder getTransferOrderById(Long id) {
-    Long tenantId = TenantContext.get();
-    checkWarehouseType(tenantId);
+    checkWarehouseType();
     return transferOrderRepository
-        .findByIdAndTenantId(id, tenantId)
+        .findById(id)
         .orElseThrow(() -> new EntityNotFoundException("Transfer Order not found"));
   }
 
   @Transactional
   public TransferOrder updateTransferStatus(Long id, TransferOrderStatusRequest request) {
-    Long tenantId = TenantContext.get();
-    checkWarehouseType(tenantId);
+    checkWarehouseType();
     TransferOrder order =
         transferOrderRepository
-            .findByIdAndTenantId(id, tenantId)
+            .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Transfer Order not found"));
 
     String currentStatus = order.getStatus();
@@ -92,10 +88,10 @@ public class StockService {
   @CacheEvict(
       value = {"stock", "products"},
       allEntries = true)
-  public void stockIn(Long tenantId, Long productId, int qty, String notes, Long userId) {
+  public void stockIn(Long productId, int qty, String notes, Long userId) {
     Product product =
         productRepository
-            .findByIdAndTenantId(productId, tenantId)
+            .findById(productId)
             .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
     int previousStock = product.getStock();
@@ -105,7 +101,6 @@ public class StockService {
 
     stockMovementRepository.save(
         StockMovement.builder()
-            .tenantId(tenantId)
             .productId(productId)
             .movementType("IN")
             .quantity(qty)
@@ -116,8 +111,7 @@ public class StockService {
             .build());
 
     log.info(
-        "Stock IN: tenant={} product={} qty={} {}→{}",
-        tenantId,
+        "Stock IN: product={} qty={} {}→{}",
         productId,
         qty,
         previousStock,
@@ -128,11 +122,11 @@ public class StockService {
   @CacheEvict(
       value = {"stock", "products"},
       allEntries = true)
-  public void stockOut(Long tenantId, Long productId, int qty, String notes, Long userId) {
+  public void stockOut(Long productId, int qty, String notes, Long userId) {
     // Pessimistic write lock prevents concurrent oversell
     Product product =
         productRepository
-            .findByIdAndTenantIdWithLock(productId, tenantId)
+            .findByIdWithLock(productId)
             .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
     if (product.getStock() < qty) {
@@ -149,7 +143,6 @@ public class StockService {
 
     stockMovementRepository.save(
         StockMovement.builder()
-            .tenantId(tenantId)
             .productId(productId)
             .movementType("OUT")
             .quantity(qty)
@@ -160,8 +153,7 @@ public class StockService {
             .build());
 
     log.info(
-        "Stock OUT: tenant={} product={} qty={} {}→{}",
-        tenantId,
+        "Stock OUT: product={} qty={} {}→{}",
         productId,
         qty,
         previousStock,
@@ -172,10 +164,10 @@ public class StockService {
   @CacheEvict(
       value = {"stock", "products"},
       allEntries = true)
-  public void stockAdjust(Long tenantId, Long productId, int qty, String notes, Long userId) {
+  public void stockAdjust(Long productId, int qty, String notes, Long userId) {
     Product product =
         productRepository
-            .findByIdAndTenantIdWithLock(productId, tenantId)
+            .findByIdWithLock(productId)
             .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
     int previousStock = product.getStock();
@@ -185,7 +177,6 @@ public class StockService {
 
     stockMovementRepository.save(
         StockMovement.builder()
-            .tenantId(tenantId)
             .productId(productId)
             .movementType("ADJUSTMENT")
             .quantity(qty)
@@ -196,8 +187,7 @@ public class StockService {
             .build());
 
     log.info(
-        "Stock ADJUST: tenant={} product={} qty={} {}→{}",
-        tenantId,
+        "Stock ADJUST: product={} qty={} {}→{}",
         productId,
         qty,
         previousStock,
@@ -205,13 +195,11 @@ public class StockService {
   }
 
   public Page<StockMovement> getMovements(Pageable pageable) {
-    Long tenantId = TenantContext.get();
-    return stockMovementRepository.findByTenantIdOrderByCreatedAtDesc(tenantId, pageable);
+    return stockMovementRepository.findAllByOrderByCreatedAtDesc(pageable);
   }
 
   public Page<StockMovement> getFilteredMovements(
       Long productId, LocalDateTime from, LocalDateTime to, Pageable pageable) {
-    Long tenantId = TenantContext.get();
-    return stockMovementRepository.findByFilters(tenantId, productId, from, to, pageable);
+    return stockMovementRepository.findByFilters(productId, from, to, pageable);
   }
 }
