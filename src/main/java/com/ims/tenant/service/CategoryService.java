@@ -6,6 +6,8 @@ import com.ims.tenant.repository.CategoryRepository;
 import com.ims.tenant.repository.ProductRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,6 +21,7 @@ public class CategoryService {
   private final CategoryRepository categoryRepository;
   private final ProductRepository productRepository;
 
+  @Cacheable(cacheResolver = "tenantAwareCacheResolver", value = "categories", key = "'list:' + #pageable.pageNumber + ':' + #pageable.pageSize")
   public Page<Category> getCategories(Pageable pageable) {
     return categoryRepository.findAll(pageable);
   }
@@ -30,6 +33,7 @@ public class CategoryService {
   }
 
   @Transactional
+  @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "categories", allEntries = true)
   public Category create(CategoryRequest request) {
     if (categoryRepository.existsByNameIgnoreCase(request.getName())) {
       throw new IllegalArgumentException("Category with this name already exists");
@@ -45,6 +49,7 @@ public class CategoryService {
   }
 
   @Transactional
+  @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "categories", allEntries = true)
   public Category update(Long id, CategoryRequest request) {
     Category category = getById(id);
 
@@ -60,6 +65,7 @@ public class CategoryService {
   }
 
   @Transactional
+  @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "categories", allEntries = true)
   public void delete(Long id) {
     Category category = getById(id);
     long productCount = productRepository.countByCategoryId(id);

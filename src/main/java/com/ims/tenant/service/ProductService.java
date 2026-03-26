@@ -34,7 +34,7 @@ public class ProductService {
 
   private static final int DEFAULT_REORDER_LEVEL = 10;
 
-  @Cacheable(value = "products", key = "#root.args[0] + ':list'")
+  @Cacheable(cacheResolver = "tenantAwareCacheResolver", value = "products", key = "'list:' + (#pageable?.pageNumber ?: 0) + ':' + (#pageable?.pageSize ?: 10)")
   public Page<ProductResponse> getProducts(Long tenantId, Pageable pageable) {
     return productRepository.findByIsActiveTrue(pageable).map(this::toResponse);
   }
@@ -48,7 +48,7 @@ public class ProductService {
   }
 
   @Transactional
-  @CacheEvict(value = "products", allEntries = true)
+  @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "products", allEntries = true)
   public ProductResponse createProduct(CreateProductRequest request) {
     String businessType = getBusinessType();
 
@@ -108,7 +108,7 @@ public class ProductService {
   }
 
   @Transactional
-  @CacheEvict(value = "products", allEntries = true)
+  @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "products", allEntries = true)
   public ProductResponse updateProduct(Long id, CreateProductRequest request) {
     Product product =
         productRepository
@@ -146,7 +146,7 @@ public class ProductService {
   }
 
   @Transactional
-  @CacheEvict(value = "products", allEntries = true)
+  @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "products", allEntries = true)
   public void deleteProduct(Long id) {
     Product product =
         productRepository

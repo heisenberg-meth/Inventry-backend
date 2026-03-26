@@ -31,6 +31,9 @@ app:
     authenticated-rpm: 500
 
 management:
+  health:
+    redis:
+      enabled: false
   endpoints:
     web:
       exposure:
