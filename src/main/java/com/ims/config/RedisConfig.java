@@ -1,9 +1,19 @@
 package com.ims.config;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.ims.shared.auth.TenantContext;
 import java.time.Duration;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.interceptor.CacheOperationInvocationContext;
+import org.springframework.cache.interceptor.CacheResolver;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
@@ -13,9 +23,11 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+import org.springframework.data.web.config.EnableSpringDataWebSupport;
 
 @Configuration
 @EnableCaching
+@EnableSpringDataWebSupport(pageSerializationMode = EnableSpringDataWebSupport.PageSerializationMode.VIA_DTO)
 public class RedisConfig {
 
   private static final int TTL_PRODUCTS_MINUTES = 15;
@@ -23,17 +35,34 @@ public class RedisConfig {
   private static final int TTL_REPORTS_MINUTES = 30;
   private static final int TTL_TENANT_HOURS = 1;
 
-
   @Bean
   public RedisCacheManager cacheManager(RedisConnectionFactory factory) {
     Map<String, RedisCacheConfiguration> configs = new HashMap<>();
     configs.put("products", ttl(Duration.ofMinutes(TTL_PRODUCTS_MINUTES)));
+    configs.put("categories", ttl(Duration.ofMinutes(TTL_PRODUCTS_MINUTES)));
     configs.put("stock", ttl(Duration.ofMinutes(TTL_STOCK_MINUTES)));
     configs.put("reports", ttl(Duration.ofMinutes(TTL_REPORTS_MINUTES)));
     configs.put("tenant", ttl(Duration.ofHours(TTL_TENANT_HOURS)));
 
+    return RedisCacheManager.builder(factory)
+        .cacheDefaults(ttl(Duration.ofMinutes(10)))
+        .withInitialCacheConfigurations(configs)
+        .build();
+  }
 
-    return RedisCacheManager.builder(factory).withInitialCacheConfigurations(configs).build();
+  @Bean
+  public CacheResolver tenantAwareCacheResolver(CacheManager cacheManager) {
+    return new CacheResolver() {
+      @Override
+      public Collection<? extends Cache> resolveCaches(CacheOperationInvocationContext<?> context) {
+        Long tenantId = TenantContext.get();
+        Collection<String> cacheNames = context.getOperation().getCacheNames();
+        return cacheNames.stream()
+            .map(name -> name + ":" + (tenantId != null ? tenantId : "default"))
+            .map(cacheManager::getCache)
+            .collect(Collectors.toList());
+      }
+    };
   }
 
   @Bean
@@ -41,17 +70,28 @@ public class RedisConfig {
     RedisTemplate<String, Object> template = new RedisTemplate<>();
     template.setConnectionFactory(factory);
     template.setKeySerializer(new StringRedisSerializer());
-    template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+    template.setValueSerializer(jsonSerializer());
     template.setHashKeySerializer(new StringRedisSerializer());
-    template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
+    template.setHashValueSerializer(jsonSerializer());
     return template;
+  }
+
+  private GenericJackson2JsonRedisSerializer jsonSerializer() {
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.registerModule(new JavaTimeModule());
+
+    mapper.activateDefaultTyping(
+        mapper.getPolymorphicTypeValidator(),
+        ObjectMapper.DefaultTyping.NON_FINAL,
+        JsonTypeInfo.As.PROPERTY);
+
+    return new GenericJackson2JsonRedisSerializer(mapper);
   }
 
   private RedisCacheConfiguration ttl(Duration duration) {
     return RedisCacheConfiguration.defaultCacheConfig()
         .entryTtl(duration)
         .serializeValuesWith(
-            RedisSerializationContext.SerializationPair.fromSerializer(
-                new GenericJackson2JsonRedisSerializer()));
+            RedisSerializationContext.SerializationPair.fromSerializer(jsonSerializer()));
   }
 }

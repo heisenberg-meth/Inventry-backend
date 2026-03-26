@@ -32,14 +32,14 @@ public class TenantController {
   private final TenantService tenantService;
 
   @GetMapping
-  @RequiresRole({"ROOT", "PLATFORM_ADMIN"})
+  @RequiresRole({"ROOT"})
   @Operation(summary = "List all tenants", description = "Paginated list of all tenants")
   public ResponseEntity<Page<TenantResponse>> getAllTenants(Pageable pageable) {
     return ResponseEntity.ok(tenantService.getAllTenants(pageable));
   }
 
   @PostMapping
-  @RequiresRole({"ROOT", "PLATFORM_ADMIN"})
+  @RequiresRole({"ROOT"})
   @Operation(summary = "Create new tenant")
   public ResponseEntity<TenantResponse> createTenant(
       @Valid @RequestBody CreateTenantRequest request) {
@@ -47,7 +47,7 @@ public class TenantController {
   }
 
   @GetMapping("/{id}")
-  @RequiresRole({"ROOT", "PLATFORM_ADMIN"})
+  @RequiresRole({"ROOT"})
   @Operation(summary = "Get tenant details")
   public ResponseEntity<TenantResponse> getTenant(@PathVariable Long id) {
     return ResponseEntity.ok(tenantService.getTenantById(id));
