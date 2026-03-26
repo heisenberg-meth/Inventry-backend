@@ -11,6 +11,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.transaction.support.TransactionTemplate;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -19,6 +21,7 @@ public class SignupService {
   private final TenantRepository tenantRepository;
   private final UserRepository userRepository;
   private final PasswordEncoder passwordEncoder;
+  private final UserCreationService userCreationService;
 
   @Transactional
   public void signup(SignupRequest request) {
@@ -32,7 +35,7 @@ public class SignupService {
       throw new IllegalArgumentException("Email already registered: " + request.getOwnerEmail());
     }
 
-    // 1. Create Tenant
+    // 1. Create Tenant (implicitly in tenant 0 context)
     Tenant tenant =
         Tenant.builder()
             .name(request.getBusinessName())
@@ -42,10 +45,10 @@ public class SignupService {
             .plan("FREE")
             .build();
 
-    tenant = tenantRepository.save(tenant);
+    tenant = tenantRepository.saveAndFlush(tenant);
     log.info("Signup: Created tenant id={} name={}", tenant.getId(), tenant.getName());
 
-    // 2. Create Owner User (ADMIN)
+    // 2. Create Owner User (ADMIN) - Must match tenant context
     User user =
         User.builder()
             .name(request.getOwnerName())
@@ -56,7 +59,13 @@ public class SignupService {
             .isActive(true)
             .build();
 
-    userRepository.save(user);
+    try {
+      TenantContext.set(tenant.getId());
+      userCreationService.createUserForTenant(user, tenant.getId());
+    } finally {
+      TenantContext.clear();
+    }
+    
     log.info("Signup: Created owner user for tenant={}", tenant.getId());
   }
 }

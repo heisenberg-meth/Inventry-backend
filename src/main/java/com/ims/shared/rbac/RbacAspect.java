@@ -14,18 +14,29 @@ public class RbacAspect {
 
   @Around("@annotation(requiresRole)")
   public Object checkRole(ProceedingJoinPoint pjp, RequiresRole requiresRole) throws Throwable {
-    String currentRole =
-        SecurityContextHolder.getContext()
-            .getAuthentication()
-            .getAuthorities()
-            .iterator()
-            .next()
-            .getAuthority();
+    var auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth == null || !auth.isAuthenticated()) {
+      throw new AccessDeniedException("Not authenticated");
+    }
 
-    boolean allowed = Arrays.asList(requiresRole.value()).contains(currentRole);
+    var userAuthorities = auth.getAuthorities();
+    if (userAuthorities == null || userAuthorities.isEmpty()) {
+      throw new AccessDeniedException("No roles assigned to user");
+    }
+
+    String[] requiredRoles = requiresRole.value();
+    boolean allowed =
+        userAuthorities.stream()
+            .anyMatch(
+                grantedAuthority ->
+                    Arrays.asList(requiredRoles).contains(grantedAuthority.getAuthority()));
+
     if (!allowed) {
       throw new AccessDeniedException(
-          "Required: " + Arrays.toString(requiresRole.value()) + ", Got: " + currentRole);
+          "Access denied: Required "
+              + Arrays.toString(requiredRoles)
+              + ", but user has authorities "
+              + userAuthorities);
     }
 
     return pjp.proceed();

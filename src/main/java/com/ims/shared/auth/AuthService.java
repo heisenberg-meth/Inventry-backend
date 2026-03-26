@@ -35,7 +35,7 @@ public class AuthService {
   public LoginResponse login(LoginRequest request) {
     User user =
         userRepository
-            .findByEmail(request.getEmail())
+            .findByEmailUnfiltered(request.getEmail())
             .orElseThrow(() -> new EntityNotFoundException("Invalid email or password"));
 
     if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
@@ -104,7 +104,7 @@ public class AuthService {
     Long userId = jwtUtil.extractUserId(refreshToken);
     User user =
         userRepository
-            .findById(userId)
+            .findByIdUnfiltered(userId)
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     String scope;

@@ -43,7 +43,8 @@ public class UserService {
       throw new IllegalArgumentException("Invalid role. Must be one of: " + VALID_TENANT_ROLES);
     }
 
-    if (userRepository.existsByEmail(request.getEmail())) {
+    // Email must be unique platform-wide
+    if (userRepository.findByEmailUnfiltered(request.getEmail()).isPresent()) {
       throw new IllegalArgumentException("Email already in use: " + request.getEmail());
     }
 
