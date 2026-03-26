@@ -13,12 +13,11 @@ public interface PharmacyProductRepository extends JpaRepository<PharmacyProduct
 
   @Query(
       "SELECT pp FROM PharmacyProduct pp JOIN pp.product p "
-          + "WHERE p.tenantId = :tenantId AND pp.expiryDate <= :date AND p.isActive = true")
-  List<PharmacyProduct> findExpiringByTenantId(
-      @Param("tenantId") Long tenantId, @Param("date") LocalDate date);
+          + "WHERE pp.expiryDate <= :date AND p.isActive = true")
+  List<PharmacyProduct> findExpiring(@Param("date") LocalDate date);
 
   @Query(
       "SELECT COUNT(pp) FROM PharmacyProduct pp JOIN pp.product p "
-          + "WHERE p.tenantId = :tenantId AND pp.expiryDate <= :date AND p.isActive = true")
-  long countExpiringByTenantId(@Param("tenantId") Long tenantId, @Param("date") LocalDate date);
+          + "WHERE pp.expiryDate <= :date AND p.isActive = true")
+  long countExpiring(@Param("date") LocalDate date);
 }

@@ -3,7 +3,6 @@ package com.ims.tenant.service;
 import com.ims.dto.request.CreateUserRequest;
 import com.ims.dto.response.UserResponse;
 import com.ims.model.User;
-import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
@@ -26,23 +25,19 @@ public class UserService {
   private static final List<String> VALID_TENANT_ROLES = List.of("ADMIN", "MANAGER", "STAFF");
 
   public Page<UserResponse> getUsers(Pageable pageable) {
-    Long tenantId = TenantContext.get();
-    return userRepository.findByTenantId(tenantId, pageable).map(this::toResponse);
+    return userRepository.findAll(pageable).map(this::toResponse);
   }
 
   public UserResponse getUserById(Long id) {
-    Long tenantId = TenantContext.get();
     User user =
         userRepository
-            .findByIdAndTenantId(id, tenantId)
+            .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
     return toResponse(user);
   }
 
   @Transactional
   public UserResponse createUser(CreateUserRequest request) {
-    Long tenantId = TenantContext.get();
-
     // Validate role is tenant-level only
     if (!VALID_TENANT_ROLES.contains(request.getRole())) {
       throw new IllegalArgumentException("Invalid role. Must be one of: " + VALID_TENANT_ROLES);
@@ -54,7 +49,6 @@ public class UserService {
 
     User user =
         User.builder()
-            .tenantId(tenantId)
             .name(request.getName())
             .email(request.getEmail())
             .passwordHash(passwordEncoder.encode(request.getPassword()))
@@ -63,26 +57,19 @@ public class UserService {
             .build();
 
     user = userRepository.save(user);
-    log.info(
-        "User created: id={} email={} role={} tenant={}",
-        user.getId(),
-        user.getEmail(),
-        user.getRole(),
-        tenantId);
+    log.info("User created: id={} email={} role={}", user.getId(), user.getEmail(), user.getRole());
     return toResponse(user);
   }
 
   @Transactional
   public UserResponse updateRole(Long id, String newRole) {
-    Long tenantId = TenantContext.get();
-
     if (!VALID_TENANT_ROLES.contains(newRole)) {
       throw new IllegalArgumentException("Invalid role. Must be one of: " + VALID_TENANT_ROLES);
     }
 
     User user =
         userRepository
-            .findByIdAndTenantId(id, tenantId)
+            .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     user.setRole(newRole);
@@ -93,10 +80,9 @@ public class UserService {
 
   @Transactional
   public void deactivateUser(Long id) {
-    Long tenantId = TenantContext.get();
     User user =
         userRepository
-            .findByIdAndTenantId(id, tenantId)
+            .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
     user.setIsActive(false);
     userRepository.save(user);

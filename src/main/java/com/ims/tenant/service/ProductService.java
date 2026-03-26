@@ -4,7 +4,6 @@ import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.response.ProductResponse;
 import com.ims.model.Product;
 import com.ims.shared.auth.JwtAuthDetails;
-import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.domain.pharmacy.PharmacyProduct;
 import com.ims.tenant.domain.pharmacy.PharmacyProductRepository;
 import com.ims.tenant.domain.warehouse.WarehouseProduct;
@@ -37,16 +36,13 @@ public class ProductService {
 
   @Cacheable(value = "products", key = "#root.args[0] + ':list'")
   public Page<ProductResponse> getProducts(Long tenantId, Pageable pageable) {
-    return productRepository
-        .findByTenantIdAndIsActiveTrue(tenantId, pageable)
-        .map(this::toResponse);
+    return productRepository.findByIsActiveTrue(pageable).map(this::toResponse);
   }
 
   public ProductResponse getProductById(Long id) {
-    Long tenantId = TenantContext.get();
     Product product =
         productRepository
-            .findByIdAndTenantId(id, tenantId)
+            .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Product not found"));
     return toResponse(product);
   }
@@ -54,7 +50,6 @@ public class ProductService {
   @Transactional
   @CacheEvict(value = "products", allEntries = true)
   public ProductResponse createProduct(CreateProductRequest request) {
-    Long tenantId = TenantContext.get();
     String businessType = getBusinessType();
 
     // Validate pharmacy products must have pharmacy_details
@@ -64,7 +59,6 @@ public class ProductService {
 
     Product product =
         Product.builder()
-            .tenantId(tenantId)
             .name(request.getName())
             .sku(request.getSku())
             .barcode(request.getBarcode())
@@ -109,18 +103,16 @@ public class ProductService {
       warehouseProductRepository.save(wp);
     }
 
-    log.info(
-        "Product created: id={} name={} tenant={}", product.getId(), product.getName(), tenantId);
+    log.info("Product created: id={} name={}", product.getId(), product.getName());
     return toResponse(product);
   }
 
   @Transactional
   @CacheEvict(value = "products", allEntries = true)
   public ProductResponse updateProduct(Long id, CreateProductRequest request) {
-    Long tenantId = TenantContext.get();
     Product product =
         productRepository
-            .findByIdAndTenantId(id, tenantId)
+            .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
     if (request.getName() != null) {
@@ -156,26 +148,23 @@ public class ProductService {
   @Transactional
   @CacheEvict(value = "products", allEntries = true)
   public void deleteProduct(Long id) {
-    Long tenantId = TenantContext.get();
     Product product =
         productRepository
-            .findByIdAndTenantId(id, tenantId)
+            .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Product not found"));
     product.setIsActive(false);
     product.setUpdatedAt(LocalDateTime.now());
     productRepository.save(product);
-    log.info("Product soft deleted: id={} tenant={}", id, tenantId);
+    log.info("Product soft deleted: id={}", id);
   }
 
   public List<ProductResponse> getLowStockProducts() {
-    Long tenantId = TenantContext.get();
-    return productRepository.findLowStockByTenantId(tenantId).stream()
+    return productRepository.findLowStock().stream()
         .map(this::toResponse)
         .collect(Collectors.toList());
   }
 
   public List<ProductResponse> getExpiringProducts(int days) {
-    Long tenantId = TenantContext.get();
     String businessType = getBusinessType();
 
     if (!"PHARMACY".equals(businessType)) {
@@ -184,14 +173,13 @@ public class ProductService {
     }
 
     LocalDate threshold = LocalDate.now().plusDays(days);
-    return pharmacyProductRepository.findExpiringByTenantId(tenantId, threshold).stream()
+    return pharmacyProductRepository.findExpiring(threshold).stream()
         .map(pp -> toResponseWithPharmacy(pp.getProduct(), pp))
         .collect(Collectors.toList());
   }
 
   public Page<ProductResponse> searchProducts(String query, Pageable pageable) {
-    Long tenantId = TenantContext.get();
-    return productRepository.searchProducts(tenantId, query, pageable).map(this::toResponse);
+    return productRepository.searchProducts(query, pageable).map(this::toResponse);
   }
 
   private String getBusinessType() {

@@ -3,7 +3,6 @@ package com.ims.tenant.service;
 import com.ims.dto.CreatePaymentRequest;
 import com.ims.model.Invoice;
 import com.ims.model.Payment;
-import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.repository.InvoiceRepository;
 import com.ims.tenant.repository.PaymentRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -27,7 +26,6 @@ public class PaymentService {
 
   @Transactional
   public Payment processPayment(CreatePaymentRequest request) {
-    Long tenantId = TenantContext.get();
     Long userId = null;
     try {
       userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -37,12 +35,11 @@ public class PaymentService {
 
     Invoice invoice =
         invoiceRepository
-            .findByIdAndTenantId(request.getInvoiceId(), tenantId)
+            .findById(request.getInvoiceId())
             .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
 
     Payment payment =
         Payment.builder()
-            .tenantId(tenantId)
             .invoiceId(invoice.getId())
             .amount(request.getAmount())
             .paymentMode(request.getPaymentMode())
@@ -72,12 +69,12 @@ public class PaymentService {
   }
 
   public Page<Payment> getPayments(Pageable pageable) {
-    return paymentRepository.findByTenantId(TenantContext.get(), pageable);
+    return paymentRepository.findAll(pageable);
   }
 
   public Payment getPaymentById(Long id) {
     return paymentRepository
-        .findByIdAndTenantId(id, TenantContext.get())
+        .findById(id)
         .orElseThrow(() -> new EntityNotFoundException("Payment not found"));
   }
 }

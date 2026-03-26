@@ -1,7 +1,6 @@
 package com.ims.tenant.service;
 
 import com.ims.model.Customer;
-import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.repository.CustomerRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -17,18 +16,17 @@ public class CustomerService {
   private final CustomerRepository customerRepository;
 
   public Page<Customer> getCustomers(Pageable pageable) {
-    return customerRepository.findByTenantId(TenantContext.get(), pageable);
+    return customerRepository.findAll(pageable);
   }
 
   public Customer getById(Long id) {
     return customerRepository
-        .findByIdAndTenantId(id, TenantContext.get())
+        .findById(id)
         .orElseThrow(() -> new EntityNotFoundException("Customer not found"));
   }
 
   @Transactional
   public Customer create(Customer customer) {
-    customer.setTenantId(TenantContext.get());
     return customerRepository.save(customer);
   }
 

@@ -11,6 +11,10 @@ public class TenantContext {
     return TENANT.get();
   }
 
+  public static Long getTenantIdentifier() {
+    return TENANT.get();
+  }
+
   public static void clear() {
     TENANT.remove();
   }

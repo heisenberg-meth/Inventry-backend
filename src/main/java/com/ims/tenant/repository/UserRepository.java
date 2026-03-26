@@ -11,9 +11,7 @@ import org.springframework.stereotype.Repository;
 public interface UserRepository extends JpaRepository<User, Long> {
   Optional<User> findByEmail(String email);
 
-  Optional<User> findByIdAndTenantId(Long id, Long tenantId);
-
-  Page<User> findByTenantId(Long tenantId, Pageable pageable);
+  // findById is inherited
 
   Optional<User> findByIdAndTenantIdIsNull(Long id);
 

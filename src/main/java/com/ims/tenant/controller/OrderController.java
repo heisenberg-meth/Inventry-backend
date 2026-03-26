@@ -1,7 +1,6 @@
 package com.ims.tenant.controller;
 
 import com.ims.model.Order;
-import com.ims.shared.auth.TenantContext;
 import com.ims.shared.rbac.RequiresRole;
 import com.ims.tenant.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -48,10 +47,9 @@ public class OrderController {
   @Operation(summary = "Create purchase order")
   public ResponseEntity<Map<String, Object>> createPurchaseOrder(
       @RequestBody Map<String, Object> request) {
-    Long tenantId = TenantContext.get();
     Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(orderService.createPurchaseOrder(tenantId, request, userId));
+        .body(orderService.createPurchaseOrder(request, userId));
   }
 
   @PostMapping("/sale")
@@ -59,10 +57,9 @@ public class OrderController {
   @Operation(summary = "Create sale order")
   public ResponseEntity<Map<String, Object>> createSalesOrder(
       @RequestBody Map<String, Object> request) {
-    Long tenantId = TenantContext.get();
     Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(orderService.createSalesOrder(tenantId, request, userId));
+        .body(orderService.createSalesOrder(request, userId));
   }
 
   @GetMapping("/{id}")

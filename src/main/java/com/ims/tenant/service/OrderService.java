@@ -4,7 +4,6 @@ import com.ims.model.Invoice;
 import com.ims.model.Order;
 import com.ims.model.OrderItem;
 import com.ims.model.Product;
-import com.ims.shared.auth.TenantContext;
 import com.ims.shared.exception.InsufficientStockException;
 import com.ims.tenant.repository.CustomerRepository;
 import com.ims.tenant.repository.OrderItemRepository;
@@ -39,15 +38,14 @@ public class OrderService {
   private static final int PERCENTAGE_BASE = 100;
 
   @Transactional
-  public Map<String, Object> createPurchaseOrder(
-      Long tenantId, Map<String, Object> request, Long userId) {
+  public Map<String, Object> createPurchaseOrder(Map<String, Object> request, Long userId) {
     Long supplierId = Long.valueOf(request.get("supplier_id").toString());
     @SuppressWarnings("unchecked")
     List<Map<String, Object>> items = (List<Map<String, Object>>) request.get("items");
 
     // Validate supplier belongs to tenant
     supplierRepository
-        .findByIdAndTenantId(supplierId, tenantId)
+        .findById(supplierId)
         .orElseThrow(() -> new EntityNotFoundException("Supplier not found"));
 
     BigDecimal totalAmount = BigDecimal.ZERO;
@@ -56,7 +54,6 @@ public class OrderService {
     // Save order
     Order order =
         Order.builder()
-            .tenantId(tenantId)
             .type("PURCHASE")
             .status("RECEIVED")
             .supplierId(supplierId)
@@ -122,17 +119,16 @@ public class OrderService {
       orderItemRepository.save(orderItem);
 
       // Stock in
-      stockService.stockIn(tenantId, productId, qty, "Purchase Order #" + order.getId(), userId);
+      stockService.stockIn(productId, qty, "Purchase Order #" + order.getId(), userId);
     }
 
     log.info(
-        "Purchase order created: id={} tenant={} total={}", order.getId(), tenantId, totalAmount);
+        "Purchase order created: id={} total={}", order.getId(), totalAmount);
     return Map.of("order_id", order.getId(), "total", totalAmount);
   }
 
   @Transactional
-  public Map<String, Object> createSalesOrder(
-      Long tenantId, Map<String, Object> request, Long userId) {
+  public Map<String, Object> createSalesOrder(Map<String, Object> request, Long userId) {
     Long customerId =
         request.containsKey("customer_id")
             ? Long.valueOf(request.get("customer_id").toString())
@@ -142,7 +138,7 @@ public class OrderService {
     // Validate customer if provided
     if (customerId != null) {
       customerRepository
-          .findByIdAndTenantId(customerId, tenantId)
+          .findById(customerId)
           .orElseThrow(() -> new EntityNotFoundException("Customer not found"));
     }
 
@@ -153,7 +149,7 @@ public class OrderService {
 
       Product product =
           productRepository
-              .findByIdAndTenantId(productId, tenantId)
+              .findById(productId)
               .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
 
       if (product.getStock() < qty) {
@@ -197,7 +193,6 @@ public class OrderService {
 
     Order order =
         Order.builder()
-            .tenantId(tenantId)
             .type("SALE")
             .status("COMPLETED")
             .customerId(customerId)
@@ -237,16 +232,15 @@ public class OrderService {
       orderItemRepository.save(orderItem);
 
       // Atomic stock decrement
-      stockService.stockOut(tenantId, productId, qty, "Sale Order #" + order.getId(), userId);
+      stockService.stockOut(productId, qty, "Sale Order #" + order.getId(), userId);
     }
 
     // Auto-generate invoice
-    Invoice invoice = invoiceService.createFromOrder(order, tenantId);
+    Invoice invoice = invoiceService.createFromOrder(order);
 
     log.info(
-        "Sales order created: id={} tenant={} total={} invoice={}",
+        "Sales order created: id={} total={} invoice={}",
         order.getId(),
-        tenantId,
         totalAmount,
         invoice.getInvoiceNumber());
     return Map.of(
@@ -257,20 +251,17 @@ public class OrderService {
   }
 
   public Page<Order> getOrders(Pageable pageable) {
-    Long tenantId = TenantContext.get();
-    return orderRepository.findByTenantId(tenantId, pageable);
+    return orderRepository.findAll(pageable);
   }
 
   public Page<Order> getOrdersByType(String type, Pageable pageable) {
-    Long tenantId = TenantContext.get();
-    return orderRepository.findByTenantIdAndType(tenantId, type, pageable);
+    return orderRepository.findByType(type, pageable);
   }
 
   public Map<String, Object> getOrderWithItems(Long id) {
-    Long tenantId = TenantContext.get();
     Order order =
         orderRepository
-            .findByIdAndTenantId(id, tenantId)
+            .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Order not found"));
     List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
     return Map.of("order", order, "items", items);
@@ -278,10 +269,9 @@ public class OrderService {
 
   @Transactional
   public Order updateOrderStatus(Long id, String status) {
-    Long tenantId = TenantContext.get();
     Order order =
         orderRepository
-            .findByIdAndTenantId(id, tenantId)
+            .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Order not found"));
     order.setStatus(status);
     return orderRepository.save(order);

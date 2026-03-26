@@ -2,7 +2,6 @@ package com.ims.tenant.service;
 
 import com.ims.dto.CategoryRequest;
 import com.ims.model.Category;
-import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.repository.CategoryRepository;
 import com.ims.tenant.repository.ProductRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -21,25 +20,23 @@ public class CategoryService {
   private final ProductRepository productRepository;
 
   public Page<Category> getCategories(Pageable pageable) {
-    return categoryRepository.findByTenantId(TenantContext.get(), pageable);
+    return categoryRepository.findAll(pageable);
   }
 
   public Category getById(Long id) {
     return categoryRepository
-        .findByIdAndTenantId(id, TenantContext.get())
+        .findById(id)
         .orElseThrow(() -> new EntityNotFoundException("Category not found"));
   }
 
   @Transactional
   public Category create(CategoryRequest request) {
-    if (categoryRepository.existsByNameIgnoreCaseAndTenantId(
-        request.getName(), TenantContext.get())) {
+    if (categoryRepository.existsByNameIgnoreCase(request.getName())) {
       throw new IllegalArgumentException("Category with this name already exists");
     }
 
     Category category =
         Category.builder()
-            .tenantId(TenantContext.get())
             .name(request.getName())
             .description(request.getDescription())
             .build();
@@ -52,8 +49,7 @@ public class CategoryService {
     Category category = getById(id);
 
     if (!category.getName().equalsIgnoreCase(request.getName())
-        && categoryRepository.existsByNameIgnoreCaseAndTenantId(
-            request.getName(), TenantContext.get())) {
+        && categoryRepository.existsByNameIgnoreCase(request.getName())) {
       throw new IllegalArgumentException("Category with this name already exists");
     }
 
@@ -66,7 +62,7 @@ public class CategoryService {
   @Transactional
   public void delete(Long id) {
     Category category = getById(id);
-    long productCount = productRepository.countByCategoryIdAndTenantId(id, TenantContext.get());
+    long productCount = productRepository.countByCategoryId(id);
 
     if (productCount > 0) {
       throw new DataIntegrityViolationException(
