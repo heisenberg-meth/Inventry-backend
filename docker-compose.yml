@@ -64,7 +64,7 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     ports:
-      - "80:80"
+      - "8000:8000"
     depends_on:
       - backend
     restart: unless-stopped
