@@ -2,13 +2,11 @@ package com.ims.config;
 
 import com.ims.model.User;
 import com.ims.tenant.repository.UserRepository;
-import com.ims.shared.auth.TenantContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Component;
 
 //@Component
 @RequiredArgsConstructor
