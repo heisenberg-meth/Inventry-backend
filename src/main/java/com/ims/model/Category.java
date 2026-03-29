@@ -34,6 +34,10 @@ public class Category {
 
   @Column private String description;
 
+  @Column(name = "tax_rate")
+  @Builder.Default
+  private java.math.BigDecimal taxRate = java.math.BigDecimal.ZERO;
+
   @Column(name = "created_at")
   @Builder.Default
   private LocalDateTime createdAt = LocalDateTime.now();

@@ -4,6 +4,12 @@ import com.ims.dto.request.CreateTenantRequest;
 import com.ims.dto.response.TenantResponse;
 import com.ims.model.Tenant;
 import com.ims.platform.repository.TenantRepository;
+import com.ims.dto.request.CreateTenantUserRequest;
+import com.ims.dto.response.UserResponse;
+import com.ims.model.User;
+import com.ims.tenant.repository.UserRepository;
+import com.ims.shared.auth.UserCreationService;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +26,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class TenantService {
 
   private final TenantRepository tenantRepository;
+  private final UserRepository userRepository;
+  private final PasswordEncoder passwordEncoder;
+  private final UserCreationService userCreationService;
 
   public Page<TenantResponse> getAllTenants(Pageable pageable) {
     return tenantRepository.findAll(pageable).map(this::toResponse);
@@ -101,6 +110,39 @@ public class TenantService {
         .plan(tenant.getPlan())
         .status(tenant.getStatus())
         .createdAt(tenant.getCreatedAt())
+        .build();
+  }
+
+  @Transactional
+  public UserResponse createTenantUser(Long tenantId, CreateTenantUserRequest request) {
+    if (!tenantRepository.existsById(tenantId)) {
+      throw new EntityNotFoundException("Tenant not found with id: " + tenantId);
+    }
+    if (userRepository.existsByEmail(request.getEmail())) {
+      throw new IllegalArgumentException("Email already in use");
+    }
+
+    User user =
+        User.builder()
+            .name(request.getUsername())
+            .email(request.getEmail())
+            .passwordHash(passwordEncoder.encode(request.getPassword()))
+            .role(request.getRole())
+            .scope(request.getScope())
+            .tenantId(tenantId)
+            .isActive(true)
+            .build();
+
+    userCreationService.createUserForTenant(user, tenantId);
+
+    return UserResponse.builder()
+        .id(user.getId())
+        .name(user.getName())
+        .email(user.getEmail())
+        .role(user.getRole())
+        .scope(user.getScope())
+        .isActive(user.getIsActive())
+        .createdAt(user.getCreatedAt())
         .build();
   }
 }

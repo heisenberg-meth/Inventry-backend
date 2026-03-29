@@ -33,6 +33,7 @@ public class PlatformUserService {
             .email(request.getEmail())
             .passwordHash(passwordEncoder.encode(request.getPassword()))
             .role(request.getRole())
+            .scope("PLATFORM")
             .tenantId(null)
             .isActive(true)
             .build();
