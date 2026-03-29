@@ -46,16 +46,11 @@ public class AuthService {
       throw new IllegalArgumentException("Account is deactivated");
     }
 
-    String scope;
+    String scope = user.getScope();
     String businessType = null;
     Long tenantId = user.getTenantId();
 
-    if ("ROOT".equals(user.getRole())
-        || "PLATFORM_ADMIN".equals(user.getRole())
-        || "SUPPORT_ADMIN".equals(user.getRole())) {
-      scope = "PLATFORM";
-    } else {
-      scope = "TENANT";
+    if ("TENANT".equals(scope)) {
       if (tenantId != null) {
         Tenant tenant = tenantRepository.findById(tenantId).orElse(null);
         if (tenant != null) {
@@ -107,16 +102,11 @@ public class AuthService {
             .findByIdUnfiltered(userId)
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
-    String scope;
+    String scope = user.getScope();
     String businessType = null;
     Long tenantId = user.getTenantId();
 
-    if ("ROOT".equals(user.getRole())
-        || "PLATFORM_ADMIN".equals(user.getRole())
-        || "SUPPORT_ADMIN".equals(user.getRole())) {
-      scope = "PLATFORM";
-    } else {
-      scope = "TENANT";
+    if ("TENANT".equals(scope)) {
       if (tenantId != null) {
         Tenant tenant = tenantRepository.findById(tenantId).orElse(null);
         if (tenant != null) {

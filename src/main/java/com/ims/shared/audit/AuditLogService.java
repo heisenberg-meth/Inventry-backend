@@ -1,7 +1,10 @@
 package com.ims.shared.audit;
 
+import com.ims.platform.service.SystemConfigService;
+import com.ims.shared.auth.JwtAuthDetails;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -9,7 +12,44 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class AuditLogService {
 
+  private final AuditLogRepository auditLogRepository;
+  private final SystemConfigService systemConfigService;
+
   public void log(String action, Long tenantId, Long userId, String details) {
     log.info("AUDIT: tenant={} user={} action={} details={}", tenantId, userId, action, details);
+    
+    com.ims.model.AuditLog auditEntry = com.ims.model.AuditLog.builder()
+        .tenantId(tenantId)
+        .userId(userId)
+        .action(action)
+        .details(details)
+        .build();
+    
+    auditLogRepository.save(auditEntry);
+  }
+
+  public org.springframework.data.domain.Page<com.ims.model.AuditLog> getAllLogs(org.springframework.data.domain.Pageable pageable) {
+    var logs = auditLogRepository.findAll(pageable);
+    
+    // Check for masking if ROOOT role and support mode is OFF
+    if (isSystemAdmin() && !systemConfigService.isSupportModeEnabled()) {
+      return logs.map(this::maskSensitiveData);
+    }
+    return logs;
+  }
+
+  private boolean isSystemAdmin() {
+    var auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
+      return "PLATFORM".equals(details.getScope()) && "ROOT".equals(details.getRole());
+    }
+    return false;
+  }
+
+  private com.ims.model.AuditLog maskSensitiveData(com.ims.model.AuditLog log) {
+    if (log.getDetails() != null) {
+      log.setDetails("[MASKED - SUPPORT_MODE DISABLED]");
+    }
+    return log;
   }
 }

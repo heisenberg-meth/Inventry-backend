@@ -3,6 +3,8 @@ package com.ims.tenant.service;
 import com.ims.dto.request.CreateUserRequest;
 import com.ims.dto.response.UserResponse;
 import com.ims.model.User;
+import com.ims.platform.repository.TenantRepository;
+import com.ims.shared.auth.JwtAuthDetails;
 import com.ims.tenant.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
@@ -10,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
   private final UserRepository userRepository;
+  private final TenantRepository tenantRepository;
   private final PasswordEncoder passwordEncoder;
 
   private static final List<String> VALID_TENANT_ROLES = List.of("ADMIN", "MANAGER", "STAFF");
@@ -48,12 +52,29 @@ public class UserService {
       throw new IllegalArgumentException("Email already in use: " + request.getEmail());
     }
 
+    // Check user limits for tenant
+    Long tenantId = getTenantId();
+    if (tenantId != null) {
+      var tenant =
+          tenantRepository
+              .findById(tenantId)
+              .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+      if (tenant.getMaxUsers() != null) {
+        long currentCount = userRepository.countActive();
+        if (currentCount >= tenant.getMaxUsers()) {
+          throw new IllegalArgumentException(
+              "User limit reached for your plan (" + tenant.getMaxUsers() + ")");
+        }
+      }
+    }
+
     User user =
         User.builder()
             .name(request.getName())
             .email(request.getEmail())
             .passwordHash(passwordEncoder.encode(request.getPassword()))
             .role(request.getRole())
+            .scope("TENANT")
             .isActive(true)
             .build();
 
@@ -88,6 +109,18 @@ public class UserService {
     user.setIsActive(false);
     userRepository.save(user);
     log.info("User deactivated: id={}", id);
+  }
+
+  private Long getTenantId() {
+    try {
+      var auth = SecurityContextHolder.getContext().getAuthentication();
+      if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
+        return details.getTenantId();
+      }
+    } catch (Exception e) {
+      log.trace("Caught expected exception in tenant id retrieval: {}", e.getMessage());
+    }
+    return null;
   }
 
   private UserResponse toResponse(User user) {

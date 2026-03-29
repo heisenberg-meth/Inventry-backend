@@ -14,6 +14,7 @@ import com.ims.tenant.repository.OrderItemRepository;
 import com.ims.tenant.repository.OrderRepository;
 import com.ims.tenant.repository.ProductRepository;
 import jakarta.persistence.EntityNotFoundException;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -76,6 +77,7 @@ public class InvoiceService {
             .invoiceNumber(invoiceNumber)
             .amount(order.getTotalAmount())
             .taxAmount(order.getTaxAmount())
+            .discount(order.getDiscount())
             .status("UNPAID")
             .dueDate(
                 request.getDueDate() != null
@@ -132,6 +134,7 @@ public class InvoiceService {
             .invoiceNumber(invoiceNumber)
             .amount(order.getTotalAmount())
             .taxAmount(order.getTaxAmount())
+            .discount(order.getDiscount())
             .status("UNPAID")
             .dueDate(LocalDate.now().plusDays(DEFAULT_DUE_DAYS))
             .build();
@@ -184,10 +187,19 @@ public class InvoiceService {
     sb.append(String.format("%-62s %10s\n", "Subtotal:", invoice.getAmount()));
     if (invoice.getTaxAmount() != null) {
       sb.append(String.format("%-62s %10s\n", "Tax:", invoice.getTaxAmount()));
-      sb.append(
-          String.format(
-              "%-62s %10s\n", "Grand Total:", invoice.getAmount().add(invoice.getTaxAmount())));
     }
+    if (invoice.getDiscount() != null && invoice.getDiscount().compareTo(java.math.BigDecimal.ZERO) > 0) {
+      sb.append(String.format("%-62s %10s\n", "Discount:", "-" + invoice.getDiscount()));
+    }
+
+    BigDecimal grandTotal = invoice.getAmount();
+    if (invoice.getTaxAmount() != null) {
+      grandTotal = grandTotal.add(invoice.getTaxAmount());
+    }
+    if (invoice.getDiscount() != null) {
+      grandTotal = grandTotal.subtract(invoice.getDiscount());
+    }
+    sb.append(String.format("%-62s %10s\n", "Grand Total:", grandTotal));
 
     // For MVP, return text-based PDF content as bytes
     // Full iText PDF generation can be added in production
@@ -241,14 +253,26 @@ public class InvoiceService {
           new com.itextpdf.layout.element.Paragraph("Total: " + invoice.getAmount())
               .setBold()
               .setFontSize(PDF_SUBHEADER_FONT_SIZE));
+
       if (invoice.getTaxAmount() != null) {
         document.add(new com.itextpdf.layout.element.Paragraph("Tax: " + invoice.getTaxAmount()));
-        document.add(
-            new com.itextpdf.layout.element.Paragraph(
-                    "Grand Total: " + invoice.getAmount().add(invoice.getTaxAmount()))
-                .setBold()
-                .setFontSize(PDF_GRAND_TOTAL_FONT_SIZE));
       }
+      if (invoice.getDiscount() != null && invoice.getDiscount().compareTo(java.math.BigDecimal.ZERO) > 0) {
+        document.add(new com.itextpdf.layout.element.Paragraph("Discount: -" + invoice.getDiscount()));
+      }
+
+      BigDecimal grandTotalText = invoice.getAmount();
+      if (invoice.getTaxAmount() != null) {
+        grandTotalText = grandTotalText.add(invoice.getTaxAmount());
+      }
+      if (invoice.getDiscount() != null) {
+        grandTotalText = grandTotalText.subtract(invoice.getDiscount());
+      }
+
+      document.add(
+          new com.itextpdf.layout.element.Paragraph("Grand Total: " + grandTotalText)
+              .setBold()
+              .setFontSize(PDF_GRAND_TOTAL_FONT_SIZE));
 
       document.close();
       return baos.toByteArray();

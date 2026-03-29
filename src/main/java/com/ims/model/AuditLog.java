@@ -1,6 +1,5 @@
 package com.ims.model;
 
-import org.hibernate.annotations.TenantId;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -14,29 +13,28 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "categories")
+@Table(name = "audit_logs")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Category {
+public class AuditLog {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @TenantId
-  @Column(name = "tenant_id", nullable = false)
+  @Column(name = "tenant_id")
   private Long tenantId;
 
+  @Column(name = "user_id")
+  private Long userId;
+
   @Column(nullable = false)
-  private String name;
+  private String action;
 
-  @Column private String description;
-
-  @Column(name = "tax_rate")
-  @Builder.Default
-  private java.math.BigDecimal taxRate = java.math.BigDecimal.ZERO;
+  @Column(columnDefinition = "TEXT")
+  private String details;
 
   @Column(name = "created_at")
   @Builder.Default

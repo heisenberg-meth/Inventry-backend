@@ -43,6 +43,10 @@ public class Invoice {
   @Column(name = "tax_amount", precision = 12, scale = 2)
   private BigDecimal taxAmount;
 
+  @Column(precision = 12, scale = 2)
+  @Builder.Default
+  private BigDecimal discount = BigDecimal.ZERO;
+
   @Column @Builder.Default private String status = "UNPAID";
 
   @Column(name = "due_date")

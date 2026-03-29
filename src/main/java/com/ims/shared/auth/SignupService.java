@@ -53,6 +53,7 @@ public class SignupService {
             .email(request.getOwnerEmail())
             .passwordHash(passwordEncoder.encode(request.getPassword()))
             .role("ADMIN")
+            .scope("TENANT")
             .tenantId(tenant.getId())
             .isActive(true)
             .build();
