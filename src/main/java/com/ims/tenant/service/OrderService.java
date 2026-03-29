@@ -34,6 +34,7 @@ public class OrderService {
   private final CustomerRepository customerRepository;
   private final StockService stockService;
   private final InvoiceService invoiceService;
+  private final PaymentService paymentService;
  
   private static final int PERCENTAGE_BASE = 100;
 
@@ -191,6 +192,26 @@ public class OrderService {
       taxAmount = taxAmount.add(itemTax);
     }
 
+    // Apply root-level discount if any
+    BigDecimal rootDiscount =
+        request.containsKey("discount_total")
+            ? new BigDecimal(request.get("discount_total").toString())
+            : BigDecimal.ZERO;
+
+    BigDecimal grandTotalCalculated = totalAmount.add(taxAmount).subtract(rootDiscount);
+
+    // Validate grand_total if provided
+    if (request.containsKey("grand_total")) {
+      BigDecimal grandTotalProvided = new BigDecimal(request.get("grand_total").toString());
+      if (grandTotalCalculated.compareTo(grandTotalProvided) != 0) {
+        throw new IllegalArgumentException(
+            "Grand total mismatch. Calculated: "
+                + grandTotalCalculated
+                + ", Provided: "
+                + grandTotalProvided);
+      }
+    }
+
     Order order =
         Order.builder()
             .type("SALE")
@@ -198,6 +219,7 @@ public class OrderService {
             .customerId(customerId)
             .totalAmount(totalAmount)
             .taxAmount(taxAmount)
+            .discount(rootDiscount)
             .notes(request.getOrDefault("notes", "").toString())
             .createdBy(userId)
             .build();
@@ -238,6 +260,17 @@ public class OrderService {
     // Auto-generate invoice
     Invoice invoice = invoiceService.createFromOrder(order);
 
+    // Process payment if payment_method is provided
+    if (request.containsKey("payment_method")) {
+      String paymentMethod = request.get("payment_method").toString();
+      com.ims.dto.CreatePaymentRequest pr = new com.ims.dto.CreatePaymentRequest();
+      pr.setInvoiceId(invoice.getId());
+      pr.setAmount(grandTotalCalculated);
+      pr.setPaymentMode(paymentMethod);
+      pr.setNotes("Auto-payment for sale order #" + order.getId());
+      paymentService.processPayment(pr);
+    }
+
     log.info(
         "Sales order created: id={} total={} invoice={}",
         order.getId(),
@@ -247,7 +280,8 @@ public class OrderService {
         "order_id", order.getId(),
         "invoice_id", invoice.getId(),
         "invoice_number", invoice.getInvoiceNumber(),
-        "total", totalAmount);
+        "total", totalAmount,
+        "grand_total", grandTotalCalculated);
   }
 
   public Page<Order> getOrders(Pageable pageable) {

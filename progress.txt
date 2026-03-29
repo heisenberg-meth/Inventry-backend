@@ -1,0 +1,2 @@
+Implemented user scope for governance, category tax_rate, and sale controller as per TASKS.md
+Finished implementing complete Sale with Billing flow, including root-level discount_total, grand_total validation, and automatic payment processing based on payment_method as per TASKS.md. Updated Order, Invoice and Payment services to handle these fields.
