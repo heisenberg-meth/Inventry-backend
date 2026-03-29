@@ -16,6 +16,7 @@ public class UserResponse {
   private String name;
   private String email;
   private String role;
+  private String scope;
 
   @JsonProperty("is_active")
   private Boolean isActive;

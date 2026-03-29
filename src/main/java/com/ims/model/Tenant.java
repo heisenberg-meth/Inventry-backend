@@ -41,6 +41,12 @@ public class Tenant {
   @Builder.Default
   private Integer invoiceSequence = 0;
 
+  @Column(name = "max_products")
+  private Integer maxProducts;
+
+  @Column(name = "max_users")
+  private Integer maxUsers;
+
   @Column(name = "created_at")
   @Builder.Default
   private LocalDateTime createdAt = LocalDateTime.now();

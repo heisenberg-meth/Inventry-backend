@@ -43,6 +43,7 @@ public class CategoryService {
         Category.builder()
             .name(request.getName())
             .description(request.getDescription())
+            .taxRate(request.getTaxRate() != null ? request.getTaxRate() : java.math.BigDecimal.ZERO)
             .build();
 
     return categoryRepository.save(category);
@@ -60,6 +61,9 @@ public class CategoryService {
 
     category.setName(request.getName());
     category.setDescription(request.getDescription());
+    if (request.getTaxRate() != null) {
+      category.setTaxRate(request.getTaxRate());
+    }
 
     return categoryRepository.save(category);
   }

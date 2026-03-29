@@ -25,5 +25,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
   Page<User> findByTenantIdIsNull(Pageable pageable);
 
+  @Query("SELECT COUNT(u) FROM User u WHERE u.isActive = true")
+  long countActive();
+
+  @Query(value = "SELECT COUNT(*) FROM users WHERE tenant_id = :tenantId AND is_active = true", nativeQuery = true)
+  long countActiveByTenantId(@Param("tenantId") Long tenantId);
+
   boolean existsByEmail(String email);
 }
