@@ -8,6 +8,8 @@ import com.ims.tenant.domain.pharmacy.PharmacyProduct;
 import com.ims.tenant.domain.pharmacy.PharmacyProductRepository;
 import com.ims.tenant.domain.warehouse.WarehouseProduct;
 import com.ims.tenant.repository.ProductRepository;
+import com.ims.platform.repository.TenantRepository;
+import com.ims.platform.service.SystemConfigService;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -31,6 +33,8 @@ public class ProductService {
   private final ProductRepository productRepository;
   private final PharmacyProductRepository pharmacyProductRepository;
   private final WarehouseProductRepository warehouseProductRepository;
+  private final TenantRepository tenantRepository;
+  private final SystemConfigService systemConfigService;
 
   private static final int DEFAULT_REORDER_LEVEL = 10;
 
@@ -50,11 +54,31 @@ public class ProductService {
   @Transactional
   @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "products", allEntries = true)
   public ProductResponse createProduct(CreateProductRequest request) {
+    Long tenantId = getTenantId();
+    if (tenantId != null) {
+      var tenant =
+          tenantRepository
+              .findById(tenantId)
+              .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+      if (tenant.getMaxProducts() != null) {
+        long currentCount = productRepository.countActive();
+        if (currentCount >= tenant.getMaxProducts()) {
+          throw new IllegalArgumentException(
+              "Product limit reached for your plan (" + tenant.getMaxProducts() + ")");
+        }
+      }
+    }
+
     String businessType = getBusinessType();
 
-    // Validate pharmacy products must have pharmacy_details
-    if ("PHARMACY".equals(businessType) && request.getPharmacyDetails() == null) {
-      throw new IllegalArgumentException("Pharmacy products require pharmacy_details");
+    // Validate pharmacy products must have pharmacy_details and extension must be enabled
+    if ("PHARMACY".equals(businessType)) {
+      if (!systemConfigService.isPharmacyEnabled()) {
+        throw new IllegalStateException("Pharmacy extension is currently disabled globally");
+      }
+      if (request.getPharmacyDetails() == null) {
+        throw new IllegalArgumentException("Pharmacy products require pharmacy_details");
+      }
     }
 
     Product product =
@@ -190,6 +214,18 @@ public class ProductService {
       }
     } catch (Exception e) {
       log.trace("Caught expected exception in business type retrieval: {}", e.getMessage());
+    }
+    return null;
+  }
+
+  private Long getTenantId() {
+    try {
+      var auth = SecurityContextHolder.getContext().getAuthentication();
+      if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
+        return details.getTenantId();
+      }
+    } catch (Exception e) {
+      log.trace("Caught expected exception in tenant id retrieval: {}", e.getMessage());
     }
     return null;
   }

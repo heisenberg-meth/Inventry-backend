@@ -13,39 +13,28 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "tenants")
+@Table(name = "audit_logs")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Tenant {
+public class AuditLog {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
+  @Column(name = "tenant_id")
+  private Long tenantId;
+
+  @Column(name = "user_id")
+  private Long userId;
+
   @Column(nullable = false)
-  private String name;
+  private String action;
 
-  @Column(unique = true)
-  private String domain;
-
-  @Column(name = "business_type", nullable = false)
-  private String businessType;
-
-  @Column @Builder.Default private String plan = "FREE";
-
-  @Column @Builder.Default private String status = "ACTIVE";
-
-  @Column(name = "invoice_sequence")
-  @Builder.Default
-  private Integer invoiceSequence = 0;
-
-  @Column(name = "max_products")
-  private Integer maxProducts;
-
-  @Column(name = "max_users")
-  private Integer maxUsers;
+  @Column(columnDefinition = "TEXT")
+  private String details;
 
   @Column(name = "created_at")
   @Builder.Default

@@ -35,6 +35,7 @@ public class OrderService {
   private final StockService stockService;
   private final InvoiceService invoiceService;
   private final PaymentService paymentService;
+  private final com.ims.shared.audit.AuditLogService auditLogService;
  
   private static final int PERCENTAGE_BASE = 100;
 
@@ -125,6 +126,13 @@ public class OrderService {
 
     log.info(
         "Purchase order created: id={} total={}", order.getId(), totalAmount);
+    
+    auditLogService.log(
+        "CREATE_PURCHASE_ORDER",
+        order.getTenantId(),
+        userId,
+        String.format("Created purchase order #%d, Supplier: %d, Total: %s", order.getId(), order.getSupplierId(), totalAmount));
+
     return Map.of("order_id", order.getId(), "total", totalAmount);
   }
 
@@ -271,11 +279,15 @@ public class OrderService {
       paymentService.processPayment(pr);
     }
 
-    log.info(
-        "Sales order created: id={} total={} invoice={}",
-        order.getId(),
-        totalAmount,
-        invoice.getInvoiceNumber());
+    log.info("Sales order created: id={} total={} invoice={}", 
+             order.getId(), totalAmount, invoice.getInvoiceNumber());
+
+    auditLogService.log(
+        "CREATE_SALE_ORDER",
+        order.getTenantId(),
+        userId,
+        String.format("Created sales order #%d, Customer: %d, Invoice: %s, Total: %s", order.getId(), order.getCustomerId(), invoice.getInvoiceNumber(), totalAmount));
+
     return Map.of(
         "order_id", order.getId(),
         "invoice_id", invoice.getId(),
