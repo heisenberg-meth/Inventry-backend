@@ -17,4 +17,7 @@ public class CreateTenantRequest {
   private String businessType;
 
   private String plan;
+
+  private Integer maxProducts;
+  private Integer maxUsers;
 }

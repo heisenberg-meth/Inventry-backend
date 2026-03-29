@@ -22,6 +22,12 @@ public class TenantResponse {
   private String plan;
   private String status;
 
+  @JsonProperty("max_products")
+  private Integer maxProducts;
+
+  @JsonProperty("max_users")
+  private Integer maxUsers;
+
   @JsonProperty("created_at")
   private LocalDateTime createdAt;
 }
