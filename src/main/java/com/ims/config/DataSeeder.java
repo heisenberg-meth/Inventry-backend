@@ -29,6 +29,7 @@ public class DataSeeder implements ApplicationRunner {
               .email("root@ims.com")
               .passwordHash(passwordEncoder.encode("root123"))
               .role("ROOT")
+              .scope("PLATFORM")
               .tenantId(0L) // Assigned to system tenant 0
               .isActive(true)
               .build();

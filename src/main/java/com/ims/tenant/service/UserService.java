@@ -54,6 +54,7 @@ public class UserService {
             .email(request.getEmail())
             .passwordHash(passwordEncoder.encode(request.getPassword()))
             .role(request.getRole())
+            .scope("TENANT")
             .isActive(true)
             .build();
 
