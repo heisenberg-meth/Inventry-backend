@@ -56,6 +56,8 @@ public class TenantService {
             .businessType(request.getBusinessType())
             .plan(request.getPlan() != null ? request.getPlan() : "FREE")
             .status("ACTIVE")
+            .maxProducts(request.getMaxProducts())
+            .maxUsers(request.getMaxUsers())
             .build();
 
     tenant = tenantRepository.save(tenant);
@@ -84,6 +86,12 @@ public class TenantService {
     if (request.getBusinessType() != null) {
       tenant.setBusinessType(request.getBusinessType());
     }
+    if (request.getMaxProducts() != null) {
+      tenant.setMaxProducts(request.getMaxProducts());
+    }
+    if (request.getMaxUsers() != null) {
+      tenant.setMaxUsers(request.getMaxUsers());
+    }
 
     tenant = tenantRepository.save(tenant);
     return toResponse(tenant);
@@ -109,6 +117,8 @@ public class TenantService {
         .businessType(tenant.getBusinessType())
         .plan(tenant.getPlan())
         .status(tenant.getStatus())
+        .maxProducts(tenant.getMaxProducts())
+        .maxUsers(tenant.getMaxUsers())
         .createdAt(tenant.getCreatedAt())
         .build();
   }
@@ -132,6 +142,18 @@ public class TenantService {
             .tenantId(tenantId)
             .isActive(true)
             .build();
+
+    var tenant =
+        tenantRepository
+            .findById(tenantId)
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+    if (tenant.getMaxUsers() != null) {
+      long currentCount = userRepository.countActiveByTenantId(tenantId);
+      if (currentCount >= tenant.getMaxUsers()) {
+        throw new IllegalArgumentException(
+            "User limit reached for this tenant (" + tenant.getMaxUsers() + ")");
+      }
+    }
 
     userCreationService.createUserForTenant(user, tenantId);
 
