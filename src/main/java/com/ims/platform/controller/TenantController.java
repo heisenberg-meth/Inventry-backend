@@ -1,7 +1,9 @@
 package com.ims.platform.controller;
 
 import com.ims.dto.request.CreateTenantRequest;
+import com.ims.dto.request.CreateTenantUserRequest;
 import com.ims.dto.response.TenantResponse;
+import com.ims.dto.response.UserResponse;
 import com.ims.platform.service.TenantService;
 import com.ims.shared.rbac.RequiresRole;
 import io.swagger.v3.oas.annotations.Operation;
@@ -67,5 +69,13 @@ public class TenantController {
   public ResponseEntity<Void> deactivateTenant(@PathVariable Long id) {
     tenantService.deactivateTenant(id);
     return ResponseEntity.noContent().build();
+  }
+
+  @PostMapping("/{tenantId}/users")
+  @RequiresRole({"ROOT", "PLATFORM_ADMIN"})
+  @Operation(summary = "Create tenant admin user")
+  public ResponseEntity<UserResponse> createTenantAdmin(
+      @PathVariable Long tenantId, @Valid @RequestBody CreateTenantUserRequest request) {
+    return ResponseEntity.status(HttpStatus.CREATED).body(tenantService.createTenantUser(tenantId, request));
   }
 }
