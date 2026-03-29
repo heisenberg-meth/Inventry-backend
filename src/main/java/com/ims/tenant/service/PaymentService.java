@@ -55,6 +55,9 @@ public class PaymentService {
     if (invoice.getTaxAmount() != null) {
       totalDue = totalDue.add(invoice.getTaxAmount());
     }
+    if (invoice.getDiscount() != null) {
+      totalDue = totalDue.subtract(invoice.getDiscount());
+    }
 
     if (totalPaid.compareTo(totalDue) >= 0) {
       invoice.setStatus("PAID");
