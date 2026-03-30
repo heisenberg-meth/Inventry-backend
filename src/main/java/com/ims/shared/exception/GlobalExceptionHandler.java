@@ -47,6 +47,13 @@ public class GlobalExceptionHandler {
         .body(errorBody(STATUS_NOT_FOUND, "NOT_FOUND", ex.getMessage(), request.getRequestURI()));
   }
 
+  @ExceptionHandler(ResourceNotFoundException.class)
+  public ResponseEntity<Map<String, Object>> handleResourceNotFound(
+      ResourceNotFoundException ex, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(errorBody(STATUS_NOT_FOUND, "NOT_FOUND", ex.getMessage(), request.getRequestURI()));
+  }
+
   @ExceptionHandler(AccessDeniedException.class)
   public ResponseEntity<Map<String, Object>> handleAccessDenied(
       AccessDeniedException ex, HttpServletRequest request) {

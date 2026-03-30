@@ -68,7 +68,7 @@ public class AuthIntegrationTest {
     mockMvc
         .perform(get("/api/tenant/users").header("Authorization", "Bearer " + t1Token))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.totalElements").value(1))
+        .andExpect(jsonPath("$.page.totalElements").value(1))
         .andExpect(jsonPath("$.content[0].email").value("admin1@t1.com"));
 
     // 5. Login Tenant 2
@@ -78,7 +78,7 @@ public class AuthIntegrationTest {
     mockMvc
         .perform(get("/api/tenant/users").header("Authorization", "Bearer " + t2Token))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.totalElements").value(1))
+        .andExpect(jsonPath("$.page.totalElements").value(1))
         .andExpect(jsonPath("$.content[0].email").value("admin2@t2.com"));
 
     // 7. Verify Logout and Blacklisting

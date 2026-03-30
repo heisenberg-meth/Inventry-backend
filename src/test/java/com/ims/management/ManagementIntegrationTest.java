@@ -60,6 +60,7 @@ public class ManagementIntegrationTest {
             .email("root@ims.com")
             .passwordHash(passwordEncoder.encode("root123"))
             .role("ROOT")
+            .scope("PLATFORM")
             .tenantId(0L)
             .isActive(true)
             .build();

@@ -271,12 +271,19 @@ public class OrderService {
     // Process payment if payment_method is provided
     if (request.containsKey("payment_method")) {
       String paymentMethod = request.get("payment_method").toString();
-      com.ims.dto.CreatePaymentRequest pr = new com.ims.dto.CreatePaymentRequest();
+      com.ims.dto.PaymentRequest pr = new com.ims.dto.PaymentRequest();
       pr.setInvoiceId(invoice.getId());
       pr.setAmount(grandTotalCalculated);
       pr.setPaymentMode(paymentMethod);
+      pr.setUserId(userId);
       pr.setNotes("Auto-payment for sale order #" + order.getId());
-      paymentService.processPayment(pr);
+      paymentService.recordPayment(
+          pr.getInvoiceId(),
+          pr.getAmount(),
+          pr.getPaymentMode(),
+          pr.getReference(),
+          pr.getNotes(),
+          pr.getUserId());
     }
 
     log.info("Sales order created: id={} total={} invoice={}", 
