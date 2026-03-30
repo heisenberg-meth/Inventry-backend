@@ -12,6 +12,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.lang.NonNull;
+import java.util.Objects;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -36,14 +38,15 @@ public class InvoiceController {
   @GetMapping
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "List invoices")
-  public ResponseEntity<Page<Invoice>> getInvoices(Pageable pageable) {
+  public ResponseEntity<Page<Invoice>> getInvoices(@NonNull Pageable pageable) {
     return ResponseEntity.ok(invoiceService.getInvoices(pageable));
   }
 
   @PostMapping
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Manually generate invoice from order")
-  public ResponseEntity<Invoice> createInvoice(@Valid @RequestBody CreateInvoiceRequest request) {
+  public ResponseEntity<Invoice> createInvoice(
+      @NonNull @Valid @RequestBody CreateInvoiceRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED).body(invoiceService.createManual(request));
   }
 
@@ -51,18 +54,18 @@ public class InvoiceController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Update invoice status")
   public ResponseEntity<Invoice> updateStatus(
-      @PathVariable Long id, @Valid @RequestBody InvoiceStatusRequest request) {
+      @NonNull @PathVariable Long id, @NonNull @Valid @RequestBody InvoiceStatusRequest request) {
     return ResponseEntity.ok(invoiceService.updateStatus(id, request));
   }
 
   @GetMapping("/{id}/pdf")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Download invoice PDF")
-  public ResponseEntity<byte[]> downloadPdf(@PathVariable Long id) {
+  public ResponseEntity<byte[]> downloadPdf(@NonNull @PathVariable Long id) {
     byte[] pdf = invoiceService.generatePdf(id);
     return ResponseEntity.ok()
         .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=invoice-" + id + ".pdf")
-        .contentType(MediaType.APPLICATION_PDF)
+        .contentType(Objects.requireNonNull(MediaType.APPLICATION_PDF))
         .body(pdf);
   }
 }

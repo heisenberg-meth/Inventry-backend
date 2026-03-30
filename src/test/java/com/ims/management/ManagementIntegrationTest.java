@@ -20,7 +20,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import java.util.Objects;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.http.MediaType;
@@ -43,9 +44,9 @@ public class ManagementIntegrationTest {
   @Autowired private TenantRepository tenantRepository;
   @Autowired private PasswordEncoder passwordEncoder;
 
-  @MockBean private RedisTemplate<String, Object> redisTemplate;
-  @MockBean private ValueOperations<String, Object> valueOperations;
-  @MockBean private org.springframework.data.redis.connection.RedisConnectionFactory redisConnectionFactory;
+  @MockitoBean private RedisTemplate<String, Object> redisTemplate;
+  @MockitoBean private ValueOperations<String, Object> valueOperations;
+  @MockitoBean private org.springframework.data.redis.connection.RedisConnectionFactory redisConnectionFactory;
 
   @BeforeEach
   void setup() {
@@ -64,7 +65,7 @@ public class ManagementIntegrationTest {
             .tenantId(0L)
             .isActive(true)
             .build();
-    userRepository.save(root);
+    userRepository.save(Objects.requireNonNull(root));
   }
 
   @Test
@@ -95,8 +96,8 @@ public class ManagementIntegrationTest {
         .perform(
             post("/api/tenant/users")
                 .header("Authorization", "Bearer " + t1Token)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(createUser)))
+                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                .content(Objects.requireNonNull(objectMapper.writeValueAsString(createUser))))
         .andExpect(status().isCreated());
 
     // 3. Verify Staff isolation (STAFF cannot access management)
@@ -114,7 +115,7 @@ public class ManagementIntegrationTest {
 
     // 2. Signup Tenant 2
     signupService.signup(createSignupRequest("Tenant 2-Iso", "t2-iso", "admin-iso2@t2.com"));
-    String t2Token = login("admin-iso2@t2.com", "password123");
+    login("admin-iso2@t2.com", "password123");
 
     // 3. Tenant 1 Admin cannot see Tenant 2 Admin (Users should be isolated)
     mockMvc
@@ -156,8 +157,8 @@ public class ManagementIntegrationTest {
         mockMvc
             .perform(
                 post("/api/auth/login")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(loginRequest)))
+                    .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                    .content(Objects.requireNonNull(objectMapper.writeValueAsString(loginRequest))))
             .andExpect(status().isOk())
             .andReturn();
 

@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.Objects;
+import org.springframework.lang.NonNull;
 
 @RestController
 @RequestMapping("/api/tenant/categories")
@@ -34,8 +36,8 @@ public class CategoryController {
   @GetMapping
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "List categories")
-  public ResponseEntity<Page<Category>> list(Pageable pageable) {
-    return ResponseEntity.ok(categoryService.getCategories(pageable));
+  public ResponseEntity<Page<Category>> list(@NonNull Pageable pageable) {
+    return ResponseEntity.ok(categoryService.getCategories(Objects.requireNonNull(pageable)));
   }
 
   @PostMapping
@@ -48,23 +50,23 @@ public class CategoryController {
   @GetMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Get category details")
-  public ResponseEntity<Category> get(@PathVariable Long id) {
-    return ResponseEntity.ok(categoryService.getById(id));
+  public ResponseEntity<Category> get(@NonNull @PathVariable Long id) {
+    return ResponseEntity.ok(categoryService.getById(Objects.requireNonNull(id)));
   }
 
   @PutMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Update category")
   public ResponseEntity<Category> update(
-      @PathVariable Long id, @Valid @RequestBody CategoryRequest request) {
-    return ResponseEntity.ok(categoryService.update(id, request));
+      @NonNull @PathVariable Long id, @Valid @RequestBody CategoryRequest request) {
+    return ResponseEntity.ok(categoryService.update(Objects.requireNonNull(id), request));
   }
 
   @DeleteMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Delete category")
-  public ResponseEntity<Void> delete(@PathVariable Long id) {
-    categoryService.delete(id);
+  public ResponseEntity<Void> delete(@NonNull @PathVariable Long id) {
+    categoryService.delete(Objects.requireNonNull(id));
     return ResponseEntity.noContent().build();
   }
 }

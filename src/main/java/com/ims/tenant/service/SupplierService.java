@@ -6,6 +6,8 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.lang.NonNull;
+import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,23 +17,23 @@ public class SupplierService {
 
   private final SupplierRepository supplierRepository;
 
-  public Page<Supplier> getSuppliers(Pageable pageable) {
-    return supplierRepository.findAll(pageable);
+  public @NonNull Page<Supplier> getSuppliers(@NonNull Pageable pageable) {
+    return Objects.requireNonNull(supplierRepository.findAll(pageable));
   }
 
-  public Supplier getById(Long id) {
-    return supplierRepository
+  public @NonNull Supplier getById(@NonNull Long id) {
+    return Objects.requireNonNull(supplierRepository
         .findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Supplier not found"));
+        .orElseThrow(() -> new EntityNotFoundException("Supplier not found")));
   }
 
   @Transactional
-  public Supplier create(Supplier supplier) {
-    return supplierRepository.save(supplier);
+  public @NonNull Supplier create(@NonNull Supplier supplier) {
+    return Objects.requireNonNull(supplierRepository.save(supplier));
   }
 
   @Transactional
-  public Supplier update(Long id, Supplier updates) {
+  public @NonNull Supplier update(@NonNull Long id, @NonNull Supplier updates) {
     Supplier supplier = getById(id);
     if (updates.getName() != null) {
       supplier.setName(updates.getName());
@@ -48,11 +50,11 @@ public class SupplierService {
     if (updates.getGstin() != null) {
       supplier.setGstin(updates.getGstin());
     }
-    return supplierRepository.save(supplier);
+    return Objects.requireNonNull(supplierRepository.save(supplier));
   }
 
   @Transactional
-  public void delete(Long id) {
+  public void delete(@NonNull Long id) {
     Supplier supplier = getById(id);
     supplierRepository.delete(supplier);
   }

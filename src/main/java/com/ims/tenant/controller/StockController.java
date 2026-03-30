@@ -14,6 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
+import java.util.Objects;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -36,76 +38,76 @@ public class StockController {
   @GetMapping("/by-location")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "List products at storage location")
-  public ResponseEntity<Page<WarehouseProduct>> getByLocation(
-      @RequestParam String location, Pageable pageable) {
-    return ResponseEntity.ok(stockService.getProductsByLocation(location, pageable));
+  public @NonNull ResponseEntity<Page<WarehouseProduct>> getByLocation(
+      @RequestParam @NonNull String location, @NonNull Pageable pageable) {
+    return ResponseEntity.ok(Objects.requireNonNull(stockService.getProductsByLocation(location, pageable)));
   }
 
   @GetMapping("/transfers")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "List all transfer orders")
-  public ResponseEntity<Page<TransferOrder>> getTransfers(Pageable pageable) {
-    return ResponseEntity.ok(stockService.getTransferOrders(pageable));
+  public @NonNull ResponseEntity<Page<TransferOrder>> getTransfers(@NonNull Pageable pageable) {
+    return ResponseEntity.ok(Objects.requireNonNull(stockService.getTransferOrders(pageable)));
   }
 
   @GetMapping("/transfers/{id}")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Get transfer order detail")
-  public ResponseEntity<TransferOrder> getTransferById(@PathVariable Long id) {
-    return ResponseEntity.ok(stockService.getTransferOrderById(id));
+  public @NonNull ResponseEntity<TransferOrder> getTransferById(@PathVariable @NonNull Long id) {
+    return ResponseEntity.ok(Objects.requireNonNull(stockService.getTransferOrderById(id)));
   }
 
   @PatchMapping("/transfers/{id}/status")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Update transfer order status")
-  public ResponseEntity<TransferOrder> updateTransferStatus(
-      @PathVariable Long id, @RequestBody TransferOrderStatusRequest request) {
-    return ResponseEntity.ok(stockService.updateTransferStatus(id, request));
+  public @NonNull ResponseEntity<TransferOrder> updateTransferStatus(
+      @PathVariable @NonNull Long id, @RequestBody @NonNull TransferOrderStatusRequest request) {
+    return ResponseEntity.ok(Objects.requireNonNull(stockService.updateTransferStatus(id, request)));
   }
 
   @PostMapping("/in")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Record stock received")
-  public ResponseEntity<Map<String, String>> stockIn(@RequestBody Map<String, Object> body) {
-    Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-    Long productId = Long.valueOf(body.get("product_id").toString());
-    int quantity = Integer.parseInt(body.get("quantity").toString());
+  public @NonNull ResponseEntity<Map<String, String>> stockIn(@RequestBody @NonNull Map<String, Object> body) {
+    Long userId = (Long) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal();
+    Long productId = Long.valueOf(Objects.requireNonNull(body.get("product_id")).toString());
+    int quantity = Integer.parseInt(Objects.requireNonNull(body.get("quantity")).toString());
     String notes = body.getOrDefault("notes", "").toString();
 
-    stockService.stockIn(productId, quantity, notes, userId);
-    return ResponseEntity.ok(Map.of("message", "Stock in recorded successfully"));
+    stockService.stockIn(Objects.requireNonNull(productId), quantity, notes, Objects.requireNonNull(userId));
+    return ResponseEntity.ok(Objects.requireNonNull(Map.of("message", "Stock in recorded successfully")));
   }
 
   @PostMapping("/out")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Record stock issued")
-  public ResponseEntity<Map<String, String>> stockOut(@RequestBody Map<String, Object> body) {
-    Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-    Long productId = Long.valueOf(body.get("product_id").toString());
-    int quantity = Integer.parseInt(body.get("quantity").toString());
+  public @NonNull ResponseEntity<Map<String, String>> stockOut(@RequestBody @NonNull Map<String, Object> body) {
+    Long userId = (Long) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal();
+    Long productId = Long.valueOf(Objects.requireNonNull(body.get("product_id")).toString());
+    int quantity = Integer.parseInt(Objects.requireNonNull(body.get("quantity")).toString());
     String notes = body.getOrDefault("notes", "").toString();
 
-    stockService.stockOut(productId, quantity, notes, userId);
-    return ResponseEntity.ok(Map.of("message", "Stock out recorded successfully"));
+    stockService.stockOut(Objects.requireNonNull(productId), quantity, notes, Objects.requireNonNull(userId));
+    return ResponseEntity.ok(Objects.requireNonNull(Map.of("message", "Stock out recorded successfully")));
   }
 
   @PostMapping("/adjust")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Manual stock adjustment")
-  public ResponseEntity<Map<String, String>> adjust(@RequestBody Map<String, Object> body) {
-    Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-    Long productId = Long.valueOf(body.get("product_id").toString());
-    int quantity = Integer.parseInt(body.get("quantity").toString());
+  public @NonNull ResponseEntity<Map<String, String>> adjust(@RequestBody @NonNull Map<String, Object> body) {
+    Long userId = (Long) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal();
+    Long productId = Long.valueOf(Objects.requireNonNull(body.get("product_id")).toString());
+    int quantity = Integer.parseInt(Objects.requireNonNull(body.get("quantity")).toString());
     String notes = body.getOrDefault("notes", "").toString();
 
-    stockService.stockAdjust(productId, quantity, notes, userId);
-    return ResponseEntity.ok(Map.of("message", "Stock adjustment recorded"));
+    stockService.stockAdjust(Objects.requireNonNull(productId), quantity, notes, Objects.requireNonNull(userId));
+    return ResponseEntity.ok(Objects.requireNonNull(Map.of("message", "Stock adjustment recorded")));
   }
 
   @GetMapping("/movements")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Stock movement log")
-  public ResponseEntity<Page<StockMovement>> getMovements(Pageable pageable) {
-    return ResponseEntity.ok(stockService.getMovements(pageable));
+  public @NonNull ResponseEntity<Page<StockMovement>> getMovements(@NonNull Pageable pageable) {
+    return ResponseEntity.ok(Objects.requireNonNull(stockService.getMovements(pageable)));
   }
 }
