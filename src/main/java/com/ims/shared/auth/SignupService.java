@@ -9,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -20,8 +19,9 @@ public class SignupService {
   private final UserRepository userRepository;
   private final PasswordEncoder passwordEncoder;
   private final UserCreationService userCreationService;
+  private final TenantPersistenceService tenantPersistenceService;
 
-  @Transactional
+  // No @Transactional here — each step manages its own transaction
   public void signup(SignupRequest request) {
     if (request.getDomain() != null
         && !request.getDomain().isBlank()
@@ -33,30 +33,28 @@ public class SignupService {
       throw new IllegalArgumentException("Email already registered: " + request.getOwnerEmail());
     }
 
-    // 1. Create Tenant (implicitly in tenant 0 context)
-    Tenant tenant =
-        Tenant.builder()
-            .name(request.getBusinessName())
-            .businessType(request.getBusinessType())
-            .domain(request.getDomain())
-            .status("ACTIVE")
-            .plan("FREE")
-            .build();
+    // 1. Save tenant in its own committed transaction
+    Tenant tenant = Tenant.builder()
+        .name(request.getBusinessName())
+        .businessType(request.getBusinessType())
+        .domain(request.getDomain())
+        .status("ACTIVE")
+        .plan("FREE")
+        .build();
 
-    tenant = tenantRepository.saveAndFlush(tenant);
+    tenant = tenantPersistenceService.saveTenant(tenant); // commits immediately
     log.info("Signup: Created tenant id={} name={}", tenant.getId(), tenant.getName());
 
-    // 2. Create Owner User (ADMIN) - Must match tenant context
-    User user =
-        User.builder()
-            .name(request.getOwnerName())
-            .email(request.getOwnerEmail())
-            .passwordHash(passwordEncoder.encode(request.getPassword()))
-            .role("ADMIN")
-            .scope("TENANT")
-            .tenantId(tenant.getId())
-            .isActive(true)
-            .build();
+    // 2. Now user insert can see the committed tenant
+    User user = User.builder()
+        .name(request.getOwnerName())
+        .email(request.getOwnerEmail())
+        .passwordHash(passwordEncoder.encode(request.getPassword()))
+        .role("ADMIN")
+        .scope("TENANT")
+        .tenantId(tenant.getId())
+        .isActive(true)
+        .build();
 
     try {
       TenantContext.set(tenant.getId());
@@ -64,7 +62,7 @@ public class SignupService {
     } finally {
       TenantContext.clear();
     }
-    
+
     log.info("Signup: Created owner user for tenant={}", tenant.getId());
   }
 }
