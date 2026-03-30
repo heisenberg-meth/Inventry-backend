@@ -4,3 +4,27 @@ Implemented global system configuration system, feature flags (Pharmacy extensio
 Finalized RBAC system to integrate with Support Mode, allowing ROOT users to access tenant data only when explicitly enabled. All PRD requirements from TASKS.md have been implemented.
 ----------
 ralph-done-seyes
+
+
+ backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ims_backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ims_db
+      SPRING_DATASOURCE_USERNAME: ims_user
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_DATA_REDIS_HOST: valkey
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      APP_ENV: production
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    restart: unless-stopped

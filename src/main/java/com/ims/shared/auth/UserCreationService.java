@@ -13,7 +13,7 @@ public class UserCreationService {
 
   private final UserRepository userRepository;
 
-  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  @Transactional(propagation = Propagation.REQUIRED)
   public void createUserForTenant(User user, Long tenantId) {
     try {
       TenantContext.set(tenantId);

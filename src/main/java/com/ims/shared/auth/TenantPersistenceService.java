@@ -1,0 +1,20 @@
+package com.ims.shared.auth;
+
+import com.ims.model.Tenant;
+import com.ims.platform.repository.TenantRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class TenantPersistenceService {
+
+  private final TenantRepository tenantRepository;
+
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public Tenant saveTenant(Tenant tenant) {
+    return tenantRepository.saveAndFlush(tenant); // commits immediately
+  }
+}
