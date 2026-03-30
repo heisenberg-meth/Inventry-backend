@@ -1,18 +1,17 @@
 package com.ims.tenant.service;
 
-import com.ims.dto.CreatePaymentRequest;
 import com.ims.model.Invoice;
 import com.ims.model.Payment;
+import com.ims.shared.auth.TenantContext;
+import com.ims.shared.exception.ResourceNotFoundException;
 import com.ims.tenant.repository.InvoiceRepository;
 import com.ims.tenant.repository.PaymentRepository;
-import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,48 +24,46 @@ public class PaymentService {
   private final InvoiceRepository invoiceRepository;
 
   @Transactional
-  public Payment processPayment(CreatePaymentRequest request) {
-    Long userId = null;
-    try {
-      userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-    } catch (Exception e) {
-      log.trace("Caught expected exception for anonymous payment process: {}", e.getMessage());
+  public Payment recordPayment(Long invoiceId, BigDecimal amount, String mode, String reference, String notes, Long userId) {
+    Invoice invoice = invoiceRepository.findById(invoiceId)
+        .orElseThrow(() -> new ResourceNotFoundException("Invoice not found: " + invoiceId));
+
+    if ("PAID".equals(invoice.getStatus())) {
+      throw new IllegalArgumentException("Invoice is already fully PAID");
     }
 
-    Invoice invoice =
-        invoiceRepository
-            .findById(request.getInvoiceId())
-            .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
-
-    Payment payment =
-        Payment.builder()
-            .invoiceId(invoice.getId())
-            .amount(request.getAmount())
-            .paymentMode(request.getPaymentMode())
-            .reference(request.getReference())
-            .notes(request.getNotes())
-            .createdBy(userId)
-            .build();
+    Payment payment = Payment.builder()
+        .tenantId(TenantContext.get())
+        .invoiceId(invoiceId)
+        .amount(amount)
+        .paymentMode(mode)
+        .reference(reference)
+        .notes(notes)
+        .createdBy(userId)
+        .createdAt(LocalDateTime.now())
+        .build();
 
     payment = paymentRepository.save(payment);
 
-    BigDecimal totalPaid = paymentRepository.sumAmountByInvoiceId(invoice.getId());
-    BigDecimal totalDue = invoice.getAmount();
+    // Update invoice status
+    BigDecimal totalPaid = paymentRepository.sumAmountByInvoiceId(invoiceId);
+    BigDecimal invoiceAmount = invoice.getAmount();
     if (invoice.getTaxAmount() != null) {
-      totalDue = totalDue.add(invoice.getTaxAmount());
+      invoiceAmount = invoiceAmount.add(invoice.getTaxAmount());
     }
     if (invoice.getDiscount() != null) {
-      totalDue = totalDue.subtract(invoice.getDiscount());
+      invoiceAmount = invoiceAmount.subtract(invoice.getDiscount());
     }
 
-    if (totalPaid.compareTo(totalDue) >= 0) {
+    if (totalPaid.compareTo(invoiceAmount) >= 0) {
       invoice.setStatus("PAID");
       invoice.setPaidAt(LocalDateTime.now());
-    } else {
+    } else if (totalPaid.compareTo(BigDecimal.ZERO) > 0) {
       invoice.setStatus("PARTIAL");
     }
 
     invoiceRepository.save(invoice);
+    log.info("Payment recorded: {} for invoice {}. New status: {}", amount, invoiceId, invoice.getStatus());
 
     return payment;
   }
@@ -75,9 +72,8 @@ public class PaymentService {
     return paymentRepository.findAll(pageable);
   }
 
-  public Payment getPaymentById(Long id) {
-    return paymentRepository
-        .findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Payment not found"));
+  public Payment getById(Long id) {
+    return paymentRepository.findById(id)
+        .orElseThrow(() -> new ResourceNotFoundException("Payment not found: " + id));
   }
 }

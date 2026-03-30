@@ -129,6 +129,7 @@ public class UserService {
         .name(user.getName())
         .email(user.getEmail())
         .role(user.getRole())
+        .scope(user.getScope())
         .isActive(user.getIsActive())
         .createdAt(user.getCreatedAt())
         .build();
