@@ -14,6 +14,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.lang.NonNull;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -24,7 +26,7 @@ public class PaymentService {
   private final InvoiceRepository invoiceRepository;
 
   @Transactional
-  public Payment recordPayment(Long invoiceId, BigDecimal amount, String mode, String reference, String notes, Long userId) {
+  public Payment recordPayment(@NonNull Long invoiceId, BigDecimal amount, String mode, String reference, String notes, Long userId) {
     Invoice invoice = invoiceRepository.findById(invoiceId)
         .orElseThrow(() -> new ResourceNotFoundException("Invoice not found: " + invoiceId));
 
@@ -43,7 +45,7 @@ public class PaymentService {
         .createdAt(LocalDateTime.now())
         .build();
 
-    payment = paymentRepository.save(payment);
+    payment = paymentRepository.save(Objects.requireNonNull(payment));
 
     // Update invoice status
     BigDecimal totalPaid = paymentRepository.sumAmountByInvoiceId(invoiceId);
@@ -62,17 +64,17 @@ public class PaymentService {
       invoice.setStatus("PARTIAL");
     }
 
-    invoiceRepository.save(invoice);
+    invoiceRepository.save(Objects.requireNonNull(invoice));
     log.info("Payment recorded: {} for invoice {}. New status: {}", amount, invoiceId, invoice.getStatus());
 
-    return payment;
+    return Objects.requireNonNull(payment);
   }
 
-  public Page<Payment> getPayments(Pageable pageable) {
+  public Page<Payment> getPayments(@NonNull Pageable pageable) {
     return paymentRepository.findAll(pageable);
   }
 
-  public Payment getById(Long id) {
+  public Payment getById(@NonNull Long id) {
     return paymentRepository.findById(id)
         .orElseThrow(() -> new ResourceNotFoundException("Payment not found: " + id));
   }

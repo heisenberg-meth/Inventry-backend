@@ -5,9 +5,11 @@ import com.ims.dto.response.TenantResponse;
 import com.ims.model.Tenant;
 import com.ims.platform.repository.TenantRepository;
 import jakarta.persistence.EntityNotFoundException;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,21 +21,23 @@ public class TenantSettingsService {
   private final TenantRepository tenantRepository;
 
   @Transactional(readOnly = true)
-  public TenantResponse getSettings(Long tenantId) {
+  public @NonNull TenantResponse getSettings(@NonNull Long tenantId) {
     Tenant tenant =
-        tenantRepository
-            .findById(tenantId)
-            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+        Objects.requireNonNull(
+            tenantRepository
+                .findById(Objects.requireNonNull(tenantId))
+                .orElseThrow(() -> new EntityNotFoundException("Tenant not found")));
     return toResponse(tenant);
   }
 
   @Transactional
   @CacheEvict(value = "tenant", key = "#tenantId")
-  public TenantResponse updateSettings(Long tenantId, UpdateTenantSettingsRequest request) {
+  public @NonNull TenantResponse updateSettings(@NonNull Long tenantId, @NonNull UpdateTenantSettingsRequest request) {
     Tenant tenant =
-        tenantRepository
-            .findById(tenantId)
-            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+        Objects.requireNonNull(
+            tenantRepository
+                .findById(Objects.requireNonNull(tenantId))
+                .orElseThrow(() -> new EntityNotFoundException("Tenant not found")));
 
     if (request.getDomain() != null && !request.getDomain().equals(tenant.getDomain())) {
       if (tenantRepository.existsByDomain(request.getDomain())) {
@@ -50,13 +54,13 @@ public class TenantSettingsService {
       tenant.setInvoiceSequence(request.getInvoiceSequence());
     }
 
-    tenant = tenantRepository.save(tenant);
+    tenant = Objects.requireNonNull(tenantRepository.save(Objects.requireNonNull(tenant)));
     log.info("Tenant settings updated for id={}: domain={}", tenantId, tenant.getDomain());
     return toResponse(tenant);
   }
 
-  private TenantResponse toResponse(Tenant tenant) {
-    return TenantResponse.builder()
+  private @NonNull TenantResponse toResponse(@NonNull Tenant tenant) {
+    return Objects.requireNonNull(TenantResponse.builder()
         .id(tenant.getId())
         .name(tenant.getName())
         .domain(tenant.getDomain())
@@ -66,6 +70,6 @@ public class TenantSettingsService {
         .maxProducts(tenant.getMaxProducts())
         .maxUsers(tenant.getMaxUsers())
         .createdAt(tenant.getCreatedAt())
-        .build();
+        .build());
   }
 }

@@ -19,8 +19,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.lang.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -45,10 +47,10 @@ public class InvoiceService {
   private static final int PDF_TABLE_COLUMNS = 5;
 
   @Transactional
-  public Invoice createManual(CreateInvoiceRequest request) {
+  public @NonNull Invoice createManual(@NonNull CreateInvoiceRequest request) {
     Order order =
         orderRepository
-            .findById(request.getOrderId())
+            .findById(Objects.requireNonNull(request.getOrderId()))
             .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
     if (!"SALE".equals(order.getType())) {
@@ -61,7 +63,7 @@ public class InvoiceService {
 
     Tenant tenant =
         tenantRepository
-            .findById(TenantContext.get())
+            .findById(Objects.requireNonNull(TenantContext.get()))
             .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
     tenant.setInvoiceSequence(tenant.getInvoiceSequence() + 1);
@@ -86,11 +88,13 @@ public class InvoiceService {
             .build();
 
     log.info("Manual invoice created: {} for order {}", invoiceNumber, order.getId());
-    return invoiceRepository.save(invoice);
-  }
+    @SuppressWarnings("null")
+    Invoice savedInvoice = Objects.requireNonNull(invoiceRepository.save(invoice));
+    return savedInvoice;
+}
 
   @Transactional
-  public Invoice updateStatus(Long id, InvoiceStatusRequest request) {
+  public @NonNull Invoice updateStatus(@NonNull Long id, @NonNull InvoiceStatusRequest request) {
     Invoice invoice =
         invoiceRepository
             .findById(id)
@@ -113,11 +117,11 @@ public class InvoiceService {
       invoice.setPaidAt(request.getPaidAt() != null ? request.getPaidAt() : LocalDateTime.now());
     }
 
-    return invoiceRepository.save(invoice);
+    return Objects.requireNonNull(invoiceRepository.save(invoice));
   }
 
   @Transactional
-  public Invoice createFromOrder(Order order) {
+  public @NonNull Invoice createFromOrder(@NonNull Order order) {
     String dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
     int seq = 1;
     try {
@@ -139,15 +143,16 @@ public class InvoiceService {
             .dueDate(LocalDate.now().plusDays(DEFAULT_DUE_DAYS))
             .build();
 
-    invoice = invoiceRepository.save(invoice);
     log.info("Invoice created: {} for order {}", invoiceNumber, order.getId());
-    return invoice;
+    @SuppressWarnings("null")
+    Invoice savedInvoice = Objects.requireNonNull(invoiceRepository.save(invoice));
+    return savedInvoice;
   }
 
   public byte[] generatePdf(Long invoiceId) {
     Tenant tenant =
         tenantRepository
-            .findById(TenantContext.get())
+            .findById(Objects.requireNonNull(TenantContext.get()))
             .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
     // Build PDF using simple formatting (iText usage simplified for compilation)
@@ -158,7 +163,7 @@ public class InvoiceService {
 
     Invoice invoice =
         invoiceRepository
-            .findById(invoiceId)
+            .findById(Objects.requireNonNull(invoiceId))
             .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
     sb.append("Invoice #: ").append(invoice.getInvoiceNumber()).append("\n");
     sb.append("Date: ").append(invoice.getCreatedAt()).append("\n");
@@ -171,7 +176,7 @@ public class InvoiceService {
 
     List<OrderItem> items = orderItemRepository.findByOrderId(invoice.getOrderId());
     for (OrderItem item : items) {
-      Product product = productRepository.findById(item.getProductId()).orElse(null);
+      Product product = productRepository.findById(Objects.requireNonNull(item.getProductId())).orElse(null);
       String productName = product != null ? product.getName() : "Unknown";
       sb.append(
           String.format(
@@ -239,7 +244,7 @@ public class InvoiceService {
       table.addHeaderCell("Total");
 
       for (OrderItem item : items) {
-        Product product = productRepository.findById(item.getProductId()).orElse(null);
+        Product product = productRepository.findById(Objects.requireNonNull(item.getProductId())).orElse(null);
         table.addCell(product != null ? product.getName() : "—");
         table.addCell(String.valueOf(item.getQuantity()));
         table.addCell(item.getUnitPrice().toString());
@@ -281,13 +286,14 @@ public class InvoiceService {
     }
   }
 
-  public Page<Invoice> getInvoices(Pageable pageable) {
+  public @NonNull Page<Invoice> getInvoices(@NonNull Pageable pageable) {
     return invoiceRepository.findAll(pageable);
   }
 
-  public Invoice getInvoiceById(Long id) {
-    return invoiceRepository
-        .findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
+  public @NonNull Invoice getInvoiceById(@NonNull Long id) {
+    return Objects.requireNonNull(
+        invoiceRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Invoice not found")));
   }
 }

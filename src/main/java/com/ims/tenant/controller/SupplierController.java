@@ -11,6 +11,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
+import java.util.Objects;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,35 +34,35 @@ public class SupplierController {
   @GetMapping
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "List suppliers")
-  public ResponseEntity<Page<Supplier>> list(Pageable pageable) {
-    return ResponseEntity.ok(supplierService.getSuppliers(pageable));
+  public @NonNull ResponseEntity<Page<Supplier>> list(@NonNull Pageable pageable) {
+    return ResponseEntity.ok(Objects.requireNonNull(supplierService.getSuppliers(pageable)));
   }
 
   @PostMapping
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Create supplier")
-  public ResponseEntity<Supplier> create(@RequestBody Supplier supplier) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(supplierService.create(supplier));
+  public @NonNull ResponseEntity<Supplier> create(@RequestBody @NonNull Supplier supplier) {
+    return ResponseEntity.status(HttpStatus.CREATED).body(Objects.requireNonNull(supplierService.create(supplier)));
   }
 
   @GetMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Get supplier")
-  public ResponseEntity<Supplier> get(@PathVariable Long id) {
-    return ResponseEntity.ok(supplierService.getById(id));
+  public @NonNull ResponseEntity<Supplier> get(@PathVariable @NonNull Long id) {
+    return ResponseEntity.ok(Objects.requireNonNull(supplierService.getById(id)));
   }
 
   @PutMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Update supplier")
-  public ResponseEntity<Supplier> update(@PathVariable Long id, @RequestBody Supplier supplier) {
-    return ResponseEntity.ok(supplierService.update(id, supplier));
+  public @NonNull ResponseEntity<Supplier> update(@PathVariable @NonNull Long id, @RequestBody @NonNull Supplier supplier) {
+    return ResponseEntity.ok(Objects.requireNonNull(supplierService.update(id, supplier)));
   }
 
   @DeleteMapping("/{id}")
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Delete supplier")
-  public ResponseEntity<Void> delete(@PathVariable Long id) {
+  public @NonNull ResponseEntity<Void> delete(@PathVariable @NonNull Long id) {
     supplierService.delete(id);
     return ResponseEntity.noContent().build();
   }

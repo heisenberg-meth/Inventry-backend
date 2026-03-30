@@ -15,8 +15,10 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.lang.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -40,14 +42,14 @@ public class OrderService {
   private static final int PERCENTAGE_BASE = 100;
 
   @Transactional
-  public Map<String, Object> createPurchaseOrder(Map<String, Object> request, Long userId) {
+  public @NonNull Map<String, Object> createPurchaseOrder(@NonNull Map<String, Object> request, @NonNull Long userId) {
     Long supplierId = Long.valueOf(request.get("supplier_id").toString());
     @SuppressWarnings("unchecked")
     List<Map<String, Object>> items = (List<Map<String, Object>>) request.get("items");
 
     // Validate supplier belongs to tenant
     supplierRepository
-        .findById(supplierId)
+        .findById(Objects.requireNonNull(supplierId))
         .orElseThrow(() -> new EntityNotFoundException("Supplier not found"));
 
     BigDecimal totalAmount = BigDecimal.ZERO;
@@ -90,7 +92,7 @@ public class OrderService {
 
     order.setTotalAmount(totalAmount);
     order.setTaxAmount(taxAmount);
-    order = orderRepository.save(order);
+    order = Objects.requireNonNull(orderRepository.save(order));
 
     // Save items and do stock in
     for (Map<String, Object> item : items) {
@@ -118,10 +120,10 @@ public class OrderService {
               .taxRate(taxRate)
               .total(itemTotal)
               .build();
-      orderItemRepository.save(orderItem);
+      orderItemRepository.save(Objects.requireNonNull(orderItem));
 
       // Stock in
-      stockService.stockIn(productId, qty, "Purchase Order #" + order.getId(), userId);
+      stockService.stockIn(Objects.requireNonNull(productId), qty, "Purchase Order #" + order.getId(), Objects.requireNonNull(userId));
     }
 
     log.info(
@@ -133,11 +135,11 @@ public class OrderService {
         userId,
         String.format("Created purchase order #%d, Supplier: %d, Total: %s", order.getId(), order.getSupplierId(), totalAmount));
 
-    return Map.of("order_id", order.getId(), "total", totalAmount);
+    return Objects.requireNonNull(Map.of("order_id", order.getId(), "total", totalAmount));
   }
 
   @Transactional
-  public Map<String, Object> createSalesOrder(Map<String, Object> request, Long userId) {
+  public @NonNull Map<String, Object> createSalesOrder(@NonNull Map<String, Object> request, @NonNull Long userId) {
     Long customerId =
         request.containsKey("customer_id")
             ? Long.valueOf(request.get("customer_id").toString())
@@ -158,7 +160,7 @@ public class OrderService {
 
       Product product =
           productRepository
-              .findById(productId)
+              .findById(Objects.requireNonNull(productId))
               .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
 
       if (product.getStock() < qty) {
@@ -231,7 +233,7 @@ public class OrderService {
             .notes(request.getOrDefault("notes", "").toString())
             .createdBy(userId)
             .build();
-    order = orderRepository.save(order);
+    order = Objects.requireNonNull(orderRepository.save(Objects.requireNonNull(order)));
 
     // Save items and stock out
     for (Map<String, Object> item : items) {
@@ -259,10 +261,10 @@ public class OrderService {
               .taxRate(taxRate)
               .total(itemTotal)
               .build();
-      orderItemRepository.save(orderItem);
+      orderItemRepository.save(Objects.requireNonNull(orderItem));
 
       // Atomic stock decrement
-      stockService.stockOut(productId, qty, "Sale Order #" + order.getId(), userId);
+      stockService.stockOut(Objects.requireNonNull(productId), qty, "Sale Order #" + order.getId(), Objects.requireNonNull(userId));
     }
 
     // Auto-generate invoice
@@ -278,7 +280,7 @@ public class OrderService {
       pr.setUserId(userId);
       pr.setNotes("Auto-payment for sale order #" + order.getId());
       paymentService.recordPayment(
-          pr.getInvoiceId(),
+          Objects.requireNonNull(pr.getInvoiceId()),
           pr.getAmount(),
           pr.getPaymentMode(),
           pr.getReference(),
@@ -295,38 +297,38 @@ public class OrderService {
         userId,
         String.format("Created sales order #%d, Customer: %d, Invoice: %s, Total: %s", order.getId(), order.getCustomerId(), invoice.getInvoiceNumber(), totalAmount));
 
-    return Map.of(
+    return Objects.requireNonNull(Map.of(
         "order_id", order.getId(),
         "invoice_id", invoice.getId(),
         "invoice_number", invoice.getInvoiceNumber(),
         "total", totalAmount,
-        "grand_total", grandTotalCalculated);
+        "grand_total", grandTotalCalculated));
   }
 
-  public Page<Order> getOrders(Pageable pageable) {
-    return orderRepository.findAll(pageable);
+  public @NonNull Page<Order> getOrders(@NonNull Pageable pageable) {
+    return Objects.requireNonNull(orderRepository.findAll(pageable));
   }
 
-  public Page<Order> getOrdersByType(String type, Pageable pageable) {
-    return orderRepository.findByType(type, pageable);
+  public @NonNull Page<Order> getOrdersByType(@NonNull String type, @NonNull Pageable pageable) {
+    return Objects.requireNonNull(orderRepository.findByType(type, pageable));
   }
 
-  public Map<String, Object> getOrderWithItems(Long id) {
+  public @NonNull Map<String, Object> getOrderWithItems(@NonNull Long id) {
     Order order =
         orderRepository
             .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Order not found"));
     List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
-    return Map.of("order", order, "items", items);
+    return Objects.requireNonNull(Map.of("order", order, "items", items));
   }
 
   @Transactional
-  public Order updateOrderStatus(Long id, String status) {
+  public @NonNull Order updateOrderStatus(@NonNull Long id, @NonNull String status) {
     Order order =
         orderRepository
             .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Order not found"));
     order.setStatus(status);
-    return orderRepository.save(order);
+    return Objects.requireNonNull(orderRepository.save(order));
   }
 }

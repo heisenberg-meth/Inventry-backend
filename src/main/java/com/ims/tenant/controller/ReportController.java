@@ -11,11 +11,13 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -35,9 +37,9 @@ public class ReportController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Purchases analytics with date range")
   public ResponseEntity<Map<String, Object>> getPurchasesReport(
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-    return ResponseEntity.ok(reportService.getPurchasesReport(from, to));
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @NonNull LocalDate from,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @NonNull LocalDate to) {
+    return ResponseEntity.ok(reportService.getPurchasesReport(Objects.requireNonNull(from), Objects.requireNonNull(to)));
   }
 
   @GetMapping("/reports/dashboard")
@@ -59,18 +61,18 @@ public class ReportController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Sales analytics with date range")
   public ResponseEntity<Map<String, Object>> getSalesReport(
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-    return ResponseEntity.ok(reportService.getSalesAnalytics(from, to));
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @NonNull LocalDate from,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @NonNull LocalDate to) {
+    return ResponseEntity.ok(reportService.getSalesAnalytics(Objects.requireNonNull(from), Objects.requireNonNull(to)));
   }
 
   @GetMapping("/reports/profit-loss")
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Profit & Loss report")
   public ResponseEntity<Map<String, Object>> getProfitLoss(
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-    return ResponseEntity.ok(reportService.getProfitLoss(from, to));
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @NonNull LocalDate from,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @NonNull LocalDate to) {
+    return ResponseEntity.ok(reportService.getProfitLoss(Objects.requireNonNull(from), Objects.requireNonNull(to)));
   }
 
   @GetMapping("/audit")

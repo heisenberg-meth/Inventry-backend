@@ -7,6 +7,7 @@ import com.ims.platform.repository.TenantRepository;
 import com.ims.tenant.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import java.util.Objects;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -42,7 +43,7 @@ public class SignupService {
         .plan("FREE")
         .build();
 
-    tenant = tenantPersistenceService.saveTenant(tenant); // commits immediately
+    tenant = tenantPersistenceService.saveTenant(Objects.requireNonNull(tenant)); // commits immediately
     log.info("Signup: Created tenant id={} name={}", tenant.getId(), tenant.getName());
 
     // 2. Now user insert can see the committed tenant
@@ -57,8 +58,8 @@ public class SignupService {
         .build();
 
     try {
-      TenantContext.set(tenant.getId());
-      userCreationService.createUserForTenant(user, tenant.getId());
+      TenantContext.set(Objects.requireNonNull(tenant.getId()));
+      userCreationService.createUserForTenant(Objects.requireNonNull(user), Objects.requireNonNull(tenant.getId()));
     } finally {
       TenantContext.clear();
     }

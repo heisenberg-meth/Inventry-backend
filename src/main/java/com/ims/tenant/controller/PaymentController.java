@@ -9,8 +9,10 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import java.util.Objects;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.lang.NonNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,7 +36,7 @@ public class PaymentController {
   @Operation(summary = "Record payment against invoice")
   public ResponseEntity<Payment> recordPayment(@Valid @RequestBody PaymentRequest request) {
     Payment payment = paymentService.recordPayment(
-        request.getInvoiceId(),
+        Objects.requireNonNull(request.getInvoiceId()),
         request.getAmount(),
         request.getPaymentMode(),
         request.getReference(),
@@ -46,14 +48,14 @@ public class PaymentController {
   @GetMapping
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "List mappings")
-  public ResponseEntity<Page<Payment>> list(Pageable pageable) {
+  public ResponseEntity<Page<Payment>> list(@NonNull Pageable pageable) {
     return ResponseEntity.ok(paymentService.getPayments(pageable));
   }
 
   @GetMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Get payment details")
-  public ResponseEntity<Payment> get(@PathVariable Long id) {
+  public ResponseEntity<Payment> get(@NonNull @PathVariable Long id) {
     return ResponseEntity.ok(paymentService.getById(id));
   }
 }

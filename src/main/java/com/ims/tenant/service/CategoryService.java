@@ -11,6 +11,8 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.lang.NonNull;
+import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,13 +24,13 @@ public class CategoryService {
   private final ProductRepository productRepository;
 
   @Cacheable(cacheResolver = "tenantAwareCacheResolver", value = "categories", key = "'list:' + #pageable.pageNumber + ':' + #pageable.pageSize")
-  public Page<Category> getCategories(Pageable pageable) {
-    return categoryRepository.findAll(pageable);
+  public Page<Category> getCategories(@NonNull Pageable pageable) {
+    return categoryRepository.findAll(Objects.requireNonNull(pageable));
   }
 
-  public Category getById(Long id) {
+  public Category getById(@NonNull Long id) {
     return categoryRepository
-        .findById(id)
+        .findById(Objects.requireNonNull(id))
         .orElseThrow(() -> new EntityNotFoundException("Category not found"));
   }
 
@@ -46,13 +48,13 @@ public class CategoryService {
             .taxRate(request.getTaxRate() != null ? request.getTaxRate() : java.math.BigDecimal.ZERO)
             .build();
 
-    return categoryRepository.save(category);
+    return categoryRepository.save(Objects.requireNonNull(category));
   }
 
   @Transactional
   @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "categories", allEntries = true)
-  public Category update(Long id, CategoryRequest request) {
-    Category category = getById(id);
+  public Category update(@NonNull Long id, CategoryRequest request) {
+    Category category = getById(Objects.requireNonNull(id));
 
     if (!category.getName().equalsIgnoreCase(request.getName())
         && categoryRepository.existsByNameIgnoreCase(request.getName())) {
@@ -65,12 +67,12 @@ public class CategoryService {
       category.setTaxRate(request.getTaxRate());
     }
 
-    return categoryRepository.save(category);
+    return categoryRepository.save(Objects.requireNonNull(category));
   }
 
   @Transactional
   @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "categories", allEntries = true)
-  public void delete(Long id) {
+  public void delete(@NonNull Long id) {
     Category category = getById(id);
     long productCount = productRepository.countByCategoryId(id);
 
@@ -79,6 +81,6 @@ public class CategoryService {
           "Category has " + productCount + " products. Reassign before deleting.");
     }
 
-    categoryRepository.delete(category);
+    categoryRepository.delete(Objects.requireNonNull(category));
   }
 }

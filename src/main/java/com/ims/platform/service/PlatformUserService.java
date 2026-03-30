@@ -4,9 +4,11 @@ import com.ims.dto.CreatePlatformUserRequest;
 import com.ims.model.User;
 import com.ims.tenant.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.lang.NonNull;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,7 +21,7 @@ public class PlatformUserService {
   private final PasswordEncoder passwordEncoder;
 
   @Transactional
-  public User createPlatformUser(CreatePlatformUserRequest request) {
+  public @NonNull User createPlatformUser(@NonNull CreatePlatformUserRequest request) {
     if (!request.getRole().equals("PLATFORM_ADMIN") && !request.getRole().equals("SUPPORT_ADMIN")) {
       throw new IllegalArgumentException("Invalid role. Must be PLATFORM_ADMIN or SUPPORT_ADMIN.");
     }
@@ -38,16 +40,16 @@ public class PlatformUserService {
             .isActive(true)
             .build();
 
-    return userRepository.save(user);
+    return Objects.requireNonNull(userRepository.save(Objects.requireNonNull(user)));
   }
 
   @Transactional(readOnly = true)
-  public Page<User> getPlatformUsers(Pageable pageable) {
-    return userRepository.findByTenantIdIsNull(pageable);
+  public @NonNull Page<User> getPlatformUsers(@NonNull Pageable pageable) {
+    return Objects.requireNonNull(userRepository.findByTenantIdIsNull(pageable));
   }
 
   @Transactional
-  public User updatePlatformUserRole(Long id, String role) {
+  public @NonNull User updatePlatformUserRole(@NonNull Long id, @NonNull String role) {
     if (!role.equals("PLATFORM_ADMIN") && !role.equals("SUPPORT_ADMIN")) {
       throw new IllegalArgumentException("Invalid role. Must be PLATFORM_ADMIN or SUPPORT_ADMIN.");
     }
@@ -61,11 +63,11 @@ public class PlatformUserService {
     }
 
     user.setRole(role);
-    return userRepository.save(user);
+    return Objects.requireNonNull(userRepository.save(user));
   }
 
   @Transactional
-  public void deactivatePlatformUser(Long id) {
+  public void deactivatePlatformUser(@NonNull Long id) {
     User user =
         userRepository
             .findByIdAndTenantIdIsNull(id)
