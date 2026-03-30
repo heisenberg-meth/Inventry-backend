@@ -14,8 +14,10 @@ import com.ims.tenant.repository.StockMovementRepository;
 import com.ims.tenant.repository.TransferOrderRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.lang.NonNull;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -34,31 +36,31 @@ public class StockService {
   private final TransferOrderRepository transferOrderRepository;
 
   private void checkWarehouseType() {
-    Tenant tenant = tenantRepository.findById(TenantContext.get()).orElseThrow();
+    Tenant tenant = tenantRepository.findById(Objects.requireNonNull(TenantContext.get())).orElseThrow();
     if (!"WAREHOUSE".equals(tenant.getBusinessType())) {
       throw new IllegalArgumentException("Only available for WAREHOUSE tenants");
     }
   }
 
-  public Page<WarehouseProduct> getProductsByLocation(String location, Pageable pageable) {
+  public @NonNull Page<WarehouseProduct> getProductsByLocation(@NonNull String location, @NonNull Pageable pageable) {
     checkWarehouseType();
-    return warehouseProductRepository.findByLocation(location, pageable);
+    return Objects.requireNonNull(warehouseProductRepository.findByLocation(location, pageable));
   }
 
-  public Page<TransferOrder> getTransferOrders(Pageable pageable) {
+  public @NonNull Page<TransferOrder> getTransferOrders(@NonNull Pageable pageable) {
     checkWarehouseType();
-    return transferOrderRepository.findAll(pageable);
+    return Objects.requireNonNull(transferOrderRepository.findAll(pageable));
   }
 
-  public TransferOrder getTransferOrderById(Long id) {
+  public @NonNull TransferOrder getTransferOrderById(@NonNull Long id) {
     checkWarehouseType();
-    return transferOrderRepository
+    return Objects.requireNonNull(transferOrderRepository
         .findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Transfer Order not found"));
+        .orElseThrow(() -> new EntityNotFoundException("Transfer Order not found")));
   }
 
   @Transactional
-  public TransferOrder updateTransferStatus(Long id, TransferOrderStatusRequest request) {
+  public @NonNull TransferOrder updateTransferStatus(@NonNull Long id, @NonNull TransferOrderStatusRequest request) {
     checkWarehouseType();
     TransferOrder order =
         transferOrderRepository
@@ -81,14 +83,14 @@ public class StockService {
     }
 
     order.setStatus(newStatus);
-    return transferOrderRepository.save(order);
+    return Objects.requireNonNull(transferOrderRepository.save(order));
   }
 
   @Transactional
   @CacheEvict(
       value = {"stock", "products"},
       allEntries = true)
-  public void stockIn(Long productId, int qty, String notes, Long userId) {
+  public void stockIn(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
     Product product =
         productRepository
             .findById(productId)
@@ -99,7 +101,7 @@ public class StockService {
     product.setUpdatedAt(LocalDateTime.now());
     productRepository.save(product);
 
-    stockMovementRepository.save(
+    stockMovementRepository.save(Objects.requireNonNull(
         StockMovement.builder()
             .productId(productId)
             .movementType("IN")
@@ -108,7 +110,7 @@ public class StockService {
             .newStock(product.getStock())
             .notes(notes)
             .createdBy(userId)
-            .build());
+            .build()));
 
     log.info(
         "Stock IN: product={} qty={} {}→{}",
@@ -122,7 +124,7 @@ public class StockService {
   @CacheEvict(
       value = {"stock", "products"},
       allEntries = true)
-  public void stockOut(Long productId, int qty, String notes, Long userId) {
+  public void stockOut(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
     // Pessimistic write lock prevents concurrent oversell
     Product product =
         productRepository
@@ -141,7 +143,7 @@ public class StockService {
     product.setUpdatedAt(LocalDateTime.now());
     productRepository.save(product);
 
-    stockMovementRepository.save(
+    stockMovementRepository.save(Objects.requireNonNull(
         StockMovement.builder()
             .productId(productId)
             .movementType("OUT")
@@ -150,7 +152,7 @@ public class StockService {
             .newStock(product.getStock())
             .notes(notes)
             .createdBy(userId)
-            .build());
+            .build()));
 
     log.info(
         "Stock OUT: product={} qty={} {}→{}",
@@ -164,7 +166,7 @@ public class StockService {
   @CacheEvict(
       value = {"stock", "products"},
       allEntries = true)
-  public void stockAdjust(Long productId, int qty, String notes, Long userId) {
+  public void stockAdjust(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
     Product product =
         productRepository
             .findByIdWithLock(productId)
@@ -175,7 +177,7 @@ public class StockService {
     product.setUpdatedAt(LocalDateTime.now());
     productRepository.save(product);
 
-    stockMovementRepository.save(
+    stockMovementRepository.save(Objects.requireNonNull(
         StockMovement.builder()
             .productId(productId)
             .movementType("ADJUSTMENT")
@@ -184,7 +186,7 @@ public class StockService {
             .newStock(product.getStock())
             .notes(notes)
             .createdBy(userId)
-            .build());
+            .build()));
 
     log.info(
         "Stock ADJUST: product={} qty={} {}→{}",
@@ -194,12 +196,12 @@ public class StockService {
         product.getStock());
   }
 
-  public Page<StockMovement> getMovements(Pageable pageable) {
-    return stockMovementRepository.findAllByOrderByCreatedAtDesc(pageable);
+  public @NonNull Page<StockMovement> getMovements(@NonNull Pageable pageable) {
+    return Objects.requireNonNull(stockMovementRepository.findAllByOrderByCreatedAtDesc(pageable));
   }
 
-  public Page<StockMovement> getFilteredMovements(
-      Long productId, LocalDateTime from, LocalDateTime to, Pageable pageable) {
-    return stockMovementRepository.findByFilters(productId, from, to, pageable);
+  public @NonNull Page<StockMovement> getFilteredMovements(
+      @NonNull Long productId, LocalDateTime from, LocalDateTime to, @NonNull Pageable pageable) {
+    return Objects.requireNonNull(stockMovementRepository.findByFilters(productId, from, to, pageable));
   }
 }

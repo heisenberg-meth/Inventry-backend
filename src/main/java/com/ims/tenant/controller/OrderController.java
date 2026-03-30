@@ -7,9 +7,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.Map;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.lang.NonNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -35,7 +37,7 @@ public class OrderController {
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "List all orders")
   public ResponseEntity<Page<Order>> getOrders(
-      @RequestParam(required = false) String type, Pageable pageable) {
+      @RequestParam(required = false) String type, @NonNull Pageable pageable) {
     if (type != null) {
       return ResponseEntity.ok(orderService.getOrdersByType(type, pageable));
     }
@@ -46,26 +48,26 @@ public class OrderController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Create purchase order")
   public ResponseEntity<Map<String, Object>> createPurchaseOrder(
-      @RequestBody Map<String, Object> request) {
-    Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+      @NonNull @RequestBody Map<String, Object> request) {
+    Long userId = (Long) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal();
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(orderService.createPurchaseOrder(request, userId));
+        .body(orderService.createPurchaseOrder(request, Objects.requireNonNull(userId)));
   }
 
   @PostMapping("/sale")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Create sale order")
   public ResponseEntity<Map<String, Object>> createSalesOrder(
-      @RequestBody Map<String, Object> request) {
-    Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+      @NonNull @RequestBody Map<String, Object> request) {
+    Long userId = (Long) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal();
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(orderService.createSalesOrder(request, userId));
+        .body(orderService.createSalesOrder(request, Objects.requireNonNull(userId)));
   }
 
   @GetMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Get order with items")
-  public ResponseEntity<Map<String, Object>> getOrder(@PathVariable Long id) {
+  public ResponseEntity<Map<String, Object>> getOrder(@NonNull @PathVariable Long id) {
     return ResponseEntity.ok(orderService.getOrderWithItems(id));
   }
 
@@ -73,7 +75,7 @@ public class OrderController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Update order status")
   public ResponseEntity<Order> updateStatus(
-      @PathVariable Long id, @RequestBody Map<String, String> body) {
-    return ResponseEntity.ok(orderService.updateOrderStatus(id, body.get("status")));
+      @NonNull @PathVariable Long id, @NonNull @RequestBody Map<String, String> body) {
+    return ResponseEntity.ok(orderService.updateOrderStatus(id, Objects.requireNonNull(body.get("status"))));
   }
 }
