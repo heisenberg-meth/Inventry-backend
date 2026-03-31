@@ -1,104 +1,126 @@
-## 1. Missing API Route Specifications (JSON/cURL)
+### The Master Prompt
 
-**Since your system is stateless, these requests must include the **`<span class="citation-143">Authorization: Bearer <JWT></span>` header^^^^^^^^.
-
-### A. Create Tenant Admin (Platform Level)
-
-This allows the "Creator" or Platform Admin to onboard the first user for a new business.
-
-* **Path:** `POST /api/platform/tenants/{tenantId}/users`
-* **Scope:**`<span class="citation-142">PLATFORM</span>`^^^^
-
-**JSON**
-
-```
-// POST /api/platform/tenants/123/users
-{
-  "username": "pharmacy_owner_01",
-  "email": "admin@xyzpharmacy.com",
-  "password": "SecurePassword123!",
-  "role": "ADMIN",
-  "scope": "TENANT"
-}
-```
-
-### B. Register Product Category (Tenant Level)
-
-**Necessary before creating products to satisfy the **`<span class="citation-141">category_id</span>` requirement^^.
-
-* **Path:** `POST /api/tenant/categories`
-* **Scope:**`<span class="citation-140">TENANT</span>`^^
-
-**Bash**
-
-```
-curl -X POST https://api.ims.com/api/tenant/categories \
-  -H "Authorization: Bearer <JWT>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Antibiotics",
-    "description": "Prescription only medications",
-    "tax_rate": 0.05
-  }'
-```
-
-### C. Record a Sale with Billing (Tenant Level)
-
-**Expands on the "Sales and Billing" requirement**^^.
-
-* **Path:** `POST /api/tenant/sales`
-
-**JSON**
-
-```
-{
-  "customer_id": "cust_987",
-  "payment_method": "CASH",
-  "items": [
-    {
-      "product_id": "prod_001",
-      "quantity": 2,
-      "unit_price": 15.50
-    }
-  ],
-  "discount_total": 2.00,
-  "grand_total": 29.00
-}
-```
+> **Task** : Implement a Multi-Tenant Authentication System in Spring Boot.
+>
+> **Context** :
+>
+> I have a system with two types of users:
+>
+> 1. **Platform Admins (Super Admins)** : Log in with just `email` and `password`.
+> 2. **Tenant Users (Business Accounts)** : Log in with `email`, `password`, and `companyCode`.
+>
+> **Requirements** :
+>
+> 1. **Update DTOs** :
+>
+> * Modify `LoginRequest.java` to include an optional `String companyCode`.
+> * Update `LoginResponse.java` to match the required JSON structure: include `accessToken`, `refreshToken`, `expiresIn`, and a `user` object containing `id`, `name`, `email`, `type` (PLATFORM or TENANT), and `platformRole` or `tenantRole`.
+>
+> 1. **Authentication Logic** :
+>
+> * Create/Update an `AuthService`.
+> * If `companyCode` is null/empty: Search for the user in the global `PlatformUser` table (or Users with a `null` tenantId). Validate credentials for a Super Admin.
+> * If `companyCode` is provided:
+>   a. Find the Tenant by `domain` or `companyCode`.
+>   b. Search for the user specifically within that `tenantId`.
+>   c. Validate credentials.
+>
+> 1. **Security Configuration** :
+>
+> * Ensure the JWT contains the `tenantId` (if applicable) and `role` as claims.
+> * Implement the `/auth/login` endpoint in an `AuthController`.
+>
+> 1. **Additional Endpoints** :
+>
+> * Implement stubs/logic for `/auth/refresh`, `/auth/logout`, and `/auth/me`.
+>
+> **Code Style** :
+>
+> * Use the provided `com.ims` package structure.
+> * Use Lombok `@Data`, `@Builder`, and Jackson `@JsonProperty` for snake_case mapping.
+> * Follow strict null safety using `Objects.requireNonNull`.
+>
+> **Reference Files Provided** : (Inject the file contents of `LoginRequest.java`, `LoginResponse.java`, and `TenantService.java` here).
 
 ---
 
-## 2. PRD: Administrative Hierarchy & Governance
+### Step 1: Update your DTOs immediately
 
-### **1. Introduction**
+Based on your provided files, here are the corrected DTOs to support your specific JSON requirements:
 
-**The IMS requires a two-tiered administrative structure to separate system-wide maintenance (Super Admin/Creator) from business-specific operations (Tenant Admin)**^^.
+#### Update `LoginRequest.java`
 
-### **2. User Personas**
+**Java**
 
-| **Persona**        | **Scope** | **Primary Responsibility**                                          |
-| ------------------------ | --------------- | ------------------------------------------------------------------------- |
-| **Root (Creator)** | `PLATFORM`    | **Full system access, DB health, and platform config**^^^^^^^^.     |
-| **Platform Admin** | `PLATFORM`    | **Tenant onboarding, subscription management, and support**^^^^^^.  |
-| **Tenant Admin**   | `TENANT`      | **Managing their specific business catalog, staff, and billing**^^. |
+```
+package com.ims.dto.request;
 
-### **3. Functional Requirements**
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import lombok.Data;
 
-#### **3.1 Super Admin (Platform/Root) Capabilities**
+@Data
+public class LoginRequest {
+    @NotBlank(message = "Email is required")
+    @Email(message = "Invalid email format")
+    private String email;
 
-* **Tenant Lifecycle:** Create, suspend, or delete tenants (e.g., if a subscription expires)^^.
-* **Global Monitoring:** View aggregated audit logs across all tenants for troubleshooting^^^^.
-* **Plan Management:** Define limits for different tiers (e.g., "Silver" allows 500 products, "Gold" unlimited)^^.
-* **System Config:** Manage global feature flags (e.g., enabling the "Pharmacy" extension for specific users)^^^^^^^^.
+    @NotBlank(message = "Password is required")
+    private String password;
 
-#### **3.2 Tenant Admin Capabilities**
+    // Optional: Only required for Tenant/Business login
+    private String companyCode; 
+}
+```
 
-* **Staff Management:** Create and manage `<span class="citation-130">Manager</span>` and `<span class="citation-130">Staff</span>` roles within their `<span class="citation-130">tenant_id</span>`^^^^^^^^.
-* **Business Settings:** Configure custom domains or subdomains (e.g., `<span class="citation-129">shop.tenant.com</span>`)^^.
-* **Inventory Control:** Perform manual stock adjustments and oversee P&L reports^^^^^^^^.
+#### Update `LoginResponse.java`
 
-### **4. Security & Isolation Rules**
+**Java**
 
-* **JWT Scope:** Tokens must explicitly state if the user is `<span class="citation-127">PLATFORM</span>` or `<span class="citation-127">TENANT</span>`^^.
-* **Tenant Filter:** Every database query for a Tenant Admin MUST include `<span class="citation-126">WHERE tenant_id = ?</span>` derived from the JWT, never from the client request body^^^^^^^^.
-* **Data Masking:** Super Admins can see metadata (tenant name, user count) but should be restricted from seeing specific sensitive business data (customer names/prices) unless "Support Mode" is explicitly enabled^^^^^^^^.
+```
+package com.ims.dto.response;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
+import lombok.Data;
+
+@Data
+@Builder
+public class LoginResponse {
+    @JsonProperty("accessToken")
+    private String accessToken;
+
+    @JsonProperty("refreshToken")
+    private String refreshToken;
+
+    @JsonProperty("expiresIn")
+    private long expiresIn;
+
+    private UserProfile user;
+
+    @Data
+    @Builder
+    public static class UserProfile {
+        private String id;
+        private String name;
+        private String email;
+        private String type; // "PLATFORM" or "TENANT"
+        private String platformRole; // Optional
+    }
+}
+```
+
+### Step 2: Logical Flow for the Controller/Service
+
+When you process the login:
+
+1. **Check for `companyCode`** :
+
+* `if (request.getCompanyCode() == null)` **$\rightarrow$** Query `PlatformUserRepository`.
+* `else` **$\rightarrow$** Query `TenantRepository` to find the ID, then query `UserRepository` where `email = :email AND tenantId = :tenantId`.
+
+1. **JWT Claims** :
+
+* For Platform users, set `tenantId = null`.
+* For Tenant users, set `tenantId = theActualId`.
+* This allows your `JwtFilter` to set the correct context for every subsequent request.
