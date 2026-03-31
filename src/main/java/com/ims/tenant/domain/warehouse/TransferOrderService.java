@@ -10,6 +10,8 @@ import jakarta.persistence.EntityNotFoundException;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.lang.NonNull;
+import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,11 +25,11 @@ public class TransferOrderService {
   private final StockMovementRepository stockMovementRepository;
 
   @Transactional
-  public TransferOrder createTransfer(Map<String, Object> request, Long userId) {
-    Long tenantId = TenantContext.get();
-    Long productId = Long.valueOf(request.get("product_id").toString());
-    String fromLocation = request.get("from_location").toString();
-    String toLocation = request.get("to_location").toString();
+  public @NonNull TransferOrder createTransfer(@NonNull Map<String, Object> request, @NonNull Long userId) {
+    Long tenantId = Objects.requireNonNull(TenantContext.get());
+    long productId = Long.parseLong(Objects.requireNonNull(request.get("product_id")).toString());
+    String fromLocation = Objects.requireNonNull(request.get("from_location")).toString();
+    String toLocation = Objects.requireNonNull(request.get("to_location")).toString();
     String notes = request.getOrDefault("notes", "").toString();
 
     // Create transfer order
@@ -40,7 +42,7 @@ public class TransferOrderService {
             .notes(notes)
             .createdBy(userId)
             .build();
-    transfer = transferOrderRepository.save(transfer);
+    transfer = Objects.requireNonNull(transferOrderRepository.save(Objects.requireNonNull(transfer)));
 
     // Update warehouse product location
     WarehouseProduct wp =
@@ -51,8 +53,8 @@ public class TransferOrderService {
     warehouseProductRepository.save(wp);
 
     // Log stock movement
-    int quantity = Integer.parseInt(request.get("quantity").toString());
-    stockMovementRepository.save(
+    int quantity = Integer.parseInt(Objects.requireNonNull(request.get("quantity")).toString());
+    Objects.requireNonNull(stockMovementRepository.save(Objects.requireNonNull(
         StockMovement.builder()
             .tenantId(tenantId)
             .productId(productId)
@@ -60,9 +62,9 @@ public class TransferOrderService {
             .quantity(quantity)
             .notes("Transfer from " + fromLocation + " to " + toLocation)
             .createdBy(userId)
-            .referenceId(transfer.getId())
+            .referenceId(Objects.requireNonNull(transfer.getId()))
             .referenceType("TRANSFER_ORDER")
-            .build());
+            .build())));
 
     log.info(
         "Transfer order created: id={} product={} {} -> {}",

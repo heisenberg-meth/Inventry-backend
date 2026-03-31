@@ -6,6 +6,8 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.lang.NonNull;
+import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,23 +17,23 @@ public class CustomerService {
 
   private final CustomerRepository customerRepository;
 
-  public Page<Customer> getCustomers(Pageable pageable) {
-    return customerRepository.findAll(pageable);
+  public @NonNull Page<Customer> getCustomers(@NonNull Pageable pageable) {
+    return Objects.requireNonNull(customerRepository.findAll(pageable));
   }
 
-  public Customer getById(Long id) {
-    return customerRepository
+  public @NonNull Customer getById(@NonNull Long id) {
+    return Objects.requireNonNull(customerRepository
         .findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Customer not found"));
+        .orElseThrow(() -> new EntityNotFoundException("Customer not found")));
   }
 
   @Transactional
-  public Customer create(Customer customer) {
-    return customerRepository.save(customer);
+  public @NonNull Customer create(@NonNull Customer customer) {
+    return Objects.requireNonNull(customerRepository.save(customer));
   }
 
   @Transactional
-  public Customer update(Long id, Customer updates) {
+  public @NonNull Customer update(@NonNull Long id, @NonNull Customer updates) {
     Customer customer = getById(id);
     if (updates.getName() != null) {
       customer.setName(updates.getName());
@@ -45,11 +47,11 @@ public class CustomerService {
     if (updates.getAddress() != null) {
       customer.setAddress(updates.getAddress());
     }
-    return customerRepository.save(customer);
+    return Objects.requireNonNull(customerRepository.save(customer));
   }
 
   @Transactional
-  public void delete(Long id) {
+  public void delete(@NonNull Long id) {
     Customer customer = getById(id);
     customerRepository.delete(customer);
   }

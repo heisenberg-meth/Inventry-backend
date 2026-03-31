@@ -19,7 +19,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import java.util.Objects;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.http.MediaType;
@@ -40,9 +41,9 @@ public class AuthIntegrationTest {
   @Autowired private UserRepository userRepository;
   @Autowired private TenantRepository tenantRepository;
 
-  @MockBean private RedisTemplate<String, Object> redisTemplate;
-  @MockBean private ValueOperations<String, Object> valueOperations;
-  @MockBean private org.springframework.data.redis.connection.RedisConnectionFactory redisConnectionFactory;
+  @MockitoBean private RedisTemplate<String, Object> redisTemplate;
+  @MockitoBean private ValueOperations<String, Object> valueOperations;
+  @MockitoBean private org.springframework.data.redis.connection.RedisConnectionFactory redisConnectionFactory;
 
   @BeforeEach
   void setup() {
@@ -68,7 +69,7 @@ public class AuthIntegrationTest {
     mockMvc
         .perform(get("/api/tenant/users").header("Authorization", "Bearer " + t1Token))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.totalElements").value(1))
+        .andExpect(jsonPath("$.page.totalElements").value(1))
         .andExpect(jsonPath("$.content[0].email").value("admin1@t1.com"));
 
     // 5. Login Tenant 2
@@ -78,7 +79,7 @@ public class AuthIntegrationTest {
     mockMvc
         .perform(get("/api/tenant/users").header("Authorization", "Bearer " + t2Token))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.totalElements").value(1))
+        .andExpect(jsonPath("$.page.totalElements").value(1))
         .andExpect(jsonPath("$.content[0].email").value("admin2@t2.com"));
 
     // 7. Verify Logout and Blacklisting
@@ -87,7 +88,7 @@ public class AuthIntegrationTest {
         .andExpect(status().isOk());
 
     // Mock Redis blacklist check for next request
-    when(redisTemplate.hasKey(anyString())).thenReturn(true);
+    when(redisTemplate.hasKey(Objects.requireNonNull(anyString()))).thenReturn(true);
 
     mockMvc
         .perform(get("/api/tenant/users").header("Authorization", "Bearer " + t1Token))
@@ -120,8 +121,8 @@ public class AuthIntegrationTest {
         mockMvc
             .perform(
                 post("/api/auth/login")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(loginRequest)))
+                    .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                    .content(Objects.requireNonNull(objectMapper.writeValueAsString(loginRequest))))
             .andExpect(status().isOk())
             .andReturn();
 
