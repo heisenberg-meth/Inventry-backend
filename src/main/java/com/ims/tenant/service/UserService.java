@@ -8,8 +8,10 @@ import com.ims.shared.auth.JwtAuthDetails;
 import com.ims.tenant.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.lang.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,20 +30,21 @@ public class UserService {
 
   private static final List<String> VALID_TENANT_ROLES = List.of("ADMIN", "MANAGER", "STAFF");
 
-  public Page<UserResponse> getUsers(Pageable pageable) {
-    return userRepository.findAll(pageable).map(this::toResponse);
+  public @NonNull Page<UserResponse> getUsers(@NonNull Pageable pageable) {
+    return userRepository.findAll(Objects.requireNonNull(pageable)).map(this::toResponse);
   }
 
-  public UserResponse getUserById(Long id) {
+  public @NonNull UserResponse getUserById(@NonNull Long id) {
     User user =
-        userRepository
-            .findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("User not found"));
+        Objects.requireNonNull(
+            userRepository
+                .findById(Objects.requireNonNull(id))
+                .orElseThrow(() -> new EntityNotFoundException("User not found")));
     return toResponse(user);
   }
 
   @Transactional
-  public UserResponse createUser(CreateUserRequest request) {
+  public @NonNull UserResponse createUser(@NonNull CreateUserRequest request) {
     // Validate role is tenant-level only
     if (!VALID_TENANT_ROLES.contains(request.getRole())) {
       throw new IllegalArgumentException("Invalid role. Must be one of: " + VALID_TENANT_ROLES);
@@ -78,36 +81,38 @@ public class UserService {
             .isActive(true)
             .build();
 
-    user = userRepository.save(user);
+    user = Objects.requireNonNull(userRepository.save(Objects.requireNonNull(user)));
     log.info("User created: id={} email={} role={}", user.getId(), user.getEmail(), user.getRole());
     return toResponse(user);
   }
 
   @Transactional
-  public UserResponse updateRole(Long id, String newRole) {
+  public @NonNull UserResponse updateRole(@NonNull Long id, @NonNull String newRole) {
     if (!VALID_TENANT_ROLES.contains(newRole)) {
       throw new IllegalArgumentException("Invalid role. Must be one of: " + VALID_TENANT_ROLES);
     }
 
     User user =
-        userRepository
-            .findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("User not found"));
+        Objects.requireNonNull(
+            userRepository
+                .findById(Objects.requireNonNull(id))
+                .orElseThrow(() -> new EntityNotFoundException("User not found")));
 
     user.setRole(newRole);
-    user = userRepository.save(user);
+    user = Objects.requireNonNull(userRepository.save(Objects.requireNonNull(user)));
     log.info("User role updated: id={} newRole={}", id, newRole);
     return toResponse(user);
   }
 
   @Transactional
-  public void deactivateUser(Long id) {
+  public void deactivateUser(@NonNull Long id) {
     User user =
-        userRepository
-            .findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("User not found"));
+        Objects.requireNonNull(
+            userRepository
+                .findById(Objects.requireNonNull(id))
+                .orElseThrow(() -> new EntityNotFoundException("User not found")));
     user.setIsActive(false);
-    userRepository.save(user);
+    userRepository.save(Objects.requireNonNull(user));
     log.info("User deactivated: id={}", id);
   }
 
@@ -123,14 +128,15 @@ public class UserService {
     return null;
   }
 
-  private UserResponse toResponse(User user) {
-    return UserResponse.builder()
+  private @NonNull UserResponse toResponse(@NonNull User user) {
+    return Objects.requireNonNull(UserResponse.builder()
         .id(user.getId())
         .name(user.getName())
         .email(user.getEmail())
         .role(user.getRole())
+        .scope(user.getScope())
         .isActive(user.getIsActive())
         .createdAt(user.getCreatedAt())
-        .build();
+        .build());
   }
 }

@@ -11,6 +11,7 @@ import com.ims.tenant.repository.UserRepository;
 import com.ims.shared.auth.UserCreationService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.lang.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -19,6 +20,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -30,27 +33,25 @@ public class TenantService {
   private final PasswordEncoder passwordEncoder;
   private final UserCreationService userCreationService;
 
-  public Page<TenantResponse> getAllTenants(Pageable pageable) {
-    return tenantRepository.findAll(pageable).map(this::toResponse);
+  public Page<TenantResponse> getAllTenants(@NonNull Pageable pageable) {
+    Page<Tenant> tenants = Objects.requireNonNull(tenantRepository.findAll(pageable));
+    return tenants.map(this::toResponse);
   }
 
   @Cacheable(value = "tenant", key = "#id")
-  public TenantResponse getTenantById(Long id) {
-    Tenant tenant =
-        tenantRepository
-            .findById(id)
+  public TenantResponse getTenantById(@NonNull Long id) {
+    Tenant tenant = tenantRepository.findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
-    return toResponse(tenant);
+    return toResponse(Objects.requireNonNull(tenant));
   }
 
   @Transactional
-  public TenantResponse createTenant(CreateTenantRequest request) {
+  public TenantResponse createTenant(@NonNull CreateTenantRequest request) {
     if (request.getDomain() != null && tenantRepository.existsByDomain(request.getDomain())) {
       throw new IllegalArgumentException("Domain already taken: " + request.getDomain());
     }
 
-    Tenant tenant =
-        Tenant.builder()
+    Tenant tenant = Tenant.builder()
             .name(request.getName())
             .domain(request.getDomain())
             .businessType(request.getBusinessType())
@@ -60,56 +61,42 @@ public class TenantService {
             .maxUsers(request.getMaxUsers())
             .build();
 
-    tenant = tenantRepository.save(tenant);
-    log.info(
-        "Tenant created: id={} name={} type={}",
-        tenant.getId(),
-        tenant.getName(),
-        tenant.getBusinessType());
-    return toResponse(tenant);
+    Tenant savedTenant = tenantRepository.save(Objects.requireNonNull(tenant));
+    
+    log.info("Tenant created: id={} name={} type={}",
+        savedTenant.getId(),
+        savedTenant.getName(),
+        savedTenant.getBusinessType());
+    return toResponse(savedTenant);
   }
 
   @Transactional
   @CacheEvict(value = "tenant", key = "#id")
-  public TenantResponse updateTenant(Long id, CreateTenantRequest request) {
-    Tenant tenant =
-        tenantRepository
-            .findById(id)
+  public TenantResponse updateTenant(@NonNull Long id, @NonNull CreateTenantRequest request) {
+    Tenant tenant = tenantRepository.findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
 
-    if (request.getName() != null) {
-      tenant.setName(request.getName());
-    }
-    if (request.getPlan() != null) {
-      tenant.setPlan(request.getPlan());
-    }
-    if (request.getBusinessType() != null) {
-      tenant.setBusinessType(request.getBusinessType());
-    }
-    if (request.getMaxProducts() != null) {
-      tenant.setMaxProducts(request.getMaxProducts());
-    }
-    if (request.getMaxUsers() != null) {
-      tenant.setMaxUsers(request.getMaxUsers());
-    }
+    if (request.getName() != null) tenant.setName(request.getName());
+    if (request.getPlan() != null) tenant.setPlan(request.getPlan());
+    if (request.getBusinessType() != null) tenant.setBusinessType(request.getBusinessType());
+    if (request.getMaxProducts() != null) tenant.setMaxProducts(request.getMaxProducts());
+    if (request.getMaxUsers() != null) tenant.setMaxUsers(request.getMaxUsers());
 
-    tenant = tenantRepository.save(tenant);
-    return toResponse(tenant);
+    Tenant updatedTenant = tenantRepository.save(Objects.requireNonNull(tenant));
+    return toResponse(updatedTenant);
   }
 
   @Transactional
   @CacheEvict(value = "tenant", key = "#id")
-  public void deactivateTenant(Long id) {
-    Tenant tenant =
-        tenantRepository
-            .findById(id)
+  public void deactivateTenant(@NonNull Long id) {
+    Tenant tenant = tenantRepository.findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
     tenant.setStatus("INACTIVE");
     tenantRepository.save(tenant);
     log.info("Tenant deactivated: id={}", id);
   }
 
-  private TenantResponse toResponse(Tenant tenant) {
+  private TenantResponse toResponse(@NonNull Tenant tenant) {
     return TenantResponse.builder()
         .id(tenant.getId())
         .name(tenant.getName())
@@ -124,18 +111,20 @@ public class TenantService {
   }
 
   @Transactional
-  public UserResponse createTenantUser(Long tenantId, CreateTenantUserRequest request) {
+  public UserResponse createTenantUser(@NonNull Long tenantId, @NonNull CreateTenantUserRequest request) {
     if (!tenantRepository.existsById(tenantId)) {
       throw new EntityNotFoundException("Tenant not found with id: " + tenantId);
     }
-    if (userRepository.existsByEmail(request.getEmail())) {
+    
+    // Explicitly check the email to avoid passing a potential null into userRepository
+    String email = Objects.requireNonNull(request.getEmail(), "Email cannot be null");
+    if (userRepository.existsByEmail(email)) {
       throw new IllegalArgumentException("Email already in use");
     }
 
-    User user =
-        User.builder()
+    User user = User.builder()
             .name(request.getUsername())
-            .email(request.getEmail())
+            .email(email)
             .passwordHash(passwordEncoder.encode(request.getPassword()))
             .role(request.getRole())
             .scope(request.getScope())
@@ -143,19 +132,17 @@ public class TenantService {
             .isActive(true)
             .build();
 
-    var tenant =
-        tenantRepository
-            .findById(tenantId)
+    Tenant tenant = tenantRepository.findById(tenantId)
             .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+
     if (tenant.getMaxUsers() != null) {
       long currentCount = userRepository.countActiveByTenantId(tenantId);
       if (currentCount >= tenant.getMaxUsers()) {
-        throw new IllegalArgumentException(
-            "User limit reached for this tenant (" + tenant.getMaxUsers() + ")");
+        throw new IllegalArgumentException("User limit reached (" + tenant.getMaxUsers() + ")");
       }
     }
 
-    userCreationService.createUserForTenant(user, tenantId);
+    userCreationService.createUserForTenant(Objects.requireNonNull(user), tenantId);
 
     return UserResponse.builder()
         .id(user.getId())

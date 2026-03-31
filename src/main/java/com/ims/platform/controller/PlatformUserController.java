@@ -8,6 +8,8 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.lang.NonNull;
+import java.util.Objects;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -30,30 +32,30 @@ public class PlatformUserController {
   @PostMapping
   @PreAuthorize("hasAuthority('ROLE_ROOT')")
   @ResponseStatus(HttpStatus.CREATED)
-  public User createPlatformUser(@Valid @RequestBody CreatePlatformUserRequest request) {
-    return platformUserService.createPlatformUser(request);
+  public @NonNull User createPlatformUser(@Valid @NonNull @RequestBody CreatePlatformUserRequest request) {
+    return Objects.requireNonNull(platformUserService.createPlatformUser(request));
   }
 
   @GetMapping
   @PreAuthorize("hasAnyAuthority('ROLE_ROOT', 'ROLE_PLATFORM_ADMIN')")
-  public Page<User> getPlatformUsers(Pageable pageable) {
-    return platformUserService.getPlatformUsers(pageable);
+  public @NonNull Page<User> getPlatformUsers(@NonNull Pageable pageable) {
+    return Objects.requireNonNull(platformUserService.getPlatformUsers(pageable));
   }
 
   @PatchMapping("/{id}/role")
   @PreAuthorize("hasAuthority('ROLE_ROOT')")
-  public User updateRole(@PathVariable Long id, @RequestBody Map<String, String> body) {
+  public @NonNull User updateRole(@NonNull @PathVariable Long id, @NonNull @RequestBody Map<String, String> body) {
     String role = body.get("role");
     if (role == null) {
       throw new IllegalArgumentException("Role is required");
     }
-    return platformUserService.updatePlatformUserRole(id, role);
+    return Objects.requireNonNull(platformUserService.updatePlatformUserRole(id, role));
   }
 
   @DeleteMapping("/{id}")
   @PreAuthorize("hasAuthority('ROLE_ROOT')")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  public void deactivatePlatformUser(@PathVariable Long id) {
+  public void deactivatePlatformUser(@NonNull @PathVariable Long id) {
     platformUserService.deactivatePlatformUser(id);
   }
 }

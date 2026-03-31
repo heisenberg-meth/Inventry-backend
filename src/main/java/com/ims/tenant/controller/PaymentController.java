@@ -1,6 +1,6 @@
 package com.ims.tenant.controller;
 
-import com.ims.dto.CreatePaymentRequest;
+import com.ims.dto.PaymentRequest;
 import com.ims.model.Payment;
 import com.ims.shared.rbac.RequiresRole;
 import com.ims.tenant.service.PaymentService;
@@ -9,8 +9,10 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import java.util.Objects;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.lang.NonNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/tenant/payments")
 @RequiredArgsConstructor
-@Tag(name = "Tenant - Payments")
+@Tag(name = "Tenant - Payments", description = "Payment tracking")
 @SecurityRequirement(name = "bearerAuth")
 public class PaymentController {
 
@@ -32,21 +34,28 @@ public class PaymentController {
   @PostMapping
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Record payment against invoice")
-  public ResponseEntity<Payment> createPayment(@Valid @RequestBody CreatePaymentRequest request) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(paymentService.processPayment(request));
+  public ResponseEntity<Payment> recordPayment(@Valid @RequestBody PaymentRequest request) {
+    Payment payment = paymentService.recordPayment(
+        Objects.requireNonNull(request.getInvoiceId()),
+        request.getAmount(),
+        request.getPaymentMode(),
+        request.getReference(),
+        request.getNotes(),
+        request.getUserId());
+    return ResponseEntity.status(HttpStatus.CREATED).body(payment);
   }
 
   @GetMapping
   @RequiresRole({"ADMIN", "MANAGER"})
-  @Operation(summary = "List all payments")
-  public ResponseEntity<Page<Payment>> getPayments(Pageable pageable) {
+  @Operation(summary = "List mappings")
+  public ResponseEntity<Page<Payment>> list(@NonNull Pageable pageable) {
     return ResponseEntity.ok(paymentService.getPayments(pageable));
   }
 
   @GetMapping("/{id}")
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
-  @Operation(summary = "Get payment detail")
-  public ResponseEntity<Payment> getPaymentById(@PathVariable Long id) {
-    return ResponseEntity.ok(paymentService.getPaymentById(id));
+  @RequiresRole({"ADMIN", "MANAGER"})
+  @Operation(summary = "Get payment details")
+  public ResponseEntity<Payment> get(@NonNull @PathVariable Long id) {
+    return ResponseEntity.ok(paymentService.getById(id));
   }
 }

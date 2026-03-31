@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.cache.Cache;
+import org.springframework.lang.NonNull;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.interceptor.CacheOperationInvocationContext;
@@ -24,7 +25,7 @@ import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSeriali
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.data.web.config.EnableSpringDataWebSupport;
-
+@SuppressWarnings("null")
 @Configuration
 @EnableCaching
 @EnableSpringDataWebSupport(pageSerializationMode = EnableSpringDataWebSupport.PageSerializationMode.VIA_DTO)
@@ -54,6 +55,7 @@ public class RedisConfig {
   public CacheResolver tenantAwareCacheResolver(CacheManager cacheManager) {
     return new CacheResolver() {
       @Override
+      @NonNull
       public Collection<? extends Cache> resolveCaches(CacheOperationInvocationContext<?> context) {
         Long tenantId = TenantContext.get();
         Collection<String> cacheNames = context.getOperation().getCacheNames();

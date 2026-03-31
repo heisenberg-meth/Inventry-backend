@@ -2,6 +2,7 @@ package com.ims.config;
 
 import com.ims.model.User;
 import com.ims.tenant.repository.UserRepository;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
@@ -33,7 +34,7 @@ public class DataSeeder implements ApplicationRunner {
               .tenantId(0L) // Assigned to system tenant 0
               .isActive(true)
               .build();
-      userRepository.save(root);
+      userRepository.save(Objects.requireNonNull(root));
       log.info("Seed data: ROOT user created (root@ims.com / root123)");
     } else {
       log.info("Seed data: ROOT user already exists");

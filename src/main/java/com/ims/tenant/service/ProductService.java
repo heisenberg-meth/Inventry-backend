@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.lang.NonNull;
+import java.util.Objects;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -43,12 +45,12 @@ public class ProductService {
     return productRepository.findByIsActiveTrue(pageable).map(this::toResponse);
   }
 
-  public ProductResponse getProductById(Long id) {
+  public ProductResponse getProductById(@NonNull Long id) {
     Product product =
         productRepository
             .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Product not found"));
-    return toResponse(product);
+    return toResponse(Objects.requireNonNull(product));
   }
 
   @Transactional
@@ -96,7 +98,7 @@ public class ProductService {
             .isActive(true)
             .build();
 
-    product = productRepository.save(product);
+    product = productRepository.save(Objects.requireNonNull(product));
 
     // Pharmacy extension — same @Transactional
     if ("PHARMACY".equals(businessType) && request.getPharmacyDetails() != null) {
@@ -110,7 +112,7 @@ public class ProductService {
               .hsnCode(pd.getHsnCode())
               .schedule(pd.getSchedule())
               .build();
-      pharmacyProductRepository.save(pp);
+      pharmacyProductRepository.save(Objects.requireNonNull(pp));
     }
 
     // Warehouse extension — same @Transactional
@@ -124,7 +126,7 @@ public class ProductService {
               .rack(wd.getRack())
               .bin(wd.getBin())
               .build();
-      warehouseProductRepository.save(wp);
+      warehouseProductRepository.save(Objects.requireNonNull(wp));
     }
 
     log.info("Product created: id={} name={}", product.getId(), product.getName());
@@ -133,7 +135,7 @@ public class ProductService {
 
   @Transactional
   @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "products", allEntries = true)
-  public ProductResponse updateProduct(Long id, CreateProductRequest request) {
+  public ProductResponse updateProduct(@NonNull Long id, CreateProductRequest request) {
     Product product =
         productRepository
             .findById(id)
@@ -165,20 +167,20 @@ public class ProductService {
     }
     product.setUpdatedAt(LocalDateTime.now());
 
-    product = productRepository.save(product);
-    return toResponse(product);
+    product = productRepository.save(Objects.requireNonNull(product));
+    return toResponse(Objects.requireNonNull(product));
   }
 
   @Transactional
   @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "products", allEntries = true)
-  public void deleteProduct(Long id) {
+  public void deleteProduct(@NonNull Long id) {
     Product product =
         productRepository
             .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Product not found"));
     product.setIsActive(false);
     product.setUpdatedAt(LocalDateTime.now());
-    productRepository.save(product);
+    productRepository.save(Objects.requireNonNull(product));
     log.info("Product soft deleted: id={}", id);
   }
 
@@ -198,7 +200,7 @@ public class ProductService {
 
     LocalDate threshold = LocalDate.now().plusDays(days);
     return pharmacyProductRepository.findExpiring(threshold).stream()
-        .map(pp -> toResponseWithPharmacy(pp.getProduct(), pp))
+        .map(pp -> toResponseWithPharmacy(Objects.requireNonNull(pp.getProduct()), pp))
         .collect(Collectors.toList());
   }
 
@@ -230,7 +232,7 @@ public class ProductService {
     return null;
   }
 
-  private ProductResponse toResponse(Product product) {
+  private ProductResponse toResponse(@NonNull Product product) {
     ProductResponse.ProductResponseBuilder builder =
         ProductResponse.builder()
             .id(product.getId())
@@ -247,33 +249,38 @@ public class ProductService {
             .createdAt(product.getCreatedAt());
 
     // Enrich with pharmacy details if available
-    pharmacyProductRepository
-        .findById(product.getId())
-        .ifPresent(
-            pp -> {
-              builder
-                  .batchNumber(pp.getBatchNumber())
-                  .expiryDate(pp.getExpiryDate())
-                  .manufacturer(pp.getManufacturer())
-                  .hsnCode(pp.getHsnCode());
-            });
+    Long productId = product.getId();
+    if (productId != null) {
+      pharmacyProductRepository
+          .findById(productId)
+          .ifPresent(
+              pp -> {
+                builder
+                    .batchNumber(pp.getBatchNumber())
+                    .expiryDate(pp.getExpiryDate())
+                    .manufacturer(pp.getManufacturer())
+                    .hsnCode(pp.getHsnCode());
+              });
+    }
 
     // Enrich with warehouse details if available
-    warehouseProductRepository
-        .findById(product.getId())
-        .ifPresent(
-            wp -> {
-              builder
-                  .storageLocation(wp.getStorageLocation())
-                  .zone(wp.getZone())
-                  .rack(wp.getRack())
-                  .bin(wp.getBin());
-            });
+    if (productId != null) {
+      warehouseProductRepository
+          .findById(productId)
+          .ifPresent(
+              wp -> {
+                builder
+                    .storageLocation(wp.getStorageLocation())
+                    .zone(wp.getZone())
+                    .rack(wp.getRack())
+                    .bin(wp.getBin());
+              });
+    }
 
     return builder.build();
   }
 
-  private ProductResponse toResponseWithPharmacy(Product product, PharmacyProduct pp) {
+  private ProductResponse toResponseWithPharmacy(@NonNull Product product, @NonNull PharmacyProduct pp) {
     return ProductResponse.builder()
         .id(product.getId())
         .name(product.getName())
