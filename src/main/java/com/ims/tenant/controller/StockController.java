@@ -5,6 +5,7 @@ import com.ims.model.StockMovement;
 import com.ims.model.TransferOrder;
 import com.ims.shared.rbac.RequiresRole;
 import com.ims.tenant.domain.warehouse.WarehouseProduct;
+import com.ims.tenant.domain.warehouse.TransferOrderService;
 import com.ims.tenant.service.StockService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -34,6 +35,16 @@ import org.springframework.web.bind.annotation.RestController;
 public class StockController {
 
   private final StockService stockService;
+  private final TransferOrderService transferOrderService;
+
+  @PostMapping("/transfer")
+  @RequiresRole({"ADMIN", "MANAGER"})
+  @Operation(summary = "Transfer stock between locations")
+  public @NonNull ResponseEntity<TransferOrder> transfer(@RequestBody @NonNull Map<String, Object> body) {
+    Long userId = (Long) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal();
+    TransferOrder result = Objects.requireNonNull(transferOrderService.createTransfer(body, userId));
+    return ResponseEntity.ok(result);
+  }
 
   @GetMapping("/by-location")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
