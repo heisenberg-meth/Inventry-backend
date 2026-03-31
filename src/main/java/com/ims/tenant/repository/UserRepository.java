@@ -32,4 +32,23 @@ public interface UserRepository extends JpaRepository<User, Long> {
   long countActiveByTenantId(@Param("tenantId") Long tenantId);
 
   boolean existsByEmail(String email);
+
+  @Query(value = "SELECT * FROM users WHERE reset_token = :token", nativeQuery = true)
+  Optional<User> findByResetToken(@Param("token") String token);
+
+  @Query(
+      value = "SELECT * FROM users WHERE tenant_id = :tenantId AND scope = 'TENANT'",
+      nativeQuery = true)
+  Page<User> findByTenantIdAndScope(
+      @Param("tenantId") Long tenantId, Pageable pageable);
+
+  @Query(
+      value =
+          "SELECT * FROM users WHERE tenant_id = :tenantId AND scope = 'TENANT'"
+              + " AND (name ILIKE '%' || :search || '%' OR email ILIKE '%' || :search || '%')",
+      nativeQuery = true)
+  Page<User> findByTenantIdAndSearch(
+      @Param("tenantId") Long tenantId,
+      @Param("search") String search,
+      Pageable pageable);
 }
