@@ -9,7 +9,9 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.Map;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
+import org.springframework.lang.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -35,22 +37,22 @@ public class UserController {
   @PostMapping
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Create tenant user")
-  public ResponseEntity<UserResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(userService.createUser(request));
+  public ResponseEntity<UserResponse> createUser(@Valid @RequestBody @NonNull CreateUserRequest request) {
+    return ResponseEntity.status(HttpStatus.CREATED).body(userService.createUser(Objects.requireNonNull(request)));
   }
 
   @GetMapping
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "List tenant users")
-  public ResponseEntity<Page<UserResponse>> getUsers(Pageable pageable) {
-    return ResponseEntity.ok(userService.getUsers(pageable));
+  public ResponseEntity<Page<UserResponse>> getUsers(@NonNull Pageable pageable) {
+    return ResponseEntity.ok(userService.getUsers(Objects.requireNonNull(pageable)));
   }
 
   @GetMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Get user details")
-  public ResponseEntity<UserResponse> getUser(@PathVariable Long id) {
-    return ResponseEntity.ok(userService.getUserById(id));
+  public ResponseEntity<UserResponse> getUser(@PathVariable @NonNull Long id) {
+    return ResponseEntity.ok(userService.getUserById(Objects.requireNonNull(id)));
   }
 
   @PatchMapping("/{id}/role")
@@ -62,14 +64,14 @@ public class UserController {
     if (role == null || role.isBlank()) {
       throw new IllegalArgumentException("Role is required");
     }
-    return ResponseEntity.ok(userService.updateRole(id, role));
+    return ResponseEntity.ok(userService.updateRole(Objects.requireNonNull(id), Objects.requireNonNull(role)));
   }
 
   @DeleteMapping("/{id}")
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Deactivate user (soft delete)")
-  public ResponseEntity<Void> deactivateUser(@PathVariable Long id) {
-    userService.deactivateUser(id);
+  public ResponseEntity<Void> deactivateUser(@PathVariable @NonNull Long id) {
+    userService.deactivateUser(Objects.requireNonNull(id));
     return ResponseEntity.noContent().build();
   }
 }

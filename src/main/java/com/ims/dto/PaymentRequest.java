@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 import lombok.Data;
 
 @Data
-public class CreatePaymentRequest {
+public class PaymentRequest {
   @NotNull(message = "Invoice ID is required")
   private Long invoiceId;
 
@@ -17,4 +17,5 @@ public class CreatePaymentRequest {
   private String paymentMode;
   private String reference;
   private String notes;
+  private Long userId;
 }

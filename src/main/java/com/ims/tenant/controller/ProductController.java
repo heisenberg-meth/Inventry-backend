@@ -13,6 +13,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.lang.NonNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -53,7 +54,7 @@ public class ProductController {
   @GetMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Get product detail")
-  public ResponseEntity<ProductResponse> getProduct(@PathVariable Long id) {
+  public ResponseEntity<ProductResponse> getProduct(@NonNull @PathVariable Long id) {
     return ResponseEntity.ok(productService.getProductById(id));
   }
 
@@ -61,14 +62,14 @@ public class ProductController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Update product")
   public ResponseEntity<ProductResponse> updateProduct(
-      @PathVariable Long id, @Valid @RequestBody CreateProductRequest request) {
+      @NonNull @PathVariable Long id, @Valid @RequestBody CreateProductRequest request) {
     return ResponseEntity.ok(productService.updateProduct(id, request));
   }
 
   @DeleteMapping("/{id}")
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Soft delete product")
-  public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
+  public ResponseEntity<Void> deleteProduct(@NonNull @PathVariable Long id) {
     productService.deleteProduct(id);
     return ResponseEntity.noContent().build();
   }

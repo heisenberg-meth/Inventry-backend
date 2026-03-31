@@ -9,8 +9,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -39,15 +41,15 @@ public class TenantSettingsController {
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Configure custom domains and business name")
   public ResponseEntity<TenantResponse> updateSettings(
-      @Valid @RequestBody UpdateTenantSettingsRequest request) {
+      @Valid @RequestBody @NonNull UpdateTenantSettingsRequest request) {
     Long tenantId = getTenantId();
-    return ResponseEntity.ok(tenantSettingsService.updateSettings(tenantId, request));
+    return ResponseEntity.ok(tenantSettingsService.updateSettings(tenantId, Objects.requireNonNull(request)));
   }
 
-  private Long getTenantId() {
+  private @NonNull Long getTenantId() {
     var auth = SecurityContextHolder.getContext().getAuthentication();
     if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
-      return details.getTenantId();
+      return Objects.requireNonNull(details.getTenantId());
     }
     throw new SecurityException("Auth context missing for tenant settings");
   }
