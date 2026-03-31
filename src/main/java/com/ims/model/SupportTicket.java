@@ -1,6 +1,5 @@
 package com.ims.model;
 
-import org.hibernate.annotations.TenantId;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -14,50 +13,49 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "users")
+@Table(name = "support_tickets")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User {
+public class SupportTicket {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @TenantId
-  @Column(name = "tenant_id")
+  @Column(name = "tenant_id", nullable = false)
   private Long tenantId;
 
-  @Column(nullable = false)
-  private String name;
-
-  @Column(nullable = false, unique = true)
-  private String email;
-
-  @Column(name = "password_hash", nullable = false)
-  private String passwordHash;
+  @Column(name = "created_by", nullable = false)
+  private Long createdBy;
 
   @Column(nullable = false)
-  private String role;
+  private String title;
 
-  @Column(nullable = false)
-  private String scope;
+  @Column(nullable = false, columnDefinition = "TEXT")
+  private String description;
 
-  @Column(name = "is_active")
+  @Column
   @Builder.Default
-  private Boolean isActive = true;
+  private String priority = "MEDIUM";
 
-  @Column(name = "reset_token")
-  private String resetToken;
+  @Column
+  @Builder.Default
+  private String status = "OPEN";
 
-  @Column(name = "reset_token_expiry")
-  private LocalDateTime resetTokenExpiry;
+  @Column
+  @Builder.Default
+  private String category = "GENERAL";
 
-  @Column(name = "last_login")
-  private LocalDateTime lastLogin;
+  @Column(name = "assigned_to")
+  private Long assignedTo;
 
   @Column(name = "created_at")
   @Builder.Default
   private LocalDateTime createdAt = LocalDateTime.now();
+
+  @Column(name = "updated_at")
+  @Builder.Default
+  private LocalDateTime updatedAt = LocalDateTime.now();
 }
