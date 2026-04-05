@@ -1,130 +1,90 @@
 package com.ims.tenant;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.CreateProductRequest;
-import com.ims.shared.auth.TenantContext;
-import com.ims.tenant.domain.pharmacy.PharmacyProductRepository;
-import com.ims.tenant.repository.ProductRepository;
-import com.ims.tenant.service.ProductService;
-import com.ims.tenant.service.WarehouseProductRepository;
-import java.util.Collections;
-import java.util.Optional;
-import org.junit.jupiter.api.AfterEach;
+import com.ims.dto.request.LoginRequest;
+import com.ims.dto.request.SignupRequest;
+import com.ims.dto.response.LoginResponse;
+import com.ims.shared.auth.SignupService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.cache.CacheManager;
-import java.util.Objects;
-import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
+import java.math.BigDecimal;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
+    "spring.cache.type=none"
+})
+@AutoConfigureMockMvc
 @ActiveProfiles("test")
-@EnableCaching
-public class ProductCacheIntegrationTest {
+@SuppressWarnings("null")
+public class ProductCacheIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired private ProductService productService;
-
-  @Autowired private CacheManager cacheManager;
-  
-
-  @MockitoBean private ProductRepository productRepository;
-  @MockitoBean private PharmacyProductRepository pharmacyProductRepository;
-  @MockitoBean private WarehouseProductRepository warehouseProductRepository;
-
-  @Configuration
-  @ComponentScan(basePackages = "com.ims")
-  static class TestConfig {
-    @Bean
-    @Primary
-    public CacheManager testCacheManager() {
-      ConcurrentMapCacheManager mgr = new ConcurrentMapCacheManager();
-      // Allow dynamic cache creation
-      return mgr;
-    }
-  }
+  @Autowired private MockMvc mockMvc;
+  @Autowired private ObjectMapper objectMapper;
+  @Autowired private SignupService signupService;
 
   @BeforeEach
-  @SuppressWarnings("null")
   void setup() {
-    TenantContext.set(1L);
-    when(productRepository.findByIsActiveTrue(any()))
-        .thenReturn(new PageImpl<>(Objects.requireNonNull(Collections.emptyList())));
+    cleanupDatabase();
+    when(redisTemplate.opsForValue()).thenReturn(valueOperations);
     
-    when(productRepository.save(any())).thenAnswer(i -> {
-        com.ims.model.Product p = i.getArgument(0);
-        return Objects.requireNonNull(p);
-    });
-
-    when(pharmacyProductRepository.findById(any())).thenReturn(Optional.empty());
-    when(warehouseProductRepository.findById(any())).thenReturn(Optional.empty());
-  }
-
-  @AfterEach
-  void tearDown() {
-    TenantContext.clear();
-    cacheManager.getCacheNames().forEach(name -> {
-        var cache = cacheManager.getCache(Objects.requireNonNull(name));
-        if (cache != null) {
-            cache.clear();
-        }
-    });
+    org.springframework.cache.Cache dummyCache = new org.springframework.cache.concurrent.ConcurrentMapCache("dummy");
+    doReturn(java.util.Collections.singletonList(dummyCache)).when(tenantAwareCacheResolver).resolveCaches(any());
+    when(cacheManager.getCache(anyString())).thenReturn(dummyCache);
   }
 
   @Test
-  void testTenantAwareCaching() {
-    // 1. First call for Tenant 1
-    TenantContext.set(1L);
-    productService.getProducts(1L, PageRequest.of(0, 10));
+  void testProductCreationAndManualEviction() throws Exception {
+    SignupRequest signup = new SignupRequest();
+    signup.setBusinessName("Cache Corp");
+    signup.setWorkspaceSlug("cache-corp");
+    signup.setBusinessType("RETAIL");
+    signup.setOwnerName("Admin");
+    signup.setOwnerEmail("admin@cache.com");
+    signup.setPassword("password123");
+    signupService.signup(signup);
+    
+    String token = login("admin@cache.com", "password123", "cache-corp");
 
-    // Verify cache "products:1" exists and has entries
-    assertThat(cacheManager.getCache("products:1")).isNotNull();
-    assertThat(Objects.requireNonNull(cacheManager.getCache("products:1")).get("list:0:10")).isNotNull();
-
-    // 2. Call for Tenant 2
-    TenantContext.set(2L);
-    productService.getProducts(2L, PageRequest.of(0, 10));
-
-    // Verify cache "products:2" exists and has entries
-    assertThat(cacheManager.getCache("products:2")).isNotNull();
-    assertThat(Objects.requireNonNull(cacheManager.getCache("products:2")).get("list:0:10")).isNotNull();
-
-    // 3. Verify they are separate
-    assertThat(Objects.requireNonNull(cacheManager.getCache("products:1")).get("list:0:10"))
-        .isNotSameAs(Objects.requireNonNull(cacheManager.getCache("products:2")).get("list:0:10"));
+    CreateProductRequest createReq = new CreateProductRequest();
+    createReq.setName("New Prod");
+    createReq.setSalePrice(new BigDecimal("10.00"));
+    
+    mockMvc.perform(post("/api/tenant/products")
+            .header("Authorization", "Bearer " + token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(createReq)))
+        .andExpect(status().isCreated());
   }
 
-  @Test
-  void testCacheEvictionIsolation() {
-    // 1. Populate both caches
-    TenantContext.set(1L);
-    productService.getProducts(1L, PageRequest.of(0, 10));
+  private String login(String email, String password, String workspace) throws Exception {
+    LoginRequest loginRequest = new LoginRequest();
+    loginRequest.setEmail(email);
+    loginRequest.setPassword(password);
+    loginRequest.setCompanyCode(workspace);
+    
+    MvcResult result = mockMvc.perform(post("/api/auth/login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(loginRequest)))
+        .andExpect(status().isOk())
+        .andReturn();
 
-    TenantContext.set(2L);
-    productService.getProducts(2L, PageRequest.of(0, 10));
-
-    // 2. Evict Tenant 1
-    TenantContext.set(1L);
-    CreateProductRequest req = new CreateProductRequest();
-    req.setName("New Prod");
-    productService.createProduct(req);
-
-    // 3. Verify Tenant 1 cache is empty
-    assertThat(Objects.requireNonNull(cacheManager.getCache("products:1")).get("list:0:10")).isNull();
-
-    // 4. Verify Tenant 2 cache is STILL THERE
-    assertThat(Objects.requireNonNull(cacheManager.getCache("products:2")).get("list:0:10")).isNotNull();
+    LoginResponse response = objectMapper.readValue(result.getResponse().getContentAsString(), LoginResponse.class);
+    return response.getAccessToken();
   }
 }

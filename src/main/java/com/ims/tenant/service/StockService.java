@@ -14,7 +14,6 @@ import com.ims.tenant.repository.StockMovementRepository;
 import com.ims.tenant.repository.TransferOrderRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
-import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
@@ -27,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class StockService {
 
   private final ProductRepository productRepository;
@@ -36,7 +36,11 @@ public class StockService {
   private final TransferOrderRepository transferOrderRepository;
 
   private void checkWarehouseType() {
-    Tenant tenant = tenantRepository.findById(Objects.requireNonNull(TenantContext.get())).orElseThrow();
+    Long tenantId = TenantContext.get();
+    if (tenantId == null) {
+      throw new IllegalStateException("No tenant context found");
+    }
+    Tenant tenant = tenantRepository.findById(tenantId).orElseThrow();
     if (!"WAREHOUSE".equals(tenant.getBusinessType())) {
       throw new IllegalArgumentException("Only available for WAREHOUSE tenants");
     }
@@ -44,19 +48,19 @@ public class StockService {
 
   public @NonNull Page<WarehouseProduct> getProductsByLocation(@NonNull String location, @NonNull Pageable pageable) {
     checkWarehouseType();
-    return Objects.requireNonNull(warehouseProductRepository.findByLocation(location, pageable));
+    return warehouseProductRepository.findByLocation(location, pageable);
   }
 
   public @NonNull Page<TransferOrder> getTransferOrders(@NonNull Pageable pageable) {
     checkWarehouseType();
-    return Objects.requireNonNull(transferOrderRepository.findAll(pageable));
+    return transferOrderRepository.findAll(pageable);
   }
 
   public @NonNull TransferOrder getTransferOrderById(@NonNull Long id) {
     checkWarehouseType();
-    return Objects.requireNonNull(transferOrderRepository
+    return transferOrderRepository
         .findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Transfer Order not found")));
+        .orElseThrow(() -> new EntityNotFoundException("Transfer Order not found"));
   }
 
   @Transactional
@@ -86,7 +90,7 @@ public class StockService {
     }
 
     order.setStatus(newStatus);
-    order = Objects.requireNonNull(transferOrderRepository.save(order));
+    order = transferOrderRepository.save(order);
 
     if ("COMPLETED".equals(newStatus)) {
       // Update warehouse product location
@@ -98,7 +102,7 @@ public class StockService {
       warehouseProductRepository.save(wp);
 
       // Log stock movement
-      stockMovementRepository.save(Objects.requireNonNull(
+      stockMovementRepository.save(
           StockMovement.builder()
               .productId(order.getProductId())
               .movementType("TRANSFER")
@@ -107,7 +111,7 @@ public class StockService {
               .createdBy(userId)
               .referenceId(order.getId())
               .referenceType("TRANSFER_ORDER")
-              .build()));
+              .build());
 
       log.info(
           "Transfer order COMPLETED: id={} product={} quantity={} {} -> {}",
@@ -136,7 +140,7 @@ public class StockService {
     product.setUpdatedAt(LocalDateTime.now());
     productRepository.save(product);
 
-    stockMovementRepository.save(Objects.requireNonNull(
+    stockMovementRepository.save(
         StockMovement.builder()
             .productId(productId)
             .movementType("IN")
@@ -145,7 +149,7 @@ public class StockService {
             .newStock(product.getStock())
             .notes(notes)
             .createdBy(userId)
-            .build()));
+            .build());
 
     log.info(
         "Stock IN: product={} qty={} {}→{}",
@@ -178,7 +182,7 @@ public class StockService {
     product.setUpdatedAt(LocalDateTime.now());
     productRepository.save(product);
 
-    stockMovementRepository.save(Objects.requireNonNull(
+    stockMovementRepository.save(
         StockMovement.builder()
             .productId(productId)
             .movementType("OUT")
@@ -187,7 +191,7 @@ public class StockService {
             .newStock(product.getStock())
             .notes(notes)
             .createdBy(userId)
-            .build()));
+            .build());
 
     log.info(
         "Stock OUT: product={} qty={} {}→{}",
@@ -212,7 +216,7 @@ public class StockService {
     product.setUpdatedAt(LocalDateTime.now());
     productRepository.save(product);
 
-    stockMovementRepository.save(Objects.requireNonNull(
+    stockMovementRepository.save(
         StockMovement.builder()
             .productId(productId)
             .movementType("ADJUSTMENT")
@@ -221,7 +225,7 @@ public class StockService {
             .newStock(product.getStock())
             .notes(notes)
             .createdBy(userId)
-            .build()));
+            .build());
 
     log.info(
         "Stock ADJUST: product={} qty={} {}→{}",
@@ -232,11 +236,11 @@ public class StockService {
   }
 
   public @NonNull Page<StockMovement> getMovements(@NonNull Pageable pageable) {
-    return Objects.requireNonNull(stockMovementRepository.findAllByOrderByCreatedAtDesc(pageable));
+    return stockMovementRepository.findAllByOrderByCreatedAtDesc(pageable);
   }
 
   public @NonNull Page<StockMovement> getFilteredMovements(
       @NonNull Long productId, LocalDateTime from, LocalDateTime to, @NonNull Pageable pageable) {
-    return Objects.requireNonNull(stockMovementRepository.findByFilters(productId, from, to, pageable));
+    return stockMovementRepository.findByFilters(productId, from, to, pageable);
   }
 }

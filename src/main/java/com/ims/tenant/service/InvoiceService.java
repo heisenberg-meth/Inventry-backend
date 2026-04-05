@@ -17,7 +17,6 @@ import com.ims.tenant.repository.OrderItemRepository;
 import com.ims.tenant.repository.OrderRepository;
 import com.ims.tenant.repository.ProductRepository;
 import jakarta.persistence.EntityNotFoundException;
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -38,6 +37,7 @@ import org.thymeleaf.context.Context;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class InvoiceService {
 
   private final InvoiceRepository invoiceRepository;
@@ -65,17 +65,7 @@ public class InvoiceService {
       throw new IllegalArgumentException("Invoice already exists for this order");
     }
 
-    Tenant tenant =
-        tenantRepository
-            .findById(Objects.requireNonNull(TenantContext.get()))
-            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
-
-    tenant.setInvoiceSequence(tenant.getInvoiceSequence() + 1);
-    tenantRepository.save(tenant);
-
-    String dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-    String invoiceNumber =
-        String.format("INV-%d-%s-%04d", TenantContext.get(), dateStr, tenant.getInvoiceSequence());
+    String invoiceNumber = incrementAndGetInvoiceNumber();
 
     Invoice invoice =
         Invoice.builder()
@@ -92,7 +82,7 @@ public class InvoiceService {
             .build();
 
     log.info("Manual invoice created: {} for order {}", invoiceNumber, order.getId());
-    return Objects.requireNonNull(invoiceRepository.save(invoice));
+    return invoiceRepository.save(invoice);
   }
 
   @Transactional
@@ -119,22 +109,12 @@ public class InvoiceService {
       invoice.setPaidAt(request.getPaidAt() != null ? request.getPaidAt() : LocalDateTime.now());
     }
 
-    return Objects.requireNonNull(invoiceRepository.save(invoice));
+    return invoiceRepository.save(invoice);
   }
 
   @Transactional
   public @NonNull Invoice createFromOrder(@NonNull Order order) {
-    Tenant tenant =
-        tenantRepository
-            .findById(Objects.requireNonNull(TenantContext.get()))
-            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
-
-    tenant.setInvoiceSequence(tenant.getInvoiceSequence() + 1);
-    tenantRepository.save(tenant);
-
-    String dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-    String invoiceNumber =
-        String.format("INV-%d-%s-%04d", TenantContext.get(), dateStr, tenant.getInvoiceSequence());
+    String invoiceNumber = incrementAndGetInvoiceNumber();
 
     Invoice invoice =
         Invoice.builder()
@@ -148,11 +128,24 @@ public class InvoiceService {
             .build();
 
     log.info("Invoice created: {} for order {}", invoiceNumber, order.getId());
-    return Objects.requireNonNull(invoiceRepository.save(invoice));
+    return invoiceRepository.save(invoice);
+  }
+
+  private String incrementAndGetInvoiceNumber() {
+    Tenant tenant =
+        tenantRepository
+            .findById(Objects.requireNonNull(TenantContext.get()))
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+
+    tenant.setInvoiceSequence(tenant.getInvoiceSequence() + 1);
+    tenantRepository.save(tenant);
+
+    String dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+    return String.format("INV-%d-%s-%04d", tenant.getId(), dateStr, tenant.getInvoiceSequence());
   }
 
   @Transactional(readOnly = true)
-  public byte[] generatePdf(Long id) {
+  public byte[] generatePdf(@NonNull Long id) {
     Invoice invoice =
         invoiceRepository
             .findById(id)
@@ -160,17 +153,17 @@ public class InvoiceService {
 
     Order order =
         orderRepository
-            .findById(invoice.getOrderId())
+            .findById(Objects.requireNonNull(invoice.getOrderId()))
             .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
     Tenant tenant =
         tenantRepository
-            .findById(TenantContext.get())
+            .findById(Objects.requireNonNull(TenantContext.get()))
             .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
     Customer customer =
         customerRepository
-            .findById(order.getCustomerId())
+            .findById(Objects.requireNonNull(order.getCustomerId()))
             .orElseThrow(() -> new EntityNotFoundException("Customer not found"));
 
     List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
@@ -181,7 +174,7 @@ public class InvoiceService {
                 item -> {
                   Product product =
                       productRepository
-                          .findById(item.getProductId())
+                          .findById(Objects.requireNonNull(item.getProductId()))
                           .orElseThrow(() -> new EntityNotFoundException("Product not found"));
                   Map<String, Object> map = new HashMap<>();
                   map.put("productName", product.getName());
@@ -203,7 +196,9 @@ public class InvoiceService {
     context.setVariable("customerGstin", customer.getGstin());
 
     context.setVariable("invoiceNumber", invoice.getInvoiceNumber());
-    context.setVariable("invoiceDate", invoice.getCreatedAt().toLocalDate());
+    context.setVariable(
+        "invoiceDate",
+        invoice.getCreatedAt() != null ? invoice.getCreatedAt().toLocalDate() : LocalDate.now());
     context.setVariable("orderId", order.getId());
     context.setVariable("status", invoice.getStatus());
 
@@ -222,9 +217,8 @@ public class InvoiceService {
   }
 
   public @NonNull Invoice getInvoiceById(@NonNull Long id) {
-    return Objects.requireNonNull(
-        invoiceRepository
-            .findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Invoice not found")));
+    return invoiceRepository
+        .findById(id)
+        .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
   }
 }

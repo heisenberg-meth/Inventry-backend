@@ -1,12 +1,8 @@
 package com.ims.tenant.domain.warehouse;
 
-import com.ims.model.StockMovement;
 import com.ims.model.TransferOrder;
 import com.ims.shared.auth.TenantContext;
-import com.ims.tenant.repository.StockMovementRepository;
 import com.ims.tenant.repository.TransferOrderRepository;
-import com.ims.tenant.service.WarehouseProductRepository;
-import jakarta.persistence.EntityNotFoundException;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,8 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class TransferOrderService {
 
   private final TransferOrderRepository transferOrderRepository;
-  private final WarehouseProductRepository warehouseProductRepository;
-  private final StockMovementRepository stockMovementRepository;
 
   @Transactional
   public @NonNull TransferOrder createTransfer(@NonNull Map<String, Object> request, @NonNull Long userId) {

@@ -35,7 +35,7 @@ public class SupportService {
   // ==================== TENANT-SIDE ====================
 
   @Transactional
-  public SupportTicket createTicket(
+  public @NonNull SupportTicket createTicket(
       @NonNull Long tenantId, @NonNull Long userId, @NonNull CreateTicketRequest request) {
 
     SupportTicket ticket =
@@ -49,7 +49,6 @@ public class SupportService {
             .status("OPEN")
             .build();
 
-    @SuppressWarnings("null")
     SupportTicket saved = Objects.requireNonNull(ticketRepository.save(ticket));
 
     auditLogService.log(
@@ -186,7 +185,7 @@ public class SupportService {
   // ==================== SHARED ====================
 
   @Transactional
-  public SupportMessage addMessage(
+  public @NonNull SupportMessage addMessage(
       @NonNull Long ticketId, @NonNull Long senderId, @NonNull String senderType,
       @NonNull AddMessageRequest request) {
 
@@ -203,7 +202,6 @@ public class SupportService {
             .message(request.getMessage())
             .build();
 
-    @SuppressWarnings("null")
     SupportMessage saved = Objects.requireNonNull(messageRepository.save(message));
 
     // Reopen if CLOSED and tenant messages

@@ -6,6 +6,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -71,7 +72,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     try {
       // Sliding window using Redis Sorted Set
       redisTemplate.opsForZSet().removeRangeByScore(key, 0, windowStart);
-      redisTemplate.opsForZSet().add(key, String.valueOf(now), now);
+      redisTemplate.opsForZSet().add(key, Objects.requireNonNull(String.valueOf(now)), now);
       redisTemplate.expire(key, WINDOW_SECONDS, TimeUnit.SECONDS);
       
       Long count = redisTemplate.opsForZSet().zCard(key);

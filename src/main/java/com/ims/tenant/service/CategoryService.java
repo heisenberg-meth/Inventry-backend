@@ -13,12 +13,12 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
-import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("null")
 public class CategoryService {
 
   private final CategoryRepository categoryRepository;
@@ -27,12 +27,12 @@ public class CategoryService {
 
   @Cacheable(cacheResolver = "tenantAwareCacheResolver", value = "categories", key = "'list:' + #pageable.pageNumber + ':' + #pageable.pageSize")
   public Page<Category> getCategories(@NonNull Pageable pageable) {
-    return categoryRepository.findAll(Objects.requireNonNull(pageable));
+    return categoryRepository.findAll(pageable);
   }
 
   public Category getById(@NonNull Long id) {
     return categoryRepository
-        .findById(Objects.requireNonNull(id))
+        .findById(id)
         .orElseThrow(() -> new EntityNotFoundException("Category not found"));
   }
 
@@ -50,7 +50,7 @@ public class CategoryService {
             .taxRate(request.getTaxRate() != null ? request.getTaxRate() : java.math.BigDecimal.ZERO)
             .build();
 
-    Category savedCategory = categoryRepository.save(Objects.requireNonNull(category));
+    Category savedCategory = categoryRepository.save(category);
 
     auditLogService.logAudit(
         "CREATE",
@@ -64,7 +64,7 @@ public class CategoryService {
   @Transactional
   @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "categories", allEntries = true)
   public Category update(@NonNull Long id, CategoryRequest request) {
-    Category category = getById(Objects.requireNonNull(id));
+    Category category = getById(id);
 
     if (!category.getName().equalsIgnoreCase(request.getName())
         && categoryRepository.existsByNameIgnoreCase(request.getName())) {
@@ -77,7 +77,7 @@ public class CategoryService {
       category.setTaxRate(request.getTaxRate());
     }
 
-    Category updatedCategory = categoryRepository.save(Objects.requireNonNull(category));
+    Category updatedCategory = categoryRepository.save(category);
 
     auditLogService.logAudit(
         "UPDATE",
@@ -100,7 +100,7 @@ public class CategoryService {
           "Category has " + productCount + " products. Reassign before deleting.");
     }
 
-    categoryRepository.delete(Objects.requireNonNull(category));
+    categoryRepository.delete(category);
 
     auditLogService.logAudit(
         "DELETE",

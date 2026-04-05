@@ -41,8 +41,8 @@ public class StockController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Transfer stock between locations")
   public @NonNull ResponseEntity<TransferOrder> transfer(@RequestBody @NonNull Map<String, Object> body) {
-    Long userId = (Long) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal();
-    TransferOrder result = Objects.requireNonNull(transferOrderService.createTransfer(body, Objects.requireNonNull(userId)));
+    Long userId = extractUserId();
+    TransferOrder result = Objects.requireNonNull(transferOrderService.createTransfer(body, userId));
     return ResponseEntity.ok(result);
   }
 
@@ -73,7 +73,7 @@ public class StockController {
   @Operation(summary = "Update transfer order status")
   public @NonNull ResponseEntity<TransferOrder> updateTransferStatus(
       @PathVariable @NonNull Long id, @RequestBody @NonNull TransferOrderStatusRequest request) {
-    Long userId = (Long) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal();
+    Long userId = extractUserId();
     return ResponseEntity.ok(Objects.requireNonNull(stockService.updateTransferStatus(id, request, userId)));
   }
 
@@ -81,7 +81,7 @@ public class StockController {
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Record stock received")
   public @NonNull ResponseEntity<Map<String, String>> stockIn(@RequestBody @NonNull Map<String, Object> body) {
-    Long userId = (Long) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal();
+    Long userId = extractUserId();
     Long productId = Long.valueOf(Objects.requireNonNull(body.get("product_id")).toString());
     int quantity = Integer.parseInt(Objects.requireNonNull(body.get("quantity")).toString());
     String notes = body.getOrDefault("notes", "").toString();
@@ -94,7 +94,7 @@ public class StockController {
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Record stock issued")
   public @NonNull ResponseEntity<Map<String, String>> stockOut(@RequestBody @NonNull Map<String, Object> body) {
-    Long userId = (Long) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal();
+    Long userId = extractUserId();
     Long productId = Long.valueOf(Objects.requireNonNull(body.get("product_id")).toString());
     int quantity = Integer.parseInt(Objects.requireNonNull(body.get("quantity")).toString());
     String notes = body.getOrDefault("notes", "").toString();
@@ -107,7 +107,7 @@ public class StockController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Manual stock adjustment")
   public @NonNull ResponseEntity<Map<String, String>> adjust(@RequestBody @NonNull Map<String, Object> body) {
-    Long userId = (Long) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal();
+    Long userId = extractUserId();
     Long productId = Long.valueOf(Objects.requireNonNull(body.get("product_id")).toString());
     int quantity = Integer.parseInt(Objects.requireNonNull(body.get("quantity")).toString());
     String notes = body.getOrDefault("notes", "").toString();
@@ -121,5 +121,8 @@ public class StockController {
   @Operation(summary = "Stock movement log")
   public @NonNull ResponseEntity<Page<StockMovement>> getMovements(@NonNull Pageable pageable) {
     return ResponseEntity.ok(Objects.requireNonNull(stockService.getMovements(pageable)));
+  }
+  private @NonNull Long extractUserId() {
+    return (Long) Objects.requireNonNull(Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal());
   }
 }
