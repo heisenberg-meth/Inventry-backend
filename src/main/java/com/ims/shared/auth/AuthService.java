@@ -99,9 +99,9 @@ public class AuthService {
     user.setLastLogin(LocalDateTime.now());
     userRepository.save(user);
 
-    auditLogService.logAudit(
+    auditLogService.log(
         "LOGIN",
-        "USER",
+        tenantId,
         user.getId(),
         "User logged in: " + user.getEmail() + " (" + user.getScope() + ")");
 

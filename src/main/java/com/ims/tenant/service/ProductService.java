@@ -32,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class ProductService {
 
   private final ProductRepository productRepository;
@@ -53,7 +54,7 @@ public class ProductService {
         productRepository
             .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Product not found"));
-    return toResponse(Objects.requireNonNull(product));
+    return toResponse(product);
   }
 
   @Transactional
@@ -101,7 +102,7 @@ public class ProductService {
             .isActive(true)
             .build();
 
-    product = productRepository.save(Objects.requireNonNull(product));
+    product = productRepository.save(product);
 
     auditLogService.logAudit(
         "CREATE",
@@ -121,7 +122,7 @@ public class ProductService {
               .hsnCode(pd.getHsnCode())
               .schedule(pd.getSchedule())
               .build();
-      pharmacyProductRepository.save(Objects.requireNonNull(pp));
+      pharmacyProductRepository.save(pp);
     }
 
     // Warehouse extension — same @Transactional
@@ -135,7 +136,7 @@ public class ProductService {
               .rack(wd.getRack())
               .bin(wd.getBin())
               .build();
-      warehouseProductRepository.save(Objects.requireNonNull(wp));
+      warehouseProductRepository.save(wp);
     }
 
     log.info("Product created: id={} name={}", product.getId(), product.getName());
@@ -176,7 +177,7 @@ public class ProductService {
     }
     product.setUpdatedAt(LocalDateTime.now());
 
-    product = productRepository.save(Objects.requireNonNull(product));
+    product = productRepository.save(product);
 
     auditLogService.logAudit(
         "UPDATE",
@@ -200,7 +201,7 @@ public class ProductService {
       if (pd.getHsnCode() != null) pp.setHsnCode(pd.getHsnCode());
       if (pd.getSchedule() != null) pp.setSchedule(pd.getSchedule());
 
-      pharmacyProductRepository.save(Objects.requireNonNull(pp));
+      pharmacyProductRepository.save(pp);
     }
 
     // Warehouse extension update
@@ -216,10 +217,10 @@ public class ProductService {
       if (wd.getRack() != null) wp.setRack(wd.getRack());
       if (wd.getBin() != null) wp.setBin(wd.getBin());
 
-      warehouseProductRepository.save(Objects.requireNonNull(wp));
+      warehouseProductRepository.save(wp);
     }
 
-    return toResponse(Objects.requireNonNull(product));
+    return toResponse(product);
     }
 
     @Transactional
@@ -232,7 +233,7 @@ public class ProductService {
             .orElseThrow(() -> new EntityNotFoundException("Product not found"));
     product.setIsActive(false);
     product.setUpdatedAt(LocalDateTime.now());
-    productRepository.save(Objects.requireNonNull(product));
+    productRepository.save(product);
 
     auditLogService.logAudit(
         "DELETE",
@@ -264,14 +265,14 @@ public class ProductService {
       Long tenantId = getTenantId();
       thresholdDays =
           tenantRepository
-              .findById(Objects.requireNonNull(tenantId))
+              .findById(tenantId)
               .map(Tenant::getExpiryThresholdDays)
               .orElse(DEFAULT_REORDER_LEVEL * 3); // 30
     }
 
     LocalDate threshold = LocalDate.now().plusDays(thresholdDays);
     return pharmacyProductRepository.findExpiring(threshold).stream()
-        .map(pp -> toResponseWithPharmacy(Objects.requireNonNull(pp.getProduct()), pp))
+        .map(pp -> toResponseWithPharmacy(pp.getProduct(), pp))
         .collect(Collectors.toList());
   }
 

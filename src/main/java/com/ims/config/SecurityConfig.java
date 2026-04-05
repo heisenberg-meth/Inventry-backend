@@ -20,8 +20,8 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.http.HttpStatus;
 
+
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.config.Customizer;
 
 @Configuration
 @EnableWebSecurity

@@ -66,10 +66,10 @@ public class SignupService {
       TenantContext.set(Objects.requireNonNull(tenant.getId()));
       userCreationService.createUserForTenant(Objects.requireNonNull(user), Objects.requireNonNull(tenant.getId()));
 
-      auditLogService.logAudit(
+      auditLogService.log(
           "SIGNUP",
-          "TENANT",
           tenant.getId(),
+          user.getId(),
           "New business registered: " + tenant.getName() + " by " + user.getEmail());
     } finally {
       TenantContext.clear();

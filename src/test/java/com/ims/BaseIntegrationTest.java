@@ -1,10 +1,27 @@
 package com.ims;
 
-import com.ims.platform.repository.TenantRepository;
+import com.ims.model.Tenant;
+import com.ims.model.User;
+import com.ims.platform.repository.*;
 import com.ims.shared.audit.AuditLogRepository;
 import com.ims.tenant.repository.*;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.ZSetOperations;
+import java.util.Objects;
+import java.util.Collections;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 
 public abstract class BaseIntegrationTest {
 
@@ -22,23 +39,87 @@ public abstract class BaseIntegrationTest {
   @Autowired protected AuditLogRepository auditLogRepository;
   @Autowired protected PaymentRepository paymentRepository;
   @Autowired protected TransferOrderRepository transferOrderRepository;
+  @Autowired protected SubscriptionRepository subscriptionRepository;
+  @Autowired protected SubscriptionPlanRepository subscriptionPlanRepository;
+  @Autowired protected SupportAttachmentRepository supportAttachmentRepository;
+  @Autowired protected SupportMessageRepository supportMessageRepository;
+  @Autowired protected SupportTicketRepository supportTicketRepository;
+  @Autowired protected SystemConfigRepository systemConfigRepository;
 
-  @Transactional
+  @Autowired protected JdbcTemplate jdbcTemplate;
+  @Autowired protected PasswordEncoder passwordEncoder;
+  @PersistenceContext protected EntityManager entityManager;
+  @Autowired protected PlatformTransactionManager transactionManager;
+
+  @MockitoBean protected RedisTemplate<String, Object> redisTemplate;
+  @MockitoBean protected ValueOperations<String, Object> valueOperations;
+  @MockitoBean protected ZSetOperations<String, Object> zSetOperations;
+  @MockitoBean protected org.springframework.data.redis.connection.RedisConnectionFactory redisConnectionFactory;
+  @MockitoBean protected org.springframework.cache.CacheManager cacheManager;
+  @MockitoBean protected org.springframework.cache.interceptor.CacheResolver tenantAwareCacheResolver;
+
+  protected Long systemTenantId;
+  protected Long testTenant1Id;
+  protected Long testTenant2Id;
+
   protected void cleanupDatabase() {
-    // Correct order to respect foreign keys
-    auditLogRepository.deleteAll();
-    paymentRepository.deleteAll();
-    invoiceRepository.deleteAll();
-    orderItemRepository.deleteAll();
-    orderRepository.deleteAll();
-    transferOrderRepository.deleteAll();
-    stockMovementRepository.deleteAll();
-    productRepository.deleteAll();
-    categoryRepository.deleteAll();
-    userRepository.deleteAll();
-    roleRepository.deleteAll();
-    customerRepository.deleteAll();
-    supplierRepository.deleteAll();
-    tenantRepository.deleteAll();
+    new TransactionTemplate(transactionManager).execute(status -> {
+      entityManager.flush();
+      jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY FALSE");
+      
+      jdbcTemplate.execute("DELETE FROM audit_logs");
+      jdbcTemplate.execute("DELETE FROM payments");
+      jdbcTemplate.execute("DELETE FROM invoices");
+      jdbcTemplate.execute("DELETE FROM order_items");
+      jdbcTemplate.execute("DELETE FROM orders");
+      jdbcTemplate.execute("DELETE FROM transfer_orders");
+      jdbcTemplate.execute("DELETE FROM stock_movements");
+      jdbcTemplate.execute("DELETE FROM pharmacy_products");
+      jdbcTemplate.execute("DELETE FROM products");
+      jdbcTemplate.execute("DELETE FROM categories");
+      jdbcTemplate.execute("DELETE FROM user_permissions");
+      jdbcTemplate.execute("DELETE FROM users");
+      jdbcTemplate.execute("DELETE FROM role_permissions");
+      jdbcTemplate.execute("DELETE FROM roles");
+      jdbcTemplate.execute("DELETE FROM customers");
+      jdbcTemplate.execute("DELETE FROM suppliers");
+      jdbcTemplate.execute("DELETE FROM support_attachments");
+      jdbcTemplate.execute("DELETE FROM support_messages");
+      jdbcTemplate.execute("DELETE FROM support_tickets");
+      jdbcTemplate.execute("DELETE FROM subscriptions");
+      jdbcTemplate.execute("DELETE FROM subscription_plans");
+      jdbcTemplate.execute("DELETE FROM tenants");
+      
+      jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY TRUE");
+
+      // Seed System Tenant
+      jdbcTemplate.execute("INSERT INTO tenants (name, workspace_slug, business_type, status, plan) VALUES ('System', 'system', 'SYSTEM', 'ACTIVE', 'PLATFORM')");
+      systemTenantId = jdbcTemplate.queryForObject("SELECT id FROM tenants WHERE workspace_slug = 'system'", Long.class);
+
+      // Seed Root User (Linked to System Tenant)
+      String rootPassHash = passwordEncoder.encode("root123");
+      jdbcTemplate.update("INSERT INTO users (name, email, password_hash, role, scope, tenant_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "Root Admin", "root@ims.com", rootPassHash, "ROOT", "PLATFORM", systemTenantId, true);
+
+      // Seed common test tenants for legacy tests
+      jdbcTemplate.execute("INSERT INTO tenants (name, workspace_slug, business_type, status, plan) VALUES ('Test Tenant 1', 't1', 'RETAIL', 'ACTIVE', 'FREE')");
+      testTenant1Id = jdbcTemplate.queryForObject("SELECT id FROM tenants WHERE workspace_slug = 't1'", Long.class);
+      
+      jdbcTemplate.execute("INSERT INTO tenants (name, workspace_slug, business_type, status, plan) VALUES ('Test Tenant 2', 't2', 'RETAIL', 'ACTIVE', 'FREE')");
+      testTenant2Id = jdbcTemplate.queryForObject("SELECT id FROM tenants WHERE workspace_slug = 't2'", Long.class);
+      
+      entityManager.clear();
+      return null;
+    });
+
+    // Default Redis mocks to prevent NPE in RateLimitFilter
+    when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+    when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+    when(zSetOperations.zCard(anyString())).thenReturn(0L); // Default: not rate limited
+    
+    // Fix for RbacIntegrationTest and Cache resolution in tests
+    org.springframework.cache.Cache dummyCache = new org.springframework.cache.concurrent.ConcurrentMapCache("dummy");
+    doReturn(Collections.singletonList(dummyCache)).when(tenantAwareCacheResolver).resolveCaches(any());
+    when(cacheManager.getCache(anyString())).thenReturn(dummyCache);
   }
 }
