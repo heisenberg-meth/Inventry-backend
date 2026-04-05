@@ -7,29 +7,29 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
-import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("null")
 public class CustomerService {
 
   private final CustomerRepository customerRepository;
 
   public @NonNull Page<Customer> getCustomers(@NonNull Pageable pageable) {
-    return Objects.requireNonNull(customerRepository.findAll(pageable));
+    return customerRepository.findAll(pageable);
   }
 
   public @NonNull Customer getById(@NonNull Long id) {
-    return Objects.requireNonNull(customerRepository
+    return customerRepository
         .findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Customer not found")));
+        .orElseThrow(() -> new EntityNotFoundException("Customer not found"));
   }
 
   @Transactional
   public @NonNull Customer create(@NonNull Customer customer) {
-    return Objects.requireNonNull(customerRepository.save(customer));
+    return customerRepository.save(customer);
   }
 
   @Transactional
@@ -50,7 +50,7 @@ public class CustomerService {
     if (updates.getGstin() != null) {
       customer.setGstin(updates.getGstin());
     }
-    return Objects.requireNonNull(customerRepository.save(customer));
+    return customerRepository.save(customer);
   }
 
   @Transactional

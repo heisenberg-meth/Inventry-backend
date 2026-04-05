@@ -2,11 +2,15 @@ package com.ims.tenant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.when;
+import com.ims.BaseIntegrationTest;
 import com.ims.model.Product;
 import com.ims.model.StockMovement;
+import com.ims.model.User;
 import com.ims.shared.auth.TenantContext;
-import com.ims.tenant.repository.ProductRepository;
-import com.ims.tenant.repository.StockMovementRepository;
 import com.ims.tenant.service.StockService;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.AfterEach;
@@ -19,24 +23,41 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import java.util.Objects;
 import java.util.List;
+import java.util.Collections;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
+    "spring.cache.type=none"
+})
 @ActiveProfiles("test")
-public class StockAuditIntegrationTest {
+@SuppressWarnings("null")
+public class StockAuditIntegrationTest extends BaseIntegrationTest {
 
   @Autowired private StockService stockService;
-  @Autowired private ProductRepository productRepository;
-  @Autowired private StockMovementRepository stockMovementRepository;
-
+  
   private Long product1Id;
   private Long product2Id;
+  private Long user1Id;
+  private Long user2Id;
 
   @BeforeEach
   void setup() {
+    cleanupDatabase();
+    when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+    when(valueOperations.increment(anyString())).thenReturn(1L);
+    
+    org.springframework.cache.Cache dummyCache = new org.springframework.cache.concurrent.ConcurrentMapCache("dummy");
+    doReturn(Collections.singletonList(dummyCache)).when(tenantAwareCacheResolver).resolveCaches(any());
+    when(cacheManager.getCache(anyString())).thenReturn(dummyCache);
+    
     // Tenant 1
-    TenantContext.set(1L);
+    TenantContext.set(testTenant1Id);
+    User u1 = User.builder().tenantId(testTenant1Id).email("u1@t1.com").name("U1").passwordHash("p").role("ADMIN").scope("TENANT").build();
+    u1 = userRepository.save(Objects.requireNonNull(u1));
+    user1Id = u1.getId();
+
     Product p1 = Product.builder()
-        .tenantId(1L)
+        .tenantId(testTenant1Id)
         .name("T1 Product")
         .sku("T1-PROD")
         .salePrice(BigDecimal.valueOf(10.0))
@@ -48,9 +69,13 @@ public class StockAuditIntegrationTest {
     product1Id = p1.getId();
 
     // Tenant 2
-    TenantContext.set(2L);
+    TenantContext.set(testTenant2Id);
+    User u2 = User.builder().tenantId(testTenant2Id).email("u2@t2.com").name("U2").passwordHash("p").role("ADMIN").scope("TENANT").build();
+    u2 = userRepository.save(Objects.requireNonNull(u2));
+    user2Id = u2.getId();
+
     Product p2 = Product.builder()
-        .tenantId(2L)
+        .tenantId(testTenant2Id)
         .name("T2 Product")
         .sku("T2-PROD")
         .salePrice(BigDecimal.valueOf(20.0))
@@ -66,27 +91,21 @@ public class StockAuditIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    TenantContext.set(1L);
-    stockMovementRepository.deleteAll();
-    productRepository.deleteAll();
-    TenantContext.set(2L);
-    stockMovementRepository.deleteAll();
-    productRepository.deleteAll();
     TenantContext.clear();
   }
 
   @Test
   void testStockAuditTrail() {
-    TenantContext.set(1L);
+    TenantContext.set(testTenant1Id);
     
     // 1. Stock In
-    stockService.stockIn(product1Id, 10, "Initial stock", 1L);
+    stockService.stockIn(product1Id, 10, "Initial stock", user1Id);
     
     // 2. Stock Out
-    stockService.stockOut(product1Id, 5, "Sale", 1L);
+    stockService.stockOut(product1Id, 5, "Sale", user1Id);
     
     // 3. Stock Adjust
-    stockService.stockAdjust(product1Id, -2, "Damage", 1L);
+    stockService.stockAdjust(product1Id, -2, "Damage", user1Id);
 
     Page<StockMovement> movements = stockService.getMovements(PageRequest.of(0, 10));
     List<StockMovement> list = movements.getContent();
@@ -110,22 +129,22 @@ public class StockAuditIntegrationTest {
   @Test
   void testMultiTenantIsolation() {
     // Tenant 1 actions
-    TenantContext.set(1L);
-    stockService.stockIn(product1Id, 10, "T1 In", 1L);
+    TenantContext.set(testTenant1Id);
+    stockService.stockIn(product1Id, 10, "T1 In", user1Id);
     
     // Tenant 2 actions
-    TenantContext.set(2L);
-    stockService.stockIn(product2Id, 50, "T2 In", 2L);
-    stockService.stockOut(product2Id, 5, "T2 Out", 2L);
+    TenantContext.set(testTenant2Id);
+    stockService.stockIn(product2Id, 50, "T2 In", user2Id);
+    stockService.stockOut(product2Id, 5, "T2 Out", user2Id);
 
     // Verify Tenant 1 only sees their movements
-    TenantContext.set(1L);
+    TenantContext.set(testTenant1Id);
     Page<StockMovement> t1Movements = stockService.getMovements(PageRequest.of(0, 10));
     assertThat(t1Movements.getContent()).hasSize(1);
     assertThat(t1Movements.getContent().get(0).getNotes()).isEqualTo("T1 In");
 
     // Verify Tenant 2 only sees their movements
-    TenantContext.set(2L);
+    TenantContext.set(testTenant2Id);
     Page<StockMovement> t2Movements = stockService.getMovements(PageRequest.of(0, 10));
     assertThat(t2Movements.getContent()).hasSize(2);
     assertThat(t2Movements.getContent().stream().anyMatch(m -> m.getNotes().equals("T2 In"))).isTrue();
@@ -134,18 +153,18 @@ public class StockAuditIntegrationTest {
 
   @Test
   void testLowStockAlerts() {
-    TenantContext.set(1L);
+    TenantContext.set(testTenant1Id);
     
     // Initial stock is 50, reorder level is 5.
     // Stock out 46 -> stock is 4 (Low Stock!)
-    stockService.stockOut(product1Id, 46, "Big sale", 1L);
+    stockService.stockOut(product1Id, 46, "Big sale", user1Id);
     
     var lowStock = productRepository.findLowStock();
     assertThat(lowStock).hasSize(1);
     assertThat(lowStock.get(0).getId()).isEqualTo(product1Id);
     
     // Stock in 10 -> stock is 14 (Not low stock anymore)
-    stockService.stockIn(product1Id, 10, "Restock", 1L);
+    stockService.stockIn(product1Id, 10, "Restock", user1Id);
     lowStock = productRepository.findLowStock();
     assertThat(lowStock).isEmpty();
   }

@@ -1,6 +1,5 @@
 package com.ims.tenant.service;
 
-import com.ims.model.Invoice;
 import com.ims.model.Order;
 import com.ims.model.OrderItem;
 import com.ims.model.Product;
@@ -36,7 +35,6 @@ public class OrderService {
   private final CustomerRepository customerRepository;
   private final StockService stockService;
   private final InvoiceService invoiceService;
-  private final PaymentService paymentService;
   private final com.ims.shared.audit.AuditLogService auditLogService;
  
   private static final int PERCENTAGE_BASE = 100;
@@ -307,12 +305,12 @@ public class OrderService {
     if ("SALE".equals(order.getType())) {
       // Validate and reduce stock
       for (OrderItem item : items) {
-        Product product = productRepository.findById(item.getProductId())
+        Product product = productRepository.findById(Objects.requireNonNull(item.getProductId()))
             .orElseThrow(() -> new EntityNotFoundException("Product not found: " + item.getProductId()));
         if (product.getStock() < item.getQuantity()) {
           throw new InsufficientStockException("Insufficient stock for " + product.getName(), product.getStock(), item.getQuantity());
         }
-        stockService.stockOut(item.getProductId(), item.getQuantity(), "Confirmed Sale Order #" + order.getId(), userId);
+        stockService.stockOut(Objects.requireNonNull(item.getProductId()), item.getQuantity(), "Confirmed Sale Order #" + order.getId(), userId);
       }
       order.setStatus("CONFIRMED");
       // Auto-generate invoice for sales upon confirmation
@@ -354,7 +352,7 @@ public class OrderService {
       // For purchase, completion means receiving goods
       List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
       for (OrderItem item : items) {
-        stockService.stockIn(item.getProductId(), item.getQuantity(), "Received Purchase Order #" + order.getId(), userId);
+        stockService.stockIn(Objects.requireNonNull(item.getProductId()), item.getQuantity(), "Received Purchase Order #" + order.getId(), userId);
       }
       order.setStatus("RECEIVED");
     } else {
@@ -379,7 +377,7 @@ public class OrderService {
     if ("SALE".equals(order.getType()) && ("CONFIRMED".equals(order.getStatus()) || "SHIPPED".equals(order.getStatus()))) {
       List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
       for (OrderItem item : items) {
-        stockService.stockIn(item.getProductId(), item.getQuantity(), "Cancelled Sale Order #" + order.getId(), userId);
+        stockService.stockIn(Objects.requireNonNull(item.getProductId()), item.getQuantity(), "Cancelled Sale Order #" + order.getId(), userId);
       }
     }
 

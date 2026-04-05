@@ -2,7 +2,6 @@ package com.ims.shared.audit;
 
 import com.ims.platform.service.SystemConfigService;
 import com.ims.shared.auth.JwtAuthDetails;
-import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -12,6 +11,7 @@ import org.springframework.lang.NonNull;
 @Service
 @Slf4j
 @RequiredArgsConstructor
+@SuppressWarnings("null")
 public class AuditLogService {
 
   private final AuditLogRepository auditLogRepository;
@@ -27,7 +27,7 @@ public class AuditLogService {
         .details(details)
         .build();
     
-    auditLogRepository.save(Objects.requireNonNull(auditEntry));
+    auditLogRepository.save(auditEntry);
   }
 
   public void logAudit(String action, String resource, Long resourceId, String details) {
@@ -45,7 +45,7 @@ public class AuditLogService {
   }
 
   public org.springframework.data.domain.Page<com.ims.model.AuditLog> getAllLogs(@NonNull org.springframework.data.domain.Pageable pageable) {
-    var logs = auditLogRepository.findAll(Objects.requireNonNull(pageable));
+    var logs = auditLogRepository.findAll(pageable);
     
     // Check for masking if ROOOT role and support mode is OFF
     if (isSystemAdmin() && !systemConfigService.isSupportModeEnabled()) {

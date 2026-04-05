@@ -49,9 +49,9 @@ public class OrderController {
   @Operation(summary = "Create purchase order")
   public ResponseEntity<Map<String, Object>> createPurchaseOrder(
       @NonNull @RequestBody Map<String, Object> request) {
-    Long userId = (Long) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal();
+    Long userId = extractUserId();
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(orderService.createPurchaseOrder(request, Objects.requireNonNull(userId)));
+        .body(orderService.createPurchaseOrder(request, userId));
   }
 
   @PostMapping("/sale")
@@ -59,9 +59,9 @@ public class OrderController {
   @Operation(summary = "Create sale order")
   public ResponseEntity<Map<String, Object>> createSalesOrder(
       @NonNull @RequestBody Map<String, Object> request) {
-    Long userId = (Long) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal();
+    Long userId = extractUserId();
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(orderService.createSalesOrder(request, Objects.requireNonNull(userId)));
+        .body(orderService.createSalesOrder(request, userId));
   }
 
   @PostMapping("/{id}/confirm")
@@ -96,8 +96,8 @@ public class OrderController {
     return ResponseEntity.ok(orderService.cancelOrder(id, userId));
   }
 
-  private Long extractUserId() {
-    return (Long) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal();
+  private @NonNull Long extractUserId() {
+    return (Long) Objects.requireNonNull(Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal());
   }
 
   @GetMapping("/{id}")
