@@ -1,12 +1,11 @@
 package com.ims;
 
-import com.ims.model.Tenant;
-import com.ims.model.User;
 import com.ims.platform.repository.*;
 import com.ims.shared.audit.AuditLogRepository;
 import com.ims.tenant.repository.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -16,57 +15,87 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.ZSetOperations;
-import java.util.Objects;
 import java.util.Collections;
+import java.util.Objects;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.notNull;
 
 public abstract class BaseIntegrationTest {
 
-  @Autowired protected TenantRepository tenantRepository;
-  @Autowired protected UserRepository userRepository;
-  @Autowired protected RoleRepository roleRepository;
-  @Autowired protected CustomerRepository customerRepository;
-  @Autowired protected SupplierRepository supplierRepository;
-  @Autowired protected ProductRepository productRepository;
-  @Autowired protected CategoryRepository categoryRepository;
-  @Autowired protected OrderRepository orderRepository;
-  @Autowired protected OrderItemRepository orderItemRepository;
-  @Autowired protected StockMovementRepository stockMovementRepository;
-  @Autowired protected InvoiceRepository invoiceRepository;
-  @Autowired protected AuditLogRepository auditLogRepository;
-  @Autowired protected PaymentRepository paymentRepository;
-  @Autowired protected TransferOrderRepository transferOrderRepository;
-  @Autowired protected SubscriptionRepository subscriptionRepository;
-  @Autowired protected SubscriptionPlanRepository subscriptionPlanRepository;
-  @Autowired protected SupportAttachmentRepository supportAttachmentRepository;
-  @Autowired protected SupportMessageRepository supportMessageRepository;
-  @Autowired protected SupportTicketRepository supportTicketRepository;
-  @Autowired protected SystemConfigRepository systemConfigRepository;
+  @Autowired
+  protected TenantRepository tenantRepository;
+  @Autowired
+  protected UserRepository userRepository;
+  @Autowired
+  protected RoleRepository roleRepository;
+  @Autowired
+  protected CustomerRepository customerRepository;
+  @Autowired
+  protected SupplierRepository supplierRepository;
+  @Autowired
+  protected ProductRepository productRepository;
+  @Autowired
+  protected CategoryRepository categoryRepository;
+  @Autowired
+  protected OrderRepository orderRepository;
+  @Autowired
+  protected OrderItemRepository orderItemRepository;
+  @Autowired
+  protected StockMovementRepository stockMovementRepository;
+  @Autowired
+  protected InvoiceRepository invoiceRepository;
+  @Autowired
+  protected AuditLogRepository auditLogRepository;
+  @Autowired
+  protected PaymentRepository paymentRepository;
+  @Autowired
+  protected TransferOrderRepository transferOrderRepository;
+  @Autowired
+  protected SubscriptionRepository subscriptionRepository;
+  @Autowired
+  protected SubscriptionPlanRepository subscriptionPlanRepository;
+  @Autowired
+  protected SupportAttachmentRepository supportAttachmentRepository;
+  @Autowired
+  protected SupportMessageRepository supportMessageRepository;
+  @Autowired
+  protected SupportTicketRepository supportTicketRepository;
+  @Autowired
+  protected SystemConfigRepository systemConfigRepository;
 
-  @Autowired protected JdbcTemplate jdbcTemplate;
-  @Autowired protected PasswordEncoder passwordEncoder;
-  @PersistenceContext protected EntityManager entityManager;
-  @Autowired protected PlatformTransactionManager transactionManager;
+  @Autowired
+  protected JdbcTemplate jdbcTemplate;
+  @Autowired
+  protected PasswordEncoder passwordEncoder;
+  @PersistenceContext
+  protected EntityManager entityManager;
+  @Autowired
+  protected PlatformTransactionManager transactionManager;
 
-  @MockitoBean protected RedisTemplate<String, Object> redisTemplate;
-  @MockitoBean protected ValueOperations<String, Object> valueOperations;
-  @MockitoBean protected ZSetOperations<String, Object> zSetOperations;
-  @MockitoBean protected org.springframework.data.redis.connection.RedisConnectionFactory redisConnectionFactory;
-  @MockitoBean protected org.springframework.cache.CacheManager cacheManager;
-  @MockitoBean protected org.springframework.cache.interceptor.CacheResolver tenantAwareCacheResolver;
+  @MockitoBean
+  protected RedisTemplate<String, Object> redisTemplate;
+  @MockitoBean
+  protected ValueOperations<String, Object> valueOperations;
+  @MockitoBean
+  protected ZSetOperations<String, Object> zSetOperations;
+  @MockitoBean
+  protected org.springframework.data.redis.connection.RedisConnectionFactory redisConnectionFactory;
+  @MockitoBean
+  protected org.springframework.cache.CacheManager cacheManager;
+  @MockitoBean
+  protected org.springframework.cache.interceptor.CacheResolver tenantAwareCacheResolver;
 
-  protected Long systemTenantId;
-  protected Long testTenant1Id;
-  protected Long testTenant2Id;
+  protected long systemTenantId;
+  protected long testTenant1Id;
+  protected long testTenant2Id;
 
+  @SuppressWarnings("null")
   protected void cleanupDatabase() {
-    new TransactionTemplate(transactionManager).execute(status -> {
+    new TransactionTemplate(Objects.requireNonNull(transactionManager)).execute(status -> {
       entityManager.flush();
       jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY FALSE");
-      
+
       jdbcTemplate.execute("DELETE FROM audit_logs");
       jdbcTemplate.execute("DELETE FROM payments");
       jdbcTemplate.execute("DELETE FROM invoices");
@@ -89,25 +118,32 @@ public abstract class BaseIntegrationTest {
       jdbcTemplate.execute("DELETE FROM subscriptions");
       jdbcTemplate.execute("DELETE FROM subscription_plans");
       jdbcTemplate.execute("DELETE FROM tenants");
-      
+
       jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY TRUE");
 
       // Seed System Tenant
-      jdbcTemplate.execute("INSERT INTO tenants (name, workspace_slug, business_type, status, plan) VALUES ('System', 'system', 'SYSTEM', 'ACTIVE', 'PLATFORM')");
-      systemTenantId = jdbcTemplate.queryForObject("SELECT id FROM tenants WHERE workspace_slug = 'system'", Long.class);
+      jdbcTemplate.execute(
+          "INSERT INTO tenants (name, workspace_slug, business_type, status, plan) VALUES ('System', 'system', 'SYSTEM', 'ACTIVE', 'PLATFORM')");
+      systemTenantId = Objects.requireNonNull(
+          jdbcTemplate.queryForObject("SELECT id FROM tenants WHERE workspace_slug = 'system'", Long.class));
 
       // Seed Root User (Linked to System Tenant)
       String rootPassHash = passwordEncoder.encode("root123");
-      jdbcTemplate.update("INSERT INTO users (name, email, password_hash, role, scope, tenant_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      jdbcTemplate.update(
+          "INSERT INTO users (name, email, password_hash, role, scope, tenant_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)",
           "Root Admin", "root@ims.com", rootPassHash, "ROOT", "PLATFORM", systemTenantId, true);
 
       // Seed common test tenants for legacy tests
-      jdbcTemplate.execute("INSERT INTO tenants (name, workspace_slug, business_type, status, plan) VALUES ('Test Tenant 1', 't1', 'RETAIL', 'ACTIVE', 'FREE')");
-      testTenant1Id = jdbcTemplate.queryForObject("SELECT id FROM tenants WHERE workspace_slug = 't1'", Long.class);
-      
-      jdbcTemplate.execute("INSERT INTO tenants (name, workspace_slug, business_type, status, plan) VALUES ('Test Tenant 2', 't2', 'RETAIL', 'ACTIVE', 'FREE')");
-      testTenant2Id = jdbcTemplate.queryForObject("SELECT id FROM tenants WHERE workspace_slug = 't2'", Long.class);
-      
+      jdbcTemplate.execute(
+          "INSERT INTO tenants (name, workspace_slug, business_type, status, plan) VALUES ('Test Tenant 1', 't1', 'RETAIL', 'ACTIVE', 'FREE')");
+      testTenant1Id = Objects.requireNonNull(
+          jdbcTemplate.queryForObject("SELECT id FROM tenants WHERE workspace_slug = 't1'", Long.class));
+
+      jdbcTemplate.execute(
+          "INSERT INTO tenants (name, workspace_slug, business_type, status, plan) VALUES ('Test Tenant 2', 't2', 'RETAIL', 'ACTIVE', 'FREE')");
+      testTenant2Id = Objects.requireNonNull(
+          jdbcTemplate.queryForObject("SELECT id FROM tenants WHERE workspace_slug = 't2'", Long.class));
+
       entityManager.clear();
       return null;
     });
@@ -115,11 +151,15 @@ public abstract class BaseIntegrationTest {
     // Default Redis mocks to prevent NPE in RateLimitFilter
     when(redisTemplate.opsForValue()).thenReturn(valueOperations);
     when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
-    when(zSetOperations.zCard(anyString())).thenReturn(0L); // Default: not rate limited
-    
+    when(zSetOperations.zCard(notNull())).thenReturn(0L);
+
     // Fix for RbacIntegrationTest and Cache resolution in tests
     org.springframework.cache.Cache dummyCache = new org.springframework.cache.concurrent.ConcurrentMapCache("dummy");
-    doReturn(Collections.singletonList(dummyCache)).when(tenantAwareCacheResolver).resolveCaches(any());
-    when(cacheManager.getCache(anyString())).thenReturn(dummyCache);
+
+    doReturn(Collections.singletonList(dummyCache))
+        .when(tenantAwareCacheResolver)
+        .resolveCaches(notNull());
+
+    when(cacheManager.getCache(notNull())).thenReturn(dummyCache);
   }
 }
