@@ -49,7 +49,7 @@ public class User {
   @Column(nullable = false)
   private String scope;
 
-  @ManyToMany
+  @ManyToMany(fetch = jakarta.persistence.FetchType.EAGER)
   @JoinTable(
       name = "user_permissions",
       joinColumns = @JoinColumn(name = "user_id"),
