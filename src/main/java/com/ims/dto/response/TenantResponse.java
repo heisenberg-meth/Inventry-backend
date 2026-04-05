@@ -14,7 +14,8 @@ import lombok.NoArgsConstructor;
 public class TenantResponse {
   private Long id;
   private String name;
-  private String domain;
+  @JsonProperty("workspace_slug")
+  private String workspaceSlug;
 
   @JsonProperty("business_type")
   private String businessType;
@@ -27,6 +28,9 @@ public class TenantResponse {
 
   @JsonProperty("max_users")
   private Integer maxUsers;
+
+  @JsonProperty("expiry_threshold_days")
+  private Integer expiryThresholdDays;
 
   @JsonProperty("created_at")
   private LocalDateTime createdAt;

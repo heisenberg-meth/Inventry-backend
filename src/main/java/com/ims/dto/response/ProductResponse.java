@@ -53,6 +53,8 @@ public class ProductResponse {
   @JsonProperty("hsn_code")
   private String hsnCode;
 
+  private String schedule;
+
   // Warehouse extension fields
   @JsonProperty("storage_location")
   private String storageLocation;

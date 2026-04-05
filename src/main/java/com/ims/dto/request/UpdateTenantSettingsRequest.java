@@ -16,9 +16,12 @@ public class UpdateTenantSettingsRequest {
   @Schema(description = "Business name of the tenant")
   private String name;
 
-  @Schema(description = "Domain name for the tenant's instance")
-  private String domain;
+  @Schema(description = "Workspace slug for the tenant's instance")
+  private String workspaceSlug;
 
   @Schema(description = "Starting value or sequence for invoices")
   private Integer invoiceSequence;
+
+  @Schema(description = "Threshold in days for expiry alerts")
+  private Integer expiryThresholdDays;
 }

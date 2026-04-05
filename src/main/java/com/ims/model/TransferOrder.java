@@ -35,6 +35,12 @@ public class TransferOrder {
   @Column(name = "to_location", nullable = false)
   private String toLocation;
 
+  @Column(name = "product_id", nullable = false)
+  private Long productId;
+
+  @Column(name = "quantity", nullable = false)
+  private Integer quantity;
+
   @Column @Builder.Default private String status = "PENDING";
 
   @Column private String notes;

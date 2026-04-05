@@ -7,7 +7,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface TenantRepository extends JpaRepository<Tenant, Long> {
-  Optional<Tenant> findByDomain(String domain);
+  Optional<Tenant> findByWorkspaceSlug(String workspaceSlug);
 
-  boolean existsByDomain(String domain);
+  boolean existsByWorkspaceSlug(String workspaceSlug);
 }

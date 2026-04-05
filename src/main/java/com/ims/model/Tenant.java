@@ -27,8 +27,8 @@ public class Tenant {
   @Column(nullable = false)
   private String name;
 
-  @Column(unique = true)
-  private String domain;
+  @Column(name = "workspace_slug", unique = true)
+  private String workspaceSlug;
 
   @Column(name = "business_type", nullable = false)
   private String businessType;
@@ -46,6 +46,10 @@ public class Tenant {
 
   @Column(name = "max_users")
   private Integer maxUsers;
+
+  @Column(name = "expiry_threshold_days")
+  @Builder.Default
+  private Integer expiryThresholdDays = 30;
 
   @Column(name = "created_at")
   @Builder.Default

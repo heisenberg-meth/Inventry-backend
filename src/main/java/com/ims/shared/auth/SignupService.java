@@ -21,24 +21,27 @@ public class SignupService {
   private final PasswordEncoder passwordEncoder;
   private final UserCreationService userCreationService;
   private final TenantPersistenceService tenantPersistenceService;
+  private final com.ims.shared.audit.AuditLogService auditLogService;
 
   // No @Transactional here — each step manages its own transaction
   public void signup(SignupRequest request) {
-    if (request.getDomain() != null
-        && !request.getDomain().isBlank()
-        && tenantRepository.existsByDomain(request.getDomain())) {
-      throw new IllegalArgumentException("Domain already taken: " + request.getDomain());
+    String normalizedEmail = request.getOwnerEmail().trim().toLowerCase();
+
+    if (request.getWorkspaceSlug() != null
+        && !request.getWorkspaceSlug().isBlank()
+        && tenantRepository.existsByWorkspaceSlug(request.getWorkspaceSlug())) {
+      throw new IllegalArgumentException("Workspace slug already taken");
     }
 
-    if (userRepository.findByEmail(request.getOwnerEmail()).isPresent()) {
-      throw new IllegalArgumentException("Email already registered: " + request.getOwnerEmail());
+    if (userRepository.findByEmail(normalizedEmail).isPresent()) {
+      throw new IllegalArgumentException("Email already registered");
     }
 
     // 1. Save tenant in its own committed transaction
     Tenant tenant = Tenant.builder()
         .name(request.getBusinessName())
         .businessType(request.getBusinessType())
-        .domain(request.getDomain())
+        .workspaceSlug(request.getWorkspaceSlug())
         .status("ACTIVE")
         .plan("FREE")
         .build();
@@ -49,7 +52,7 @@ public class SignupService {
     // 2. Now user insert can see the committed tenant
     User user = User.builder()
         .name(request.getOwnerName())
-        .email(request.getOwnerEmail())
+        .email(normalizedEmail)
         .passwordHash(passwordEncoder.encode(request.getPassword()))
         .role("ADMIN")
         .scope("TENANT")
@@ -60,6 +63,12 @@ public class SignupService {
     try {
       TenantContext.set(Objects.requireNonNull(tenant.getId()));
       userCreationService.createUserForTenant(Objects.requireNonNull(user), Objects.requireNonNull(tenant.getId()));
+
+      auditLogService.logAudit(
+          "SIGNUP",
+          "TENANT",
+          tenant.getId(),
+          "New business registered: " + tenant.getName() + " by " + user.getEmail());
     } finally {
       TenantContext.clear();
     }

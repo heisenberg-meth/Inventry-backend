@@ -60,7 +60,10 @@ public class StockService {
   }
 
   @Transactional
-  public @NonNull TransferOrder updateTransferStatus(@NonNull Long id, @NonNull TransferOrderStatusRequest request) {
+  @CacheEvict(
+      value = {"stock", "products"},
+      allEntries = true)
+  public @NonNull TransferOrder updateTransferStatus(@NonNull Long id, @NonNull TransferOrderStatusRequest request, @NonNull Long userId) {
     checkWarehouseType();
     TransferOrder order =
         transferOrderRepository
@@ -83,7 +86,39 @@ public class StockService {
     }
 
     order.setStatus(newStatus);
-    return Objects.requireNonNull(transferOrderRepository.save(order));
+    order = Objects.requireNonNull(transferOrderRepository.save(order));
+
+    if ("COMPLETED".equals(newStatus)) {
+      // Update warehouse product location
+      WarehouseProduct wp =
+          warehouseProductRepository
+              .findById(order.getProductId())
+              .orElseThrow(() -> new EntityNotFoundException("Warehouse product not found"));
+      wp.setStorageLocation(order.getToLocation());
+      warehouseProductRepository.save(wp);
+
+      // Log stock movement
+      stockMovementRepository.save(Objects.requireNonNull(
+          StockMovement.builder()
+              .productId(order.getProductId())
+              .movementType("TRANSFER")
+              .quantity(order.getQuantity())
+              .notes("Transfer from " + order.getFromLocation() + " to " + order.getToLocation())
+              .createdBy(userId)
+              .referenceId(order.getId())
+              .referenceType("TRANSFER_ORDER")
+              .build()));
+
+      log.info(
+          "Transfer order COMPLETED: id={} product={} quantity={} {} -> {}",
+          order.getId(),
+          order.getProductId(),
+          order.getQuantity(),
+          order.getFromLocation(),
+          order.getToLocation());
+    }
+
+    return order;
   }
 
   @Transactional
