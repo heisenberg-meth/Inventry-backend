@@ -1,8 +1,10 @@
 package com.ims.tenant.controller;
 
+import com.ims.model.Order;
 import com.ims.model.Customer;
 import com.ims.shared.rbac.RequiresRole;
 import com.ims.tenant.service.CustomerService;
+import com.ims.tenant.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -30,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class CustomerController {
 
   private final CustomerService customerService;
+  private final OrderService orderService;
 
   @GetMapping
   @RequiresRole({"ADMIN", "MANAGER"})
@@ -65,5 +68,13 @@ public class CustomerController {
   public @NonNull ResponseEntity<Void> delete(@PathVariable @NonNull Long id) {
     customerService.delete(id);
     return ResponseEntity.noContent().build();
+  }
+
+  @GetMapping("/{id}/orders")
+  @RequiresRole({"ADMIN", "MANAGER"})
+  @Operation(summary = "Get order history for customer")
+  public ResponseEntity<Page<Order>> getCustomerOrders(
+      @PathVariable @NonNull Long id, @NonNull Pageable pageable) {
+    return ResponseEntity.ok(orderService.getOrdersByCustomer(id, pageable));
   }
 }

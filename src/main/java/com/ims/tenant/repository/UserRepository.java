@@ -13,6 +13,9 @@ import org.springframework.stereotype.Repository;
 public interface UserRepository extends JpaRepository<User, Long> {
   Optional<User> findByEmail(String email);
 
+  @Query("SELECT u FROM User u LEFT JOIN FETCH u.customPermissions WHERE u.id = :id")
+  Optional<User> findByIdWithPermissions(@Param("id") Long id);
+
   @Query(value = "SELECT * FROM users WHERE email = :email", nativeQuery = true)
   Optional<User> findByEmailUnfiltered(@Param("email") String email);
 

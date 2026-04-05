@@ -92,9 +92,10 @@ public class OrderService {
 
     order.setTotalAmount(totalAmount);
     order.setTaxAmount(taxAmount);
+    order.setStatus("PENDING");
     order = Objects.requireNonNull(orderRepository.save(order));
 
-    // Save items and do stock in
+    // Save items
     for (Map<String, Object> item : items) {
       Long productId = Long.valueOf(item.get("product_id").toString());
       int qty = Integer.parseInt(item.get("quantity").toString());
@@ -121,18 +122,15 @@ public class OrderService {
               .total(itemTotal)
               .build();
       orderItemRepository.save(Objects.requireNonNull(orderItem));
-
-      // Stock in
-      stockService.stockIn(Objects.requireNonNull(productId), qty, "Purchase Order #" + order.getId(), Objects.requireNonNull(userId));
     }
 
     log.info(
         "Purchase order created: id={} total={}", order.getId(), totalAmount);
     
-    auditLogService.log(
+    auditLogService.logAudit(
         "CREATE_PURCHASE_ORDER",
-        order.getTenantId(),
-        userId,
+        "ORDER",
+        order.getId(),
         String.format("Created purchase order #%d, Supplier: %d, Total: %s", order.getId(), order.getSupplierId(), totalAmount));
 
     return Objects.requireNonNull(Map.of("order_id", order.getId(), "total", totalAmount));
@@ -225,7 +223,7 @@ public class OrderService {
     Order order =
         Order.builder()
             .type("SALE")
-            .status("COMPLETED")
+            .status("PENDING")
             .customerId(customerId)
             .totalAmount(totalAmount)
             .taxAmount(taxAmount)
@@ -235,7 +233,7 @@ public class OrderService {
             .build();
     order = Objects.requireNonNull(orderRepository.save(Objects.requireNonNull(order)));
 
-    // Save items and stock out
+    // Save items
     for (Map<String, Object> item : items) {
       Long productId = Long.valueOf(item.get("product_id").toString());
       int qty = Integer.parseInt(item.get("quantity").toString());
@@ -262,45 +260,18 @@ public class OrderService {
               .total(itemTotal)
               .build();
       orderItemRepository.save(Objects.requireNonNull(orderItem));
-
-      // Atomic stock decrement
-      stockService.stockOut(Objects.requireNonNull(productId), qty, "Sale Order #" + order.getId(), Objects.requireNonNull(userId));
     }
 
-    // Auto-generate invoice
-    Invoice invoice = invoiceService.createFromOrder(order);
+    log.info("Sales order created: id={} total={}", order.getId(), totalAmount);
 
-    // Process payment if payment_method is provided
-    if (request.containsKey("payment_method")) {
-      String paymentMethod = request.get("payment_method").toString();
-      com.ims.dto.PaymentRequest pr = new com.ims.dto.PaymentRequest();
-      pr.setInvoiceId(invoice.getId());
-      pr.setAmount(grandTotalCalculated);
-      pr.setPaymentMode(paymentMethod);
-      pr.setUserId(userId);
-      pr.setNotes("Auto-payment for sale order #" + order.getId());
-      paymentService.recordPayment(
-          Objects.requireNonNull(pr.getInvoiceId()),
-          pr.getAmount(),
-          pr.getPaymentMode(),
-          pr.getReference(),
-          pr.getNotes(),
-          pr.getUserId());
-    }
-
-    log.info("Sales order created: id={} total={} invoice={}", 
-             order.getId(), totalAmount, invoice.getInvoiceNumber());
-
-    auditLogService.log(
+    auditLogService.logAudit(
         "CREATE_SALE_ORDER",
-        order.getTenantId(),
-        userId,
-        String.format("Created sales order #%d, Customer: %d, Invoice: %s, Total: %s", order.getId(), order.getCustomerId(), invoice.getInvoiceNumber(), totalAmount));
+        "ORDER",
+        order.getId(),
+        String.format("Created sales order #%d, Customer: %d, Total: %s", order.getId(), order.getCustomerId(), totalAmount));
 
     return Objects.requireNonNull(Map.of(
         "order_id", order.getId(),
-        "invoice_id", invoice.getId(),
-        "invoice_number", invoice.getInvoiceNumber(),
         "total", totalAmount,
         "grand_total", grandTotalCalculated));
   }
@@ -320,6 +291,110 @@ public class OrderService {
             .orElseThrow(() -> new EntityNotFoundException("Order not found"));
     List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
     return Objects.requireNonNull(Map.of("order", order, "items", items));
+  }
+
+  @Transactional
+  public @NonNull Order confirmOrder(@NonNull Long id, @NonNull Long userId) {
+    Order order = orderRepository.findById(id)
+        .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+
+    if (!"PENDING".equals(order.getStatus())) {
+      throw new IllegalStateException("Only PENDING orders can be confirmed");
+    }
+
+    List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
+
+    if ("SALE".equals(order.getType())) {
+      // Validate and reduce stock
+      for (OrderItem item : items) {
+        Product product = productRepository.findById(item.getProductId())
+            .orElseThrow(() -> new EntityNotFoundException("Product not found: " + item.getProductId()));
+        if (product.getStock() < item.getQuantity()) {
+          throw new InsufficientStockException("Insufficient stock for " + product.getName(), product.getStock(), item.getQuantity());
+        }
+        stockService.stockOut(item.getProductId(), item.getQuantity(), "Confirmed Sale Order #" + order.getId(), userId);
+      }
+      order.setStatus("CONFIRMED");
+      // Auto-generate invoice for sales upon confirmation
+      invoiceService.createFromOrder(order);
+    } else if ("PURCHASE".equals(order.getType())) {
+      order.setStatus("CONFIRMED");
+    }
+
+    order = orderRepository.save(order);
+    auditLogService.logAudit("CONFIRM_ORDER", "ORDER", id, "Confirmed " + order.getType() + " order #" + id);
+    return order;
+  }
+
+  @Transactional
+  public @NonNull Order shipOrder(@NonNull Long id, @NonNull Long userId) {
+    Order order = orderRepository.findById(id)
+        .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+
+    if (!"CONFIRMED".equals(order.getStatus())) {
+      throw new IllegalStateException("Only CONFIRMED orders can be shipped");
+    }
+
+    order.setStatus("SHIPPED");
+    order = orderRepository.save(order);
+    auditLogService.logAudit("SHIP_ORDER", "ORDER", id, "Shipped " + order.getType() + " order #" + id);
+    return order;
+  }
+
+  @Transactional
+  public @NonNull Order completeOrder(@NonNull Long id, @NonNull Long userId) {
+    Order order = orderRepository.findById(id)
+        .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+
+    if (!"SHIPPED".equals(order.getStatus()) && !"CONFIRMED".equals(order.getStatus())) {
+      throw new IllegalStateException("Order must be SHIPPED or CONFIRMED to be completed");
+    }
+
+    if ("PURCHASE".equals(order.getType()) && !"RECEIVED".equals(order.getStatus())) {
+      // For purchase, completion means receiving goods
+      List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
+      for (OrderItem item : items) {
+        stockService.stockIn(item.getProductId(), item.getQuantity(), "Received Purchase Order #" + order.getId(), userId);
+      }
+      order.setStatus("RECEIVED");
+    } else {
+      order.setStatus("COMPLETED");
+    }
+
+    order = orderRepository.save(order);
+    auditLogService.logAudit("COMPLETE_ORDER", "ORDER", id, "Completed " + order.getType() + " order #" + id);
+    return order;
+  }
+
+  @Transactional
+  public @NonNull Order cancelOrder(@NonNull Long id, @NonNull Long userId) {
+    Order order = orderRepository.findById(id)
+        .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+
+    if ("COMPLETED".equals(order.getStatus()) || "RECEIVED".equals(order.getStatus()) || "CANCELLED".equals(order.getStatus())) {
+      throw new IllegalStateException("Cannot cancel an order that is already " + order.getStatus());
+    }
+
+    // If it was CONFIRMED or SHIPPED, we might need to revert stock for SALES
+    if ("SALE".equals(order.getType()) && ("CONFIRMED".equals(order.getStatus()) || "SHIPPED".equals(order.getStatus()))) {
+      List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
+      for (OrderItem item : items) {
+        stockService.stockIn(item.getProductId(), item.getQuantity(), "Cancelled Sale Order #" + order.getId(), userId);
+      }
+    }
+
+    order.setStatus("CANCELLED");
+    order = orderRepository.save(order);
+    auditLogService.logAudit("CANCEL_ORDER", "ORDER", id, "Cancelled " + order.getType() + " order #" + id);
+    return order;
+  }
+
+  public @NonNull Page<Order> getOrdersBySupplier(@NonNull Long supplierId, @NonNull Pageable pageable) {
+    return Objects.requireNonNull(orderRepository.findBySupplierId(supplierId, pageable));
+  }
+
+  public @NonNull Page<Order> getOrdersByCustomer(@NonNull Long customerId, @NonNull Pageable pageable) {
+    return Objects.requireNonNull(orderRepository.findByCustomerId(customerId, pageable));
   }
 
   @Transactional

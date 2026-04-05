@@ -64,6 +64,42 @@ public class OrderController {
         .body(orderService.createSalesOrder(request, Objects.requireNonNull(userId)));
   }
 
+  @PostMapping("/{id}/confirm")
+  @RequiresRole({"ADMIN", "MANAGER"})
+  @Operation(summary = "Confirm order and deduct stock (for sales)")
+  public ResponseEntity<Order> confirmOrder(@NonNull @PathVariable Long id) {
+    Long userId = extractUserId();
+    return ResponseEntity.ok(orderService.confirmOrder(id, userId));
+  }
+
+  @PostMapping("/{id}/ship")
+  @RequiresRole({"ADMIN", "MANAGER"})
+  @Operation(summary = "Mark order as shipped")
+  public ResponseEntity<Order> shipOrder(@NonNull @PathVariable Long id) {
+    Long userId = extractUserId();
+    return ResponseEntity.ok(orderService.shipOrder(id, userId));
+  }
+
+  @PostMapping("/{id}/complete")
+  @RequiresRole({"ADMIN", "MANAGER"})
+  @Operation(summary = "Complete order and add stock (for purchases)")
+  public ResponseEntity<Order> completeOrder(@NonNull @PathVariable Long id) {
+    Long userId = extractUserId();
+    return ResponseEntity.ok(orderService.completeOrder(id, userId));
+  }
+
+  @PostMapping("/{id}/cancel")
+  @RequiresRole({"ADMIN", "MANAGER"})
+  @Operation(summary = "Cancel order and revert stock if confirmed")
+  public ResponseEntity<Order> cancelOrder(@NonNull @PathVariable Long id) {
+    Long userId = extractUserId();
+    return ResponseEntity.ok(orderService.cancelOrder(id, userId));
+  }
+
+  private Long extractUserId() {
+    return (Long) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal();
+  }
+
   @GetMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Get order with items")

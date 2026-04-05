@@ -3,6 +3,7 @@ package com.ims.tenant.controller;
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.response.ProductResponse;
 import com.ims.shared.auth.TenantContext;
+import com.ims.shared.rbac.RequiresPermission;
 import com.ims.shared.rbac.RequiresRole;
 import com.ims.tenant.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -67,7 +68,7 @@ public class ProductController {
   }
 
   @DeleteMapping("/{id}")
-  @RequiresRole({"ADMIN"})
+  @RequiresPermission("delete_product")
   @Operation(summary = "Soft delete product")
   public ResponseEntity<Void> deleteProduct(@NonNull @PathVariable Long id) {
     productService.deleteProduct(id);

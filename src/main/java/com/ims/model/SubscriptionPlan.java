@@ -43,7 +43,7 @@ public class SubscriptionPlan {
   @Builder.Default
   private Integer durationDays = 30;
 
-  @Column(columnDefinition = "JSONB")
+  @Column(columnDefinition = "TEXT")
   private String features;
 
   @Column(name = "max_users")
