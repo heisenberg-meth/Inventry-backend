@@ -6,13 +6,13 @@ spring:
     password:
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: none
     show-sql: false
     database-platform: org.hibernate.dialect.H2Dialect
   cache:
     type: none
   flyway:
-    enabled: false
+    enabled: true
   data:
     redis:
       host: localhost

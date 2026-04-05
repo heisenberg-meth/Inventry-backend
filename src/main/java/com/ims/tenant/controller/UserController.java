@@ -1,5 +1,6 @@
 package com.ims.tenant.controller;
 
+import com.ims.dto.request.AssignPermissionsRequest;
 import com.ims.dto.request.CreateUserRequest;
 import com.ims.dto.response.UserResponse;
 import com.ims.shared.rbac.RequiresRole;
@@ -65,6 +66,14 @@ public class UserController {
       throw new IllegalArgumentException("Role is required");
     }
     return ResponseEntity.ok(userService.updateRole(Objects.requireNonNull(id), Objects.requireNonNull(role)));
+  }
+
+  @PostMapping("/{id}/permissions")
+  @RequiresRole({"ADMIN"})
+  @Operation(summary = "Assign custom permissions to user")
+  public ResponseEntity<UserResponse> assignPermissions(
+      @PathVariable @NonNull Long id, @Valid @RequestBody @NonNull AssignPermissionsRequest request) {
+    return ResponseEntity.ok(userService.assignPermissions(Objects.requireNonNull(id), Objects.requireNonNull(request)));
   }
 
   @DeleteMapping("/{id}")

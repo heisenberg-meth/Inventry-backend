@@ -38,6 +38,8 @@ public class Customer {
 
   @Column private String address;
 
+  @Column private String gstin;
+
   @Column(name = "created_at")
   @Builder.Default
   private LocalDateTime createdAt = LocalDateTime.now();
