@@ -39,7 +39,7 @@ public class TenantSettingsController {
 
   @PatchMapping
   @RequiresRole({"ADMIN"})
-  @Operation(summary = "Configure custom domains and business name")
+  @Operation(summary = "Configure custom workspace slugs and business name")
   public ResponseEntity<TenantResponse> updateSettings(
       @Valid @RequestBody @NonNull UpdateTenantSettingsRequest request) {
     Long tenantId = getTenantId();

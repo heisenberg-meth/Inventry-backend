@@ -101,12 +101,12 @@ public class AuthIntegrationTest {
     mockMvc.perform(get("/api/tenant/users")).andExpect(status().isUnauthorized());
   }
 
-  private SignupRequest createSignupRequest(String name, String domain, String email) {
+  private SignupRequest createSignupRequest(String name, String workspaceSlug, String email) {
     SignupRequest req = new SignupRequest();
     req.setBusinessName(name);
-    req.setBusinessType("RETAIL");
-    req.setDomain(domain);
-    req.setOwnerName(name + " Admin");
+    req.setBusinessType("Retail");
+    req.setWorkspaceSlug(workspaceSlug);
+    req.setOwnerName("Owner " + name);
     req.setOwnerEmail(email);
     req.setPassword("password123");
     return req;

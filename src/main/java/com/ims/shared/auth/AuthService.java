@@ -41,7 +41,9 @@ public class AuthService {
   private final JwtUtil jwtUtil;
   private final PasswordEncoder passwordEncoder;
   private final RedisTemplate<String, Object> redisTemplate;
+  private final com.ims.shared.audit.AuditLogService auditLogService;
 
+  @Transactional
   public LoginResponse login(LoginRequest request) {
     User user =
         userRepository
@@ -54,6 +56,25 @@ public class AuthService {
 
     if (!Boolean.TRUE.equals(user.getIsActive())) {
       throw new IllegalArgumentException("Account is deactivated");
+    }
+
+    // Validate companyCode
+    if (request.getCompanyCode() != null && !request.getCompanyCode().isBlank()) {
+      Tenant tenant =
+          tenantRepository
+              .findByWorkspaceSlug(request.getCompanyCode())
+              .orElseThrow(() -> new EntityNotFoundException("Invalid company code"));
+      if (!Objects.equals(user.getTenantId(), tenant.getId())) {
+        throw new IllegalArgumentException("User does not belong to this company");
+      }
+      if (!"TENANT".equals(user.getScope())) {
+        throw new IllegalArgumentException("Platform users cannot log in with a company code");
+      }
+    } else {
+      // Platform login
+      if (!"PLATFORM".equals(user.getScope())) {
+        throw new IllegalArgumentException("Company code is required for business login");
+      }
     }
 
     String scope = user.getScope();
@@ -78,6 +99,12 @@ public class AuthService {
     user.setLastLogin(LocalDateTime.now());
     userRepository.save(user);
 
+    auditLogService.logAudit(
+        "LOGIN",
+        "USER",
+        user.getId(),
+        "User logged in: " + user.getEmail() + " (" + user.getScope() + ")");
+
     log.info(
         "Login successful: user={} role={} tenant={}", user.getEmail(), user.getRole(), tenantId);
 
@@ -85,9 +112,14 @@ public class AuthService {
         .accessToken(accessToken)
         .refreshToken(refreshToken)
         .expiresIn(jwtUtil.getExpirySeconds())
-        .tenantId(tenantId)
-        .role(user.getRole())
-        .businessType(businessType)
+        .user(
+            LoginResponse.UserResponse.builder()
+                .id(user.getId().toString())
+                .name(user.getName())
+                .email(user.getEmail())
+                .type(user.getScope())
+                .platformRole("PLATFORM".equals(user.getScope()) ? user.getRole() : null)
+                .build())
         .build();
   }
 
@@ -140,9 +172,14 @@ public class AuthService {
         .accessToken(newAccessToken)
         .refreshToken(newRefreshToken)
         .expiresIn(jwtUtil.getExpirySeconds())
-        .tenantId(tenantId)
-        .role(user.getRole())
-        .businessType(businessType)
+        .user(
+            LoginResponse.UserResponse.builder()
+                .id(user.getId().toString())
+                .name(user.getName())
+                .email(user.getEmail())
+                .type(user.getScope())
+                .platformRole("PLATFORM".equals(user.getScope()) ? user.getRole() : null)
+                .build())
         .build();
   }
 
@@ -191,6 +228,12 @@ public class AuthService {
 
     user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
     userRepository.save(user);
+
+    auditLogService.logAudit(
+        "PASSWORD_CHANGE",
+        "USER",
+        user.getId(),
+        "User changed their password: " + user.getEmail());
 
     log.info("Password changed for user: {}", user.getEmail());
     return Map.of("message", "Password updated successfully");
@@ -246,6 +289,12 @@ public class AuthService {
     user.setResetToken(null);
     user.setResetTokenExpiry(null);
     userRepository.save(user);
+
+    auditLogService.logAudit(
+        "PASSWORD_RESET",
+        "USER",
+        user.getId(),
+        "User reset their password: " + user.getEmail());
 
     log.info("Password reset successful for user: {}", user.getEmail());
     return Map.of("message", "Password reset successful");

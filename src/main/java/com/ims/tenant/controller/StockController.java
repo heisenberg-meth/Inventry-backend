@@ -73,7 +73,8 @@ public class StockController {
   @Operation(summary = "Update transfer order status")
   public @NonNull ResponseEntity<TransferOrder> updateTransferStatus(
       @PathVariable @NonNull Long id, @RequestBody @NonNull TransferOrderStatusRequest request) {
-    return ResponseEntity.ok(Objects.requireNonNull(stockService.updateTransferStatus(id, request)));
+    Long userId = (Long) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal();
+    return ResponseEntity.ok(Objects.requireNonNull(stockService.updateTransferStatus(id, request, userId)));
   }
 
   @PostMapping("/in")

@@ -1,6 +1,9 @@
 package com.ims.tenant.service;
 
+import com.ims.model.Tenant;
+import com.ims.platform.repository.TenantRepository;
 import com.ims.shared.auth.JwtAuthDetails;
+import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.domain.pharmacy.PharmacyProductRepository;
 import com.ims.tenant.repository.OrderRepository;
 import com.ims.tenant.repository.ProductRepository;
@@ -23,6 +26,9 @@ import org.springframework.lang.Nullable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import com.ims.tenant.repository.CategoryRepository;
+import java.util.stream.Collectors;
+...
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -31,10 +37,23 @@ public class ReportService {
   private final ProductRepository productRepository;
   private final OrderRepository orderRepository;
   private final PharmacyProductRepository pharmacyProductRepository;
+  private final TenantRepository tenantRepository;
+  private final CategoryRepository categoryRepository;
  
   private static final int DEFAULT_DAYS = 30;
   private static final int PERCENTAGE_BASE = 100;
   private static final int STATUS_PRIORITY_OK = 3;
+
+  private int getExpiryThreshold() {
+    Long tenantId = TenantContext.get();
+    if (tenantId != null) {
+      return tenantRepository
+          .findById(tenantId)
+          .map(Tenant::getExpiryThresholdDays)
+          .orElse(DEFAULT_DAYS);
+    }
+    return DEFAULT_DAYS;
+  }
 
   @Cacheable(value = "reports", key = "T(com.ims.shared.auth.TenantContext).get() + ':purchases:' + #from + ':' + #to")
   public @NonNull Map<String, Object> getPurchasesReport(@NonNull LocalDate from, @NonNull LocalDate to) {
@@ -89,13 +108,42 @@ public class ReportService {
     // Expiring soon — only for PHARMACY tenants
     String businessType = getBusinessType();
     if ("PHARMACY".equals(businessType)) {
-      LocalDate threshold = LocalDate.now().plusDays(DEFAULT_DAYS);
+      LocalDate threshold = LocalDate.now().plusDays(getExpiryThreshold());
       long expiringSoon = pharmacyProductRepository.countExpiring(threshold);
       dashboard.put("expiring_soon_count", expiringSoon);
     }
 
+    dashboard.put("inventory_valuation", getInventoryValuation());
+    dashboard.put("category_distribution", getCategoryDistribution());
+
     dashboard.put("cached_at", LocalDateTime.now().toString());
     return dashboard;
+  }
+
+  public BigDecimal getInventoryValuation() {
+    return productRepository.findByIsActiveTrue(Pageable.unpaged()).getContent().stream()
+        .map(p -> p.getSalePrice() != null ? p.getSalePrice().multiply(BigDecimal.valueOf(p.getStock())) : BigDecimal.ZERO)
+        .reduce(BigDecimal.ZERO, BigDecimal::add);
+  }
+
+  public List<Map<String, Object>> getCategoryDistribution() {
+    var products = productRepository.findByIsActiveTrue(Pageable.unpaged()).getContent();
+    var categories = categoryRepository.findAll();
+    var categoryMap = categories.stream().collect(Collectors.toMap(com.ims.model.Category::getId, com.ims.model.Category::getName));
+
+    Map<Long, Long> distribution = products.stream()
+        .filter(p -> p.getCategoryId() != null)
+        .collect(Collectors.groupingBy(com.ims.model.Product::getCategoryId, Collectors.counting()));
+
+    return distribution.entrySet().stream()
+        .map(e -> {
+          Map<String, Object> item = new LinkedHashMap<>();
+          item.put("category_id", e.getKey());
+          item.put("category_name", categoryMap.getOrDefault(e.getKey(), "Unknown"));
+          item.put("product_count", e.getValue());
+          return item;
+        })
+        .collect(Collectors.toList());
   }
 
   @Cacheable(value = "reports", key = "T(com.ims.shared.auth.TenantContext).get() + ':stock-report'")
@@ -103,6 +151,7 @@ public class ReportService {
     var products =
         Objects.requireNonNull(productRepository.findByIsActiveTrue(Pageable.unpaged())).getContent();
     List<Map<String, Object>> report = new ArrayList<>();
+    int thresholdDays = getExpiryThreshold();
 
     for (var product : products) {
       String status;
@@ -120,7 +169,7 @@ public class ReportService {
         var pp = pharmacyProductRepository.findById(Objects.requireNonNull(product.getId()));
         if (pp.isPresent()) {
           expiryDate = pp.get().getExpiryDate();
-          if (expiryDate != null && expiryDate.isBefore(LocalDate.now().plusDays(DEFAULT_DAYS))) {
+          if (expiryDate != null && expiryDate.isBefore(LocalDate.now().plusDays(thresholdDays))) {
             status = "EXPIRING";
           }
         }

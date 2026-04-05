@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class SupplierService {
 
   private final SupplierRepository supplierRepository;
+  private final com.ims.shared.audit.AuditLogService auditLogService;
 
   public @NonNull Page<Supplier> getSuppliers(@NonNull Pageable pageable) {
     return Objects.requireNonNull(supplierRepository.findAll(pageable));
@@ -29,7 +30,15 @@ public class SupplierService {
 
   @Transactional
   public @NonNull Supplier create(@NonNull Supplier supplier) {
-    return Objects.requireNonNull(supplierRepository.save(supplier));
+    Supplier savedSupplier = Objects.requireNonNull(supplierRepository.save(supplier));
+
+    auditLogService.logAudit(
+        "CREATE",
+        "SUPPLIER",
+        savedSupplier.getId(),
+        "Created supplier: " + savedSupplier.getName());
+
+    return savedSupplier;
   }
 
   @Transactional
@@ -50,12 +59,26 @@ public class SupplierService {
     if (updates.getGstin() != null) {
       supplier.setGstin(updates.getGstin());
     }
-    return Objects.requireNonNull(supplierRepository.save(supplier));
+    Supplier updatedSupplier = Objects.requireNonNull(supplierRepository.save(supplier));
+
+    auditLogService.logAudit(
+        "UPDATE",
+        "SUPPLIER",
+        updatedSupplier.getId(),
+        "Updated supplier: " + updatedSupplier.getName());
+
+    return updatedSupplier;
   }
 
   @Transactional
   public void delete(@NonNull Long id) {
     Supplier supplier = getById(id);
     supplierRepository.delete(supplier);
+
+    auditLogService.logAudit(
+        "DELETE",
+        "SUPPLIER",
+        id,
+        "Deleted supplier: " + supplier.getName());
   }
 }

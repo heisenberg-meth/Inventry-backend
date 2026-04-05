@@ -30,46 +30,28 @@ public class TransferOrderService {
     long productId = Long.parseLong(Objects.requireNonNull(request.get("product_id")).toString());
     String fromLocation = Objects.requireNonNull(request.get("from_location")).toString();
     String toLocation = Objects.requireNonNull(request.get("to_location")).toString();
+    int quantity = Integer.parseInt(Objects.requireNonNull(request.get("quantity")).toString());
     String notes = request.getOrDefault("notes", "").toString();
 
     // Create transfer order
     TransferOrder transfer =
         TransferOrder.builder()
             .tenantId(tenantId)
+            .productId(productId)
+            .quantity(quantity)
             .fromLocation(fromLocation)
             .toLocation(toLocation)
-            .status("COMPLETED")
+            .status("PENDING")
             .notes(notes)
             .createdBy(userId)
             .build();
     transfer = Objects.requireNonNull(transferOrderRepository.save(Objects.requireNonNull(transfer)));
 
-    // Update warehouse product location
-    WarehouseProduct wp =
-        warehouseProductRepository
-            .findById(productId)
-            .orElseThrow(() -> new EntityNotFoundException("Warehouse product not found"));
-    wp.setStorageLocation(toLocation);
-    warehouseProductRepository.save(wp);
-
-    // Log stock movement
-    int quantity = Integer.parseInt(Objects.requireNonNull(request.get("quantity")).toString());
-    Objects.requireNonNull(stockMovementRepository.save(Objects.requireNonNull(
-        StockMovement.builder()
-            .tenantId(tenantId)
-            .productId(productId)
-            .movementType("TRANSFER")
-            .quantity(quantity)
-            .notes("Transfer from " + fromLocation + " to " + toLocation)
-            .createdBy(userId)
-            .referenceId(Objects.requireNonNull(transfer.getId()))
-            .referenceType("TRANSFER_ORDER")
-            .build())));
-
     log.info(
-        "Transfer order created: id={} product={} {} -> {}",
+        "Transfer order created (PENDING): id={} product={} quantity={} {} -> {}",
         transfer.getId(),
         productId,
+        quantity,
         fromLocation,
         toLocation);
     return transfer;

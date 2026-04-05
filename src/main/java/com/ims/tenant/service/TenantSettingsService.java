@@ -39,11 +39,11 @@ public class TenantSettingsService {
                 .findById(Objects.requireNonNull(tenantId))
                 .orElseThrow(() -> new EntityNotFoundException("Tenant not found")));
 
-    if (request.getDomain() != null && !request.getDomain().equals(tenant.getDomain())) {
-      if (tenantRepository.existsByDomain(request.getDomain())) {
-        throw new IllegalArgumentException("Domain already in use: " + request.getDomain());
+    if (request.getWorkspaceSlug() != null && !request.getWorkspaceSlug().equals(tenant.getWorkspaceSlug())) {
+      if (tenantRepository.existsByWorkspaceSlug(request.getWorkspaceSlug())) {
+        throw new IllegalArgumentException("Workspace slug already taken");
       }
-      tenant.setDomain(request.getDomain());
+      tenant.setWorkspaceSlug(request.getWorkspaceSlug());
     }
 
     if (request.getName() != null) {
@@ -54,8 +54,12 @@ public class TenantSettingsService {
       tenant.setInvoiceSequence(request.getInvoiceSequence());
     }
 
+    if (request.getExpiryThresholdDays() != null) {
+      tenant.setExpiryThresholdDays(request.getExpiryThresholdDays());
+    }
+
     tenant = Objects.requireNonNull(tenantRepository.save(Objects.requireNonNull(tenant)));
-    log.info("Tenant settings updated for id={}: domain={}", tenantId, tenant.getDomain());
+    log.info("Tenant settings updated for id={}: workspaceSlug={}", tenantId, tenant.getWorkspaceSlug());
     return toResponse(tenant);
   }
 
@@ -63,12 +67,13 @@ public class TenantSettingsService {
     return Objects.requireNonNull(TenantResponse.builder()
         .id(tenant.getId())
         .name(tenant.getName())
-        .domain(tenant.getDomain())
+        .workspaceSlug(tenant.getWorkspaceSlug())
         .businessType(tenant.getBusinessType())
         .plan(tenant.getPlan())
         .status(tenant.getStatus())
         .maxProducts(tenant.getMaxProducts())
         .maxUsers(tenant.getMaxUsers())
+        .expiryThresholdDays(tenant.getExpiryThresholdDays())
         .createdAt(tenant.getCreatedAt())
         .build());
   }

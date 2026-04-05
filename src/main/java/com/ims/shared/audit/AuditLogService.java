@@ -30,6 +30,20 @@ public class AuditLogService {
     auditLogRepository.save(Objects.requireNonNull(auditEntry));
   }
 
+  public void logAudit(String action, String resource, Long resourceId, String details) {
+    Long tenantId = null;
+    Long userId = null;
+
+    var auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth != null && auth.getDetails() instanceof JwtAuthDetails detailsObj) {
+      tenantId = detailsObj.getTenantId();
+      userId = detailsObj.getUserId();
+    }
+
+    String fullDetails = String.format("[%s:%s] %s", resource, resourceId != null ? resourceId : "N/A", details);
+    log(action, tenantId, userId, fullDetails);
+  }
+
   public org.springframework.data.domain.Page<com.ims.model.AuditLog> getAllLogs(@NonNull org.springframework.data.domain.Pageable pageable) {
     var logs = auditLogRepository.findAll(Objects.requireNonNull(pageable));
     
