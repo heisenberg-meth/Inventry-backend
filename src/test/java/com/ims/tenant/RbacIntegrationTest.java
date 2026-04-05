@@ -8,13 +8,19 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ims.dto.request.AssignPermissionsRequest;
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.request.LoginRequest;
 import com.ims.dto.request.SignupRequest;
 import com.ims.dto.response.LoginResponse;
 import com.ims.dto.response.ProductResponse;
+import com.ims.dto.response.UserResponse;
+import com.ims.model.Permission;
+import com.ims.model.Role;
 import com.ims.platform.repository.TenantRepository;
 import com.ims.shared.auth.SignupService;
+import com.ims.tenant.repository.PermissionRepository;
+import com.ims.tenant.repository.RoleRepository;
 import com.ims.tenant.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,6 +29,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Objects;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
@@ -36,13 +43,15 @@ import org.springframework.test.web.servlet.MvcResult;
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-public class AuditTrailIntegrationTest {
+public class RbacIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private ObjectMapper objectMapper;
   @Autowired private SignupService signupService;
   @Autowired private UserRepository userRepository;
   @Autowired private TenantRepository tenantRepository;
+  @Autowired private RoleRepository roleRepository;
+  @Autowired private PermissionRepository permissionRepository;
 
   @MockitoBean private RedisTemplate<String, Object> redisTemplate;
   @MockitoBean private ValueOperations<String, Object> valueOperations;
@@ -53,7 +62,9 @@ public class AuditTrailIntegrationTest {
   @BeforeEach
   void setup() {
     userRepository.deleteAll();
+    roleRepository.deleteAll();
     tenantRepository.deleteAll();
+    
     when(redisTemplate.opsForValue()).thenReturn(valueOperations);
     when(valueOperations.increment(anyString())).thenReturn(1L);
     
@@ -63,82 +74,56 @@ public class AuditTrailIntegrationTest {
   }
 
   @Test
-  void testProductAuditTrail() throws Exception {
+  void testPermissionBasedAccess() throws Exception {
     // 1. Signup Tenant
-    SignupRequest signup = createSignupRequest("Audit Corp", "audit-corp", "admin@audit.com");
+    SignupRequest signup = createSignupRequest("RBAC Corp", "rbac-corp", "admin@rbac.com");
     signupService.signup(signup);
-    String token = login("admin@audit.com", "password123", "audit-corp");
+    String adminToken = login("admin@rbac.com", "password123", "rbac-corp");
 
-    // 2. Create Product
+    // 2. Create a STAFF user (no delete_product permission by default)
+    mockMvc.perform(post("/api/tenant/users")
+            .header("Authorization", "Bearer " + adminToken)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"name\":\"Staff User\",\"email\":\"staff@rbac.com\",\"password\":\"staff123\",\"role\":\"STAFF\"}"))
+        .andExpect(status().isCreated());
+
+    String staffToken = login("staff@rbac.com", "staff123", "rbac-corp");
+
+    // 3. Create a product as Admin
     CreateProductRequest createReq = new CreateProductRequest();
-    createReq.setName("Audit Product");
-    createReq.setSku("AUDIT-001");
+    createReq.setName("RBAC Product");
+    createReq.setSku("RBAC-001");
     createReq.setSalePrice(new BigDecimal("100.00"));
-
-    MvcResult createResult = mockMvc.perform(post("/api/tenant/products")
-            .header("Authorization", "Bearer " + token)
+    MvcResult prodResult = mockMvc.perform(post("/api/tenant/products")
+            .header("Authorization", "Bearer " + adminToken)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(createReq)))
         .andExpect(status().isCreated())
         .andReturn();
+    ProductResponse product = objectMapper.readValue(prodResult.getResponse().getContentAsString(), ProductResponse.class);
 
-    ProductResponse product = objectMapper.readValue(createResult.getResponse().getContentAsString(), ProductResponse.class);
+    // 4. Try to delete as STAFF (should fail)
+    mockMvc.perform(delete("/api/tenant/products/" + product.getId())
+            .header("Authorization", "Bearer " + staffToken))
+        .andExpect(status().isForbidden());
 
-    // 3. Verify Audit Log for CREATE
-    mockMvc.perform(get("/api/tenant/audits")
-            .header("Authorization", "Bearer " + token))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.content[?(@.action == 'CREATE' && @.details contains 'Audit Product')]").exists());
+    // 5. Assign delete_product permission to STAFF user
+    Permission deletePerm = permissionRepository.findByKey("delete_product").orElseThrow();
+    Long staffUserId = userRepository.findByEmailUnfiltered("staff@rbac.com").orElseThrow().getId();
 
-    // 4. Update Product
-    createReq.setName("Updated Audit Product");
-    mockMvc.perform(put("/api/tenant/products/" + product.getId())
-            .header("Authorization", "Bearer " + token)
+    AssignPermissionsRequest assignReq = new AssignPermissionsRequest();
+    assignReq.setPermissionIds(List.of(deletePerm.getId()));
+    
+    mockMvc.perform(post("/api/tenant/users/" + staffUserId + "/permissions")
+            .header("Authorization", "Bearer " + adminToken)
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(createReq)))
+            .content(objectMapper.writeValueAsString(assignReq)))
         .andExpect(status().isOk());
 
-    // 5. Verify Audit Log for UPDATE
-    mockMvc.perform(get("/api/tenant/audits")
-            .header("Authorization", "Bearer " + token))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.content[?(@.action == 'UPDATE' && @.details contains 'Updated Audit Product')]").exists());
-  }
-
-  @Test
-  void testAuditIsolation() throws Exception {
-    // 1. Signup Tenant 1
-    SignupRequest t1Signup = createSignupRequest("T1", "t1", "admin@t1.com");
-    signupService.signup(t1Signup);
-    String t1Token = login("admin@t1.com", "password123", "t1");
-
-    // 2. Signup Tenant 2
-    SignupRequest t2Signup = createSignupRequest("T2", "t2", "admin@t2.com");
-    signupService.signup(t2Signup);
-    String t2Token = login("admin@t2.com", "password123", "t2");
-
-    // 3. T1 performs an action
-    CreateProductRequest createReq = new CreateProductRequest();
-    createReq.setName("T1 Product");
-    createReq.setSku("T1-001");
-    createReq.setSalePrice(new BigDecimal("50.00"));
-    mockMvc.perform(post("/api/tenant/products")
-            .header("Authorization", "Bearer " + t1Token)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(createReq)))
-        .andExpect(status().isCreated());
-
-    // 4. Verify T1 sees their audit
-    mockMvc.perform(get("/api/tenant/audits")
-            .header("Authorization", "Bearer " + t1Token))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.content[?(@.details contains 'T1 Product')]").exists());
-
-    // 5. Verify T2 DOES NOT see T1's audit
-    mockMvc.perform(get("/api/tenant/audits")
-            .header("Authorization", "Bearer " + t2Token))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.content[?(@.details contains 'T1 Product')]").doesNotExist());
+    // 6. Try to delete as STAFF again (should succeed now)
+    mockMvc.perform(delete("/api/tenant/products/" + product.getId())
+            .header("Authorization", "Bearer " + staffToken))
+        .andExpect(status().isNoContent());
   }
 
   private SignupRequest createSignupRequest(String name, String workspaceSlug, String email) {

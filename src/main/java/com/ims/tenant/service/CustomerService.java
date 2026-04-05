@@ -47,6 +47,9 @@ public class CustomerService {
     if (updates.getAddress() != null) {
       customer.setAddress(updates.getAddress());
     }
+    if (updates.getGstin() != null) {
+      customer.setGstin(updates.getGstin());
+    }
     return Objects.requireNonNull(customerRepository.save(customer));
   }
 

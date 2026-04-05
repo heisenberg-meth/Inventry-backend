@@ -6,8 +6,13 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -43,6 +48,14 @@ public class User {
 
   @Column(nullable = false)
   private String scope;
+
+  @ManyToMany
+  @JoinTable(
+      name = "user_permissions",
+      joinColumns = @JoinColumn(name = "user_id"),
+      inverseJoinColumns = @JoinColumn(name = "permission_id"))
+  @Builder.Default
+  private Set<Permission> customPermissions = new HashSet<>();
 
   @Column(name = "is_active")
   @Builder.Default

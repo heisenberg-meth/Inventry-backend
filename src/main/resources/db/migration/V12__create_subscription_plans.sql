@@ -10,7 +10,7 @@ CREATE TABLE subscription_plans (
   currency        VARCHAR(10)    DEFAULT 'INR',
   billing_cycle   VARCHAR(20)    NOT NULL,
   duration_days   INTEGER        DEFAULT 30,
-  features        JSONB,
+  features        TEXT,
   max_users       INTEGER        DEFAULT 0,
   max_products    INTEGER        DEFAULT 0,
   status          VARCHAR(20)    DEFAULT 'ACTIVE',

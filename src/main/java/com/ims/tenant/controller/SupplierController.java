@@ -1,7 +1,9 @@
 package com.ims.tenant.controller;
 
+import com.ims.model.Order;
 import com.ims.model.Supplier;
 import com.ims.shared.rbac.RequiresRole;
+import com.ims.tenant.service.OrderService;
 import com.ims.tenant.service.SupplierService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -30,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class SupplierController {
 
   private final SupplierService supplierService;
+  private final OrderService orderService;
 
   @GetMapping
   @RequiresRole({"ADMIN", "MANAGER"})
@@ -65,5 +68,13 @@ public class SupplierController {
   public @NonNull ResponseEntity<Void> delete(@PathVariable @NonNull Long id) {
     supplierService.delete(id);
     return ResponseEntity.noContent().build();
+  }
+
+  @GetMapping("/{id}/orders")
+  @RequiresRole({"ADMIN", "MANAGER"})
+  @Operation(summary = "Get order history for supplier")
+  public ResponseEntity<Page<Order>> getSupplierOrders(
+      @PathVariable @NonNull Long id, @NonNull Pageable pageable) {
+    return ResponseEntity.ok(orderService.getOrdersBySupplier(id, pageable));
   }
 }

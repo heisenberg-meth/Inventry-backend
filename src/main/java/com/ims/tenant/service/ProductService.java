@@ -5,6 +5,7 @@ import com.ims.dto.response.ProductResponse;
 import com.ims.model.Product;
 import com.ims.model.Tenant;
 import com.ims.shared.auth.JwtAuthDetails;
+import com.ims.shared.rbac.RequiresPermission;
 import com.ims.tenant.domain.pharmacy.PharmacyProduct;
 import com.ims.tenant.domain.pharmacy.PharmacyProductRepository;
 import com.ims.tenant.domain.warehouse.WarehouseProduct;
@@ -219,10 +220,11 @@ public class ProductService {
     }
 
     return toResponse(Objects.requireNonNull(product));
-  }
+    }
 
-  @Transactional
+    @Transactional
   @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "products", allEntries = true)
+  @RequiresPermission("delete_product")
   public void deleteProduct(@NonNull Long id) {
     Product product =
         productRepository

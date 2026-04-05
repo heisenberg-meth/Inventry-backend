@@ -15,7 +15,7 @@ CREATE INDEX idx_roles_tenant ON roles(tenant_id);
 
 CREATE TABLE permissions (
   id              BIGSERIAL PRIMARY KEY,
-  key             VARCHAR(100)   UNIQUE NOT NULL,
+  "key"           VARCHAR(100)   UNIQUE NOT NULL,
   description     VARCHAR(255)   NOT NULL
 );
 
@@ -26,7 +26,7 @@ CREATE TABLE role_permissions (
 );
 
 -- Seed default permissions
-INSERT INTO permissions (key, description) VALUES
+INSERT INTO permissions ("key", description) VALUES
   ('create_business', 'Can create businesses'),
   ('view_business', 'Can view business details'),
   ('create_user', 'Can create and manage users'),
@@ -41,5 +41,4 @@ INSERT INTO permissions (key, description) VALUES
   ('stock_out', 'Can record stock out movements'),
   ('view_reports', 'Can view business reports'),
   ('create_invoice', 'Can create invoices'),
-  ('manage_platform', 'Full platform administrative control')
-ON CONFLICT (key) DO NOTHING;
+  ('manage_platform', 'Full platform administrative control');

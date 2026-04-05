@@ -2,6 +2,7 @@ package com.ims.tenant.service;
 
 import com.ims.dto.CategoryRequest;
 import com.ims.model.Category;
+import com.ims.shared.rbac.RequiresPermission;
 import com.ims.tenant.repository.CategoryRepository;
 import com.ims.tenant.repository.ProductRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -89,6 +90,7 @@ public class CategoryService {
 
   @Transactional
   @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "categories", allEntries = true)
+  @RequiresPermission("delete_category")
   public void delete(@NonNull Long id) {
     Category category = getById(id);
     long productCount = productRepository.countByCategoryId(id);

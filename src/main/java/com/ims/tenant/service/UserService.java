@@ -1,14 +1,24 @@
 package com.ims.tenant.service;
 
+import com.ims.dto.request.AssignPermissionsRequest;
 import com.ims.dto.request.CreateUserRequest;
 import com.ims.dto.response.UserResponse;
+import com.ims.model.Permission;
+import com.ims.model.Role;
 import com.ims.model.User;
 import com.ims.platform.repository.TenantRepository;
+import com.ims.shared.audit.AuditLogService;
 import com.ims.shared.auth.JwtAuthDetails;
+import com.ims.tenant.repository.PermissionRepository;
+import com.ims.tenant.repository.RoleRepository;
 import com.ims.tenant.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
@@ -27,6 +37,9 @@ public class UserService {
   private final UserRepository userRepository;
   private final TenantRepository tenantRepository;
   private final PasswordEncoder passwordEncoder;
+  private final PermissionRepository permissionRepository;
+  private final RoleRepository roleRepository;
+  private final AuditLogService auditLogService;
 
   private static final List<String> VALID_TENANT_ROLES = List.of("ADMIN", "MANAGER", "STAFF");
 
@@ -82,6 +95,9 @@ public class UserService {
             .build();
 
     user = Objects.requireNonNull(userRepository.save(Objects.requireNonNull(user)));
+    
+    auditLogService.logAudit("CREATE", "USER", user.getId(), "Created user: " + user.getEmail() + " with role: " + user.getRole());
+    
     log.info("User created: id={} email={} role={}", user.getId(), user.getEmail(), user.getRole());
     return toResponse(user);
   }
@@ -100,7 +116,24 @@ public class UserService {
 
     user.setRole(newRole);
     user = Objects.requireNonNull(userRepository.save(Objects.requireNonNull(user)));
+    
+    auditLogService.logAudit("UPDATE_ROLE", "USER", id, "Updated role for user " + user.getEmail() + " to " + newRole);
+    
     log.info("User role updated: id={} newRole={}", id, newRole);
+    return toResponse(user);
+  }
+
+  @Transactional
+  public UserResponse assignPermissions(@NonNull Long id, @NonNull AssignPermissionsRequest request) {
+    User user = userRepository.findById(id)
+        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+    var perms = permissionRepository.findByIdIn(request.getPermissionIds());
+    user.setCustomPermissions(new HashSet<>(perms));
+    userRepository.save(user);
+
+    auditLogService.logAudit("ASSIGN_PERMISSIONS", "USER", id, "Assigned " + perms.size() + " custom permissions to user: " + user.getEmail());
+    
     return toResponse(user);
   }
 
@@ -113,6 +146,8 @@ public class UserService {
                 .orElseThrow(() -> new EntityNotFoundException("User not found")));
     user.setIsActive(false);
     userRepository.save(Objects.requireNonNull(user));
+
+    auditLogService.logAudit("DEACTIVATE", "USER", id, "Deactivated user account: " + user.getEmail());
     log.info("User deactivated: id={}", id);
   }
 
@@ -129,6 +164,27 @@ public class UserService {
   }
 
   private @NonNull UserResponse toResponse(@NonNull User user) {
+    Set<String> allPermissions = new HashSet<>();
+    
+    // 1. Role permissions
+    if (user.getRole() != null) {
+      Long tenantId = getTenantId();
+      Optional<Role> roleOpt = tenantId != null 
+          ? roleRepository.findByNameAndTenantId(user.getRole(), tenantId)
+          : roleRepository.findByNameAndTenantIdIsNull(user.getRole());
+      
+      roleOpt.ifPresent(role -> 
+          allPermissions.addAll(role.getPermissions().stream()
+              .map(Permission::getKey)
+              .collect(Collectors.toSet()))
+      );
+    }
+
+    // 2. Custom permissions
+    allPermissions.addAll(user.getCustomPermissions().stream()
+        .map(Permission::getKey)
+        .collect(Collectors.toSet()));
+
     return Objects.requireNonNull(UserResponse.builder()
         .id(user.getId())
         .name(user.getName())
@@ -136,6 +192,7 @@ public class UserService {
         .role(user.getRole())
         .scope(user.getScope())
         .isActive(user.getIsActive())
+        .permissions(new java.util.ArrayList<>(allPermissions))
         .createdAt(user.getCreatedAt())
         .build());
   }

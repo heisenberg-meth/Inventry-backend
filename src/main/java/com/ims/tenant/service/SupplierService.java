@@ -1,6 +1,7 @@
 package com.ims.tenant.service;
 
 import com.ims.model.Supplier;
+import com.ims.shared.rbac.RequiresPermission;
 import com.ims.tenant.repository.SupplierRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -71,6 +72,7 @@ public class SupplierService {
   }
 
   @Transactional
+  @RequiresPermission("delete_supplier")
   public void delete(@NonNull Long id) {
     Supplier supplier = getById(id);
     supplierRepository.delete(supplier);
