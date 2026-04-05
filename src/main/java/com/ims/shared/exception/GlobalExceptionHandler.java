@@ -87,6 +87,13 @@ public class GlobalExceptionHandler {
         .body(errorBody(STATUS_BAD_REQUEST, "BAD_REQUEST", ex.getMessage(), request.getRequestURI()));
   }
 
+  @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+  public ResponseEntity<Map<String, Object>> handleNoResourceFound(
+      org.springframework.web.servlet.resource.NoResourceFoundException ex, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(errorBody(STATUS_NOT_FOUND, "NOT_FOUND", "Resource not found", request.getRequestURI()));
+  }
+
   @ExceptionHandler(Exception.class)
   public ResponseEntity<Map<String, Object>> handleAll(Exception ex, HttpServletRequest request) {
     // NEVER expose stack trace in response body
@@ -106,6 +113,7 @@ public class GlobalExceptionHandler {
     body.put("message", message);
     body.put("path", path);
     body.put("timestamp", LocalDateTime.now().toString());
+    body.put("correlation_id", org.slf4j.MDC.get("correlation_id"));
     return body;
   }
 }

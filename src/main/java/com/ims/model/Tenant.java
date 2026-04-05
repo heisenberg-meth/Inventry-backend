@@ -51,6 +51,12 @@ public class Tenant {
   @Builder.Default
   private Integer expiryThresholdDays = 30;
 
+  @Column
+  private String address;
+
+  @Column
+  private String gstin;
+
   @Column(name = "created_at")
   @Builder.Default
   private LocalDateTime createdAt = LocalDateTime.now();

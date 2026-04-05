@@ -33,4 +33,7 @@ public class SignupRequest {
   @NotBlank(message = "Password is required")
   @Size(min = 6, max = 100)
   private String password;
-}
+
+  private String address;
+  private String gstin;
+  }
