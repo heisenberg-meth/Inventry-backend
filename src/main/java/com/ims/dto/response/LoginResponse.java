@@ -1,6 +1,5 @@
 package com.ims.dto.response;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,20 +10,20 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class LoginResponse {
-  @JsonProperty("access_token")
   private String accessToken;
-
-  @JsonProperty("refresh_token")
   private String refreshToken;
-
-  @JsonProperty("expires_in")
   private long expiresIn;
+  private UserResponse user;
 
-  @JsonProperty("tenant_id")
-  private Long tenantId;
-
-  private String role;
-
-  @JsonProperty("business_type")
-  private String businessType;
+  @Data
+  @Builder
+  @NoArgsConstructor
+  @AllArgsConstructor
+  public static class UserResponse {
+    private String id;
+    private String name;
+    private String email;
+    private String type;
+    private String platformRole;
+  }
 }

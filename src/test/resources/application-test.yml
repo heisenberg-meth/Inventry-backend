@@ -9,6 +9,8 @@ spring:
       ddl-auto: create-drop
     show-sql: false
     database-platform: org.hibernate.dialect.H2Dialect
+  cache:
+    type: none
   flyway:
     enabled: false
   data:

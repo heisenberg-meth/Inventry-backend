@@ -60,14 +60,14 @@ public class TenantService {
 
   @Transactional
   public TenantResponse createTenant(@NonNull CreateTenantRequest request) {
-    if (request.getDomain() != null && tenantRepository.existsByDomain(request.getDomain())) {
-      throw new IllegalArgumentException("Domain already taken: " + request.getDomain());
+    if (request.getWorkspaceSlug() != null && tenantRepository.existsByWorkspaceSlug(request.getWorkspaceSlug())) {
+      throw new IllegalArgumentException("Workspace slug already taken");
     }
 
     Tenant tenant =
         Tenant.builder()
             .name(request.getName())
-            .domain(request.getDomain())
+            .workspaceSlug(request.getWorkspaceSlug())
             .businessType(request.getBusinessType())
             .plan(request.getPlan() != null ? request.getPlan() : "FREE")
             .status("ACTIVE")
@@ -370,7 +370,7 @@ public class TenantService {
     return TenantResponse.builder()
         .id(tenant.getId())
         .name(tenant.getName())
-        .domain(tenant.getDomain())
+        .workspaceSlug(tenant.getWorkspaceSlug())
         .businessType(tenant.getBusinessType())
         .plan(tenant.getPlan())
         .status(tenant.getStatus())

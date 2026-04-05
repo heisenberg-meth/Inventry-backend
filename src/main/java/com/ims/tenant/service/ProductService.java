@@ -3,6 +3,7 @@ package com.ims.tenant.service;
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.response.ProductResponse;
 import com.ims.model.Product;
+import com.ims.model.Tenant;
 import com.ims.shared.auth.JwtAuthDetails;
 import com.ims.tenant.domain.pharmacy.PharmacyProduct;
 import com.ims.tenant.domain.pharmacy.PharmacyProductRepository;
@@ -37,6 +38,7 @@ public class ProductService {
   private final WarehouseProductRepository warehouseProductRepository;
   private final TenantRepository tenantRepository;
   private final SystemConfigService systemConfigService;
+  private final com.ims.shared.audit.AuditLogService auditLogService;
 
   private static final int DEFAULT_REORDER_LEVEL = 10;
 
@@ -99,6 +101,12 @@ public class ProductService {
             .build();
 
     product = productRepository.save(Objects.requireNonNull(product));
+
+    auditLogService.logAudit(
+        "CREATE",
+        "PRODUCT",
+        product.getId(),
+        "Created product: " + product.getName() + " (SKU: " + product.getSku() + ")");
 
     // Pharmacy extension — same @Transactional
     if ("PHARMACY".equals(businessType) && request.getPharmacyDetails() != null) {
@@ -168,6 +176,48 @@ public class ProductService {
     product.setUpdatedAt(LocalDateTime.now());
 
     product = productRepository.save(Objects.requireNonNull(product));
+
+    auditLogService.logAudit(
+        "UPDATE",
+        "PRODUCT",
+        product.getId(),
+        "Updated product: " + product.getName());
+
+    String businessType = getBusinessType();
+
+    // Pharmacy extension update
+    if ("PHARMACY".equals(businessType) && request.getPharmacyDetails() != null) {
+      var pd = request.getPharmacyDetails();
+      PharmacyProduct pp =
+          pharmacyProductRepository
+              .findById(Objects.requireNonNull(product.getId()))
+              .orElse(PharmacyProduct.builder().product(product).build());
+
+      if (pd.getBatchNumber() != null) pp.setBatchNumber(pd.getBatchNumber());
+      if (pd.getExpiryDate() != null) pp.setExpiryDate(LocalDate.parse(pd.getExpiryDate()));
+      if (pd.getManufacturer() != null) pp.setManufacturer(pd.getManufacturer());
+      if (pd.getHsnCode() != null) pp.setHsnCode(pd.getHsnCode());
+      if (pd.getSchedule() != null) pp.setSchedule(pd.getSchedule());
+
+      pharmacyProductRepository.save(Objects.requireNonNull(pp));
+    }
+
+    // Warehouse extension update
+    if ("WAREHOUSE".equals(businessType) && request.getWarehouseDetails() != null) {
+      var wd = request.getWarehouseDetails();
+      WarehouseProduct wp =
+          warehouseProductRepository
+              .findById(Objects.requireNonNull(product.getId()))
+              .orElse(WarehouseProduct.builder().product(product).build());
+
+      if (wd.getStorageLocation() != null) wp.setStorageLocation(wd.getStorageLocation());
+      if (wd.getZone() != null) wp.setZone(wd.getZone());
+      if (wd.getRack() != null) wp.setRack(wd.getRack());
+      if (wd.getBin() != null) wp.setBin(wd.getBin());
+
+      warehouseProductRepository.save(Objects.requireNonNull(wp));
+    }
+
     return toResponse(Objects.requireNonNull(product));
   }
 
@@ -181,6 +231,13 @@ public class ProductService {
     product.setIsActive(false);
     product.setUpdatedAt(LocalDateTime.now());
     productRepository.save(Objects.requireNonNull(product));
+
+    auditLogService.logAudit(
+        "DELETE",
+        "PRODUCT",
+        id,
+        "Soft deleted product: " + product.getName());
+
     log.info("Product soft deleted: id={}", id);
   }
 
@@ -190,7 +247,7 @@ public class ProductService {
         .collect(Collectors.toList());
   }
 
-  public List<ProductResponse> getExpiringProducts(int days) {
+  public List<ProductResponse> getExpiringProducts(Integer days) {
     String businessType = getBusinessType();
 
     if (!"PHARMACY".equals(businessType)) {
@@ -198,7 +255,19 @@ public class ProductService {
           "Expiring products endpoint is only available for PHARMACY tenants");
     }
 
-    LocalDate threshold = LocalDate.now().plusDays(days);
+    int thresholdDays;
+    if (days != null && days > 0) {
+      thresholdDays = days;
+    } else {
+      Long tenantId = getTenantId();
+      thresholdDays =
+          tenantRepository
+              .findById(Objects.requireNonNull(tenantId))
+              .map(Tenant::getExpiryThresholdDays)
+              .orElse(DEFAULT_REORDER_LEVEL * 3); // 30
+    }
+
+    LocalDate threshold = LocalDate.now().plusDays(thresholdDays);
     return pharmacyProductRepository.findExpiring(threshold).stream()
         .map(pp -> toResponseWithPharmacy(Objects.requireNonNull(pp.getProduct()), pp))
         .collect(Collectors.toList());
@@ -259,7 +328,8 @@ public class ProductService {
                     .batchNumber(pp.getBatchNumber())
                     .expiryDate(pp.getExpiryDate())
                     .manufacturer(pp.getManufacturer())
-                    .hsnCode(pp.getHsnCode());
+                    .hsnCode(pp.getHsnCode())
+                    .schedule(pp.getSchedule());
               });
     }
 
@@ -298,6 +368,7 @@ public class ProductService {
         .expiryDate(pp.getExpiryDate())
         .manufacturer(pp.getManufacturer())
         .hsnCode(pp.getHsnCode())
+        .schedule(pp.getSchedule())
         .build();
   }
 }

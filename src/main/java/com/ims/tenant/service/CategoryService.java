@@ -22,6 +22,7 @@ public class CategoryService {
 
   private final CategoryRepository categoryRepository;
   private final ProductRepository productRepository;
+  private final com.ims.shared.audit.AuditLogService auditLogService;
 
   @Cacheable(cacheResolver = "tenantAwareCacheResolver", value = "categories", key = "'list:' + #pageable.pageNumber + ':' + #pageable.pageSize")
   public Page<Category> getCategories(@NonNull Pageable pageable) {
@@ -48,7 +49,15 @@ public class CategoryService {
             .taxRate(request.getTaxRate() != null ? request.getTaxRate() : java.math.BigDecimal.ZERO)
             .build();
 
-    return categoryRepository.save(Objects.requireNonNull(category));
+    Category savedCategory = categoryRepository.save(Objects.requireNonNull(category));
+
+    auditLogService.logAudit(
+        "CREATE",
+        "CATEGORY",
+        savedCategory.getId(),
+        "Created category: " + savedCategory.getName());
+
+    return savedCategory;
   }
 
   @Transactional
@@ -67,7 +76,15 @@ public class CategoryService {
       category.setTaxRate(request.getTaxRate());
     }
 
-    return categoryRepository.save(Objects.requireNonNull(category));
+    Category updatedCategory = categoryRepository.save(Objects.requireNonNull(category));
+
+    auditLogService.logAudit(
+        "UPDATE",
+        "CATEGORY",
+        updatedCategory.getId(),
+        "Updated category: " + updatedCategory.getName());
+
+    return updatedCategory;
   }
 
   @Transactional
@@ -82,5 +99,11 @@ public class CategoryService {
     }
 
     categoryRepository.delete(Objects.requireNonNull(category));
+
+    auditLogService.logAudit(
+        "DELETE",
+        "CATEGORY",
+        id,
+        "Deleted category: " + category.getName());
   }
 }

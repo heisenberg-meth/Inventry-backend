@@ -68,8 +68,8 @@ public class ProductCacheIntegrationTest {
         return Objects.requireNonNull(p);
     });
 
-    when(pharmacyProductRepository.findById(Objects.requireNonNull(any()))).thenReturn(Optional.empty());
-    when(warehouseProductRepository.findById(Objects.requireNonNull(any()))).thenReturn(Optional.empty());
+    when(pharmacyProductRepository.findById(any())).thenReturn(Optional.empty());
+    when(warehouseProductRepository.findById(any())).thenReturn(Optional.empty());
   }
 
   @AfterEach

@@ -85,7 +85,7 @@ public class ProductController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Pharmacy: products expiring within N days")
   public ResponseEntity<List<ProductResponse>> getExpiring(
-      @RequestParam(defaultValue = "30") int days) {
+      @RequestParam(required = false) Integer days) {
     return ResponseEntity.ok(productService.getExpiringProducts(days));
   }
 
