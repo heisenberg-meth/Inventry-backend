@@ -104,4 +104,11 @@ public class PlatformUserController {
   public void deactivatePlatformUser(@NonNull @PathVariable Long id) {
     platformUserService.deactivatePlatformUser(id);
   }
+
+  @GetMapping("/test-error")
+  @Operation(summary = "Test error response structure")
+  @PreAuthorize("permitAll()")
+  public void testError() {
+    throw new RuntimeException("Test error");
+  }
 }

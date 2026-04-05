@@ -65,17 +65,17 @@ public class SecurityHardeningIntegrationTest {
 
   @BeforeEach
   void setup() {
-    auditLogRepository.deleteAllInBatch();
-    invoiceRepository.deleteAllInBatch();
-    orderItemRepository.deleteAllInBatch();
-    orderRepository.deleteAllInBatch();
-    stockMovementRepository.deleteAllInBatch();
-    productRepository.deleteAllInBatch();
-    userRepository.deleteAllInBatch();
-    roleRepository.deleteAllInBatch();
-    customerRepository.deleteAllInBatch();
-    supplierRepository.deleteAllInBatch();
-    tenantRepository.deleteAllInBatch();
+    auditLogRepository.deleteAll();
+    invoiceRepository.deleteAll();
+    orderItemRepository.deleteAll();
+    orderRepository.deleteAll();
+    stockMovementRepository.deleteAll();
+    productRepository.deleteAll();
+    userRepository.deleteAll();
+    roleRepository.deleteAll();
+    customerRepository.deleteAll();
+    supplierRepository.deleteAll();
+    tenantRepository.deleteAll();
     
     when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
     
@@ -117,8 +117,10 @@ public class SecurityHardeningIntegrationTest {
 
   @Test
   void testNoStackTraceOnInternalError() throws Exception {
-    // This requires a real endpoint to fail, but we can verify the handler structure
-    mockMvc.perform(get("/api/test-error")) // Assuming we might need a test-only controller or rely on generic failure
-        .andExpect(status().isUnauthorized()); // Unauthenticated request
+    mockMvc.perform(get("/api/platform/users/test-error"))
+        .andExpect(status().isInternalServerError())
+        .andExpect(jsonPath("$.error").value("INTERNAL_ERROR"))
+        .andExpect(jsonPath("$.message").value("An unexpected error occurred"))
+        .andExpect(jsonPath("$.stack_trace").doesNotExist());
   }
 }
