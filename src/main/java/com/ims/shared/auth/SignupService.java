@@ -44,6 +44,8 @@ public class SignupService {
         .workspaceSlug(request.getWorkspaceSlug())
         .status("ACTIVE")
         .plan("FREE")
+        .address(request.getAddress())
+        .gstin(request.getGstin())
         .build();
 
     tenant = tenantPersistenceService.saveTenant(Objects.requireNonNull(tenant)); // commits immediately

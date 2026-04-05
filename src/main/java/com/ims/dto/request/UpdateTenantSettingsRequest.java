@@ -24,4 +24,10 @@ public class UpdateTenantSettingsRequest {
 
   @Schema(description = "Threshold in days for expiry alerts")
   private Integer expiryThresholdDays;
+
+  @Schema(description = "Business address")
+  private String address;
+
+  @Schema(description = "GSTIN of the business")
+  private String gstin;
 }
