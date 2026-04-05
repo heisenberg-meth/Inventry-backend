@@ -49,12 +49,14 @@ public class SupportService {
             .status("OPEN")
             .build();
 
-    SupportTicket saved = Objects.requireNonNull(ticketRepository.save(ticket));
+    @SuppressWarnings("null")
+    SupportTicket saved = ticketRepository.save(ticket);
+    Objects.requireNonNull(saved);
 
     auditLogService.log(
         "CREATE_TICKET", tenantId, userId, "Created ticket: " + saved.getTitle());
     log.info("Support ticket created: id={} tenant={}", saved.getId(), tenantId);
-    return saved;
+    return Objects.requireNonNull(saved);
   }
 
   @Transactional(readOnly = true)
@@ -202,7 +204,9 @@ public class SupportService {
             .message(request.getMessage())
             .build();
 
-    SupportMessage saved = Objects.requireNonNull(messageRepository.save(message));
+    @SuppressWarnings("null")
+    SupportMessage saved = messageRepository.save(message);
+    Objects.requireNonNull(saved);
 
     // Reopen if CLOSED and tenant messages
     if ("CLOSED".equals(ticket.getStatus()) && "TENANT".equals(senderType)) {
@@ -211,7 +215,7 @@ public class SupportService {
       ticketRepository.save(ticket);
     }
 
-    return saved;
+    return Objects.requireNonNull(saved);
   }
 
   @Transactional(readOnly = true)

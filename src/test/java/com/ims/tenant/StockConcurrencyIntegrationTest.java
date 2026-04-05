@@ -1,7 +1,6 @@
 package com.ims.tenant;
 
 import static org.assertj.core.api.Assertions.assertThat;
-
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.SignupRequest;
 import com.ims.model.Product;
@@ -52,8 +51,9 @@ public class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
     signup.setPassword("password123");
     signupService.signup(signup);
     
-    tenantId = tenantRepository.findByWorkspaceSlug("conc-corp").orElseThrow().getId();
-    userId = userRepository.findByEmail("admin@conc.com").orElseThrow().getId();
+    // Query directly via JDBC to avoid transaction lag or cache issues in setup
+    tenantId = Objects.requireNonNull(jdbcTemplate.queryForObject("SELECT id FROM tenants WHERE workspace_slug = 'conc-corp'", Long.class));
+    userId = Objects.requireNonNull(jdbcTemplate.queryForObject("SELECT id FROM users WHERE email = 'admin@conc.com'", Long.class));
 
     TenantContext.set(tenantId);
     Product product = Product.builder()
