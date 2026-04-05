@@ -20,4 +20,7 @@ public class CreateTenantRequest {
 
   private Integer maxProducts;
   private Integer maxUsers;
+
+  private String address;
+  private String gstin;
 }

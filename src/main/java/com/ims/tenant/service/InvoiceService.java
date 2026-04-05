@@ -2,6 +2,7 @@ package com.ims.tenant.service;
 
 import com.ims.dto.CreateInvoiceRequest;
 import com.ims.dto.InvoiceStatusRequest;
+import com.ims.model.Customer;
 import com.ims.model.Invoice;
 import com.ims.model.Order;
 import com.ims.model.OrderItem;
@@ -9,6 +10,8 @@ import com.ims.model.Product;
 import com.ims.model.Tenant;
 import com.ims.platform.repository.TenantRepository;
 import com.ims.shared.auth.TenantContext;
+import com.ims.shared.pdf.PdfService;
+import com.ims.tenant.repository.CustomerRepository;
 import com.ims.tenant.repository.InvoiceRepository;
 import com.ims.tenant.repository.OrderItemRepository;
 import com.ims.tenant.repository.OrderRepository;
@@ -18,15 +21,19 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.lang.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.thymeleaf.context.Context;
 
 @Service
 @RequiredArgsConstructor
@@ -38,13 +45,10 @@ public class InvoiceService {
   private final ProductRepository productRepository;
   private final TenantRepository tenantRepository;
   private final OrderRepository orderRepository;
+  private final CustomerRepository customerRepository;
+  private final PdfService pdfService;
 
   private static final int DEFAULT_DUE_DAYS = 30;
-  private static final int PDF_LINE_WIDTH = 80;
-  private static final int PDF_HEADER_FONT_SIZE = 20;
-  private static final int PDF_SUBHEADER_FONT_SIZE = 14;
-  private static final int PDF_GRAND_TOTAL_FONT_SIZE = 16;
-  private static final int PDF_TABLE_COLUMNS = 5;
 
   @Transactional
   public @NonNull Invoice createManual(@NonNull CreateInvoiceRequest request) {
@@ -88,10 +92,8 @@ public class InvoiceService {
             .build();
 
     log.info("Manual invoice created: {} for order {}", invoiceNumber, order.getId());
-    @SuppressWarnings("null")
-    Invoice savedInvoice = Objects.requireNonNull(invoiceRepository.save(invoice));
-    return savedInvoice;
-}
+    return Objects.requireNonNull(invoiceRepository.save(invoice));
+  }
 
   @Transactional
   public @NonNull Invoice updateStatus(@NonNull Long id, @NonNull InvoiceStatusRequest request) {
@@ -122,15 +124,17 @@ public class InvoiceService {
 
   @Transactional
   public @NonNull Invoice createFromOrder(@NonNull Order order) {
-    String dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-    int seq = 1;
-    try {
-      seq = invoiceRepository.findMaxSequence() + 1;
-    } catch (Exception e) {
-      log.trace("Caught expected exception for first invoice sequence: {}", e.getMessage());
-    }
+    Tenant tenant =
+        tenantRepository
+            .findById(Objects.requireNonNull(TenantContext.get()))
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
-    String invoiceNumber = String.format("INV-%d-%s-%04d", TenantContext.get(), dateStr, seq);
+    tenant.setInvoiceSequence(tenant.getInvoiceSequence() + 1);
+    tenantRepository.save(tenant);
+
+    String dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+    String invoiceNumber =
+        String.format("INV-%d-%s-%04d", TenantContext.get(), dateStr, tenant.getInvoiceSequence());
 
     Invoice invoice =
         Invoice.builder()
@@ -144,146 +148,73 @@ public class InvoiceService {
             .build();
 
     log.info("Invoice created: {} for order {}", invoiceNumber, order.getId());
-    @SuppressWarnings("null")
-    Invoice savedInvoice = Objects.requireNonNull(invoiceRepository.save(invoice));
-    return savedInvoice;
+    return Objects.requireNonNull(invoiceRepository.save(invoice));
   }
 
-  public byte[] generatePdf(Long invoiceId) {
-    Tenant tenant =
-        tenantRepository
-            .findById(Objects.requireNonNull(TenantContext.get()))
-            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
-
-    // Build PDF using simple formatting (iText usage simplified for compilation)
-    StringBuilder sb = new StringBuilder();
-    sb.append("INVOICE\n");
-    sb.append("=======\n\n");
-    sb.append("Business: ").append(tenant.getName()).append("\n");
-
+  @Transactional(readOnly = true)
+  public byte[] generatePdf(Long id) {
     Invoice invoice =
         invoiceRepository
-            .findById(Objects.requireNonNull(invoiceId))
+            .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
-    sb.append("Invoice #: ").append(invoice.getInvoiceNumber()).append("\n");
-    sb.append("Date: ").append(invoice.getCreatedAt()).append("\n");
-    sb.append("Due Date: ").append(invoice.getDueDate()).append("\n\n");
-    sb.append("Items:\n");
-    sb.append(
-        String.format(
-            "%-30s %10s %10s %10s %10s\n", "Product", "Qty", "Price", "Discount", "Total"));
-    sb.append("-".repeat(PDF_LINE_WIDTH)).append("\n");
 
-    List<OrderItem> items = orderItemRepository.findByOrderId(invoice.getOrderId());
-    for (OrderItem item : items) {
-      Product product = productRepository.findById(Objects.requireNonNull(item.getProductId())).orElse(null);
-      String productName = product != null ? product.getName() : "Unknown";
-      sb.append(
-          String.format(
-              "%-30s %10d %10s %10s %10s\n",
-              productName,
-              item.getQuantity(),
-              item.getUnitPrice(),
-              item.getDiscount(),
-              item.getTotal()));
-    }
+    Order order =
+        orderRepository
+            .findById(invoice.getOrderId())
+            .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
-    sb.append("-".repeat(PDF_LINE_WIDTH)).append("\n");
-    sb.append(String.format("%-62s %10s\n", "Subtotal:", invoice.getAmount()));
-    if (invoice.getTaxAmount() != null) {
-      sb.append(String.format("%-62s %10s\n", "Tax:", invoice.getTaxAmount()));
-    }
-    if (invoice.getDiscount() != null && invoice.getDiscount().compareTo(java.math.BigDecimal.ZERO) > 0) {
-      sb.append(String.format("%-62s %10s\n", "Discount:", "-" + invoice.getDiscount()));
-    }
+    Tenant tenant =
+        tenantRepository
+            .findById(TenantContext.get())
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
-    BigDecimal grandTotal = invoice.getAmount();
-    if (invoice.getTaxAmount() != null) {
-      grandTotal = grandTotal.add(invoice.getTaxAmount());
-    }
-    if (invoice.getDiscount() != null) {
-      grandTotal = grandTotal.subtract(invoice.getDiscount());
-    }
-    sb.append(String.format("%-62s %10s\n", "Grand Total:", grandTotal));
+    Customer customer =
+        customerRepository
+            .findById(order.getCustomerId())
+            .orElseThrow(() -> new EntityNotFoundException("Customer not found"));
 
-    // For MVP, return text-based PDF content as bytes
-    // Full iText PDF generation can be added in production
-    try {
-      return generateITextPdf(tenant, invoice, items);
-    } catch (Exception e) {
-      log.warn("iText PDF generation failed, using text fallback: {}", e.getMessage());
-      return sb.toString().getBytes();
-    }
-  }
+    List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
 
-  private byte[] generateITextPdf(Tenant tenant, Invoice invoice, List<OrderItem> items) {
-    try {
-      var baos = new java.io.ByteArrayOutputStream();
-      var writer = new com.itextpdf.kernel.pdf.PdfWriter(baos);
-      var pdf = new com.itextpdf.kernel.pdf.PdfDocument(writer);
-      var document = new com.itextpdf.layout.Document(pdf);
+    List<Map<String, Object>> items =
+        orderItems.stream()
+            .map(
+                item -> {
+                  Product product =
+                      productRepository
+                          .findById(item.getProductId())
+                          .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+                  Map<String, Object> map = new HashMap<>();
+                  map.put("productName", product.getName());
+                  map.put("quantity", item.getQuantity());
+                  map.put("unitPrice", item.getUnitPrice());
+                  map.put("discount", item.getDiscount());
+                  map.put("total", item.getTotal());
+                  return map;
+                })
+            .collect(Collectors.toList());
 
-      // Header
-      document.add(
-          new com.itextpdf.layout.element.Paragraph(tenant.getName())
-              .setFontSize(PDF_HEADER_FONT_SIZE)
-              .setBold());
-      document.add(
-          new com.itextpdf.layout.element.Paragraph("Invoice: " + invoice.getInvoiceNumber())
-              .setFontSize(PDF_SUBHEADER_FONT_SIZE));
-      document.add(new com.itextpdf.layout.element.Paragraph("Date: " + invoice.getCreatedAt()));
-      document.add(new com.itextpdf.layout.element.Paragraph("Due: " + invoice.getDueDate()));
-      document.add(new com.itextpdf.layout.element.Paragraph(" "));
+    Context context = new Context();
+    context.setVariable("tenantName", tenant.getName());
+    context.setVariable("tenantAddress", tenant.getAddress() != null ? tenant.getAddress() : "Company Address TBD");
+    context.setVariable("tenantGstin", tenant.getGstin() != null ? tenant.getGstin() : "GSTIN-TBD");
 
-      // Table
-      var table = new com.itextpdf.layout.element.Table(PDF_TABLE_COLUMNS);
-      table.addHeaderCell("Product");
-      table.addHeaderCell("Qty");
-      table.addHeaderCell("Unit Price");
-      table.addHeaderCell("Discount");
-      table.addHeaderCell("Total");
+    context.setVariable("customerName", customer.getName());
+    context.setVariable("customerAddress", customer.getAddress());
+    context.setVariable("customerGstin", customer.getGstin());
 
-      for (OrderItem item : items) {
-        Product product = productRepository.findById(Objects.requireNonNull(item.getProductId())).orElse(null);
-        table.addCell(product != null ? product.getName() : "—");
-        table.addCell(String.valueOf(item.getQuantity()));
-        table.addCell(item.getUnitPrice().toString());
-        table.addCell(item.getDiscount().toString());
-        table.addCell(item.getTotal().toString());
-      }
+    context.setVariable("invoiceNumber", invoice.getInvoiceNumber());
+    context.setVariable("invoiceDate", invoice.getCreatedAt().toLocalDate());
+    context.setVariable("orderId", order.getId());
+    context.setVariable("status", invoice.getStatus());
 
-      document.add(table);
-      document.add(new com.itextpdf.layout.element.Paragraph(" "));
-      document.add(
-          new com.itextpdf.layout.element.Paragraph("Total: " + invoice.getAmount())
-              .setBold()
-              .setFontSize(PDF_SUBHEADER_FONT_SIZE));
+    context.setVariable("items", items);
+    context.setVariable(
+        "subtotal", order.getTotalAmount().subtract(order.getTaxAmount()).add(order.getDiscount()));
+    context.setVariable("taxAmount", order.getTaxAmount());
+    context.setVariable("discount", order.getDiscount());
+    context.setVariable("totalAmount", order.getTotalAmount());
 
-      if (invoice.getTaxAmount() != null) {
-        document.add(new com.itextpdf.layout.element.Paragraph("Tax: " + invoice.getTaxAmount()));
-      }
-      if (invoice.getDiscount() != null && invoice.getDiscount().compareTo(java.math.BigDecimal.ZERO) > 0) {
-        document.add(new com.itextpdf.layout.element.Paragraph("Discount: -" + invoice.getDiscount()));
-      }
-
-      BigDecimal grandTotalText = invoice.getAmount();
-      if (invoice.getTaxAmount() != null) {
-        grandTotalText = grandTotalText.add(invoice.getTaxAmount());
-      }
-      if (invoice.getDiscount() != null) {
-        grandTotalText = grandTotalText.subtract(invoice.getDiscount());
-      }
-
-      document.add(
-          new com.itextpdf.layout.element.Paragraph("Grand Total: " + grandTotalText)
-              .setBold()
-              .setFontSize(PDF_GRAND_TOTAL_FONT_SIZE));
-
-      document.close();
-      return baos.toByteArray();
-    } catch (Exception e) {
-      throw new RuntimeException("PDF generation failed", e);
-    }
+    return pdfService.generatePdfFromHtml("invoice-template", context);
   }
 
   public @NonNull Page<Invoice> getInvoices(@NonNull Pageable pageable) {
