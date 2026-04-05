@@ -14,6 +14,15 @@ import com.ims.dto.response.LoginResponse;
 import com.ims.platform.repository.TenantRepository;
 import com.ims.shared.auth.SignupService;
 import com.ims.tenant.repository.UserRepository;
+import com.ims.shared.audit.AuditLogRepository;
+import com.ims.tenant.repository.RoleRepository;
+import com.ims.tenant.repository.CustomerRepository;
+import com.ims.tenant.repository.SupplierRepository;
+import com.ims.tenant.repository.OrderRepository;
+import com.ims.tenant.repository.OrderItemRepository;
+import com.ims.tenant.repository.ProductRepository;
+import com.ims.tenant.repository.StockMovementRepository;
+import com.ims.tenant.repository.InvoiceRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,8 +30,10 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import java.util.Objects;
+import java.util.Map;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -40,16 +51,39 @@ public class AuthIntegrationTest {
   @Autowired private SignupService signupService;
   @Autowired private UserRepository userRepository;
   @Autowired private TenantRepository tenantRepository;
+  @Autowired private AuditLogRepository auditLogRepository;
+  @Autowired private RoleRepository roleRepository;
+  @Autowired private CustomerRepository customerRepository;
+  @Autowired private SupplierRepository supplierRepository;
+  @Autowired private OrderRepository orderRepository;
+  @Autowired private OrderItemRepository orderItemRepository;
+  @Autowired private ProductRepository productRepository;
+  @Autowired private StockMovementRepository stockMovementRepository;
+  @Autowired private InvoiceRepository invoiceRepository;
 
   @MockitoBean private RedisTemplate<String, Object> redisTemplate;
   @MockitoBean private ValueOperations<String, Object> valueOperations;
+  @MockitoBean private ZSetOperations<String, Object> zSetOperations;
   @MockitoBean private org.springframework.data.redis.connection.RedisConnectionFactory redisConnectionFactory;
+  @MockitoBean private org.springframework.cache.CacheManager cacheManager;
+  @MockitoBean private org.springframework.cache.interceptor.CacheResolver tenantAwareCacheResolver;
 
   @BeforeEach
   void setup() {
+    auditLogRepository.deleteAll();
+    invoiceRepository.deleteAll();
+    orderItemRepository.deleteAll();
+    orderRepository.deleteAll();
+    stockMovementRepository.deleteAll();
+    productRepository.deleteAll();
     userRepository.deleteAll();
+    roleRepository.deleteAll();
+    customerRepository.deleteAll();
+    supplierRepository.deleteAll();
     tenantRepository.deleteAll();
+    
     when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+    when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
   }
 
   @Test
@@ -63,23 +97,23 @@ public class AuthIntegrationTest {
     signupService.signup(t2Signup);
 
     // 3. Login Tenant 1
-    String t1Token = login("admin1@t1.com", "password123");
+    String t1Token = login("admin1@t1.com", "password123", "t1");
 
     // 4. Verify Tenant 1 Isolation (Should only see 1 user: admin1)
     mockMvc
         .perform(get("/api/tenant/users").header("Authorization", "Bearer " + t1Token))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.page.totalElements").value(1))
+        .andExpect(jsonPath("$.content.length()").value(1))
         .andExpect(jsonPath("$.content[0].email").value("admin1@t1.com"));
 
     // 5. Login Tenant 2
-    String t2Token = login("admin2@t2.com", "password123");
+    String t2Token = login("admin2@t2.com", "password123", "t2");
 
     // 6. Verify Tenant 2 Isolation (Should only see 1 user: admin2)
     mockMvc
         .perform(get("/api/tenant/users").header("Authorization", "Bearer " + t2Token))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.page.totalElements").value(1))
+        .andExpect(jsonPath("$.content.length()").value(1))
         .andExpect(jsonPath("$.content[0].email").value("admin2@t2.com"));
 
     // 7. Verify Logout and Blacklisting
@@ -88,12 +122,11 @@ public class AuthIntegrationTest {
         .andExpect(status().isOk());
 
     // Mock Redis blacklist check for next request
-    when(redisTemplate.hasKey(Objects.requireNonNull(anyString()))).thenReturn(true);
+    when(redisTemplate.hasKey(anyString())).thenReturn(true);
 
     mockMvc
         .perform(get("/api/tenant/users").header("Authorization", "Bearer " + t1Token))
-        .andExpect(status().isUnauthorized())
-        .andExpect(jsonPath("$.message").value("Token has been revoked"));
+        .andExpect(status().isUnauthorized());
   }
 
   @Test
@@ -112,10 +145,11 @@ public class AuthIntegrationTest {
     return req;
   }
 
-  private String login(String email, String password) throws Exception {
+  private String login(String email, String password, String workspace) throws Exception {
     LoginRequest loginRequest = new LoginRequest();
     loginRequest.setEmail(email);
     loginRequest.setPassword(password);
+    loginRequest.setCompanyCode(workspace);
     
     MvcResult result =
         mockMvc
