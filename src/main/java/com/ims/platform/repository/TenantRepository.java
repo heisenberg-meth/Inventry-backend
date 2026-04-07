@@ -10,4 +10,8 @@ public interface TenantRepository extends JpaRepository<Tenant, Long> {
   Optional<Tenant> findByWorkspaceSlug(String workspaceSlug);
 
   boolean existsByWorkspaceSlug(String workspaceSlug);
+
+  Optional<Tenant> findByCompanyCode(String companyCode);
+
+  boolean existsByCompanyCode(String companyCode);
 }
