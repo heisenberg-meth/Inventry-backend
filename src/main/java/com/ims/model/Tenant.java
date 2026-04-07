@@ -30,6 +30,9 @@ public class Tenant {
   @Column(name = "workspace_slug", unique = true)
   private String workspaceSlug;
 
+  @Column(name = "company_code", nullable = false, unique = true)
+  private String companyCode;
+
   @Column(name = "business_type", nullable = false)
   private String businessType;
 

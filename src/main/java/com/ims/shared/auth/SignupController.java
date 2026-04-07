@@ -1,10 +1,10 @@
 package com.ims.shared.auth;
 
 import com.ims.dto.request.SignupRequest;
+import com.ims.dto.response.SignupResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,9 +25,8 @@ public class SignupController {
   @Operation(
       summary = "Registration for new business",
       description = "Creates a new tenant and its first admin user.")
-  public ResponseEntity<Map<String, String>> signup(@Valid @RequestBody SignupRequest request) {
-    signupService.signup(request);
-    return ResponseEntity.status(HttpStatus.CREATED)
-        .body(Map.of("message", "Business registered successfully. You can now login."));
+  public ResponseEntity<SignupResponse> signup(@Valid @RequestBody SignupRequest request) {
+    SignupResponse response = signupService.signup(request);
+    return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 }

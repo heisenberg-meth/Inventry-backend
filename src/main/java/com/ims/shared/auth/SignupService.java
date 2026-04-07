@@ -1,6 +1,7 @@
 package com.ims.shared.auth;
 
 import com.ims.dto.request.SignupRequest;
+import com.ims.dto.response.SignupResponse;
 import com.ims.model.Tenant;
 import com.ims.model.User;
 import com.ims.platform.repository.TenantRepository;
@@ -8,6 +9,7 @@ import com.ims.tenant.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import java.util.Objects;
+import com.ims.shared.utils.CompanyCodeGenerator;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -24,24 +26,24 @@ public class SignupService {
   private final com.ims.shared.audit.AuditLogService auditLogService;
 
   // No @Transactional here — each step manages its own transaction
-  public void signup(SignupRequest request) {
+  public SignupResponse signup(SignupRequest request) {
     String normalizedEmail = request.getOwnerEmail().trim().toLowerCase();
 
-    if (request.getWorkspaceSlug() != null
-        && !request.getWorkspaceSlug().isBlank()
-        && tenantRepository.existsByWorkspaceSlug(request.getWorkspaceSlug())) {
-      throw new IllegalArgumentException("Workspace slug already taken");
-    }
+    String workspaceSlug = generateWorkspaceSlug(request.getBusinessName());
+    workspaceSlug = ensureUniqueWorkspaceSlug(workspaceSlug);
 
     if (userRepository.findByEmail(normalizedEmail).isPresent()) {
       throw new IllegalArgumentException("Email already registered");
     }
 
+    String companyCode = generateUniqueCompanyCode(request.getBusinessName());
+
     // 1. Save tenant in its own committed transaction
     Tenant tenant = Tenant.builder()
         .name(request.getBusinessName())
         .businessType(request.getBusinessType())
-        .workspaceSlug(request.getWorkspaceSlug())
+        .workspaceSlug(workspaceSlug)
+        .companyCode(companyCode)
         .status("ACTIVE")
         .plan("FREE")
         .address(request.getAddress())
@@ -76,5 +78,29 @@ public class SignupService {
     }
 
     log.info("Signup: Created owner user for tenant={}", tenant.getId());
+    return new SignupResponse("Signup successful", tenant.getCompanyCode(), tenant.getWorkspaceSlug());
+  }
+
+  private String generateUniqueCompanyCode(String businessName) {
+    String code;
+    do {
+      code = CompanyCodeGenerator.generateCode(businessName);
+    } while (tenantRepository.existsByCompanyCode(code));
+    return code;
+  }
+
+  private String generateWorkspaceSlug(String businessName) {
+    return businessName.toLowerCase()
+        .replaceAll("[^a-z0-9]+", "-")
+        .replaceAll("(^-|-$)", "");
+  }
+
+  private String ensureUniqueWorkspaceSlug(String baseSlug) {
+    String slug = baseSlug;
+    int counter = 1;
+    while (tenantRepository.existsByWorkspaceSlug(slug)) {
+      slug = baseSlug + "-" + counter++;
+    }
+    return slug;
   }
 }
