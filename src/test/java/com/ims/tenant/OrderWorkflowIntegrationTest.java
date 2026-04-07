@@ -14,6 +14,7 @@ import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.request.SignupRequest;
 import com.ims.dto.request.LoginRequest;
 import com.ims.dto.response.ProductResponse;
+import com.ims.dto.response.SignupResponse;
 import com.ims.model.Customer;
 import com.ims.shared.auth.SignupService;
 import com.ims.shared.auth.TenantContext;
@@ -61,15 +62,14 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
     // 1. Setup Tenant and Data
     SignupRequest signup = new SignupRequest();
     signup.setBusinessName("Order Corp");
-    signup.setWorkspaceSlug("order-corp");
     signup.setBusinessType("RETAIL");
     signup.setOwnerName("Admin");
     signup.setOwnerEmail("admin@order.com");
     signup.setPassword("password123");
-    signupService.signup(signup);
+    SignupResponse response = signupService.signup(signup);
     
-    Long tenantId = tenantRepository.findByWorkspaceSlug("order-corp").orElseThrow().getId();
-    String token = login("admin@order.com", "password123", "order-corp");
+    Long tenantId = tenantRepository.findByWorkspaceSlug(response.getWorkspaceSlug()).orElseThrow().getId();
+    String token = login("admin@order.com", "password123", response.getCompanyCode());
 
     Customer customer;
     try {

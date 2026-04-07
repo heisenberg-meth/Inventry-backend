@@ -62,7 +62,7 @@ public class AuthService {
     if (request.getCompanyCode() != null && !request.getCompanyCode().isBlank()) {
       Tenant tenant =
           tenantRepository
-              .findByWorkspaceSlug(request.getCompanyCode())
+              .findByCompanyCode(request.getCompanyCode())
               .orElseThrow(() -> new EntityNotFoundException("Invalid company code"));
       if (!Objects.equals(user.getTenantId(), tenant.getId())) {
         throw new IllegalArgumentException("User does not belong to this company");
