@@ -48,7 +48,13 @@ public class JwtFilter extends OncePerRequestFilter {
 
       // Check JWT blacklist
       String tokenHash = hashToken(token);
-      Boolean isBlacklisted = redisTemplate.hasKey("jwt:blacklist:" + tokenHash);
+      Boolean isBlacklisted = false;
+      try {
+        isBlacklisted = redisTemplate.hasKey("jwt:blacklist:" + tokenHash);
+      } catch (Exception e) {
+        logger.warn("Redis unavailable for JWT blacklist check: " + e.getMessage());
+      }
+      
       if (Boolean.TRUE.equals(isBlacklisted)) {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json");
@@ -94,8 +100,10 @@ public class JwtFilter extends OncePerRequestFilter {
   @Override
   protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
     String path = request.getRequestURI();
-    return path.startsWith("/auth/")
-        || path.startsWith("/api/auth/")
+    return path.endsWith("/auth/login")
+        || path.endsWith("/auth/signup")
+        || path.endsWith("/auth/forgot-password")
+        || path.endsWith("/auth/reset-password")
         || path.startsWith("/actuator/")
         || path.startsWith("/swagger-ui")
         || path.startsWith("/api-docs");
