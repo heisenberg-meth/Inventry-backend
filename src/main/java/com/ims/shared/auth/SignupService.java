@@ -29,7 +29,9 @@ public class SignupService {
   public SignupResponse signup(SignupRequest request) {
     String normalizedEmail = request.getOwnerEmail().trim().toLowerCase();
 
-    String workspaceSlug = generateWorkspaceSlug(request.getBusinessName());
+    String workspaceSlug = (request.getWorkspaceSlug() != null && !request.getWorkspaceSlug().isBlank())
+        ? request.getWorkspaceSlug()
+        : generateWorkspaceSlug(request.getBusinessName());
     workspaceSlug = ensureUniqueWorkspaceSlug(workspaceSlug);
 
     if (userRepository.findByEmail(normalizedEmail).isPresent()) {
