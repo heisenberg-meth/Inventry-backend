@@ -15,7 +15,7 @@ import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-@Component
+// @Component
 @RequiredArgsConstructor
 @Slf4j
 public class RateLimitFilter extends OncePerRequestFilter {
@@ -91,8 +91,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         return;
       }
     } catch (Exception e) {
-      log.error("Rate limiting error for key {}: {}", key, e.getMessage());
-      // Fallback: allow request if Redis is down
+      log.warn("Redis down → skipping rate limit");
     }
 
     chain.doFilter(req, res);
