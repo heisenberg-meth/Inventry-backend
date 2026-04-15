@@ -49,9 +49,9 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
     signup.setOwnerName("Admin");
     signup.setOwnerEmail("admin@audit.com");
     signup.setPassword("password123");
-    signupService.signup(signup);
+    com.ims.dto.response.SignupResponse response = signupService.signup(signup);
     
-    String token = login("admin@audit.com", "password123", "audit-corp");
+    String token = login("admin@audit.com", "password123", response.getCompanyCode());
 
     // 1. Create Product
     CreateProductRequest createReq = new CreateProductRequest();
@@ -94,12 +94,12 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
   @Test
   void testAuditIsolation() throws Exception {
     // Tenant 1
-    signupService.signup(createSignupRequest("T1", "t1-audit", "admin@t1.com"));
-    String t1Token = login("admin@t1.com", "password123", "t1-audit");
+    com.ims.dto.response.SignupResponse r1 = signupService.signup(createSignupRequest("T1", "t1-audit", "admin@t1.com"));
+    String t1Token = login("admin@t1.com", "password123", r1.getCompanyCode());
     
     // Tenant 2
-    signupService.signup(createSignupRequest("T2", "t2-audit", "admin@t2.com"));
-    String t2Token = login("admin@t2.com", "password123", "t2-audit");
+    com.ims.dto.response.SignupResponse r2 = signupService.signup(createSignupRequest("T2", "t2-audit", "admin@t2.com"));
+    String t2Token = login("admin@t2.com", "password123", r2.getCompanyCode());
 
     // T1 performs an action
     CreateProductRequest createReq = new CreateProductRequest();

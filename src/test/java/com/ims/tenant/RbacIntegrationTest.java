@@ -40,9 +40,10 @@ public class RbacIntegrationTest extends BaseIntegrationTest {
   }
 
   @Test
-  void testPermissionBasedAccess() throws Exception {
-    signupService.signup(createSignupRequest("RBAC Corp", "rbac-corp", "admin@rbac.com"));
-    String token = login("admin@rbac.com", "password123", "rbac-corp");
+  void testRBAC() throws Exception {
+    com.ims.dto.response.SignupResponse response = signupService.signup(createSignupRequest("RBAC Corp", "rbac-corp", "admin@rbac.com"));
+    String token = login("admin@rbac.com", "password123", response.getCompanyCode());
+
 
     // 1. Create a product first (with all mandatory fields)
     CreateProductRequest createReq = new CreateProductRequest();
