@@ -83,7 +83,7 @@ public abstract class BaseIntegrationTest {
   protected org.springframework.data.redis.connection.RedisConnectionFactory redisConnectionFactory;
   @MockitoBean
   protected org.springframework.cache.CacheManager cacheManager;
-  @MockitoBean
+  @MockitoBean(name = "tenantAwareCacheResolver")
   protected org.springframework.cache.interceptor.CacheResolver tenantAwareCacheResolver;
 
   protected long systemTenantId;
@@ -123,7 +123,7 @@ public abstract class BaseIntegrationTest {
 
       // Seed System Tenant
       jdbcTemplate.execute(
-          "INSERT INTO tenants (name, workspace_slug, business_type, status, plan) VALUES ('System', 'system', 'SYSTEM', 'ACTIVE', 'PLATFORM')");
+          "INSERT INTO tenants (name, workspace_slug, business_type, status, plan, company_code) VALUES ('System', 'system', 'SYSTEM', 'ACTIVE', 'PLATFORM', 'SYS001')");
       systemTenantId = Objects.requireNonNull(
           jdbcTemplate.queryForObject("SELECT id FROM tenants WHERE workspace_slug = 'system'", Long.class));
 
@@ -135,12 +135,12 @@ public abstract class BaseIntegrationTest {
 
       // Seed common test tenants for legacy tests
       jdbcTemplate.execute(
-          "INSERT INTO tenants (name, workspace_slug, business_type, status, plan) VALUES ('Test Tenant 1', 't1', 'RETAIL', 'ACTIVE', 'FREE')");
+          "INSERT INTO tenants (name, workspace_slug, business_type, status, plan, company_code) VALUES ('Test Tenant 1', 't1', 'RETAIL', 'ACTIVE', 'FREE', 'T1001')");
       testTenant1Id = Objects.requireNonNull(
           jdbcTemplate.queryForObject("SELECT id FROM tenants WHERE workspace_slug = 't1'", Long.class));
 
       jdbcTemplate.execute(
-          "INSERT INTO tenants (name, workspace_slug, business_type, status, plan) VALUES ('Test Tenant 2', 't2', 'RETAIL', 'ACTIVE', 'FREE')");
+          "INSERT INTO tenants (name, workspace_slug, business_type, status, plan, company_code) VALUES ('Test Tenant 2', 't2', 'RETAIL', 'ACTIVE', 'FREE', 'T2001')");
       testTenant2Id = Objects.requireNonNull(
           jdbcTemplate.queryForObject("SELECT id FROM tenants WHERE workspace_slug = 't2'", Long.class));
 
