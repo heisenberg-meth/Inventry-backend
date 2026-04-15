@@ -53,8 +53,8 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
   void testTenantAdminFlow() throws Exception {
     // 1. Signup Tenant 1
     SignupRequest t1Signup = createSignupRequest("Tenant 1", "t1-mgt", "admin-mgt1@t1.com");
-    signupService.signup(t1Signup);
-    String t1Token = login("admin-mgt1@t1.com", "password123", "t1-mgt");
+    com.ims.dto.response.SignupResponse response = signupService.signup(t1Signup);
+    String t1Token = login("admin-mgt1@t1.com", "password123", response.getCompanyCode());
 
     // 2. Tenant ADMIN can create users in their tenant
     CreateUserRequest createUser = new CreateUserRequest();
@@ -73,7 +73,7 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
         .andExpect(status().isCreated());
 
     // 3. Verify Staff isolation (STAFF cannot access management)
-    String staffToken = login("staff-mgt1@t1.com", "staff123", "t1-mgt");
+    String staffToken = login("staff-mgt1@t1.com", "staff123", response.getCompanyCode());
     mockMvc
         .perform(get("/api/tenant/users").header("Authorization", "Bearer " + staffToken))
         .andExpect(status().isForbidden());
@@ -82,12 +82,12 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
   @Test
   void testIsolationBetweenTenants() throws Exception {
     // 1. Signup Tenant 1
-    signupService.signup(createSignupRequest("Tenant 1-Iso", "t1-iso", "admin-iso1@t1.com"));
-    String t1Token = login("admin-iso1@t1.com", "password123", "t1-iso");
+    com.ims.dto.response.SignupResponse r1 = signupService.signup(createSignupRequest("Tenant 1-Iso", "t1-iso", "admin-iso1@t1.com"));
+    String t1Token = login("admin-iso1@t1.com", "password123", r1.getCompanyCode());
 
     // 2. Signup Tenant 2
-    signupService.signup(createSignupRequest("Tenant 2-Iso", "t2-iso", "admin-iso2@t2.com"));
-    login("admin-iso2@t2.com", "password123", "t2-iso");
+    com.ims.dto.response.SignupResponse r2 = signupService.signup(createSignupRequest("Tenant 2-Iso", "t2-iso", "admin-iso2@t2.com"));
+    login("admin-iso2@t2.com", "password123", r2.getCompanyCode());
 
     // 3. Tenant 1 Admin cannot see Tenant 2 Admin (Users should be isolated)
     mockMvc
@@ -100,8 +100,8 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
   @Test
   void testRBACEnforcement() throws Exception {
     // 1. Signup Tenant 1
-    signupService.signup(createSignupRequest("Tenant 1-RBAC", "t1-rbac", "admin-rbac1@t1.com"));
-    String t1Token = login("admin-rbac1@t1.com", "password123", "t1-rbac");
+    com.ims.dto.response.SignupResponse r1 = signupService.signup(createSignupRequest("Tenant 1-RBAC", "t1-rbac", "admin-rbac1@t1.com"));
+    String t1Token = login("admin-rbac1@t1.com", "password123", r1.getCompanyCode());
 
     // 2. Tenant ADMIN cannot access Platform APIs (ROOT only)
     mockMvc
