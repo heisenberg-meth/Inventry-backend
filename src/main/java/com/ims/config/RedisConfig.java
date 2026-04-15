@@ -27,6 +27,7 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.data.web.config.EnableSpringDataWebSupport;
 @SuppressWarnings("null")
 @Configuration
+@org.springframework.context.annotation.Profile("!test")
 @EnableCaching
 @EnableSpringDataWebSupport(pageSerializationMode = EnableSpringDataWebSupport.PageSerializationMode.VIA_DTO)
 public class RedisConfig {

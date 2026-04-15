@@ -18,6 +18,7 @@ public class ImsApplication {
   }
 
   @Bean
+  @org.springframework.context.annotation.Profile("!test")
   public CommandLineRunner testRedis(RedisTemplate<String, String> redisTemplate) {
       return args -> {
           try {

@@ -28,7 +28,9 @@ public class SignupRequest {
   @Size(min = 6, max = 100)
   private String password;
 
+  private String ownerPhone;
+
   private String address;
   private String gstin;
   private String workspaceSlug;
-  }
+}

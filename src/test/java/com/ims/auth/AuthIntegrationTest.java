@@ -45,14 +45,14 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
   void testSecurityAndIsolationFlow() throws Exception {
     // 1. Signup Tenant 1
     SignupRequest t1Signup = createSignupRequest("Tenant 1", "t1-auth", "admin1@t1.com");
-    signupService.signup(t1Signup);
+    com.ims.dto.response.SignupResponse t1Response = signupService.signup(t1Signup);
 
     // 2. Signup Tenant 2
     SignupRequest t2Signup = createSignupRequest("Tenant 2", "t2-auth", "admin2@t2.com");
-    signupService.signup(t2Signup);
+    com.ims.dto.response.SignupResponse t2Response = signupService.signup(t2Signup);
 
     // 3. Login Tenant 1
-    String t1Token = login("admin1@t1.com", "password123", "t1-auth");
+    String t1Token = login("admin1@t1.com", "password123", t1Response.getCompanyCode());
 
     // 4. Verify Tenant 1 Isolation (Should only see 1 user: admin1)
     mockMvc
@@ -62,7 +62,7 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
         .andExpect(jsonPath("$.content[0].email").value("admin1@t1.com"));
 
     // 5. Login Tenant 2
-    String t2Token = login("admin2@t2.com", "password123", "t2-auth");
+    String t2Token = login("admin2@t2.com", "password123", t2Response.getCompanyCode());
 
     // 6. Verify Tenant 2 Isolation (Should only see 1 user: admin2)
     mockMvc
