@@ -57,9 +57,9 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
     signup.setOwnerName("Admin");
     signup.setOwnerEmail("admin@cache.com");
     signup.setPassword("password123");
-    signupService.signup(signup);
+    com.ims.dto.response.SignupResponse response = signupService.signup(signup);
     
-    String token = login("admin@cache.com", "password123", "cache-corp");
+    String token = login("admin@cache.com", "password123", response.getCompanyCode());
 
     CreateProductRequest createReq = new CreateProductRequest();
     createReq.setName("New Prod");

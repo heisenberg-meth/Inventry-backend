@@ -61,10 +61,10 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
     signup.setPassword("password123");
     signup.setAddress("456 Business Park, Industrial Area");
     signup.setGstin("29ABCDE1234F1Z5");
-    signupService.signup(signup);
+    com.ims.dto.response.SignupResponse response = signupService.signup(signup);
     
     Long tenantId = tenantRepository.findByWorkspaceSlug("billing-corp").orElseThrow().getId();
-    String token = login("admin@billing.com", "password123", "billing-corp");
+    String token = login("admin@billing.com", "password123", response.getCompanyCode());
 
     Customer customer;
     try {

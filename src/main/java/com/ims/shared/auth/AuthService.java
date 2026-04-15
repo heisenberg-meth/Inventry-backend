@@ -99,6 +99,36 @@ public class AuthService {
     user.setLastLogin(LocalDateTime.now());
     userRepository.save(user);
 
+    LoginResponse.LoginResponseBuilder responseBuilder = LoginResponse.builder()
+        .accessToken(accessToken)
+        .refreshToken(refreshToken)
+        .expiresIn(jwtUtil.getExpirySeconds())
+        .user(
+            LoginResponse.UserResponse.builder()
+                .id(user.getId().toString())
+                .name(user.getName())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .role(user.getRole())
+                .scope(user.getScope())
+                .build());
+
+    if (tenantId != null) {
+      tenantRepository.findById(tenantId).ifPresent(tenant -> {
+        responseBuilder.tenant(
+            LoginResponse.TenantResponse.builder()
+                .id(tenant.getId())
+                .name(tenant.getName())
+                .type(tenant.getBusinessType())
+                .address(tenant.getAddress())
+                .gstin(tenant.getGstin())
+                .plan(tenant.getPlan())
+                .companyCode(tenant.getCompanyCode())
+                .workspaceSlug(tenant.getWorkspaceSlug())
+                .build());
+      });
+    }
+
     auditLogService.log(
         "LOGIN",
         tenantId,
@@ -108,19 +138,7 @@ public class AuthService {
     log.info(
         "Login successful: user={} role={} tenant={}", user.getEmail(), user.getRole(), tenantId);
 
-    return LoginResponse.builder()
-        .accessToken(accessToken)
-        .refreshToken(refreshToken)
-        .expiresIn(jwtUtil.getExpirySeconds())
-        .user(
-            LoginResponse.UserResponse.builder()
-                .id(user.getId().toString())
-                .name(user.getName())
-                .email(user.getEmail())
-                .type(user.getScope())
-                .platformRole("PLATFORM".equals(user.getScope()) ? user.getRole() : null)
-                .build())
-        .build();
+    return responseBuilder.build();
   }
 
   public void logout(String token) {
@@ -168,7 +186,7 @@ public class AuthService {
     // Blacklist old refresh token
     logout(refreshToken);
 
-    return LoginResponse.builder()
+    LoginResponse.LoginResponseBuilder responseBuilder = LoginResponse.builder()
         .accessToken(newAccessToken)
         .refreshToken(newRefreshToken)
         .expiresIn(jwtUtil.getExpirySeconds())
@@ -177,10 +195,28 @@ public class AuthService {
                 .id(user.getId().toString())
                 .name(user.getName())
                 .email(user.getEmail())
-                .type(user.getScope())
-                .platformRole("PLATFORM".equals(user.getScope()) ? user.getRole() : null)
-                .build())
-        .build();
+                .phone(user.getPhone())
+                .role(user.getRole())
+                .scope(user.getScope())
+                .build());
+
+    if (tenantId != null) {
+      tenantRepository.findById(tenantId).ifPresent(tenant -> {
+        responseBuilder.tenant(
+            LoginResponse.TenantResponse.builder()
+                .id(tenant.getId())
+                .name(tenant.getName())
+                .type(tenant.getBusinessType())
+                .address(tenant.getAddress())
+                .gstin(tenant.getGstin())
+                .plan(tenant.getPlan())
+                .companyCode(tenant.getCompanyCode())
+                .workspaceSlug(tenant.getWorkspaceSlug())
+                .build());
+      });
+    }
+
+    return responseBuilder.build();
   }
 
   /**
@@ -192,24 +228,36 @@ public class AuthService {
             .findByIdUnfiltered(userId)
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
-    Map<String, Object> profile = new HashMap<>();
-    profile.put("id", user.getId());
-    profile.put("name", user.getName());
-    profile.put("email", user.getEmail());
-    profile.put("role", user.getRole());
-    profile.put("scope", user.getScope());
-    profile.put("isActive", user.getIsActive());
-    profile.put("tenantId", user.getTenantId());
-    profile.put("lastLogin", user.getLastLogin());
+    Map<String, Object> result = new HashMap<>();
+    
+    Map<String, Object> userMap = new HashMap<>();
+    userMap.put("id", user.getId());
+    userMap.put("name", user.getName());
+    userMap.put("email", user.getEmail());
+    userMap.put("phone", user.getPhone());
+    userMap.put("role", user.getRole());
+    userMap.put("scope", user.getScope());
+    userMap.put("isActive", user.getIsActive());
+    userMap.put("lastLogin", user.getLastLogin());
+    
+    result.put("user", userMap);
 
     if (user.getTenantId() != null) {
       tenantRepository.findById(Objects.requireNonNull(user.getTenantId())).ifPresent(tenant -> {
-        profile.put("businessName", tenant.getName());
-        profile.put("businessType", tenant.getBusinessType());
+        Map<String, Object> tenantMap = new HashMap<>();
+        tenantMap.put("id", tenant.getId());
+        tenantMap.put("name", tenant.getName());
+        tenantMap.put("type", tenant.getBusinessType());
+        tenantMap.put("address", tenant.getAddress());
+        tenantMap.put("gstin", tenant.getGstin());
+        tenantMap.put("plan", tenant.getPlan());
+        tenantMap.put("companyCode", tenant.getCompanyCode());
+        tenantMap.put("workspaceSlug", tenant.getWorkspaceSlug());
+        result.put("tenant", tenantMap);
       });
     }
 
-    return profile;
+    return result;
   }
 
   /**

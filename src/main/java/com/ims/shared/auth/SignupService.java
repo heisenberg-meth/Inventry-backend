@@ -24,6 +24,7 @@ public class SignupService {
   private final UserCreationService userCreationService;
   private final TenantPersistenceService tenantPersistenceService;
   private final com.ims.shared.audit.AuditLogService auditLogService;
+  private final CompanyCodeGenerator companyCodeGenerator;
 
   // No @Transactional here — each step manages its own transaction
   public SignupResponse signup(SignupRequest request) {
@@ -59,6 +60,7 @@ public class SignupService {
     User user = User.builder()
         .name(request.getOwnerName())
         .email(normalizedEmail)
+        .phone(request.getOwnerPhone())
         .passwordHash(passwordEncoder.encode(request.getPassword()))
         .role("ADMIN")
         .scope("TENANT")
@@ -86,7 +88,7 @@ public class SignupService {
   private String generateUniqueCompanyCode(String businessName) {
     String code;
     do {
-      code = CompanyCodeGenerator.generateCode(businessName);
+      code = companyCodeGenerator.generateCode(businessName);
     } while (tenantRepository.existsByCompanyCode(code));
     return code;
   }

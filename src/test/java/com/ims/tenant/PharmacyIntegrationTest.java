@@ -52,9 +52,9 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
     signup.setOwnerName("Admin");
     signup.setOwnerEmail("admin@pharmacy.com");
     signup.setPassword("password123");
-    signupService.signup(signup);
-    
-    String token = login("admin@pharmacy.com", "password123", "pharmacy-corp");
+    com.ims.dto.response.SignupResponse response = signupService.signup(signup);
+    String token = login("admin@pharmacy.com", "password123", response.getCompanyCode());
+
 
     // 1. Create Pharmacy Product
     CreateProductRequest createReq = new CreateProductRequest();
@@ -95,9 +95,9 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
     signup.setOwnerName("Admin");
     signup.setOwnerEmail("admin@expired.com");
     signup.setPassword("password123");
-    signupService.signup(signup);
+    com.ims.dto.response.SignupResponse response = signupService.signup(signup);
     
-    String token = login("admin@expired.com", "password123", "expired-corp");
+    String token = login("admin@expired.com", "password123", response.getCompanyCode());
 
     // 1. Create ALREADY EXPIRED product
     CreateProductRequest expiredReq = new CreateProductRequest();
@@ -138,9 +138,9 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
     signup.setOwnerName("Admin");
     signup.setOwnerEmail("admin@missing.com");
     signup.setPassword("password123");
-    signupService.signup(signup);
+    com.ims.dto.response.SignupResponse response = signupService.signup(signup);
     
-    String token = login("admin@missing.com", "password123", "missing-corp");
+    String token = login("admin@missing.com", "password123", response.getCompanyCode());
 
     // Create Pharmacy Product with missing pharmacy_details
     CreateProductRequest invalidReq = new CreateProductRequest();
