@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@SuppressWarnings({"null", "unchecked"})
+@SuppressWarnings("null")
 public class PaymentGatewayService {
 
   private final PaymentRepository paymentRepository;
@@ -65,8 +65,8 @@ public class PaymentGatewayService {
     logRepository.save(pgLog);
 
     if ("payment.captured".equals(event)) {
-      Map<String, Object> data = (Map<String, Object>) payload.get("payload");
-      Map<String, Object> paymentData = (Map<String, Object>) data.get("payment");
+      // Map<String, Object> data = (Map<String, Object>) payload.get("payload");
+      // Map<String, Object> paymentData = (Map<String, Object>) data.get("payment");
       
       // In real scenario, find payment by gatewayTransactionId
       // For this demo, let's assume we find it.

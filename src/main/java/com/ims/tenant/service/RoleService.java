@@ -4,6 +4,7 @@ import com.ims.dto.request.AssignPermissionsRequest;
 import com.ims.dto.request.CreateRoleRequest;
 import com.ims.model.Permission;
 import com.ims.model.Role;
+import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditLogService;
 import com.ims.tenant.repository.PermissionRepository;
 import com.ims.tenant.repository.RoleRepository;
@@ -52,7 +53,7 @@ public class RoleService {
 
     Role saved = roleRepository.save(Objects.requireNonNull(role));
     auditLogService.log(
-        "CREATE_ROLE", tenantId, null, "Created role: " + saved.getName());
+        AuditAction.CREATE_ROLE, tenantId, null, "Created role: " + saved.getName());
     log.info("Role created: id={} name={} tenant={}", saved.getId(), saved.getName(), tenantId);
     return saved;
   }
@@ -79,7 +80,7 @@ public class RoleService {
     Role saved = roleRepository.save(role);
 
     auditLogService.log(
-        "ASSIGN_PERMISSIONS",
+        AuditAction.ASSIGN_PERMISSIONS,
         tenantId,
         null,
         "Assigned " + permissions.size() + " permissions to role: " + role.getName());
