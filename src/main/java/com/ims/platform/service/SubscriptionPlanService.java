@@ -58,7 +58,6 @@ public class SubscriptionPlanService {
             .status("ACTIVE")
             .build();
 
-    @SuppressWarnings("null")
     SubscriptionPlan saved = Objects.requireNonNull(planRepository.save(plan));
     auditLogService.log("CREATE_PLAN", null, null, "Created plan: " + saved.getName());
     log.info("Subscription plan created: id={} name={}", saved.getId(), saved.getName());

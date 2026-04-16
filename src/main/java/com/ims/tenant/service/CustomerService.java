@@ -12,7 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@SuppressWarnings("null")
 public class CustomerService {
 
   private final CustomerRepository customerRepository;

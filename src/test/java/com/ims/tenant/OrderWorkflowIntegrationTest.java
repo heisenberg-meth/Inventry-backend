@@ -38,7 +38,6 @@ import org.springframework.test.web.servlet.MvcResult;
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@SuppressWarnings("null")
 public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
