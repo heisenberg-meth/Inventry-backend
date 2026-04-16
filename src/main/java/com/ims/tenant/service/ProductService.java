@@ -45,7 +45,11 @@ public class ProductService {
 
   @Cacheable(cacheResolver = "tenantAwareCacheResolver", value = "products", key = "'list:' + (#pageable?.pageNumber ?: 0) + ':' + (#pageable?.pageSize ?: 10)")
   public Page<ProductResponse> getProducts(Long tenantId, Pageable pageable) {
-    return productRepository.findByIsActiveTrue(pageable).map(this::toResponse);
+    if (tenantId == null) {
+      log.error("Tenant ID is missing in ProductService.getProducts");
+      throw new IllegalArgumentException("Tenant context is missing");
+    }
+    return productRepository.findByTenantIdAndIsActiveTrue(tenantId, pageable).map(this::toResponse);
   }
 
   public ProductResponse getProductById(@NonNull Long id) {

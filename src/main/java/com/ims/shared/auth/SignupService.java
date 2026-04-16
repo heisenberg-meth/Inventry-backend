@@ -23,6 +23,7 @@ public class SignupService {
   private final PasswordEncoder passwordEncoder;
   private final UserCreationService userCreationService;
   private final TenantPersistenceService tenantPersistenceService;
+  private final com.ims.tenant.service.CategoryService categoryService;
   private final com.ims.shared.audit.AuditLogService auditLogService;
   private final CompanyCodeGenerator companyCodeGenerator;
 
@@ -71,6 +72,12 @@ public class SignupService {
     try {
       TenantContext.set(Objects.requireNonNull(tenant.getId()));
       userCreationService.createUserForTenant(Objects.requireNonNull(user), Objects.requireNonNull(tenant.getId()));
+
+      // Seed default category
+      com.ims.dto.CategoryRequest catReq = new com.ims.dto.CategoryRequest();
+      catReq.setName("General");
+      catReq.setDescription("Default category");
+      categoryService.create(catReq);
 
       auditLogService.log(
           "SIGNUP",
