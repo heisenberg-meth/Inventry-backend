@@ -70,6 +70,7 @@ public class JwtFilter extends OncePerRequestFilter {
       String role = jwtUtil.extractRole(token);
       String scope = jwtUtil.extractScope(token);
       String businessType = jwtUtil.extractBusinessType(token);
+      boolean isPlatformUser = jwtUtil.extractIsPlatformUser(token);
 
       TenantContext.set(tenantId);
 
@@ -78,7 +79,7 @@ public class JwtFilter extends OncePerRequestFilter {
               userId, null, List.of(new SimpleGrantedAuthority(role)));
 
       // Store additional details for downstream use
-      auth.setDetails(new JwtAuthDetails(userId, tenantId, role, scope, businessType));
+      auth.setDetails(new JwtAuthDetails(userId, tenantId, role, scope, businessType, isPlatformUser));
       SecurityContextHolder.getContext().setAuthentication(auth);
 
       chain.doFilter(request, response);

@@ -49,6 +49,7 @@ public class SupportService {
             .status("OPEN")
             .build();
 
+    @SuppressWarnings("null")
     SupportTicket saved = ticketRepository.save(ticket);
     Objects.requireNonNull(saved);
 
@@ -203,6 +204,7 @@ public class SupportService {
             .message(request.getMessage())
             .build();
 
+    @SuppressWarnings("null")
     SupportMessage saved = messageRepository.save(message);
     Objects.requireNonNull(saved);
 

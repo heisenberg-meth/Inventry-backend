@@ -2,7 +2,12 @@ package com.ims.tenant.service;
 
 import com.ims.model.Customer;
 import com.ims.tenant.repository.CustomerRepository;
+import com.ims.tenant.repository.OrderRepository;
+import com.ims.tenant.repository.InvoiceRepository;
+import com.ims.tenant.repository.PaymentRepository;
 import jakarta.persistence.EntityNotFoundException;
+import java.util.Map;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -12,9 +17,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("null")
 public class CustomerService {
 
   private final CustomerRepository customerRepository;
+  private final OrderRepository orderRepository;
+  private final InvoiceRepository invoiceRepository;
+  private final PaymentRepository paymentRepository;
 
   public @NonNull Page<Customer> getCustomers(@NonNull Pageable pageable) {
     return customerRepository.findAll(pageable);
@@ -56,5 +65,20 @@ public class CustomerService {
   public void delete(@NonNull Long id) {
     Customer customer = getById(id);
     customerRepository.delete(customer);
+  }
+
+  public Map<String, Object> getCustomerLedger(@NonNull Long id) {
+    Customer customer = getById(id);
+    
+    List<com.ims.model.Order> orders = orderRepository.findByCustomerId(id, Pageable.unpaged()).getContent();
+    List<com.ims.model.Invoice> invoices = invoiceRepository.findByCustomerId(id);
+    List<com.ims.model.Payment> payments = paymentRepository.findByCustomerId(id);
+
+    return Map.of(
+        "customer", customer,
+        "orders", orders,
+        "invoices", invoices,
+        "payments", payments
+    );
   }
 }

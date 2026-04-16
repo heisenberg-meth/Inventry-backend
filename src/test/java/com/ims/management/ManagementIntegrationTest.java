@@ -27,6 +27,7 @@ import org.springframework.test.web.servlet.MvcResult;
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@SuppressWarnings("null")
 public class ManagementIntegrationTest extends BaseIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
@@ -36,6 +37,7 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
   @BeforeEach
   void setup() {
     cleanupDatabase();
+    mockRedisAndCache();
   }
 
   @Test

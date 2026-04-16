@@ -1,13 +1,8 @@
 package com.ims.tenant;
 
 import static org.assertj.core.api.Assertions.assertThat;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.when;
 import com.ims.BaseIntegrationTest;
-import com.ims.model.Product;
+import com.ims.product.Product;
 import com.ims.model.StockMovement;
 import com.ims.model.User;
 import com.ims.shared.auth.TenantContext;
@@ -23,13 +18,13 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import java.util.Objects;
 import java.util.List;
-import java.util.Collections;
 
 @SpringBootTest(properties = {
     "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
     "spring.cache.type=none"
 })
 @ActiveProfiles("test")
+@SuppressWarnings("null")
 public class StockAuditIntegrationTest extends BaseIntegrationTest {
 
   @Autowired private StockService stockService;
@@ -42,12 +37,7 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
   @BeforeEach
   void setup() {
     cleanupDatabase();
-    when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-    when(valueOperations.increment(anyString())).thenReturn(1L);
-    
-    org.springframework.cache.Cache dummyCache = new org.springframework.cache.concurrent.ConcurrentMapCache("dummy");
-    doReturn(Collections.singletonList(dummyCache)).when(tenantAwareCacheResolver).resolveCaches(any());
-    when(cacheManager.getCache(anyString())).thenReturn(dummyCache);
+    mockRedisAndCache();
     
     // Tenant 1
     TenantContext.set(testTenant1Id);

@@ -1,15 +1,14 @@
-package com.ims.tenant.service;
+package com.ims.product;
 
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.response.ProductResponse;
-import com.ims.model.Product;
 import com.ims.model.Tenant;
 import com.ims.shared.auth.JwtAuthDetails;
 import com.ims.shared.rbac.RequiresPermission;
 import com.ims.tenant.domain.pharmacy.PharmacyProduct;
 import com.ims.tenant.domain.pharmacy.PharmacyProductRepository;
 import com.ims.tenant.domain.warehouse.WarehouseProduct;
-import com.ims.tenant.repository.ProductRepository;
+import com.ims.tenant.service.WarehouseProductRepository;
 import com.ims.platform.repository.TenantRepository;
 import com.ims.platform.service.SystemConfigService;
 import jakarta.persistence.EntityNotFoundException;
@@ -43,7 +42,7 @@ public class ProductService {
 
   private static final int DEFAULT_REORDER_LEVEL = 10;
 
-  @Cacheable(cacheResolver = "tenantAwareCacheResolver", value = "products", key = "'list:' + (#pageable?.pageNumber ?: 0) + ':' + (#pageable?.pageSize ?: 10)")
+  @Cacheable(cacheResolver = "tenantAwareCacheResolver", value = "products", key = "'list:' + #tenantId + ':' + (#pageable?.pageNumber ?: 0) + ':' + (#pageable?.pageSize ?: 10)")
   public Page<ProductResponse> getProducts(Long tenantId, Pageable pageable) {
     if (tenantId == null) {
       log.error("Tenant ID is missing in ProductService.getProducts");
@@ -52,6 +51,7 @@ public class ProductService {
     return productRepository.findByTenantIdAndIsActiveTrue(tenantId, pageable).map(this::toResponse);
   }
 
+  @SuppressWarnings("null")
   public ProductResponse getProductById(@NonNull Long id) {
     Product product =
         productRepository
@@ -60,6 +60,7 @@ public class ProductService {
     return toResponse(product);
   }
 
+  @SuppressWarnings("null")
   @Transactional
   @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "products", allEntries = true)
   public ProductResponse createProduct(CreateProductRequest request) {
@@ -146,6 +147,7 @@ public class ProductService {
     return toResponse(product);
   }
 
+  @SuppressWarnings("null")
   @Transactional
   @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "products", allEntries = true)
   public ProductResponse updateProduct(@NonNull Long id, CreateProductRequest request) {
@@ -247,12 +249,42 @@ public class ProductService {
     log.info("Product soft deleted: id={}", id);
   }
 
+  @Transactional
+  @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "products", allEntries = true)
+  public ProductResponse duplicateProduct(@NonNull Long id) {
+    Product original = productRepository.findById(id)
+        .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+
+    Product clone = Product.builder()
+        .tenantId(original.getTenantId())
+        .name(original.getName() + " (Copy)")
+        .sku(original.getSku() != null ? original.getSku() + "-COPY" : null)
+        .barcode(null) // Barcode should be unique
+        .categoryId(original.getCategoryId())
+        .unit(original.getUnit())
+        .purchasePrice(original.getPurchasePrice())
+        .salePrice(original.getSalePrice())
+        .stock(0) // Reset stock
+        .reorderLevel(original.getReorderLevel())
+        .isActive(true)
+        .build();
+
+    @SuppressWarnings("null")
+    Product saved = productRepository.save(clone);
+    log.info("Product duplicated: original_id={} new_id={}", id, saved.getId());
+    
+    auditLogService.logAudit("DUPLICATE_PRODUCT", "PRODUCT", saved.getId(), "Duplicated from product #" + id);
+    
+    return toResponse(saved);
+  }
+
   public List<ProductResponse> getLowStockProducts() {
     return productRepository.findLowStock().stream()
         .map(this::toResponse)
         .collect(Collectors.toList());
   }
 
+  @SuppressWarnings("null")
   public List<ProductResponse> getExpiringProducts(Integer days) {
     String businessType = getBusinessType();
 

@@ -3,8 +3,6 @@ package com.ims.tenant;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.CreateProductRequest;
@@ -31,6 +29,7 @@ import org.springframework.test.web.servlet.MvcResult;
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@SuppressWarnings("null")
 public class PharmacyIntegrationTest extends BaseIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
@@ -40,6 +39,7 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
   @BeforeEach
   void setup() {
     cleanupDatabase();
+    mockRedisAndCache();
   }
 
   @Test
@@ -82,7 +82,7 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
     mockMvc.perform(get("/api/tenant/products/expiring?days=200")
             .header("Authorization", "Bearer " + token))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.length()", greaterThanOrEqualTo(1)));
+        .andExpect(jsonPath("$.length()", org.hamcrest.Matchers.<Integer>greaterThanOrEqualTo(1)));
   }
 
   @Test

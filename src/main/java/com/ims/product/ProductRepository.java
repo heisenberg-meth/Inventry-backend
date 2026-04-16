@@ -1,6 +1,5 @@
-package com.ims.tenant.repository;
+package com.ims.product;
 
-import com.ims.model.Product;
 import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;

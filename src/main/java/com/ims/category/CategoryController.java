@@ -1,9 +1,7 @@
-package com.ims.tenant.controller;
+package com.ims.category;
 
 import com.ims.dto.CategoryRequest;
-import com.ims.model.Category;
 import com.ims.shared.rbac.RequiresRole;
-import com.ims.tenant.service.CategoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;

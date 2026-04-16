@@ -11,4 +11,5 @@ public class JwtAuthDetails {
   private String role;
   private String scope;
   private String businessType;
+  private boolean isPlatformUser;
 }

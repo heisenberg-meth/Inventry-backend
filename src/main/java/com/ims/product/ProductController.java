@@ -1,11 +1,10 @@
-package com.ims.tenant.controller;
+package com.ims.product;
 
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.response.ProductResponse;
 import com.ims.shared.auth.TenantContext;
 import com.ims.shared.rbac.RequiresPermission;
 import com.ims.shared.rbac.RequiresRole;
-import com.ims.tenant.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -32,9 +31,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @Tag(name = "Tenant - Products", description = "Product management")
 @SecurityRequirement(name = "bearerAuth")
+@SuppressWarnings("null")
 public class ProductController {
 
   private final ProductService productService;
+  private final ProductImportService importService;
+  private final com.ims.shared.utils.CsvExportService csvExportService;
+  private final ProductRepository productRepository;
+  private final BarcodeGeneratorService barcodeService;
 
   @GetMapping
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
@@ -67,6 +71,13 @@ public class ProductController {
     return ResponseEntity.ok(productService.updateProduct(id, request));
   }
 
+  @PostMapping("/{id}/duplicate")
+  @RequiresRole({"ADMIN", "MANAGER"})
+  @Operation(summary = "Clone a product")
+  public ResponseEntity<ProductResponse> duplicateProduct(@NonNull @PathVariable Long id) {
+    return ResponseEntity.status(HttpStatus.CREATED).body(productService.duplicateProduct(id));
+  }
+
   @DeleteMapping("/{id}")
   @RequiresPermission("delete_product")
   @Operation(summary = "Soft delete product")
@@ -95,5 +106,48 @@ public class ProductController {
   @Operation(summary = "Search by name/SKU/barcode")
   public ResponseEntity<Page<ProductResponse>> search(@RequestParam String q, Pageable pageable) {
     return ResponseEntity.ok(productService.searchProducts(q, pageable));
+  }
+
+  @PostMapping("/bulk-import")
+  @RequiresRole({"ADMIN", "MANAGER"})
+  @Operation(summary = "Bulk import products via CSV")
+  public ResponseEntity<java.util.Map<String, Object>> bulkImport(@RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+    return ResponseEntity.ok(importService.importProducts(file));
+  }
+
+  @GetMapping("/export")
+  @RequiresRole({"ADMIN", "MANAGER"})
+  @Operation(summary = "Export all products as CSV")
+  public ResponseEntity<String> exportProducts() {
+    var products = productRepository.findByIsActiveTrue(org.springframework.data.domain.Pageable.unpaged()).getContent();
+    
+    var data = products.stream().map(p -> {
+      java.util.Map<String, Object> map = new java.util.LinkedHashMap<>();
+      map.put("ID", p.getId());
+      map.put("Name", p.getName());
+      map.put("SKU", p.getSku());
+      map.put("Stock", p.getStock());
+      map.put("Price", p.getSalePrice());
+      map.put("CategoryID", p.getCategoryId());
+      return map;
+    }).collect(java.util.stream.Collectors.toList());
+
+    String csv = csvExportService.exportToCsv(java.util.List.of("ID", "Name", "SKU", "Stock", "Price", "CategoryID"), data);
+
+    return ResponseEntity.ok()
+        .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=products.csv")
+        .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "text/csv")
+        .body(csv);
+  }
+
+  @GetMapping("/{id}/barcode")
+  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @Operation(summary = "Generate barcode for product")
+  public ResponseEntity<byte[]> getBarcode(@PathVariable Long id) {
+    ProductResponse p = productService.getProductById(id);
+    byte[] image = barcodeService.generateBarcodeImage(p.getBarcode() != null ? p.getBarcode() : p.getSku());
+    return ResponseEntity.ok()
+        .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "image/png")
+        .body(image);
   }
 }

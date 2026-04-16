@@ -33,11 +33,12 @@ public class JwtUtil {
   }
 
   public String generateToken(
-      Long userId, Long tenantId, String role, String scope, String businessType) {
+      Long userId, Long tenantId, String role, String scope, String businessType, boolean isPlatformUser) {
     Map<String, Object> claims = new HashMap<>();
     claims.put("user_id", userId);
     claims.put("role", role);
     claims.put("scope", scope);
+    claims.put("is_platform_user", isPlatformUser);
     if (tenantId != null) {
       claims.put("tenant_id", tenantId);
     }
@@ -56,11 +57,12 @@ public class JwtUtil {
   }
 
   public String generateRefreshToken(
-      Long userId, Long tenantId, String role, String scope, String businessType) {
+      Long userId, Long tenantId, String role, String scope, String businessType, boolean isPlatformUser) {
     Map<String, Object> claims = new HashMap<>();
     claims.put("user_id", userId);
     claims.put("role", role);
     claims.put("scope", scope);
+    claims.put("is_platform_user", isPlatformUser);
     claims.put("token_type", "refresh");
     if (tenantId != null) {
       claims.put("tenant_id", tenantId);
@@ -110,6 +112,11 @@ public class JwtUtil {
 
   public String extractBusinessType(String token) {
     return extractAllClaims(token).get("business_type", String.class);
+  }
+
+  public boolean extractIsPlatformUser(String token) {
+    Boolean isPlatformUser = extractAllClaims(token).get("is_platform_user", Boolean.class);
+    return isPlatformUser != null && isPlatformUser;
   }
 
   public long getExpirySeconds() {

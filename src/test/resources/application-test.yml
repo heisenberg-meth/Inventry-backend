@@ -9,6 +9,9 @@ spring:
       ddl-auto: none
     show-sql: false
     database-platform: org.hibernate.dialect.H2Dialect
+    properties:
+      hibernate:
+        multiTenancy: NONE
   cache:
     type: none
   flyway:

@@ -1,7 +1,7 @@
 package com.ims.tenant.service;
 
 import com.ims.dto.TransferOrderStatusRequest;
-import com.ims.model.Product;
+import com.ims.product.Product;
 import com.ims.model.StockMovement;
 import com.ims.model.Tenant;
 import com.ims.model.TransferOrder;
@@ -9,7 +9,7 @@ import com.ims.platform.repository.TenantRepository;
 import com.ims.shared.auth.TenantContext;
 import com.ims.shared.exception.InsufficientStockException;
 import com.ims.tenant.domain.warehouse.WarehouseProduct;
-import com.ims.tenant.repository.ProductRepository;
+import com.ims.product.ProductRepository;
 import com.ims.tenant.repository.StockMovementRepository;
 import com.ims.tenant.repository.TransferOrderRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class StockService {
 
   private final ProductRepository productRepository;

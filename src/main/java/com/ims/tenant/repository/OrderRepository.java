@@ -38,6 +38,15 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
       @Param("to") @NonNull LocalDateTime to);
 
   @Query(
+      "SELECT COALESCE(SUM(o.taxAmount), 0) FROM Order o "
+          + "WHERE o.type = :type AND o.createdAt >= :from AND o.createdAt <= :to")
+  @NonNull
+  BigDecimal sumTaxAmountByTypeAndDateRange(
+      @Param("type") @NonNull String type,
+      @Param("from") @NonNull LocalDateTime from,
+      @Param("to") @NonNull LocalDateTime to);
+
+  @Query(
       "SELECT COUNT(o) FROM Order o "
           + "WHERE o.type = :type AND o.createdAt >= :from AND o.createdAt <= :to")
   long countByTypeAndDateRange(

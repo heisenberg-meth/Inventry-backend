@@ -9,7 +9,6 @@ import com.ims.shared.audit.AuditLogService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
-import java.util.Objects;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -24,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class SubscriptionPlanService {
 
   private final SubscriptionPlanRepository planRepository;
@@ -58,7 +58,7 @@ public class SubscriptionPlanService {
             .status("ACTIVE")
             .build();
 
-    SubscriptionPlan saved = Objects.requireNonNull(planRepository.save(plan));
+    SubscriptionPlan saved = planRepository.save(plan);
     auditLogService.log("CREATE_PLAN", null, null, "Created plan: " + saved.getName());
     log.info("Subscription plan created: id={} name={}", saved.getId(), saved.getName());
     return saved;

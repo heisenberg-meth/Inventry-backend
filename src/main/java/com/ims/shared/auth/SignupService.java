@@ -4,18 +4,18 @@ import com.ims.dto.request.SignupRequest;
 import com.ims.dto.response.SignupResponse;
 import com.ims.model.Tenant;
 import com.ims.model.User;
+import com.ims.model.EmailVerification;
 import com.ims.platform.repository.TenantRepository;
 import com.ims.tenant.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import java.util.Objects;
-import com.ims.shared.utils.CompanyCodeGenerator;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class SignupService {
 
   private final TenantRepository tenantRepository;
@@ -23,9 +23,10 @@ public class SignupService {
   private final PasswordEncoder passwordEncoder;
   private final UserCreationService userCreationService;
   private final TenantPersistenceService tenantPersistenceService;
-  private final com.ims.tenant.service.CategoryService categoryService;
+  private final com.ims.category.CategoryService categoryService;
+  private final EmailVerificationRepository emailVerificationRepository;
   private final com.ims.shared.audit.AuditLogService auditLogService;
-  private final CompanyCodeGenerator companyCodeGenerator;
+  private final com.ims.shared.utils.CompanyCodeGenerator companyCodeGenerator;
 
   // No @Transactional here — each step manages its own transaction
   public SignupResponse signup(SignupRequest request) {
@@ -49,12 +50,13 @@ public class SignupService {
         .workspaceSlug(workspaceSlug)
         .companyCode(companyCode)
         .status("ACTIVE")
+        .status("ACTIVE")
         .plan("FREE")
         .address(request.getAddress())
         .gstin(request.getGstin())
         .build();
 
-    tenant = tenantPersistenceService.saveTenant(Objects.requireNonNull(tenant)); // commits immediately
+    tenant = tenantPersistenceService.saveTenant(tenant); // commits immediately
     log.info("Signup: Created tenant id={} name={}", tenant.getId(), tenant.getName());
 
     // 2. Now user insert can see the committed tenant
@@ -70,14 +72,24 @@ public class SignupService {
         .build();
 
     try {
-      TenantContext.set(Objects.requireNonNull(tenant.getId()));
-      userCreationService.createUserForTenant(Objects.requireNonNull(user), Objects.requireNonNull(tenant.getId()));
+      TenantContext.set(tenant.getId());
+      userCreationService.createUserForTenant(user, tenant.getId());
 
       // Seed default category
       com.ims.dto.CategoryRequest catReq = new com.ims.dto.CategoryRequest();
       catReq.setName("General");
       catReq.setDescription("Default category");
       categoryService.create(catReq);
+
+      // Generate email verification token
+      String verificationToken = java.util.UUID.randomUUID().toString();
+      EmailVerification verification = EmailVerification.builder()
+          .userId(user.getId())
+          .token(verificationToken)
+          .expiresAt(java.time.LocalDateTime.now().plusHours(24))
+          .build();
+      emailVerificationRepository.save(verification);
+      log.info("Signup: Created email verification token for user={}", user.getId());
 
       auditLogService.log(
           "SIGNUP",

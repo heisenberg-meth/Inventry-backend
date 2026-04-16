@@ -1,9 +1,8 @@
 package com.ims.tenant;
+import java.util.Objects;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -35,6 +34,7 @@ import org.springframework.test.web.servlet.MvcResult;
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@SuppressWarnings("null")
 public class BillingIntegrationTest extends BaseIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
@@ -45,7 +45,7 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
   @BeforeEach
   void setup() {
     cleanupDatabase();
-    when(valueOperations.increment(anyString())).thenReturn(1L);
+    mockRedisAndCache();
   }
 
   @Test
@@ -68,7 +68,7 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
     Customer customer;
     try {
       TenantContext.set(tenantId);
-      customer = customerService.create(Customer.builder().name("Billing Customer").address("123 Street").build());
+      customer = Objects.requireNonNull(customerService.create(Customer.builder().name("Billing Customer").address("123 Street").build()));
     } finally {
       TenantContext.clear();
     }
@@ -77,7 +77,7 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
     createReq.setName("Billing Product");
     createReq.setSku("BILL-001");
     createReq.setSalePrice(new BigDecimal("150.00"));
-    String createReqJson = objectMapper.writeValueAsString(createReq);
+    String createReqJson = Objects.requireNonNull(objectMapper.writeValueAsString(createReq));
     MvcResult prodResult = mockMvc.perform(post("/api/tenant/products")
             .header("Authorization", "Bearer " + token)
             .contentType(MediaType.APPLICATION_JSON)
@@ -87,11 +87,11 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
     ProductResponse product = objectMapper.readValue(prodResult.getResponse().getContentAsString(), ProductResponse.class);
 
     // Add initial stock
-    String stockInJson = objectMapper.writeValueAsString(Map.of(
+    String stockInJson = Objects.requireNonNull(objectMapper.writeValueAsString(Map.of(
                 "product_id", product.getId(),
                 "quantity", 100,
                 "notes", "Initial Stock"
-            ));
+            )));
     mockMvc.perform(post("/api/tenant/stock/in")
             .header("Authorization", "Bearer " + token)
             .contentType(MediaType.APPLICATION_JSON)
@@ -108,7 +108,7 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
         ))
     );
 
-    String orderReqJson = objectMapper.writeValueAsString(orderReq);
+    String orderReqJson = Objects.requireNonNull(objectMapper.writeValueAsString(orderReq));
     MvcResult orderResult = mockMvc.perform(post("/api/tenant/orders/sale")
             .header("Authorization", "Bearer " + token)
             .contentType(MediaType.APPLICATION_JSON)
@@ -148,7 +148,7 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
     loginRequest.setPassword(password);
     loginRequest.setCompanyCode(workspace);
     
-    String loginJson = objectMapper.writeValueAsString(loginRequest);
+    String loginJson = Objects.requireNonNull(objectMapper.writeValueAsString(loginRequest));
     MvcResult result = mockMvc.perform(post("/api/auth/login")
             .contentType(MediaType.APPLICATION_JSON)
             .content(loginJson))

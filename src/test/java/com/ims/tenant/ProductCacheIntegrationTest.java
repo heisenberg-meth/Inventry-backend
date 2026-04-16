@@ -1,9 +1,7 @@
 package com.ims.tenant;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -31,7 +29,10 @@ import org.springframework.test.web.servlet.MvcResult;
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@SuppressWarnings("null")
 public class ProductCacheIntegrationTest extends BaseIntegrationTest {
+
+  private org.springframework.cache.Cache spyCache;
 
   @Autowired private MockMvc mockMvc;
   @Autowired private ObjectMapper objectMapper;
@@ -40,15 +41,17 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
   @BeforeEach
   void setup() {
     cleanupDatabase();
-    when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+    mockRedisAndCache();
     
-    org.springframework.cache.Cache dummyCache = new org.springframework.cache.concurrent.ConcurrentMapCache("dummy");
-    doReturn(java.util.Collections.singletonList(dummyCache)).when(tenantAwareCacheResolver).resolveCaches(any());
-    when(cacheManager.getCache(anyString())).thenReturn(dummyCache);
+    spyCache = spy(new org.springframework.cache.concurrent.ConcurrentMapCache("products"));
+    doReturn(java.util.Collections.singletonList(spyCache))
+        .when(tenantAwareCacheResolver)
+        .resolveCaches(any(org.springframework.cache.interceptor.CacheOperationInvocationContext.class));
+    doReturn(spyCache).when(cacheManager).getCache(anyString());
   }
 
   @Test
-  void testProductCreationAndManualEviction() throws Exception {
+  void testProductCacheFlow() throws Exception {
     SignupRequest signup = new SignupRequest();
     signup.setBusinessName("Cache Corp");
     signup.setWorkspaceSlug("cache-corp");
@@ -60,15 +63,50 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
     
     String token = login("admin@cache.com", "password123", response.getCompanyCode());
 
+    // 1. Create Product
     CreateProductRequest createReq = new CreateProductRequest();
-    createReq.setName("New Prod");
+    createReq.setName("Cached Product");
     createReq.setSalePrice(new BigDecimal("10.00"));
     
-    mockMvc.perform(post("/api/tenant/products")
+    MvcResult result = mockMvc.perform(post("/api/tenant/products")
             .header("Authorization", "Bearer " + token)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(createReq)))
-        .andExpect(status().isCreated());
+        .andExpect(status().isCreated())
+        .andReturn();
+    
+    com.ims.dto.response.ProductResponse product = objectMapper.readValue(result.getResponse().getContentAsString(), com.ims.dto.response.ProductResponse.class);
+    Long productId = product.getId();
+
+    // Reset spy to clear creation-time interactions if any
+    reset(spyCache);
+
+    // 2. First fetch (Cache miss -> Should call cache.get then cache.put)
+    mockMvc.perform(get("/api/tenant/products/" + productId)
+            .header("Authorization", "Bearer " + token))
+        .andExpect(status().isOk());
+    
+    verify(spyCache, atLeastOnce()).get(any());
+
+    // 3. Second fetch (Should be a cache hit)
+    mockMvc.perform(get("/api/tenant/products/" + productId)
+            .header("Authorization", "Bearer " + token))
+        .andExpect(status().isOk());
+
+    // 4. Update product (Should trigger eviction)
+    createReq.setName("Updated Product Name");
+    mockMvc.perform(put("/api/tenant/products/" + productId)
+            .header("Authorization", "Bearer " + token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(createReq)))
+        .andExpect(status().isOk());
+
+    verify(spyCache, atLeastOnce()).evict(any());
+
+    // 5. Fetch again (Cache miss again)
+    mockMvc.perform(get("/api/tenant/products/" + productId)
+            .header("Authorization", "Bearer " + token))
+        .andExpect(status().isOk());
   }
 
   private String login(String email, String password, String workspace) throws Exception {

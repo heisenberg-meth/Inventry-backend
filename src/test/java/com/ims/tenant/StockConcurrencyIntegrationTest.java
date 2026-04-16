@@ -3,7 +3,7 @@ package com.ims.tenant;
 import static org.assertj.core.api.Assertions.assertThat;
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.SignupRequest;
-import com.ims.model.Product;
+import com.ims.product.Product;
 import com.ims.shared.auth.SignupService;
 import com.ims.shared.auth.TenantContext;
 import com.ims.shared.exception.InsufficientStockException;

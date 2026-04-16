@@ -1,12 +1,11 @@
 package com.ims.auth;
 
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doReturn;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.LoginRequest;
@@ -29,6 +28,7 @@ import org.springframework.test.web.servlet.MvcResult;
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@SuppressWarnings("null")
 public class AuthIntegrationTest extends BaseIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
@@ -38,6 +38,7 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
   @BeforeEach
   void setup() {
     cleanupDatabase();
+    mockRedisAndCache();
   }
 
   @Test
@@ -76,7 +77,7 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
         .andExpect(status().isOk());
 
     // Mock Redis blacklist check for next request
-    when(redisTemplate.hasKey(anyString())).thenReturn(true);
+    doReturn(true).when(redisTemplate).hasKey(anyString());
 
     mockMvc
         .perform(get("/api/tenant/users").header("Authorization", "Bearer " + t1Token))

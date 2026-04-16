@@ -1,12 +1,8 @@
 package com.ims.tenant;
+import java.util.Objects;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.when;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.ims.BaseIntegrationTest;
@@ -38,6 +34,7 @@ import org.springframework.test.web.servlet.MvcResult;
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@SuppressWarnings("null")
 public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
@@ -48,12 +45,7 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
   @BeforeEach
   void setup() {
     cleanupDatabase();
-    when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-    when(valueOperations.increment(anyString())).thenReturn(1L);
-    
-    org.springframework.cache.Cache dummyCache = new org.springframework.cache.concurrent.ConcurrentMapCache("dummy");
-    doReturn(java.util.Collections.singletonList(dummyCache)).when(tenantAwareCacheResolver).resolveCaches(any());
-    when(cacheManager.getCache(anyString())).thenReturn(dummyCache);
+    mockRedisAndCache();
   }
 
   @Test
@@ -73,7 +65,7 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
     Customer customer;
     try {
       TenantContext.set(tenantId);
-      customer = customerService.create(Customer.builder().name("Test Customer").build());
+      customer = Objects.requireNonNull(customerService.create(Customer.builder().name("Test Customer").build()));
     } finally {
       TenantContext.clear();
     }
@@ -85,7 +77,7 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
     MvcResult prodResult = mockMvc.perform(post("/api/tenant/products")
             .header("Authorization", "Bearer " + token)
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(createReq)))
+            .content(Objects.requireNonNull(objectMapper.writeValueAsString(createReq))))
         .andExpect(status().isCreated())
         .andReturn();
     ProductResponse product = objectMapper.readValue(prodResult.getResponse().getContentAsString(), ProductResponse.class);
@@ -94,11 +86,11 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
     mockMvc.perform(post("/api/tenant/stock/in")
             .header("Authorization", "Bearer " + token)
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(Map.of(
+            .content(Objects.requireNonNull(objectMapper.writeValueAsString(Map.of(
                 "product_id", product.getId(),
                 "quantity", 100,
                 "notes", "Initial Stock"
-            ))))
+            )))))
         .andExpect(status().isOk());
 
     verifyStock(token, product.getId(), 100);
@@ -116,7 +108,7 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
     MvcResult orderResult = mockMvc.perform(post("/api/tenant/orders/sale")
             .header("Authorization", "Bearer " + token)
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(orderReq)))
+            .content(Objects.requireNonNull(objectMapper.writeValueAsString(orderReq))))
         .andExpect(status().isCreated())
         .andReturn();
     
@@ -155,10 +147,10 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
     
     MvcResult result = mockMvc.perform(post("/api/auth/login")
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(loginRequest)))
+            .content(Objects.requireNonNull(objectMapper.writeValueAsString(loginRequest))))
         .andExpect(status().isOk())
         .andReturn();
     String content = result.getResponse().getContentAsString();
-    return objectMapper.readTree(content).get("accessToken").asText();
+    return Objects.requireNonNull(objectMapper.readTree(content).get("accessToken")).asText();
   }
 }
