@@ -13,8 +13,10 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import lombok.extern.slf4j.Slf4j;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
   private static final int STATUS_BAD_REQUEST = 400;
@@ -96,13 +98,17 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<Map<String, Object>> handleAll(Exception ex, HttpServletRequest request) {
-    // NEVER expose stack trace in response body
+    log.error("Unexpected error occurred at [{}]: {}", request.getRequestURI(), ex.getMessage(), ex);
+    
+    String detailedMessage = String.format("[%s] %s", ex.getClass().getSimpleName(), 
+        (ex.getMessage() != null ? ex.getMessage() : "No detail available"));
+        
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
         .body(
             errorBody(
                 STATUS_INTERNAL_ERROR,
                 "INTERNAL_ERROR",
-                "An unexpected error occurred",
+                detailedMessage,
                 request.getRequestURI()));
   }
 

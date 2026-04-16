@@ -7,6 +7,7 @@ import com.ims.tenant.repository.CategoryRepository;
 import com.ims.tenant.repository.ProductRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CategoryService {
 
   private final CategoryRepository categoryRepository;
@@ -25,8 +27,12 @@ public class CategoryService {
   private final com.ims.shared.audit.AuditLogService auditLogService;
 
   @Cacheable(cacheResolver = "tenantAwareCacheResolver", value = "categories", key = "'list:' + #pageable.pageNumber + ':' + #pageable.pageSize")
-  public Page<Category> getCategories(@NonNull Pageable pageable) {
-    return categoryRepository.findAll(pageable);
+  public Page<Category> getCategories(Long tenantId, @NonNull Pageable pageable) {
+    if (tenantId == null) {
+      log.error("Tenant ID is missing in CategoryService.getCategories");
+      throw new IllegalArgumentException("Tenant context is missing");
+    }
+    return categoryRepository.findByTenantId(tenantId, pageable);
   }
 
   public Category getById(@NonNull Long id) {
