@@ -100,15 +100,12 @@ public class GlobalExceptionHandler {
   public ResponseEntity<Map<String, Object>> handleAll(Exception ex, HttpServletRequest request) {
     log.error("Unexpected error occurred at [{}]: {}", request.getRequestURI(), ex.getMessage(), ex);
     
-    String detailedMessage = String.format("[%s] %s", ex.getClass().getSimpleName(), 
-        (ex.getMessage() != null ? ex.getMessage() : "No detail available"));
-        
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
         .body(
             errorBody(
                 STATUS_INTERNAL_ERROR,
                 "INTERNAL_ERROR",
-                detailedMessage,
+                "An unexpected error occurred",
                 request.getRequestURI()));
   }
 

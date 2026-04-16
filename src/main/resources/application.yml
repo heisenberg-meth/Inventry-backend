@@ -66,10 +66,10 @@ springdoc:
 server:
   port: 8080
   error:
-    include-message: always
-    include-stacktrace: always
-    include-binding-errors: always
-    include-exception: true
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
+    include-exception: false
 
 logging:
   level:

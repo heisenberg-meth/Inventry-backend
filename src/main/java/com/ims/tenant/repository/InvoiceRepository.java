@@ -13,5 +13,14 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
           + "FROM Invoice i")
   int findMaxSequence();
  
-  boolean existsByOrderId(Long orderId);
+  @Query("SELECT COUNT(i) > 0 FROM Invoice i WHERE i.orderId = :orderId")
+  boolean existsByOrderId(@org.springframework.data.repository.query.Param("orderId") Long orderId);
+
+  @Query("SELECT i FROM Invoice i JOIN Order o ON i.orderId = o.id WHERE o.customerId = :customerId")
+  java.util.List<Invoice> findByCustomerId(@org.springframework.data.repository.query.Param("customerId") Long customerId);
+
+  @Query("SELECT i FROM Invoice i JOIN Order o ON i.orderId = o.id WHERE o.supplierId = :supplierId")
+  java.util.List<Invoice> findBySupplierId(@org.springframework.data.repository.query.Param("supplierId") Long supplierId);
+
+  org.springframework.data.domain.Page<Invoice> findByStatusNotAndDueDateBefore(String status, java.time.LocalDate date, org.springframework.data.domain.Pageable pageable);
 }

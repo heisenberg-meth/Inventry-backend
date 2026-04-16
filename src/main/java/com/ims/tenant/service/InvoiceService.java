@@ -6,7 +6,7 @@ import com.ims.model.Customer;
 import com.ims.model.Invoice;
 import com.ims.model.Order;
 import com.ims.model.OrderItem;
-import com.ims.model.Product;
+import com.ims.product.Product;
 import com.ims.model.Tenant;
 import com.ims.platform.repository.TenantRepository;
 import com.ims.shared.auth.TenantContext;
@@ -15,8 +15,9 @@ import com.ims.tenant.repository.CustomerRepository;
 import com.ims.tenant.repository.InvoiceRepository;
 import com.ims.tenant.repository.OrderItemRepository;
 import com.ims.tenant.repository.OrderRepository;
-import com.ims.tenant.repository.ProductRepository;
+import com.ims.product.ProductRepository;
 import jakarta.persistence.EntityNotFoundException;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -49,6 +50,7 @@ public class InvoiceService {
 
   private static final int DEFAULT_DUE_DAYS = 30;
 
+  @SuppressWarnings("null")
   @Transactional
   public @NonNull Invoice createManual(@NonNull CreateInvoiceRequest request) {
     Order order =
@@ -111,6 +113,7 @@ public class InvoiceService {
     return invoiceRepository.save(invoice);
   }
 
+  @SuppressWarnings("null")
   @Transactional
   public @NonNull Invoice createFromOrder(@NonNull Order order) {
     String invoiceNumber = incrementAndGetInvoiceNumber();
@@ -128,6 +131,28 @@ public class InvoiceService {
 
     log.info("Invoice created: {} for order {}", invoiceNumber, order.getId());
     return invoiceRepository.save(invoice);
+  }
+
+  @SuppressWarnings("null")
+  @Transactional
+  public @NonNull Invoice createCreditNote(@NonNull Order returnOrder, Long parentInvoiceId) {
+    String invoiceNumber = "CN-" + incrementAndGetInvoiceNumber().substring(4); // Use CN prefix
+
+    Invoice creditNote =
+        Invoice.builder()
+            .orderId(returnOrder.getId())
+            .invoiceNumber(invoiceNumber)
+            .amount(returnOrder.getTotalAmount().negate())
+            .taxAmount(returnOrder.getTaxAmount() != null ? returnOrder.getTaxAmount().negate() : BigDecimal.ZERO)
+            .discount(returnOrder.getDiscount() != null ? returnOrder.getDiscount().negate() : BigDecimal.ZERO)
+            .status("PAID") // Credit notes are usually considered "settled" immediately as a reduction
+            .parentInvoiceId(parentInvoiceId)
+            .dueDate(LocalDate.now())
+            .paidAt(LocalDateTime.now())
+            .build();
+
+    log.info("Credit note created: {} for return order {}", invoiceNumber, returnOrder.getId());
+    return invoiceRepository.save(creditNote);
   }
 
   private String incrementAndGetInvoiceNumber() {
@@ -215,6 +240,12 @@ public class InvoiceService {
     return invoiceRepository.findAll(pageable);
   }
 
+  @SuppressWarnings("null")
+  public @NonNull Page<Invoice> getOverdueInvoices(@NonNull Pageable pageable) {
+    return invoiceRepository.findByStatusNotAndDueDateBefore("PAID", LocalDate.now(), pageable);
+  }
+
+  @SuppressWarnings("null")
   public @NonNull Invoice getInvoiceById(@NonNull Long id) {
     return invoiceRepository
         .findById(id)

@@ -7,7 +7,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,14 +14,12 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "products")
+@Table(name = "webhooks")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Product {
-
-  private static final int DEFAULT_REORDER_LEVEL = 10;
+public class Webhook {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -32,29 +29,14 @@ public class Product {
   @Column(name = "tenant_id", nullable = false)
   private Long tenantId;
 
-  @Column(nullable = false)
-  private String name;
+  @Column(nullable = false, columnDefinition = "TEXT")
+  private String url;
 
-  @Column private String sku;
+  @Column
+  private String secret;
 
-  @Column private String barcode;
-
-  @Column(name = "category_id")
-  private Long categoryId;
-
-  @Column private String unit;
-
-  @Column(name = "purchase_price", precision = 10, scale = 2)
-  private BigDecimal purchasePrice;
-
-  @Column(name = "sale_price", nullable = false, precision = 10, scale = 2)
-  private BigDecimal salePrice;
-
-  @Column @Builder.Default private Integer stock = 0;
-
-  @Column(name = "reorder_level")
-  @Builder.Default
-  private Integer reorderLevel = DEFAULT_REORDER_LEVEL;
+  @Column(name = "event_types", nullable = false, columnDefinition = "TEXT")
+  private String eventTypes;
 
   @Column(name = "is_active")
   @Builder.Default
@@ -63,8 +45,4 @@ public class Product {
   @Column(name = "created_at")
   @Builder.Default
   private LocalDateTime createdAt = LocalDateTime.now();
-
-  @Column(name = "updated_at")
-  @Builder.Default
-  private LocalDateTime updatedAt = LocalDateTime.now();
 }

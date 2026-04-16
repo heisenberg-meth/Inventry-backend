@@ -1,6 +1,6 @@
 package com.ims.tenant.domain.pharmacy;
 
-import com.ims.model.Product;
+import com.ims.product.Product;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
