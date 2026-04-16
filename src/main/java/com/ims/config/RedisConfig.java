@@ -8,6 +8,7 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import org.springframework.cache.Cache;
 import org.springframework.lang.NonNull;
@@ -61,7 +62,16 @@ public class RedisConfig {
         Collection<String> cacheNames = context.getOperation().getCacheNames();
         return cacheNames.stream()
             .map(name -> name + ":" + (tenantId != null ? tenantId : "default"))
-            .map(cacheManager::getCache)
+            .map(cacheName -> {
+              Cache cache = cacheManager.getCache(cacheName);
+              if (cache == null) {
+                // Try getting the base cache if tenant-specific one isn't initialized yet
+                String baseName = cacheName.split(":")[0];
+                return cacheManager.getCache(baseName);
+              }
+              return cache;
+            })
+            .filter(Objects::nonNull)
             .collect(Collectors.toList());
       }
     };

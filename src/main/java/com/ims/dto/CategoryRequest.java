@@ -12,6 +12,5 @@ public class CategoryRequest {
 
   private String description;
 
-  @JsonProperty("tax_rate")
   private java.math.BigDecimal taxRate;
 }

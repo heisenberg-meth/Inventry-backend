@@ -18,6 +18,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
   Page<Product> findByIsActiveTrue(Pageable pageable);
 
+  Page<Product> findByTenantIdAndIsActiveTrue(Long tenantId, Pageable pageable);
+
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("SELECT p FROM Product p WHERE p.id = :id")
   Optional<Product> findByIdWithLock(@Param("id") Long id);
