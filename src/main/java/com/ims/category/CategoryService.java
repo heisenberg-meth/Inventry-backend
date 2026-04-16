@@ -1,10 +1,10 @@
-package com.ims.tenant.service;
+package com.ims.category;
 
 import com.ims.dto.CategoryRequest;
-import com.ims.model.Category;
 import com.ims.shared.rbac.RequiresPermission;
-import com.ims.tenant.repository.CategoryRepository;
-import com.ims.tenant.repository.ProductRepository;
+import com.ims.product.ProductRepository;
+import com.ims.shared.auth.TenantContext;
+import java.util.Objects;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,13 +20,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class CategoryService {
 
   private final CategoryRepository categoryRepository;
   private final ProductRepository productRepository;
   private final com.ims.shared.audit.AuditLogService auditLogService;
 
-  @Cacheable(cacheResolver = "tenantAwareCacheResolver", value = "categories", key = "'list:' + #pageable.pageNumber + ':' + #pageable.pageSize")
+  @Cacheable(cacheResolver = "tenantAwareCacheResolver", value = "categories", key = "'list:' + #tenantId + ':' + #pageable.pageNumber + ':' + #pageable.pageSize")
   public Page<Category> getCategories(Long tenantId, @NonNull Pageable pageable) {
     if (tenantId == null) {
       log.error("Tenant ID is missing in CategoryService.getCategories");
@@ -37,14 +38,14 @@ public class CategoryService {
 
   public Category getById(@NonNull Long id) {
     return categoryRepository
-        .findById(id)
+        .findByIdAndTenantId(id, TenantContext.get())
         .orElseThrow(() -> new EntityNotFoundException("Category not found"));
   }
 
   @Transactional
   @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "categories", allEntries = true)
   public Category create(CategoryRequest request) {
-    if (categoryRepository.existsByNameIgnoreCase(request.getName())) {
+    if (categoryRepository.existsByNameIgnoreCaseAndTenantId(request.getName(), TenantContext.get())) {
       throw new IllegalArgumentException("Category with this name already exists");
     }
 
@@ -55,7 +56,7 @@ public class CategoryService {
             .taxRate(request.getTaxRate() != null ? request.getTaxRate() : java.math.BigDecimal.ZERO)
             .build();
 
-    Category savedCategory = categoryRepository.save(category);
+    Category savedCategory = Objects.requireNonNull(categoryRepository.save(category));
 
     auditLogService.logAudit(
         "CREATE",
@@ -72,7 +73,7 @@ public class CategoryService {
     Category category = getById(id);
 
     if (!category.getName().equalsIgnoreCase(request.getName())
-        && categoryRepository.existsByNameIgnoreCase(request.getName())) {
+        && categoryRepository.existsByNameIgnoreCaseAndTenantId(request.getName(), TenantContext.get())) {
       throw new IllegalArgumentException("Category with this name already exists");
     }
 
@@ -82,7 +83,7 @@ public class CategoryService {
       category.setTaxRate(request.getTaxRate());
     }
 
-    Category updatedCategory = categoryRepository.save(category);
+    Category updatedCategory = Objects.requireNonNull(categoryRepository.save(category));
 
     auditLogService.logAudit(
         "UPDATE",

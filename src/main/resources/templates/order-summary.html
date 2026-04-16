@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <style>
+        body { font-family: 'Helvetica', sans-serif; color: #333; margin: 40px; }
+        .header { display: flex; justify-content: space-between; border-bottom: 2px solid #eee; padding-bottom: 20px; }
+        .company-info h1 { margin: 0; color: #1db97a; font-size: 24px; }
+        .order-info { text-align: right; }
+        .order-info h2 { margin: 0; color: #666; font-size: 18px; }
+        .section { margin-top: 30px; }
+        .section-title { font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 10px; color: #1db97a; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th { background-color: #f9fafb; text-align: left; padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
+        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
+        .totals { margin-top: 30px; text-align: right; }
+        .totals-row { margin-bottom: 5px; font-size: 14px; }
+        .grand-total { font-weight: bold; font-size: 18px; color: #1db97a; margin-top: 10px; }
+        .footer { margin-top: 50px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #eee; padding-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="company-info">
+            <h1 th:text="${tenantName}">Company Name</h1>
+            <p th:text="${tenantAddress}">Address</p>
+            <p>GSTIN: <span th:text="${tenantGstin}">GSTIN</span></p>
+        </div>
+        <div class="order-info">
+            <h2>ORDER SUMMARY</h2>
+            <p>Order #: <span th:text="${orderId}">ID</span></p>
+            <p>Date: <span th:text="${orderDate}">Date</span></p>
+            <p>Status: <span th:text="${status}">Status</span></p>
+            <p>Type: <span th:text="${type}">Type</span></p>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title" th:text="${type == 'SALE' ? 'Customer Details' : 'Supplier Details'}">Details</div>
+        <p th:text="${partnerName}">Name</p>
+        <p th:text="${partnerAddress}">Address</p>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Quantity</th>
+                <th>Unit Price</th>
+                <th>Discount</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="item : ${items}">
+                <td th:text="${item.productName}">Product Name</td>
+                <td th:text="${item.quantity}">0</td>
+                <td th:text="${'₹' + #numbers.formatDecimal(item.unitPrice, 1, 2)}">₹0.00</td>
+                <td th:text="${'₹' + #numbers.formatDecimal(item.discount, 1, 2)}">₹0.00</td>
+                <td th:text="${'₹' + #numbers.formatDecimal(item.total, 1, 2)}">₹0.00</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="totals">
+        <div class="totals-row">Subtotal: <span th:text="${'₹' + #numbers.formatDecimal(subtotal, 1, 2)}">₹0.00</span></div>
+        <div class="totals-row">Tax: <span th:text="${'₹' + #numbers.formatDecimal(taxAmount, 1, 2)}">₹0.00</span></div>
+        <div class="totals-row">Discount: <span th:text="${'₹' + #numbers.formatDecimal(discount, 1, 2)}">₹0.00</span></div>
+        <div class="grand-total">Grand Total: <span th:text="${'₹' + #numbers.formatDecimal(totalAmount, 1, 2)}">₹0.00</span></div>
+    </div>
+
+    <div class="footer">
+        <p>This is a computer-generated document.</p>
+        <p>© <span th:text="${#temporals.format(#temporals.createNow(), 'yyyy')}">2024</span> <span th:text="${tenantName}">Company</span>. All rights reserved.</p>
+    </div>
+</body>
+</html>

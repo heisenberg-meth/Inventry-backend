@@ -3,8 +3,7 @@ package com.ims.tenant;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
-
+import static org.mockito.Mockito.doReturn;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.LoginRequest;
@@ -26,6 +25,7 @@ import java.util.Map;
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@SuppressWarnings("null")
 public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
@@ -34,6 +34,7 @@ public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
   @BeforeEach
   void setup() {
     cleanupDatabase();
+    mockRedisAndCache();
   }
 
   @Test
@@ -47,7 +48,7 @@ public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
   @Test
   void testRateLimitEnforcement() throws Exception {
     // Mock Redis to return 100 requests already made (Public limit is 50)
-    when(zSetOperations.zCard(anyString())).thenReturn(100L);
+    doReturn(100L).when(zSetOperations).zCard(anyString());
 
     mockMvc.perform(get("/api/any-public-endpoint"))
         .andExpect(status().isTooManyRequests())
@@ -58,7 +59,7 @@ public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
   @Test
   void testAuthRateLimitEnforcement() throws Exception {
     // Mock Redis for auth endpoint (Limit is 20)
-    when(zSetOperations.zCard(anyString())).thenReturn(25L);
+    doReturn(25L).when(zSetOperations).zCard(anyString());
 
     String authLoginJson = objectMapper.writeValueAsString(Map.of("email","root@ims.com","password","root123"));
     mockMvc.perform(post("/api/auth/login")

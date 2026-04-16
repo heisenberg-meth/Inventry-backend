@@ -3,9 +3,10 @@ package com.ims;
 import com.ims.platform.repository.*;
 import com.ims.shared.audit.AuditLogRepository;
 import com.ims.tenant.repository.*;
+import com.ims.product.ProductRepository;
+import com.ims.category.CategoryRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -17,10 +18,11 @@ import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.ZSetOperations;
 import java.util.Collections;
 import java.util.Objects;
-import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.ArgumentMatchers.notNull;
+import static org.mockito.ArgumentMatchers.anyString;
+import org.springframework.cache.interceptor.CacheOperationInvocationContext;
 
+@SuppressWarnings("null")
 public abstract class BaseIntegrationTest {
 
   @Autowired
@@ -146,19 +148,20 @@ public abstract class BaseIntegrationTest {
       entityManager.clear();
       return null;
     });
+  }
 
-    // Default Redis mocks to prevent NPE in RateLimitFilter
-    when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-    when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
-    when(zSetOperations.zCard(notNull())).thenReturn(0L);
+  protected void mockRedisAndCache() {
+    // Redis Mocks to prevent NPEs (e.g., in RateLimitFilter)
+    doReturn(valueOperations).when(redisTemplate).opsForValue();
+    doReturn(zSetOperations).when(redisTemplate).opsForZSet();
+    doReturn(1L).when(valueOperations).increment(anyString());
+    doReturn(0L).when(zSetOperations).zCard(anyString());
 
-    // Fix for RbacIntegrationTest and Cache resolution in tests
+    // Cache Mocks for TenantAwareCacheResolver
     org.springframework.cache.Cache dummyCache = new org.springframework.cache.concurrent.ConcurrentMapCache("dummy");
-
     doReturn(Collections.singletonList(dummyCache))
         .when(tenantAwareCacheResolver)
-        .resolveCaches(notNull());
-
-    when(cacheManager.getCache(notNull())).thenReturn(dummyCache);
+        .resolveCaches(org.mockito.ArgumentMatchers.<CacheOperationInvocationContext<?>>any());
+    doReturn(dummyCache).when(cacheManager).getCache(anyString());
   }
 }

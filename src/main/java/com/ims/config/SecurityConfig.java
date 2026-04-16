@@ -55,6 +55,12 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers("/api/auth/**")
                     .permitAll()
+                    .requestMatchers("/api/platform/auth/**")
+                    .permitAll()
+                    .requestMatchers("/api/platform/invites/accept", "/api/platform/invites/complete")
+                    .permitAll()
+                    .requestMatchers("/api/tenant/payments/gateway/webhook")
+                    .permitAll()
                     .requestMatchers("/actuator/**")
                     .permitAll()
                     .requestMatchers(

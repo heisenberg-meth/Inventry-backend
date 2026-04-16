@@ -2,12 +2,12 @@ package com.ims.tenant.service;
 
 import com.ims.model.Order;
 import com.ims.model.OrderItem;
-import com.ims.model.Product;
+import com.ims.product.Product;
 import com.ims.shared.exception.InsufficientStockException;
 import com.ims.tenant.repository.CustomerRepository;
 import com.ims.tenant.repository.OrderItemRepository;
 import com.ims.tenant.repository.OrderRepository;
-import com.ims.tenant.repository.ProductRepository;
+import com.ims.product.ProductRepository;
 import com.ims.tenant.repository.SupplierRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class OrderService {
 
   private final OrderRepository orderRepository;
@@ -36,6 +37,8 @@ public class OrderService {
   private final StockService stockService;
   private final InvoiceService invoiceService;
   private final com.ims.shared.audit.AuditLogService auditLogService;
+  private final com.ims.shared.pdf.PdfService pdfService;
+  private final com.ims.platform.repository.TenantRepository tenantRepository;
  
   private static final int PERCENTAGE_BASE = 100;
 
@@ -274,6 +277,83 @@ public class OrderService {
         "grand_total", grandTotalCalculated));
   }
 
+  @Transactional
+  public @NonNull Order createReturnOrder(@NonNull Map<String, Object> request, @NonNull Long userId) {
+    Long originalOrderId = Long.valueOf(request.get("original_order_id").toString());
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> returnItems = (List<Map<String, Object>>) request.get("items");
+
+    Order originalOrder = orderRepository.findById(originalOrderId)
+        .orElseThrow(() -> new EntityNotFoundException("Original order not found"));
+
+    if (!"SALE".equals(originalOrder.getType())) {
+      throw new IllegalArgumentException("Returns can only be created for SALE orders");
+    }
+
+    BigDecimal returnTotal = BigDecimal.ZERO;
+    BigDecimal returnTax = BigDecimal.ZERO;
+
+    Order returnOrder = Order.builder()
+        .type("RETURN")
+        .status("COMPLETED")
+        .customerId(originalOrder.getCustomerId())
+        .referenceOrderId(originalOrderId)
+        .notes(request.getOrDefault("notes", "Customer return").toString())
+        .createdBy(userId)
+        .build();
+
+    returnOrder = orderRepository.save(returnOrder);
+
+    List<OrderItem> originalItems = orderItemRepository.findByOrderId(originalOrderId);
+
+    for (Map<String, Object> item : returnItems) {
+      Long productId = Long.valueOf(item.get("product_id").toString());
+      int qty = Integer.parseInt(item.get("quantity").toString());
+
+      OrderItem originalItem = originalItems.stream()
+          .filter(oi -> oi.getProductId().equals(productId))
+          .findFirst()
+          .orElseThrow(() -> new IllegalArgumentException("Product " + productId + " was not part of the original order"));
+
+      if (qty > originalItem.getQuantity()) {
+        throw new IllegalArgumentException("Cannot return more than originally purchased for product " + productId);
+      }
+
+      BigDecimal unitPrice = originalItem.getUnitPrice();
+      BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(qty));
+      BigDecimal taxRate = originalItem.getTaxRate();
+      BigDecimal itemTax = itemTotal.multiply(taxRate).divide(BigDecimal.valueOf(PERCENTAGE_BASE), 2, RoundingMode.HALF_UP);
+
+      returnTotal = returnTotal.add(itemTotal);
+      returnTax = returnTax.add(itemTax);
+
+      OrderItem returnOrderItem = OrderItem.builder()
+          .orderId(returnOrder.getId())
+          .productId(productId)
+          .quantity(qty)
+          .unitPrice(unitPrice)
+          .taxRate(taxRate)
+          .total(itemTotal)
+          .build();
+      orderItemRepository.save(returnOrderItem);
+
+      // Restore stock
+      stockService.stockIn(productId, qty, "Return for Order #" + originalOrderId, userId);
+    }
+
+    returnOrder.setTotalAmount(returnTotal);
+    returnOrder.setTaxAmount(returnTax);
+    returnOrder = orderRepository.save(returnOrder);
+
+    // Create Credit Note
+    invoiceService.createCreditNote(returnOrder, null);
+
+    auditLogService.logAudit("CREATE_RETURN_ORDER", "ORDER", returnOrder.getId(), 
+        String.format("Processed return for order #%d, Total Credit: %s", originalOrderId, returnTotal));
+
+    return returnOrder;
+  }
+
   public @NonNull Page<Order> getOrders(@NonNull Pageable pageable) {
     return Objects.requireNonNull(orderRepository.findAll(pageable));
   }
@@ -289,6 +369,62 @@ public class OrderService {
             .orElseThrow(() -> new EntityNotFoundException("Order not found"));
     List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
     return Objects.requireNonNull(Map.of("order", order, "items", items));
+  }
+
+  @Transactional(readOnly = true)
+  public byte[] generateOrderPdf(@NonNull Long id) {
+    Order order = orderRepository.findById(id)
+        .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+
+    com.ims.model.Tenant tenant = tenantRepository.findById(Objects.requireNonNull(com.ims.shared.auth.TenantContext.get()))
+        .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+
+    String partnerName = "N/A";
+    String partnerAddress = "N/A";
+
+    if ("SALE".equals(order.getType()) && order.getCustomerId() != null) {
+      var customer = customerRepository.findById(order.getCustomerId()).orElse(null);
+      if (customer != null) {
+        partnerName = customer.getName();
+        partnerAddress = customer.getAddress();
+      }
+    } else if ("PURCHASE".equals(order.getType()) && order.getSupplierId() != null) {
+      var supplier = supplierRepository.findById(order.getSupplierId()).orElse(null);
+      if (supplier != null) {
+        partnerName = supplier.getName();
+        partnerAddress = supplier.getAddress();
+      }
+    }
+
+    List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
+    List<Map<String, Object>> items = orderItems.stream().map(item -> {
+      var product = productRepository.findById(item.getProductId()).orElse(null);
+      Map<String, Object> map = new java.util.HashMap<>();
+      map.put("productName", product != null ? product.getName() : "Unknown");
+      map.put("quantity", item.getQuantity());
+      map.put("unitPrice", item.getUnitPrice());
+      map.put("discount", item.getDiscount());
+      map.put("total", item.getTotal());
+      return map;
+    }).collect(java.util.stream.Collectors.toList());
+
+    org.thymeleaf.context.Context context = new org.thymeleaf.context.Context();
+    context.setVariable("tenantName", tenant.getName());
+    context.setVariable("tenantAddress", tenant.getAddress());
+    context.setVariable("tenantGstin", tenant.getGstin());
+    context.setVariable("partnerName", partnerName);
+    context.setVariable("partnerAddress", partnerAddress);
+    context.setVariable("orderId", order.getId());
+    context.setVariable("orderDate", order.getCreatedAt().toLocalDate());
+    context.setVariable("status", order.getStatus());
+    context.setVariable("type", order.getType());
+    context.setVariable("items", items);
+    context.setVariable("subtotal", order.getTotalAmount().subtract(order.getTaxAmount()).add(order.getDiscount()));
+    context.setVariable("taxAmount", order.getTaxAmount());
+    context.setVariable("discount", order.getDiscount());
+    context.setVariable("totalAmount", order.getTotalAmount());
+
+    return pdfService.generatePdfFromHtml("order-summary", context);
   }
 
   @Transactional

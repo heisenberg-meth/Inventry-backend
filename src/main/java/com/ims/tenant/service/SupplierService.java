@@ -3,7 +3,12 @@ package com.ims.tenant.service;
 import com.ims.model.Supplier;
 import com.ims.shared.rbac.RequiresPermission;
 import com.ims.tenant.repository.SupplierRepository;
+import com.ims.tenant.repository.OrderRepository;
+import com.ims.tenant.repository.InvoiceRepository;
+import com.ims.tenant.repository.PaymentRepository;
 import jakarta.persistence.EntityNotFoundException;
+import java.util.Map;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,6 +22,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class SupplierService {
 
   private final SupplierRepository supplierRepository;
+  private final OrderRepository orderRepository;
+  private final InvoiceRepository invoiceRepository;
+  private final PaymentRepository paymentRepository;
   private final com.ims.shared.audit.AuditLogService auditLogService;
 
   public @NonNull Page<Supplier> getSuppliers(@NonNull Pageable pageable) {
@@ -82,5 +90,20 @@ public class SupplierService {
         "SUPPLIER",
         id,
         "Deleted supplier: " + supplier.getName());
+  }
+
+  public Map<String, Object> getSupplierLedger(@NonNull Long id) {
+    Supplier supplier = getById(id);
+
+    List<com.ims.model.Order> orders = orderRepository.findBySupplierId(id, Pageable.unpaged()).getContent();
+    List<com.ims.model.Invoice> invoices = invoiceRepository.findBySupplierId(id);
+    List<com.ims.model.Payment> payments = paymentRepository.findBySupplierId(id);
+
+    return Map.of(
+        "supplier", supplier,
+        "orders", orders,
+        "invoices", invoices,
+        "payments", payments
+    );
   }
 }

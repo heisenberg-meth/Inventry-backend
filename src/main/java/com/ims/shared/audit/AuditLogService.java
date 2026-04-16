@@ -11,6 +11,7 @@ import org.springframework.lang.NonNull;
 @Service
 @Slf4j
 @RequiredArgsConstructor
+@SuppressWarnings("null")
 public class AuditLogService {
 
   private final AuditLogRepository auditLogRepository;
@@ -46,11 +47,21 @@ public class AuditLogService {
   public org.springframework.data.domain.Page<com.ims.model.AuditLog> getAllLogs(@NonNull org.springframework.data.domain.Pageable pageable) {
     var logs = auditLogRepository.findAll(pageable);
     
-    // Check for masking if ROOOT role and support mode is OFF
-    if (isSystemAdmin() && !systemConfigService.isSupportModeEnabled()) {
-      return logs.map(this::maskSensitiveData);
+    // Unmask for ROOT when support mode is explicitly enabled
+    if (isSystemAdmin() && systemConfigService.isSupportModeEnabled()) {
+        return logs; // full data visible for support investigation
     }
-    return logs;
+    return logs.map(this::maskSensitiveData); // everyone else gets masked
+  }
+
+  public org.springframework.data.domain.Page<com.ims.model.AuditLog> getTenantLogs(Long tenantId, @NonNull org.springframework.data.domain.Pageable pageable) {
+    var logs = auditLogRepository.findByTenantId(tenantId, pageable);
+    
+    // Unmask for ROOT when support mode is explicitly enabled
+    if (isSystemAdmin() && systemConfigService.isSupportModeEnabled()) {
+        return logs;
+    }
+    return logs.map(this::maskSensitiveData);
   }
 
   private boolean isSystemAdmin() {
