@@ -83,12 +83,15 @@ public class SecurityConfig {
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
-    if ("*".equals(allowedOrigins)) {
-      configuration.setAllowedOrigins(List.of("*"));
+    if (allowedOrigins == null || "*".equals(allowedOrigins)) {
+      // Never use wildcard in production to avoid security risks.
+      // Defailing to local dev for safety if nothing provided.
+      configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:5173"));
     } else {
       configuration.setAllowedOrigins(List.of(allowedOrigins.split(",")));
     }
     configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+    configuration.setAllowCredentials(true);
     configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Correlation-ID", "ngrok-skip-browser-warning"));
     configuration.setExposedHeaders(List.of("X-Correlation-ID", "X-RateLimit-Limit", "X-RateLimit-Remaining"));
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

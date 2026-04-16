@@ -89,6 +89,14 @@ public class GlobalExceptionHandler {
         .body(errorBody(STATUS_BAD_REQUEST, "BAD_REQUEST", ex.getMessage(), request.getRequestURI()));
   }
 
+  @ExceptionHandler(IllegalStateException.class)
+  public ResponseEntity<Map<String, Object>> handleIllegalState(
+      IllegalStateException ex, HttpServletRequest request) {
+    log.warn("Illegal state encountered at {}: {}", request.getRequestURI(), ex.getMessage());
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(errorBody(STATUS_CONFLICT, "ILLEGAL_STATE", ex.getMessage(), request.getRequestURI()));
+  }
+
   @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
   public ResponseEntity<Map<String, Object>> handleNoResourceFound(
       org.springframework.web.servlet.resource.NoResourceFoundException ex, HttpServletRequest request) {

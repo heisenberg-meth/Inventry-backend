@@ -1,5 +1,8 @@
 package com.ims.tenant.service;
 
+import com.ims.shared.audit.AuditAction;
+import com.ims.shared.audit.AuditResource;
+
 import com.ims.model.Order;
 import com.ims.model.OrderItem;
 import com.ims.product.Product;
@@ -129,8 +132,8 @@ public class OrderService {
         "Purchase order created: id={} total={}", order.getId(), totalAmount);
     
     auditLogService.logAudit(
-        "CREATE_PURCHASE_ORDER",
-        "ORDER",
+        AuditAction.CREATE_PURCHASE_ORDER,
+        AuditResource.ORDER,
         order.getId(),
         String.format("Created purchase order #%d, Supplier: %d, Total: %s", order.getId(), order.getSupplierId(), totalAmount));
 
@@ -266,8 +269,8 @@ public class OrderService {
     log.info("Sales order created: id={} total={}", order.getId(), totalAmount);
 
     auditLogService.logAudit(
-        "CREATE_SALE_ORDER",
-        "ORDER",
+        AuditAction.CREATE_SALE_ORDER,
+        AuditResource.ORDER,
         order.getId(),
         String.format("Created sales order #%d, Customer: %d, Total: %s", order.getId(), order.getCustomerId(), totalAmount));
 
@@ -348,7 +351,7 @@ public class OrderService {
     // Create Credit Note
     invoiceService.createCreditNote(returnOrder, null);
 
-    auditLogService.logAudit("CREATE_RETURN_ORDER", "ORDER", returnOrder.getId(), 
+    auditLogService.logAudit(AuditAction.CREATE_RETURN_ORDER, AuditResource.ORDER, returnOrder.getId(), 
         String.format("Processed return for order #%d, Total Credit: %s", originalOrderId, returnTotal));
 
     return returnOrder;
@@ -456,7 +459,7 @@ public class OrderService {
     }
 
     order = orderRepository.save(order);
-    auditLogService.logAudit("CONFIRM_ORDER", "ORDER", id, "Confirmed " + order.getType() + " order #" + id);
+    auditLogService.logAudit(AuditAction.CONFIRM_ORDER, AuditResource.ORDER, id, "Confirmed " + order.getType() + " order #" + id);
     return order;
   }
 
@@ -471,7 +474,7 @@ public class OrderService {
 
     order.setStatus("SHIPPED");
     order = orderRepository.save(order);
-    auditLogService.logAudit("SHIP_ORDER", "ORDER", id, "Shipped " + order.getType() + " order #" + id);
+    auditLogService.logAudit(AuditAction.SHIP_ORDER, AuditResource.ORDER, id, "Shipped " + order.getType() + " order #" + id);
     return order;
   }
 
@@ -496,7 +499,7 @@ public class OrderService {
     }
 
     order = orderRepository.save(order);
-    auditLogService.logAudit("COMPLETE_ORDER", "ORDER", id, "Completed " + order.getType() + " order #" + id);
+    auditLogService.logAudit(AuditAction.COMPLETE_ORDER, AuditResource.ORDER, id, "Completed " + order.getType() + " order #" + id);
     return order;
   }
 
@@ -519,7 +522,7 @@ public class OrderService {
 
     order.setStatus("CANCELLED");
     order = orderRepository.save(order);
-    auditLogService.logAudit("CANCEL_ORDER", "ORDER", id, "Cancelled " + order.getType() + " order #" + id);
+    auditLogService.logAudit(AuditAction.CANCEL_ORDER, AuditResource.ORDER, id, "Cancelled " + order.getType() + " order #" + id);
     return order;
   }
 

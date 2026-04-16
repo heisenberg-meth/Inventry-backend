@@ -48,6 +48,16 @@ public class ProductController {
     return ResponseEntity.ok(productService.getProducts(tenantId, pageable));
   }
 
+  @GetMapping("/next")
+  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @Operation(summary = "List products (Cursor pagination)", description = "High performance, no offset")
+  public ResponseEntity<List<ProductResponse>> getNextProducts(
+      @RequestParam Long lastId, 
+      @RequestParam(defaultValue = "20") int limit) {
+    Long tenantId = TenantContext.get();
+    return ResponseEntity.ok(productService.getNextProducts(tenantId, lastId, limit));
+  }
+
   @PostMapping
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Create product")
