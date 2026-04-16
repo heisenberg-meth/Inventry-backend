@@ -9,6 +9,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 @Component
+@org.springframework.context.annotation.Profile("dev")
 @RequiredArgsConstructor
 @Slf4j
 public class DataSeeder implements CommandLineRunner {
@@ -28,7 +29,7 @@ public class DataSeeder implements CommandLineRunner {
             User admin = User.builder()
                     .name("Platform Admin")
                     .email(adminEmail)
-                    .passwordHash(passwordEncoder.encode("admin123"))
+                    .passwordHash(passwordEncoder.encode("admin-Secret-1234!"))
                     .role("PLATFORM_ADMIN")
                     .scope("PLATFORM")
                     .isPlatformUser(true)

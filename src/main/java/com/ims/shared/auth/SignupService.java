@@ -1,5 +1,6 @@
 package com.ims.shared.auth;
 
+import com.ims.shared.audit.AuditAction;
 import com.ims.dto.request.SignupRequest;
 import com.ims.dto.response.SignupResponse;
 import com.ims.model.Tenant;
@@ -92,7 +93,7 @@ public class SignupService {
       log.info("Signup: Created email verification token for user={}", user.getId());
 
       auditLogService.log(
-          "SIGNUP",
+          AuditAction.SIGNUP,
           tenant.getId(),
           user.getId(),
           "New business registered: " + tenant.getName() + " by " + user.getEmail());

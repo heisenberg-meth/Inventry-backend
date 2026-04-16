@@ -10,7 +10,12 @@ public class HibernateTenantResolver implements CurrentTenantIdentifierResolver<
   @Override
   public Long resolveCurrentTenantIdentifier() {
     Long tenantId = TenantContext.get();
-    return tenantId; // Return null if not set, instead of 0L
+    if (tenantId == null) {
+      // In multi-tenant environments, we must always have a tenant context
+      // to prevent cross-tenant data leakage or DB constraint failures.
+      throw new IllegalStateException("Tenant context is missing. Cannot resolve current tenant identifier.");
+    }
+    return tenantId;
   }
 
   @Override

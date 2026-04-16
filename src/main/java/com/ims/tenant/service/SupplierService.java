@@ -1,5 +1,8 @@
 package com.ims.tenant.service;
 
+import com.ims.shared.audit.AuditAction;
+import com.ims.shared.audit.AuditResource;
+
 import com.ims.model.Supplier;
 import com.ims.shared.rbac.RequiresPermission;
 import com.ims.tenant.repository.SupplierRepository;
@@ -42,8 +45,8 @@ public class SupplierService {
     Supplier savedSupplier = Objects.requireNonNull(supplierRepository.save(supplier));
 
     auditLogService.logAudit(
-        "CREATE",
-        "SUPPLIER",
+        AuditAction.CREATE,
+        AuditResource.SUPPLIER,
         savedSupplier.getId(),
         "Created supplier: " + savedSupplier.getName());
 
@@ -71,8 +74,8 @@ public class SupplierService {
     Supplier updatedSupplier = Objects.requireNonNull(supplierRepository.save(supplier));
 
     auditLogService.logAudit(
-        "UPDATE",
-        "SUPPLIER",
+        AuditAction.UPDATE,
+        AuditResource.SUPPLIER,
         updatedSupplier.getId(),
         "Updated supplier: " + updatedSupplier.getName());
 
@@ -86,8 +89,8 @@ public class SupplierService {
     supplierRepository.delete(supplier);
 
     auditLogService.logAudit(
-        "DELETE",
-        "SUPPLIER",
+        AuditAction.DELETE,
+        AuditResource.SUPPLIER,
         id,
         "Deleted supplier: " + supplier.getName());
   }

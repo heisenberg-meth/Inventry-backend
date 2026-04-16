@@ -1,5 +1,8 @@
 package com.ims.shared.auth;
 
+import com.ims.shared.audit.AuditAction;
+import com.ims.shared.audit.AuditResource;
+
 import com.ims.dto.request.ChangePasswordRequest;
 import com.ims.dto.request.ForgotPasswordRequest;
 import com.ims.dto.request.LoginRequest;
@@ -288,7 +291,7 @@ public class AuthService {
     }
 
     auditLogService.log(
-        "LOGIN",
+        AuditAction.LOGIN,
         tenantId,
         user.getId(),
         "User logged in: " + user.getEmail() + " (" + user.getScope() + ")");
@@ -438,8 +441,8 @@ public class AuthService {
     userRepository.save(user);
 
     auditLogService.logAudit(
-        "PASSWORD_CHANGE",
-        "USER",
+        AuditAction.PASSWORD_CHANGE,
+        AuditResource.USER,
         user.getId(),
         "User changed their password: " + user.getEmail());
 
@@ -499,8 +502,8 @@ public class AuthService {
     userRepository.save(user);
 
     auditLogService.logAudit(
-        "PASSWORD_RESET",
-        "USER",
+        AuditAction.PASSWORD_RESET,
+        AuditResource.USER,
         user.getId(),
         "User reset their password: " + user.getEmail());
 

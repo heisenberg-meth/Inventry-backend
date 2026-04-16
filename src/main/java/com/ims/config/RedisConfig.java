@@ -1,6 +1,5 @@
 package com.ims.config;
 
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.ims.shared.auth.TenantContext;
@@ -95,10 +94,8 @@ public class RedisConfig {
     ObjectMapper mapper = new ObjectMapper();
     mapper.registerModule(new JavaTimeModule());
 
-    mapper.activateDefaultTyping(
-        mapper.getPolymorphicTypeValidator(),
-        ObjectMapper.DefaultTyping.NON_FINAL,
-        JsonTypeInfo.As.PROPERTY);
+    // Polymorphic typing is removed for security (RCE risk).
+    // DTOs should be plain Pojos with Jackson annotations if needed.
 
     return new GenericJackson2JsonRedisSerializer(mapper);
   }

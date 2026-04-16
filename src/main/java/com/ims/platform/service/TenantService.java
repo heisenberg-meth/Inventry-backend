@@ -12,6 +12,7 @@ import com.ims.model.User;
 import com.ims.platform.repository.SubscriptionPlanRepository;
 import com.ims.platform.repository.SubscriptionRepository;
 import com.ims.platform.repository.TenantRepository;
+import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditLogService;
 import com.ims.shared.auth.UserCreationService;
 import com.ims.tenant.repository.UserRepository;
@@ -60,6 +61,12 @@ public class TenantService {
     return toResponse(tenant);
   }
 
+  public boolean isWarehouse(Long tenantId) {
+    return tenantRepository.findById(tenantId)
+        .map(t -> "WAREHOUSE".equals(t.getBusinessType()))
+        .orElse(false);
+  }
+
   @Transactional
   public TenantResponse createTenant(@NonNull CreateTenantRequest request) {
     if (request.getWorkspaceSlug() != null && tenantRepository.existsByWorkspaceSlug(request.getWorkspaceSlug())) {
@@ -92,7 +99,7 @@ public class TenantService {
         savedTenant.getBusinessType());
 
     auditLogService.log(
-        "CREATE_TENANT",
+        AuditAction.CREATE_TENANT,
         savedTenant.getId(),
         null,
         "Created tenant: " + savedTenant.getName());
@@ -151,7 +158,7 @@ public class TenantService {
     tenantRepository.save(tenant);
 
     auditLogService.log(
-        "UPDATE_TENANT_STATUS", id, null, "Tenant suspended: " + tenant.getName());
+        AuditAction.UPDATE_TENANT_STATUS, id, null, "Tenant suspended: " + tenant.getName());
     log.info("Tenant suspended: id={}", id);
     return Map.of("message", "Tenant suspended successfully", "status", "SUSPENDED");
   }
@@ -167,7 +174,7 @@ public class TenantService {
     tenantRepository.save(tenant);
 
     auditLogService.log(
-        "UPDATE_TENANT_STATUS", id, null, "Tenant activated: " + tenant.getName());
+        AuditAction.UPDATE_TENANT_STATUS, id, null, "Tenant activated: " + tenant.getName());
     log.info("Tenant activated: id={}", id);
     return Map.of("message", "Tenant activated successfully", "status", "ACTIVE");
   }
@@ -217,7 +224,7 @@ public class TenantService {
     userRepository.save(user);
 
     auditLogService.log(
-        "RESET_TENANT_USER_PASSWORD",
+        AuditAction.RESET_TENANT_USER_PASSWORD,
         user.getTenantId(),
         userId,
         "Reset password for tenant user: " + user.getEmail());
@@ -285,7 +292,7 @@ public class TenantService {
     Subscription savedSub = subscriptionRepository.save(subscription);
 
     auditLogService.log(
-        "ASSIGN_PLAN",
+        AuditAction.ASSIGN_PLAN,
         tenantId,
         null,
         "Assigned plan " + plan.getName() + " to tenant " + tenant.getName());
@@ -385,7 +392,7 @@ public class TenantService {
     userRepository.delete(user);
     log.info("Platform hard-deleted user: {} (tenant={})", user.getEmail(), tenantId);
     
-    auditLogService.log("PLATFORM_DELETE_USER", tenantId, null, "Platform admin hard-deleted user: " + user.getEmail());
+    auditLogService.log(AuditAction.PLATFORM_DELETE_USER, tenantId, null, "Platform admin hard-deleted user: " + user.getEmail());
   }
 
   private TenantResponse toResponse(@NonNull Tenant tenant) {

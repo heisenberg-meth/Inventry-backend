@@ -1,5 +1,8 @@
 package com.ims.category;
 
+import com.ims.dto.response.CategoryResponse;
+import com.ims.shared.auth.TenantContext;
+
 import com.ims.dto.CategoryRequest;
 import com.ims.shared.rbac.RequiresRole;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,7 +22,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import java.util.Objects;
 import org.springframework.lang.NonNull;
 
 @RestController
@@ -34,38 +36,41 @@ public class CategoryController {
   @GetMapping
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "List categories")
-  public ResponseEntity<Page<Category>> list(@NonNull Pageable pageable) {
-    Long tenantId = com.ims.shared.auth.TenantContext.get();
-    return ResponseEntity.ok(categoryService.getCategories(tenantId, Objects.requireNonNull(pageable)));
+  public ResponseEntity<Page<CategoryResponse>> list(@NonNull Pageable pageable) {
+    Long tenantId = TenantContext.get();
+    return ResponseEntity.ok(categoryService.getCategories(tenantId, pageable).map(categoryService::toResponse));
   }
 
   @PostMapping
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Create category")
-  public ResponseEntity<Category> create(@Valid @RequestBody CategoryRequest request) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(categoryService.create(request));
+  public ResponseEntity<CategoryResponse> create(@Valid @RequestBody CategoryRequest request) {
+    if (TenantContext.get() == null) {
+        throw new IllegalStateException("Tenant context is required to create a category");
+    }
+    return ResponseEntity.status(HttpStatus.CREATED).body(categoryService.toResponse(categoryService.create(request)));
   }
 
   @GetMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Get category details")
-  public ResponseEntity<Category> get(@NonNull @PathVariable Long id) {
-    return ResponseEntity.ok(categoryService.getById(Objects.requireNonNull(id)));
+  public ResponseEntity<CategoryResponse> get(@NonNull @PathVariable Long id) {
+    return ResponseEntity.ok(categoryService.toResponse(categoryService.getById(id)));
   }
 
   @PutMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Update category")
-  public ResponseEntity<Category> update(
+  public ResponseEntity<CategoryResponse> update(
       @NonNull @PathVariable Long id, @Valid @RequestBody CategoryRequest request) {
-    return ResponseEntity.ok(categoryService.update(Objects.requireNonNull(id), request));
+    return ResponseEntity.ok(categoryService.toResponse(categoryService.update(id, request)));
   }
 
   @DeleteMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Delete category")
   public ResponseEntity<Void> delete(@NonNull @PathVariable Long id) {
-    categoryService.delete(Objects.requireNonNull(id));
+    categoryService.delete(id);
     return ResponseEntity.noContent().build();
   }
 }
