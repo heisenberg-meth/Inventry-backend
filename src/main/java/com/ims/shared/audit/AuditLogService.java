@@ -11,7 +11,6 @@ import org.springframework.lang.NonNull;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-@SuppressWarnings("null")
 public class AuditLogService {
 
   private final AuditLogRepository auditLogRepository;

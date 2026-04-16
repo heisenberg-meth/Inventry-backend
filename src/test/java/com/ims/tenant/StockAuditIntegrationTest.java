@@ -30,7 +30,6 @@ import java.util.Collections;
     "spring.cache.type=none"
 })
 @ActiveProfiles("test")
-@SuppressWarnings("null")
 public class StockAuditIntegrationTest extends BaseIntegrationTest {
 
   @Autowired private StockService stockService;

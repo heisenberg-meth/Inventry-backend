@@ -29,7 +29,6 @@ import org.springframework.test.web.servlet.MvcResult;
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@SuppressWarnings("null")
 public class AuthIntegrationTest extends BaseIntegrationTest {
 
   @Autowired private MockMvc mockMvc;

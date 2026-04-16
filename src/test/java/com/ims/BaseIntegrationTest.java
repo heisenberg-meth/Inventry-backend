@@ -90,7 +90,6 @@ public abstract class BaseIntegrationTest {
   protected long testTenant1Id;
   protected long testTenant2Id;
 
-  @SuppressWarnings("null")
   protected void cleanupDatabase() {
     new TransactionTemplate(Objects.requireNonNull(transactionManager)).execute(status -> {
       entityManager.flush();

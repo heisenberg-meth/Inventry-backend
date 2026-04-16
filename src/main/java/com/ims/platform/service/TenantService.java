@@ -274,7 +274,6 @@ public class TenantService {
             .startDate(startDate)
             .endDate(endDate)
             .build();
-    @SuppressWarnings("null")
     Subscription savedSub = Objects.requireNonNull(subscriptionRepository.save(subscription));
 
     auditLogService.log(

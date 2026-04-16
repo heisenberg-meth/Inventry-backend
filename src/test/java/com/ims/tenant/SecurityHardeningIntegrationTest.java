@@ -26,7 +26,6 @@ import java.util.Map;
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@SuppressWarnings("null")
 public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
