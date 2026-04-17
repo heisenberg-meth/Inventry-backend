@@ -1,6 +1,5 @@
 package com.ims.config;
 
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.ims.shared.auth.TenantContext;
@@ -8,6 +7,7 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import org.springframework.cache.Cache;
 import org.springframework.lang.NonNull;
@@ -25,7 +25,7 @@ import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSeriali
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.data.web.config.EnableSpringDataWebSupport;
-@SuppressWarnings("null")
+
 @Configuration
 @org.springframework.context.annotation.Profile("!test")
 @EnableCaching
@@ -37,6 +37,7 @@ public class RedisConfig {
   private static final int TTL_REPORTS_MINUTES = 30;
   private static final int TTL_TENANT_HOURS = 1;
 
+  @SuppressWarnings("null")
   @Bean
   public RedisCacheManager cacheManager(RedisConnectionFactory factory) {
     Map<String, RedisCacheConfiguration> configs = new HashMap<>();
@@ -55,19 +56,30 @@ public class RedisConfig {
   @Bean
   public CacheResolver tenantAwareCacheResolver(CacheManager cacheManager) {
     return new CacheResolver() {
+      @SuppressWarnings("null")
       @Override
       @NonNull
       public Collection<? extends Cache> resolveCaches(CacheOperationInvocationContext<?> context) {
-        Long tenantId = TenantContext.get();
+        Long tenantId = TenantContext.getTenantId();
         Collection<String> cacheNames = context.getOperation().getCacheNames();
         return cacheNames.stream()
             .map(name -> name + ":" + (tenantId != null ? tenantId : "default"))
-            .map(cacheManager::getCache)
+            .map(cacheName -> {
+              Cache cache = cacheManager.getCache(cacheName);
+              if (cache == null) {
+                // Try getting the base cache if tenant-specific one isn't initialized yet
+                String baseName = cacheName.split(":")[0];
+                return cacheManager.getCache(baseName);
+              }
+              return cache;
+            })
+            .filter(Objects::nonNull)
             .collect(Collectors.toList());
       }
     };
   }
 
+  @SuppressWarnings("null")
   @Bean
   public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory) {
     RedisTemplate<String, Object> template = new RedisTemplate<>();
@@ -83,14 +95,13 @@ public class RedisConfig {
     ObjectMapper mapper = new ObjectMapper();
     mapper.registerModule(new JavaTimeModule());
 
-    mapper.activateDefaultTyping(
-        mapper.getPolymorphicTypeValidator(),
-        ObjectMapper.DefaultTyping.NON_FINAL,
-        JsonTypeInfo.As.PROPERTY);
+    // Polymorphic typing is removed for security (RCE risk).
+    // DTOs should be plain Pojos with Jackson annotations if needed.
 
     return new GenericJackson2JsonRedisSerializer(mapper);
   }
 
+  @SuppressWarnings("null")
   private RedisCacheConfiguration ttl(Duration duration) {
     return RedisCacheConfiguration.defaultCacheConfig()
         .entryTtl(duration)

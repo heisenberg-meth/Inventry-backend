@@ -2,6 +2,7 @@ package com.ims.platform.service;
 
 import com.ims.dto.CreatePlatformUserRequest;
 import com.ims.model.User;
+import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditLogService;
 import com.ims.tenant.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -47,7 +48,7 @@ public class PlatformUserService {
             .build();
 
     User saved = Objects.requireNonNull(userRepository.save(Objects.requireNonNull(user)));
-    auditLogService.log("CREATE_PLATFORM_ADMIN", null, saved.getId(),
+    auditLogService.log(AuditAction.CREATE_PLATFORM_ADMIN, null, saved.getId(),
         "Created platform user: " + saved.getEmail() + " role=" + saved.getRole());
     return saved;
   }
@@ -106,7 +107,7 @@ public class PlatformUserService {
 
     user.setIsActive(false);
     userRepository.save(user);
-    auditLogService.log("SUSPEND_PLATFORM_ADMIN", null, id,
+    auditLogService.log(AuditAction.SUSPEND_PLATFORM_ADMIN, null, id,
         "Suspended platform user: " + user.getEmail());
     log.info("Platform user suspended: id={}", id);
   }
@@ -120,7 +121,7 @@ public class PlatformUserService {
 
     user.setIsActive(true);
     userRepository.save(user);
-    auditLogService.log("ACTIVATE_PLATFORM_ADMIN", null, id,
+    auditLogService.log(AuditAction.ACTIVATE_PLATFORM_ADMIN, null, id,
         "Activated platform user: " + user.getEmail());
     log.info("Platform user activated: id={}", id);
   }
@@ -153,7 +154,7 @@ public class PlatformUserService {
     user.setResetTokenExpiry(null);
     userRepository.save(user);
 
-    auditLogService.log("RESET_PLATFORM_ADMIN_PASSWORD", null, id,
+    auditLogService.log(AuditAction.RESET_PLATFORM_ADMIN_PASSWORD, null, id,
         "Reset password for platform user: " + user.getEmail());
     log.info("Password reset for platform user: id={}", id);
     return Objects.requireNonNull(Map.of("message", "Password reset successfully"));

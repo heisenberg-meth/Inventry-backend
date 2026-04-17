@@ -3,7 +3,7 @@ package com.ims.tenant;
 import static org.assertj.core.api.Assertions.assertThat;
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.SignupRequest;
-import com.ims.model.Product;
+import com.ims.product.Product;
 import com.ims.shared.auth.SignupService;
 import com.ims.shared.auth.TenantContext;
 import com.ims.shared.exception.InsufficientStockException;
@@ -31,8 +31,10 @@ import java.util.Objects;
 @ActiveProfiles("test")
 public class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired private SignupService signupService;
-  @Autowired private StockService stockService;
+  @Autowired
+  private SignupService signupService;
+  @Autowired
+  private StockService stockService;
 
   private long productId;
   private long userId;
@@ -41,7 +43,7 @@ public class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
   @BeforeEach
   void setup() throws Exception {
     cleanupDatabase();
-    
+
     SignupRequest signup = new SignupRequest();
     signup.setBusinessName("Conc Corp");
     signup.setWorkspaceSlug("conc-corp");
@@ -50,12 +52,14 @@ public class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
     signup.setOwnerEmail("admin@conc.com");
     signup.setPassword("password123");
     signupService.signup(signup);
-    
-    // Query directly via JDBC to avoid transaction lag or cache issues in setup
-    tenantId = Objects.requireNonNull(jdbcTemplate.queryForObject("SELECT id FROM tenants WHERE workspace_slug = 'conc-corp'", Long.class));
-    userId = Objects.requireNonNull(jdbcTemplate.queryForObject("SELECT id FROM users WHERE email = 'admin@conc.com'", Long.class));
 
-    TenantContext.set(tenantId);
+    // Query directly via JDBC to avoid transaction lag or cache issues in setup
+    tenantId = Objects.requireNonNull(
+        jdbcTemplate.queryForObject("SELECT id FROM tenants WHERE workspace_slug = 'conc-corp'", Long.class));
+    userId = Objects
+        .requireNonNull(jdbcTemplate.queryForObject("SELECT id FROM users WHERE email = 'admin@conc.com'", Long.class));
+
+    TenantContext.setTenantId(tenantId);
     Product product = Product.builder()
         .tenantId(tenantId)
         .name("Concurrency Test Product")
@@ -88,7 +92,7 @@ public class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
     for (int i = 0; i < numberOfThreads; i++) {
       executor.execute(() -> {
         try {
-          TenantContext.set(tenantId);
+          TenantContext.setTenantId(tenantId);
           latch.await();
           stockService.stockOut(productId, stockOutPerThread, "Concurrent test", userId);
           successfulCalls.incrementAndGet();
@@ -107,7 +111,7 @@ public class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
     doneLatch.await(10, TimeUnit.SECONDS);
     executor.shutdown();
 
-    TenantContext.set(tenantId);
+    TenantContext.setTenantId(tenantId);
     Product finalProduct = productRepository.findById(productId).orElseThrow();
     assertThat(finalProduct.getStock()).isEqualTo(0);
     assertThat(successfulCalls.get()).isEqualTo(20);

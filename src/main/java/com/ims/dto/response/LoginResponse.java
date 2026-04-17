@@ -27,6 +27,7 @@ public class LoginResponse {
     private String phone;
     private String role;
     private String scope;
+    private boolean isPlatformUser;
   }
 
   @Data

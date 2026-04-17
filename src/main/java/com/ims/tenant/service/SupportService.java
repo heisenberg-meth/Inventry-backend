@@ -1,5 +1,6 @@
 package com.ims.tenant.service;
 
+import com.ims.shared.audit.AuditAction;
 import com.ims.dto.request.AddMessageRequest;
 import com.ims.dto.request.AssignTicketRequest;
 import com.ims.dto.request.CreateTicketRequest;
@@ -54,7 +55,7 @@ public class SupportService {
     Objects.requireNonNull(saved);
 
     auditLogService.log(
-        "CREATE_TICKET", tenantId, userId, "Created ticket: " + saved.getTitle());
+        AuditAction.CREATE_TICKET, tenantId, userId, "Created ticket: " + saved.getTitle());
     log.info("Support ticket created: id={} tenant={}", saved.getId(), tenantId);
     return Objects.requireNonNull(saved);
   }
@@ -91,7 +92,7 @@ public class SupportService {
     SupportTicket saved = ticketRepository.save(ticket);
 
     auditLogService.log(
-        "CLOSE_TICKET", tenantId, null, "Tenant closed ticket: #" + ticketId);
+        AuditAction.CLOSE_TICKET, tenantId, null, "Tenant closed ticket: #" + ticketId);
     return saved;
   }
 
@@ -139,7 +140,7 @@ public class SupportService {
     SupportTicket saved = ticketRepository.save(ticket);
 
     auditLogService.log(
-        "ASSIGN_TICKET",
+        AuditAction.ASSIGN_TICKET,
         ticket.getTenantId(),
         request.getSupportAdminId(),
         "Ticket #" + ticketId + " assigned to user " + request.getSupportAdminId());
@@ -160,7 +161,7 @@ public class SupportService {
     SupportTicket saved = ticketRepository.save(ticket);
 
     auditLogService.log(
-        "UPDATE_TICKET_STATUS",
+        AuditAction.UPDATE_TICKET_STATUS,
         ticket.getTenantId(),
         null,
         "Ticket #" + ticketId + " status changed to " + request.getStatus());
@@ -180,7 +181,7 @@ public class SupportService {
     SupportTicket saved = ticketRepository.save(ticket);
 
     auditLogService.log(
-        "CLOSE_TICKET", ticket.getTenantId(), null, "Platform closed ticket: #" + ticketId);
+        AuditAction.CLOSE_TICKET, ticket.getTenantId(), null, "Platform closed ticket: #" + ticketId);
     return saved;
   }
 
