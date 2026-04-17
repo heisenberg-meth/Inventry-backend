@@ -1,4 +1,5 @@
 package com.ims.shared.payment;
+
 import com.ims.model.Payment;
 import com.ims.model.PaymentGatewayLog;
 import com.ims.shared.auth.TenantContext;
@@ -31,7 +32,7 @@ public class PaymentGatewayService {
     String gatewayOrderId = "order_" + UUID.randomUUID().toString().substring(0, 8);
 
     Payment payment = Payment.builder()
-        .tenantId(TenantContext.get())
+        .tenantId(TenantContext.getTenantId())
         .invoiceId(invoiceId)
         .amount(amount)
         .paymentMode("GATEWAY")
@@ -46,8 +47,7 @@ public class PaymentGatewayService {
         "gateway_order_id", gatewayOrderId,
         "amount", amount,
         "currency", "INR",
-        "payment_id", payment.getId()
-    );
+        "payment_id", payment.getId());
   }
 
   @Transactional
@@ -67,10 +67,11 @@ public class PaymentGatewayService {
     if ("payment.captured".equals(event)) {
       // Map<String, Object> data = (Map<String, Object>) payload.get("payload");
       // Map<String, Object> paymentData = (Map<String, Object>) data.get("payment");
-      
+
       // In real scenario, find payment by gatewayTransactionId
       // For this demo, let's assume we find it.
-      // Payment payment = paymentRepository.findByGatewayTransactionId(gatewayOrderId);
+      // Payment payment =
+      // paymentRepository.findByGatewayTransactionId(gatewayOrderId);
       // update payment.status = 'COMPLETED'
       // update invoice.status = 'PAID'
     }

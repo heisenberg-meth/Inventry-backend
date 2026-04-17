@@ -40,7 +40,7 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
     mockRedisAndCache();
     
     // Tenant 1
-    TenantContext.set(testTenant1Id);
+    TenantContext.setTenantId(testTenant1Id);
     User u1 = User.builder().tenantId(testTenant1Id).email("u1@t1.com").name("U1").passwordHash("p").role("ADMIN").scope("TENANT").build();
     u1 = userRepository.save(Objects.requireNonNull(u1));
     user1Id = u1.getId();
@@ -58,7 +58,7 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
     product1Id = p1.getId();
 
     // Tenant 2
-    TenantContext.set(testTenant2Id);
+    TenantContext.setTenantId(testTenant2Id);
     User u2 = User.builder().tenantId(testTenant2Id).email("u2@t2.com").name("U2").passwordHash("p").role("ADMIN").scope("TENANT").build();
     u2 = userRepository.save(Objects.requireNonNull(u2));
     user2Id = u2.getId();
@@ -85,7 +85,7 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
 
   @Test
   void testStockAuditTrail() {
-    TenantContext.set(testTenant1Id);
+    TenantContext.setTenantId(testTenant1Id);
     
     // 1. Stock In
     stockService.stockIn(product1Id, 10, "Initial stock", user1Id);
@@ -118,22 +118,22 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
   @Test
   void testMultiTenantIsolation() {
     // Tenant 1 actions
-    TenantContext.set(testTenant1Id);
+    TenantContext.setTenantId(testTenant1Id);
     stockService.stockIn(product1Id, 10, "T1 In", user1Id);
     
     // Tenant 2 actions
-    TenantContext.set(testTenant2Id);
+    TenantContext.setTenantId(testTenant2Id);
     stockService.stockIn(product2Id, 50, "T2 In", user2Id);
     stockService.stockOut(product2Id, 5, "T2 Out", user2Id);
 
     // Verify Tenant 1 only sees their movements
-    TenantContext.set(testTenant1Id);
+    TenantContext.setTenantId(testTenant1Id);
     Page<StockMovement> t1Movements = stockService.getMovements(PageRequest.of(0, 10));
     assertThat(t1Movements.getContent()).hasSize(1);
     assertThat(t1Movements.getContent().get(0).getNotes()).isEqualTo("T1 In");
 
     // Verify Tenant 2 only sees their movements
-    TenantContext.set(testTenant2Id);
+    TenantContext.setTenantId(testTenant2Id);
     Page<StockMovement> t2Movements = stockService.getMovements(PageRequest.of(0, 10));
     assertThat(t2Movements.getContent()).hasSize(2);
     assertThat(t2Movements.getContent().stream().anyMatch(m -> m.getNotes().equals("T2 In"))).isTrue();
@@ -142,19 +142,19 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
 
   @Test
   void testLowStockAlerts() {
-    TenantContext.set(testTenant1Id);
+    TenantContext.setTenantId(testTenant1Id);
     
     // Initial stock is 50, reorder level is 5.
     // Stock out 46 -> stock is 4 (Low Stock!)
     stockService.stockOut(product1Id, 46, "Big sale", user1Id);
     
-    var lowStock = productRepository.findLowStock();
+    var lowStock = productRepository.findLowStock(testTenant1Id);
     assertThat(lowStock).hasSize(1);
     assertThat(lowStock.get(0).getId()).isEqualTo(product1Id);
     
     // Stock in 10 -> stock is 14 (Not low stock anymore)
     stockService.stockIn(product1Id, 10, "Restock", user1Id);
-    lowStock = productRepository.findLowStock();
+    lowStock = productRepository.findLowStock(testTenant1Id);
     assertThat(lowStock).isEmpty();
   }
 }

@@ -41,7 +41,7 @@ public class CategoryService {
   }
 
   public Category getById(@NonNull Long id) {
-    Long tenantId = TenantContext.get();
+    Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
       throw new IllegalStateException("Tenant context is missing");
     }
@@ -53,17 +53,16 @@ public class CategoryService {
   @Transactional
   @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "categories", allEntries = true)
   public Category create(CategoryRequest request) {
-    if (categoryRepository.existsByNameIgnoreCaseAndTenantId(request.getName(), TenantContext.get())) {
+    if (categoryRepository.existsByNameIgnoreCaseAndTenantId(request.getName(), TenantContext.getTenantId())) {
       throw new IllegalArgumentException("Category with this name already exists");
     }
 
-    Category category =
-        Category.builder()
-            .tenantId(TenantContext.get())
-            .name(request.getName())
-            .description(request.getDescription())
-            .taxRate(request.getTaxRate() != null ? request.getTaxRate() : java.math.BigDecimal.ZERO)
-            .build();
+    Category category = Category.builder()
+        .tenantId(TenantContext.getTenantId())
+        .name(request.getName())
+        .description(request.getDescription())
+        .taxRate(request.getTaxRate() != null ? request.getTaxRate() : java.math.BigDecimal.ZERO)
+        .build();
 
     Category savedCategory = Objects.requireNonNull(categoryRepository.save(category));
 
@@ -80,7 +79,7 @@ public class CategoryService {
   @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "categories", allEntries = true)
   public Category update(@NonNull Long id, CategoryRequest request) {
     Category category = getById(id);
-    Long tenantId = TenantContext.get();
+    Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
       throw new IllegalStateException("Tenant context is missing");
     }

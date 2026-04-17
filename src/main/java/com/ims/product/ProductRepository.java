@@ -30,9 +30,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
   Page<ProductListView> findAllWithDetails(@Param("tenantId") Long tenantId, Pageable pageable);
 
   @Query("SELECT p.id as id, p.name as name, p.sku as sku, p.stock as stock, " +
-         "p.reorderLevel as reorderLevel, p.salePrice as salePrice, p.unit as unit " +
-         "FROM Product p WHERE p.tenantId = :tenantId AND p.isActive = true AND p.id > :lastId ORDER BY p.id")
-  List<ProductListView> findNextProducts(@Param("tenantId") Long tenantId, @Param("lastId") Long lastId, Pageable pageable);
+      "p.reorderLevel as reorderLevel, p.salePrice as salePrice, p.unit as unit " +
+      "FROM Product p WHERE p.tenantId = :tenantId AND p.isActive = true AND p.id > :lastId ORDER BY p.id")
+  List<ProductListView> findNextProducts(@Param("tenantId") Long tenantId, @Param("lastId") Long lastId,
+      Pageable pageable);
 
   @Query("SELECT p FROM Product p WHERE p.tenantId = :tenantId AND p.stock <= p.reorderLevel AND p.isActive = true")
   List<Product> findLowStockByTenant(@Param("tenantId") Long tenantId);
@@ -42,14 +43,12 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
       WHERE tenant_id = :tenantId AND is_active = true
       AND to_tsvector('english', COALESCE(name, '') || ' ' || COALESCE(sku, '') || ' ' || COALESCE(barcode, ''))
       @@ plainto_tsquery(:query)
-      """, 
-      countQuery = """
+      """, countQuery = """
       SELECT count(*) FROM products
       WHERE tenant_id = :tenantId AND is_active = true
       AND to_tsvector('english', COALESCE(name, '') || ' ' || COALESCE(sku, '') || ' ' || COALESCE(barcode, ''))
       @@ plainto_tsquery(:query)
-      """,
-      nativeQuery = true)
+      """, nativeQuery = true)
   Page<Product> searchFast(@Param("tenantId") Long tenantId, @Param("query") String query, Pageable pageable);
 
   @Query("SELECT COUNT(p) FROM Product p WHERE p.tenantId = :tenantId AND p.isActive = true")
@@ -70,8 +69,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
   @Query("SELECT p FROM Product p WHERE p.isActive = true")
   long countActive();
 
-  @Query("SELECT p FROM Product p WHERE p.stock < p.reorderLevel")
-  List<Product> findLowStock();
+  @Query("SELECT p FROM Product p WHERE p.tenantId = :tenantId AND p.stock < p.reorderLevel")
+  List<Product> findLowStock(@Param("tenantId") Long tenantId);
 
   Page<Product> findByIsActiveTrue(Pageable pageable);
 

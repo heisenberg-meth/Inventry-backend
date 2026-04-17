@@ -73,7 +73,7 @@ public class SignupService {
         .build();
 
     try {
-      TenantContext.set(tenant.getId());
+      TenantContext.setTenantId(tenant.getId());
       userCreationService.createUserForTenant(user, tenant.getId());
 
       // Seed default category

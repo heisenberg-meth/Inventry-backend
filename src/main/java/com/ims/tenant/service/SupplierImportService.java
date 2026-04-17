@@ -55,7 +55,7 @@ public class SupplierImportService {
                     String gstin = data.length > 4 ? data[4].trim() : null;
 
                     Supplier supplier = Supplier.builder()
-                            .tenantId(TenantContext.get())
+                            .tenantId(TenantContext.getTenantId())
                             .name(name)
                             .phone(phone)
                             .email(email)
@@ -79,9 +79,8 @@ public class SupplierImportService {
         }
 
         return Map.of(
-            "success_count", successCount,
-            "fail_count", failCount,
-            "errors", errors
-        );
+                "success_count", successCount,
+                "fail_count", failCount,
+                "errors", errors);
     }
 }

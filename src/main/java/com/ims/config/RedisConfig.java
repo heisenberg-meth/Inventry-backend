@@ -25,6 +25,7 @@ import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSeriali
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.data.web.config.EnableSpringDataWebSupport;
+
 @Configuration
 @org.springframework.context.annotation.Profile("!test")
 @EnableCaching
@@ -59,7 +60,7 @@ public class RedisConfig {
       @Override
       @NonNull
       public Collection<? extends Cache> resolveCaches(CacheOperationInvocationContext<?> context) {
-        Long tenantId = TenantContext.get();
+        Long tenantId = TenantContext.getTenantId();
         Collection<String> cacheNames = context.getOperation().getCacheNames();
         return cacheNames.stream()
             .map(name -> name + ":" + (tenantId != null ? tenantId : "default"))

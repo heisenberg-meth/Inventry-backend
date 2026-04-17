@@ -20,7 +20,7 @@ public class TransferOrderService {
 
   @Transactional
   public @NonNull TransferOrder createTransfer(@NonNull Map<String, Object> request, @NonNull Long userId) {
-    Long tenantId = Objects.requireNonNull(TenantContext.get());
+    Long tenantId = Objects.requireNonNull(TenantContext.getTenantId());
     long productId = Long.parseLong(Objects.requireNonNull(request.get("product_id")).toString());
     String fromLocation = Objects.requireNonNull(request.get("from_location")).toString();
     String toLocation = Objects.requireNonNull(request.get("to_location")).toString();
@@ -28,17 +28,16 @@ public class TransferOrderService {
     String notes = request.getOrDefault("notes", "").toString();
 
     // Create transfer order
-    TransferOrder transfer =
-        TransferOrder.builder()
-            .tenantId(tenantId)
-            .productId(productId)
-            .quantity(quantity)
-            .fromLocation(fromLocation)
-            .toLocation(toLocation)
-            .status("PENDING")
-            .notes(notes)
-            .createdBy(userId)
-            .build();
+    TransferOrder transfer = TransferOrder.builder()
+        .tenantId(tenantId)
+        .productId(productId)
+        .quantity(quantity)
+        .fromLocation(fromLocation)
+        .toLocation(toLocation)
+        .status("PENDING")
+        .notes(notes)
+        .createdBy(userId)
+        .build();
     transfer = Objects.requireNonNull(transferOrderRepository.save(Objects.requireNonNull(transfer)));
 
     log.info(
