@@ -68,10 +68,19 @@ public class RateLimitFilter extends OncePerRequestFilter {
       @Value("${app.rate-limit.public-rpm:100}") int publicRpm,
       @Value("${app.rate-limit.authenticated-rpm:500}") int tenantRpm,
       @Value("${app.rate-limit.window-seconds:60}") int windowSeconds) {
-    if (authRpm <= 0 || publicRpm <= 0 || tenantRpm <= 0) {
+    // Use the config property keys in the error messages (not the Java field names) so operators
+    // can grep the stack trace against their application.yml without a translation step.
+    if (authRpm <= 0) {
       throw new IllegalArgumentException(
-          "app.rate-limit.*-rpm must be >= 1 (got auth=" + authRpm
-              + ", public=" + publicRpm + ", authenticated=" + tenantRpm + ")");
+          "app.rate-limit.auth-rpm must be >= 1 (got " + authRpm + ")");
+    }
+    if (publicRpm <= 0) {
+      throw new IllegalArgumentException(
+          "app.rate-limit.public-rpm must be >= 1 (got " + publicRpm + ")");
+    }
+    if (tenantRpm <= 0) {
+      throw new IllegalArgumentException(
+          "app.rate-limit.authenticated-rpm must be >= 1 (got " + tenantRpm + ")");
     }
     if (windowSeconds <= 0) {
       throw new IllegalArgumentException(
