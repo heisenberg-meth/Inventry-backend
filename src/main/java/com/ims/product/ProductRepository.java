@@ -54,6 +54,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
   @Query("SELECT COUNT(p) FROM Product p WHERE p.tenantId = :tenantId AND p.isActive = true")
   long countActiveByTenant(@Param("tenantId") Long tenantId);
 
+  @Query("SELECT COUNT(p) FROM Product p WHERE p.tenantId = :tenantId AND p.stock <= p.reorderLevel AND p.isActive = true")
+  long countLowStockByTenant(@Param("tenantId") Long tenantId);
+
   @Query("SELECT COUNT(p) FROM Product p WHERE p.stock <= p.reorderLevel AND p.isActive = true")
   long countLowStock();
 
