@@ -16,11 +16,11 @@ public class UserCreationService {
   private final UserRepository userRepository;
 
   @Transactional(propagation = Propagation.REQUIRED)
-  public void createUserForTenant(@NonNull User user, @NonNull Long tenantId) {
+  public User createUserForTenant(@NonNull User user, @NonNull Long tenantId) {
     Long oldTenantId = TenantContext.getTenantId();
     try {
       TenantContext.setTenantId(Objects.requireNonNull(tenantId));
-      userRepository.save(Objects.requireNonNull(user));
+      return userRepository.save(Objects.requireNonNull(user));
     } finally {
       if (oldTenantId == null) {
         TenantContext.clear();
