@@ -29,8 +29,10 @@ app:
     report-ttl-minutes: 30
     tenant-ttl-hours: 1
   rate-limit:
-    public-rpm: 100
-    authenticated-rpm: 500
+    auth-rpm: 20
+    public-rpm: 50
+    authenticated-rpm: 200
+    window-seconds: 60
 
 management:
   health:
