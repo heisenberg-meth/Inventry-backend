@@ -1,5 +1,4 @@
 package com.ims.tenant.service;
-
 import com.ims.dto.TransferOrderStatusRequest;
 import com.ims.product.Product;
 import com.ims.model.StockMovement;
@@ -17,11 +16,14 @@ import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.context.annotation.Lazy;
 
 @Service
 @RequiredArgsConstructor
@@ -123,9 +125,24 @@ public class StockService {
     return order;
   }
 
+  public void stockIn(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
+    int attempts = 0;
+    while (attempts < 3) {
+      try {
+        self().stockInInternal(productId, qty, notes, userId);
+        return;
+      } catch (ObjectOptimisticLockingFailureException e) {
+        attempts++;
+        if (attempts >= 3) throw e;
+        log.warn("Optimistic locking failure for stockIn product {}, retrying (attempt {})", productId, attempts);
+        try { Thread.sleep(50); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+      }
+    }
+  }
+
   @Transactional
   @CacheEvict(value = { "stock", "products" }, allEntries = true)
-  public void stockIn(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
+  public void stockInInternal(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
     Product product = productRepository
         .findById(productId)
         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
@@ -147,7 +164,7 @@ public class StockService {
             .build());
 
     log.info(
-        "Stock IN: product={} qty={} {}→{}",
+        "Stock IN Attempt: product={} qty={} {}→{}",
         productId,
         qty,
         previousStock,
@@ -156,10 +173,10 @@ public class StockService {
 
   @Transactional
   @CacheEvict(value = { "stock", "products" }, allEntries = true)
-  public void stockOut(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
-    // Pessimistic write lock prevents concurrent oversell
-    Product product = productService
-        .findByIdWithLock(productId)
+  public void stockOutInternal(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
+    // Optimistic checking: using findById (non-blocking)
+    Product product = productRepository
+        .findById(productId)
         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
     if (product.getStock() < qty) {
@@ -186,18 +203,60 @@ public class StockService {
             .build());
 
     log.info(
-        "Stock OUT: product={} qty={} {}→{}",
+        "Stock OUT Attempt: product={} qty={} {}→{}",
         productId,
         qty,
         previousStock,
         product.getStock());
   }
 
+  public void stockOut(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
+    int attempts = 0;
+    while (attempts < 3) {
+      try {
+        // Self-call to ensure @Transactional is honored if using a proxy, 
+        // but better to inject self or use a helper class. 
+        // For simplicity in this context, I will assume the caller is outside or I'll handle proxy.
+        // Actually, Spring won't honor @Transactional on "this.privateMethod()".
+        // I need to use the injected proxy.
+        self().stockOutInternal(productId, qty, notes, userId);
+        return;
+      } catch (ObjectOptimisticLockingFailureException e) {
+        attempts++;
+        if (attempts >= 3) throw e;
+        log.warn("Optimistic locking failure for product {}, retrying (attempt {})", productId, attempts);
+        try { Thread.sleep(50); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+      }
+    }
+  }
+
+  // Self-injection for transactional self-calls
+  @Autowired
+  @Lazy
+  private StockService stockServiceProxy;
+  private StockService self() { return stockServiceProxy != null ? stockServiceProxy : this; }
+
+
+  public void stockAdjust(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
+    int attempts = 0;
+    while (attempts < 3) {
+      try {
+        self().stockAdjustInternal(productId, qty, notes, userId);
+        return;
+      } catch (ObjectOptimisticLockingFailureException e) {
+        attempts++;
+        if (attempts >= 3) throw e;
+        log.warn("Optimistic locking failure for stockAdjust product {}, retrying (attempt {})", productId, attempts);
+        try { Thread.sleep(50); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+      }
+    }
+  }
+
   @Transactional
   @CacheEvict(value = { "stock", "products" }, allEntries = true)
-  public void stockAdjust(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
-    Product product = productService
-        .findByIdWithLock(productId)
+  public void stockAdjustInternal(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
+    Product product = productRepository
+        .findById(productId)
         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
     int previousStock = product.getStock();

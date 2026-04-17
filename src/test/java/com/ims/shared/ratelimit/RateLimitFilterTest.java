@@ -23,6 +23,7 @@ import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
+@SuppressWarnings("null")
 class RateLimitFilterTest {
 
   private static final int AUTH_RPM = 5;
