@@ -47,17 +47,22 @@ public class ReportService {
 
   private int getExpiryThreshold() {
     Long tenantId = TenantContext.getTenantId();
-    if (tenantId != null) {
-      return tenantRepository
-          .findById(tenantId)
-          .map(Tenant::getExpiryThresholdDays)
-          .orElse(DEFAULT_DAYS);
+    if (tenantId == null) {
+      throw new IllegalStateException("Tenant not resolved from request");
     }
-    return DEFAULT_DAYS;
+    return tenantRepository
+        .findById(tenantId)
+        .map(Tenant::getExpiryThresholdDays)
+        .orElse(DEFAULT_DAYS);
   }
 
-  @Cacheable(value = "reports", key = "T(com.ims.shared.auth.TenantContext).getTenantId() + ':purchases:' + #from + ':' + #to")
+  @Cacheable(value = "reports", key = "#root.target.getSafeTenantKey(':purchases:' + #from + ':' + #to)")
   public @NonNull Map<String, Object> getPurchasesReport(@NonNull LocalDate from, @NonNull LocalDate to) {
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) {
+      throw new IllegalStateException("Tenant not resolved from request");
+    }
+    log.info("TenantContext: {}", tenantId);
     LocalDateTime fromDt = Objects.requireNonNull(from).atStartOfDay();
     LocalDateTime toDt = Objects.requireNonNull(to).atTime(LocalTime.MAX);
 
@@ -80,8 +85,13 @@ public class ReportService {
     return analytics;
   }
 
-  @Cacheable(value = "reports", key = "T(com.ims.shared.auth.TenantContext).getTenantId() + ':dashboard'")
+  @Cacheable(value = "reports", key = "#root.target.getSafeTenantKey(':dashboard')")
   public @NonNull Map<String, Object> getDashboard() {
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) {
+      throw new IllegalStateException("Tenant not resolved from request");
+    }
+    log.info("TenantContext: {}", tenantId);
     LocalDateTime todayStart = LocalDate.now().atStartOfDay();
     LocalDateTime todayEnd = LocalDate.now().atTime(LocalTime.MAX);
 
@@ -317,7 +327,7 @@ public class ReportService {
     };
   }
 
-  private @Nullable String getBusinessType() {
+  private String getBusinessType() {
     try {
       var auth = SecurityContextHolder.getContext().getAuthentication();
       if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
@@ -328,4 +338,14 @@ public class ReportService {
     }
     return null;
   }
+
+    // Helper method for safe cache keys
+    @SuppressWarnings("unused")
+    private String getSafeTenantKey(String suffix) {
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId == null) {
+            throw new IllegalStateException("Tenant not resolved from request");
+        }
+        return tenantId + ":" + suffix;
+    }
 }

@@ -13,6 +13,7 @@ import jakarta.persistence.EntityNotFoundException;
 import java.util.Map;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
@@ -20,8 +21,11 @@ import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.ims.shared.auth.TenantContext;
+
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SupplierService {
 
   private final SupplierRepository supplierRepository;
@@ -31,10 +35,22 @@ public class SupplierService {
   private final com.ims.shared.audit.AuditLogService auditLogService;
 
   public @NonNull Page<Supplier> getSuppliers(@NonNull Pageable pageable) {
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) {
+      log.error("Tenant ID is missing in SupplierService.getSuppliers");
+      throw new IllegalStateException("Tenant context is missing");
+    }
+    log.info("TenantContext: {}", tenantId);
     return Objects.requireNonNull(supplierRepository.findAll(pageable));
   }
 
   public @NonNull Supplier getById(@NonNull Long id) {
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) {
+      log.error("Tenant ID is missing in SupplierService.getById");
+      throw new IllegalStateException("Tenant context is missing");
+    }
+    log.info("TenantContext: {}", tenantId);
     return Objects.requireNonNull(supplierRepository
         .findById(id)
         .orElseThrow(() -> new EntityNotFoundException("Supplier not found")));
@@ -42,7 +58,13 @@ public class SupplierService {
 
   @Transactional
   public @NonNull Supplier create(@NonNull Supplier supplier) {
-    supplier.setTenantId(com.ims.shared.auth.TenantContext.getTenantId());
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) {
+      log.error("Tenant ID is missing in SupplierService.create");
+      throw new IllegalStateException("Tenant context is missing");
+    }
+    log.info("TenantContext: {}", tenantId);
+    supplier.setTenantId(TenantContext.getTenantId());
     Supplier savedSupplier = Objects.requireNonNull(supplierRepository.save(supplier));
 
     auditLogService.logAudit(
@@ -56,6 +78,12 @@ public class SupplierService {
 
   @Transactional
   public @NonNull Supplier update(@NonNull Long id, @NonNull Supplier updates) {
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) {
+      log.error("Tenant ID is missing in SupplierService.update");
+      throw new IllegalStateException("Tenant context is missing");
+    }
+    log.info("TenantContext: {}", tenantId);
     Supplier supplier = getById(id);
     if (updates.getName() != null) {
       supplier.setName(updates.getName());
@@ -86,6 +114,12 @@ public class SupplierService {
   @Transactional
   @RequiresPermission("delete_supplier")
   public void delete(@NonNull Long id) {
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) {
+      log.error("Tenant ID is missing in SupplierService.delete");
+      throw new IllegalStateException("Tenant context is missing");
+    }
+    log.info("TenantContext: {}", tenantId);
     Supplier supplier = getById(id);
     supplierRepository.delete(supplier);
 
@@ -97,6 +131,12 @@ public class SupplierService {
   }
 
   public Map<String, Object> getSupplierLedger(@NonNull Long id) {
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) {
+      log.error("Tenant ID is missing in SupplierService.getSupplierLedger");
+      throw new IllegalStateException("Tenant context is missing");
+    }
+    log.info("TenantContext: {}", tenantId);
     Supplier supplier = getById(id);
 
     List<com.ims.model.Order> orders = orderRepository.findBySupplierId(id, Pageable.unpaged()).getContent();

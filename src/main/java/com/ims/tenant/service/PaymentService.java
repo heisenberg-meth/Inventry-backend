@@ -28,6 +28,12 @@ public class PaymentService {
   @Transactional
   public Payment recordPayment(@NonNull Long invoiceId, BigDecimal amount, String mode, String reference, String notes,
       Long userId) {
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) {
+      log.error("Tenant ID is missing in PaymentService.recordPayment");
+      throw new IllegalStateException("Tenant context is missing");
+    }
+    log.info("TenantContext: {}", tenantId);
     Invoice invoice = invoiceRepository.findById(invoiceId)
         .orElseThrow(() -> new ResourceNotFoundException("Invoice not found: " + invoiceId));
 

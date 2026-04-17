@@ -49,12 +49,15 @@ public class ProductService {
   @Cacheable(
       cacheResolver = "tenantAwareCacheResolver",
       value = "products",
-      key = "'list:' + #tenantId + ':' + (#pageable?.pageNumber ?: 0) + ':' + (#pageable?.pageSize ?: 10) + ':' + (#pageable?.sort?.toString() ?: '')")
-  public Page<ProductResponse> getProducts(Long tenantId, Pageable pageable) {
-    if (tenantId == null) {
-      log.error("Tenant ID is missing in ProductService.getProducts");
-      throw new IllegalArgumentException("Tenant context is missing");
-    }
+      key = "#root.target.getSafeTenantKey('list:' + (#pageable?.pageNumber ?: 0) + ':' + (#pageable?.pageSize ?: 10) + ':' + (#pageable?.sort?.toString() ?: ''))")
+  public Page<ProductResponse> getProducts(Pageable pageable) {
+        Long tenantId = getTenantId();
+        if (tenantId == null) {
+            log.error("Tenant ID is missing in ProductService.getProducts");
+            throw new IllegalArgumentException("Tenant context is missing");
+        }
+        log.info("TenantContext: {}", tenantId);
+
 
     if (pageable.getPageSize() > MAX_PAGE_SIZE) {
         log.warn("Requested page size {} exceeds limit, capping to {}", pageable.getPageSize(), MAX_PAGE_SIZE);
@@ -89,7 +92,13 @@ public class ProductService {
   @Transactional
   @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "products", allEntries = true)
   public ProductResponse createProduct(CreateProductRequest request) {
-    Long tenantId = getTenantId();
+        Long tenantId = getTenantId();
+        if (tenantId == null) {
+            log.error("Tenant ID is missing in ProductService.createProduct");
+            throw new IllegalStateException("Tenant not resolved from request");
+        }
+        log.info("TenantContext: {}", tenantId);
+
     if (tenantId != null) {
       var tenant =
           tenantRepository
@@ -316,8 +325,14 @@ public class ProductService {
   }
 
   public List<ProductResponse> getLowStockProducts() {
-    Long tenantId = getTenantId();
-    if (tenantId == null) return java.util.Collections.emptyList();
+        Long tenantId = getTenantId();
+        if (tenantId == null) {
+            log.error("Tenant ID is missing in ProductService.getLowStockProducts");
+            throw new IllegalStateException("Tenant not resolved from request");
+        }
+        log.info("TenantContext: {}", tenantId);
+
+
     
     return productRepository.findLowStockByTenant(tenantId).stream()
         .map(this::toResponse)
@@ -326,6 +341,12 @@ public class ProductService {
 
   @SuppressWarnings("null")
   public List<ProductResponse> getExpiringProducts(Integer days) {
+        Long tenantId = getTenantId();
+        if (tenantId == null) {
+            log.error("Tenant ID is missing in ProductService.getExpiringProducts");
+            throw new IllegalStateException("Tenant not resolved from request");
+        }
+        log.info("TenantContext: {}", tenantId);
     String businessType = getBusinessType();
 
     if (!"PHARMACY".equals(businessType)) {
@@ -337,7 +358,7 @@ public class ProductService {
     if (days != null && days > 0) {
       thresholdDays = days;
     } else {
-      Long tenantId = getTenantId();
+  
       thresholdDays =
           tenantRepository
               .findById(tenantId)
@@ -352,34 +373,50 @@ public class ProductService {
   }
 
   public Page<ProductResponse> searchProducts(String query, Pageable pageable) {
-    Long tenantId = getTenantId();
-    if (tenantId == null) return Page.empty();
+        Long tenantId = getTenantId();
+        if (tenantId == null) {
+            log.error("Tenant ID is missing in ProductService.searchProducts");
+            return Page.empty();
+        }
+        log.info("TenantContext: {}", tenantId);
+
     return productRepository.searchFast(tenantId, query, pageable).map(this::toResponse);
   }
 
   private String getBusinessType() {
-    try {
-      var auth = SecurityContextHolder.getContext().getAuthentication();
-      if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
-        return details.getBusinessType();
-      }
-    } catch (Exception e) {
-      log.trace("Caught expected exception in business type retrieval: {}", e.getMessage());
+        try {
+            var auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
+                return details.getBusinessType();
+            }
+        } catch (Exception e) {
+            log.trace("Caught expected exception in business type retrieval: {}", e.getMessage());
+        }
+        return null;
     }
-    return null;
-  }
+
+    // Helper method for safe cache keys
+    @SuppressWarnings("unused")
+    private String getSafeTenantKey(String suffix) {
+        Long tenantId = getTenantId();
+        if (tenantId == null) {
+            throw new IllegalStateException("Tenant not resolved from request");
+        }
+        return tenantId + ":" + suffix;
+    }
 
   private Long getTenantId() {
-    try {
-      var auth = SecurityContextHolder.getContext().getAuthentication();
-      if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
-        return details.getTenantId();
-      }
-    } catch (Exception e) {
-      log.trace("Caught expected exception in tenant id retrieval: {}", e.getMessage());
+        try {
+            var auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
+                log.error("Tenant extracted: {}", details.getTenantId());
+                return details.getTenantId();
+            }
+        } catch (Exception e) {
+            log.trace("Caught expected exception in tenant id retrieval: {}", e.getMessage());
+        }
+        return null;
     }
-    return null;
-  }
 
   private ProductResponse toResponse(@NonNull Product product) {
     ProductResponse.ProductResponseBuilder builder =

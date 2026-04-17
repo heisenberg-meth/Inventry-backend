@@ -31,13 +31,18 @@ public class CategoryService {
   private final ProductRepository productRepository;
   private final com.ims.shared.audit.AuditLogService auditLogService;
 
-  @Cacheable(cacheResolver = "tenantAwareCacheResolver", value = "categories", key = "'list:' + #tenantId + ':' + #pageable.pageNumber + ':' + #pageable.pageSize")
+  @Cacheable(cacheResolver = "tenantAwareCacheResolver", value = "categories", key = "#root.target.getSafeTenantKey(':list:' + #tenantId + ':' + #pageable.pageNumber + ':' + #pageable.pageSize)")
   public Page<Category> getCategories(Long tenantId, @NonNull Pageable pageable) {
     if (tenantId == null) {
       log.error("Tenant ID is missing in CategoryService.getCategories");
       throw new IllegalArgumentException("Tenant context is missing");
     }
+    log.info("TenantContext: {}", tenantId);
     return categoryRepository.findByTenantId(tenantId, pageable);
+  }
+
+  public String getSafeTenantKey(String key) {
+    return TenantContext.getTenantId() + key;
   }
 
   public Category getById(@NonNull Long id) {

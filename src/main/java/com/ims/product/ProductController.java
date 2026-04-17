@@ -44,8 +44,7 @@ public class ProductController {
   @RequiresRole({ "ADMIN", "MANAGER", "STAFF" })
   @Operation(summary = "List products", description = "Paginated, cached 15min")
   public ResponseEntity<Page<ProductResponse>> getProducts(Pageable pageable) {
-    Long tenantId = TenantContext.getTenantId();
-    return ResponseEntity.ok(productService.getProducts(tenantId, pageable));
+    return ResponseEntity.ok(productService.getProducts(pageable));
   }
 
   @GetMapping("/next")
