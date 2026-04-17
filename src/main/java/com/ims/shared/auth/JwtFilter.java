@@ -54,7 +54,7 @@ public class JwtFilter extends OncePerRequestFilter {
       } catch (Exception e) {
         logger.warn("Redis unavailable for JWT blacklist check: " + e.getMessage());
       }
-      
+
       if (Boolean.TRUE.equals(isBlacklisted)) {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json");
@@ -70,15 +70,15 @@ public class JwtFilter extends OncePerRequestFilter {
       String role = jwtUtil.extractRole(token);
       String scope = jwtUtil.extractScope(token);
       String businessType = jwtUtil.extractBusinessType(token);
+      boolean isPlatformUser = jwtUtil.extractIsPlatformUser(token);
 
-      TenantContext.set(tenantId);
+      TenantContext.setTenantId(tenantId);
 
-      UsernamePasswordAuthenticationToken auth =
-          new UsernamePasswordAuthenticationToken(
-              userId, null, List.of(new SimpleGrantedAuthority(role)));
+      UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+          userId, null, List.of(new SimpleGrantedAuthority(role)));
 
       // Store additional details for downstream use
-      auth.setDetails(new JwtAuthDetails(userId, tenantId, role, scope, businessType));
+      auth.setDetails(new JwtAuthDetails(userId, tenantId, role, scope, businessType, isPlatformUser));
       SecurityContextHolder.getContext().setAuthentication(auth);
 
       chain.doFilter(request, response);

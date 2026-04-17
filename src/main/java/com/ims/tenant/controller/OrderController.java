@@ -29,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @Tag(name = "Tenant - Orders", description = "Order management")
 @SecurityRequirement(name = "bearerAuth")
+@SuppressWarnings("null")
 public class OrderController {
 
   private final OrderService orderService;
@@ -62,6 +63,13 @@ public class OrderController {
     Long userId = extractUserId();
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(orderService.createSalesOrder(request, userId));
+  }
+
+  @PostMapping("/return")
+  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @Operation(summary = "Create return order")
+  public ResponseEntity<Order> createReturnOrder(@RequestBody Map<String, Object> request) {
+    return ResponseEntity.status(HttpStatus.CREATED).body(orderService.createReturnOrder(request, extractUserId()));
   }
 
   @PostMapping("/{id}/confirm")
@@ -102,9 +110,20 @@ public class OrderController {
 
   @GetMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
-  @Operation(summary = "Get order with items")
-  public ResponseEntity<Map<String, Object>> getOrder(@NonNull @PathVariable Long id) {
+  @Operation(summary = "Get order detail with items")
+  public ResponseEntity<Map<String, Object>> getOrder(@PathVariable @NonNull Long id) {
     return ResponseEntity.ok(orderService.getOrderWithItems(id));
+  }
+
+  @GetMapping("/{id}/pdf")
+  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @Operation(summary = "Download order summary as PDF")
+  public ResponseEntity<byte[]> downloadPdf(@PathVariable @NonNull Long id) {
+    byte[] pdf = orderService.generateOrderPdf(id);
+    return ResponseEntity.ok()
+        .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=order-" + id + ".pdf")
+        .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "application/pdf")
+        .body(pdf);
   }
 
   @PatchMapping("/{id}/status")

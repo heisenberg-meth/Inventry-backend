@@ -39,6 +39,13 @@ public class Payment {
   @Column(name = "payment_mode")
   private String paymentMode;
 
+  @Column(name = "gateway_transaction_id")
+  private String gatewayTransactionId;
+
+  @Column
+  @Builder.Default
+  private String status = "PENDING";
+
   @Column private String reference;
 
   @Column private String notes;

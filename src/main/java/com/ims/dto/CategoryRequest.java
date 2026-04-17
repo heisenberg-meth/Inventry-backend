@@ -1,6 +1,5 @@
 package com.ims.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
@@ -12,6 +11,5 @@ public class CategoryRequest {
 
   private String description;
 
-  @JsonProperty("tax_rate")
   private java.math.BigDecimal taxRate;
 }

@@ -2,26 +2,56 @@ package com.ims;
 
 import com.ims.platform.repository.*;
 import com.ims.shared.audit.AuditLogRepository;
+import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.repository.*;
+import com.ims.product.ProductRepository;
+import com.ims.category.CategoryRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.ZSetOperations;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 import java.util.Collections;
 import java.util.Objects;
-import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.ArgumentMatchers.notNull;
+import static org.mockito.ArgumentMatchers.anyString;
+import org.springframework.cache.interceptor.CacheOperationInvocationContext;
 
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+
+@SpringBootTest
+@ActiveProfiles("test")
+@Testcontainers
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@SuppressWarnings("null")
 public abstract class BaseIntegrationTest {
+
+  @Container
+  @ServiceConnection
+  static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine");
+
+  @DynamicPropertySource
+  static void configureProperties(DynamicPropertyRegistry registry) {
+    registry.add("spring.datasource.url", postgres::getJdbcUrl);
+    registry.add("spring.datasource.username", postgres::getUsername);
+    registry.add("spring.datasource.password", postgres::getPassword);
+  }
 
   @Autowired
   protected TenantRepository tenantRepository;
@@ -90,36 +120,54 @@ public abstract class BaseIntegrationTest {
   protected long testTenant1Id;
   protected long testTenant2Id;
 
-  @SuppressWarnings("null")
+  @BeforeEach
+  void setupTenant() {
+    TenantContext.setTenantId(1L);
+  }
+
+  @AfterEach
+  void clearTenant() {
+    TenantContext.clear();
+  }
+
+  @BeforeEach
+  void setUp() {
+    mockRedisAndCache();
+  }
+
   protected void cleanupDatabase() {
     new TransactionTemplate(Objects.requireNonNull(transactionManager)).execute(status -> {
+      // Ensure tenant context is set during cleanup to avoid Hibernate issues
+      TenantContext.setTenantId(1L);
       entityManager.flush();
-      jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY FALSE");
+      
+      // PostgreSQL: Disable triggers to allow truncation of tables with FKs
+      jdbcTemplate.execute("SET session_replication_role = 'replica'");
 
-      jdbcTemplate.execute("DELETE FROM audit_logs");
-      jdbcTemplate.execute("DELETE FROM payments");
-      jdbcTemplate.execute("DELETE FROM invoices");
-      jdbcTemplate.execute("DELETE FROM order_items");
-      jdbcTemplate.execute("DELETE FROM orders");
-      jdbcTemplate.execute("DELETE FROM transfer_orders");
-      jdbcTemplate.execute("DELETE FROM stock_movements");
-      jdbcTemplate.execute("DELETE FROM pharmacy_products");
-      jdbcTemplate.execute("DELETE FROM products");
-      jdbcTemplate.execute("DELETE FROM categories");
-      jdbcTemplate.execute("DELETE FROM user_permissions");
-      jdbcTemplate.execute("DELETE FROM users");
-      jdbcTemplate.execute("DELETE FROM role_permissions");
-      jdbcTemplate.execute("DELETE FROM roles");
-      jdbcTemplate.execute("DELETE FROM customers");
-      jdbcTemplate.execute("DELETE FROM suppliers");
-      jdbcTemplate.execute("DELETE FROM support_attachments");
-      jdbcTemplate.execute("DELETE FROM support_messages");
-      jdbcTemplate.execute("DELETE FROM support_tickets");
-      jdbcTemplate.execute("DELETE FROM subscriptions");
-      jdbcTemplate.execute("DELETE FROM subscription_plans");
-      jdbcTemplate.execute("DELETE FROM tenants");
+      jdbcTemplate.execute("TRUNCATE TABLE audit_logs RESTART IDENTITY CASCADE");
+      jdbcTemplate.execute("TRUNCATE TABLE payments RESTART IDENTITY CASCADE");
+      jdbcTemplate.execute("TRUNCATE TABLE invoices RESTART IDENTITY CASCADE");
+      jdbcTemplate.execute("TRUNCATE TABLE order_items RESTART IDENTITY CASCADE");
+      jdbcTemplate.execute("TRUNCATE TABLE orders RESTART IDENTITY CASCADE");
+      jdbcTemplate.execute("TRUNCATE TABLE transfer_orders RESTART IDENTITY CASCADE");
+      jdbcTemplate.execute("TRUNCATE TABLE stock_movements RESTART IDENTITY CASCADE");
+      jdbcTemplate.execute("TRUNCATE TABLE pharmacy_products RESTART IDENTITY CASCADE");
+      jdbcTemplate.execute("TRUNCATE TABLE products RESTART IDENTITY CASCADE");
+      jdbcTemplate.execute("TRUNCATE TABLE categories RESTART IDENTITY CASCADE");
+      jdbcTemplate.execute("TRUNCATE TABLE user_permissions RESTART IDENTITY CASCADE");
+      jdbcTemplate.execute("TRUNCATE TABLE users RESTART IDENTITY CASCADE");
+      jdbcTemplate.execute("TRUNCATE TABLE role_permissions RESTART IDENTITY CASCADE");
+      jdbcTemplate.execute("TRUNCATE TABLE roles RESTART IDENTITY CASCADE");
+      jdbcTemplate.execute("TRUNCATE TABLE customers RESTART IDENTITY CASCADE");
+      jdbcTemplate.execute("TRUNCATE TABLE suppliers RESTART IDENTITY CASCADE");
+      jdbcTemplate.execute("TRUNCATE TABLE support_attachments RESTART IDENTITY CASCADE");
+      jdbcTemplate.execute("TRUNCATE TABLE support_messages RESTART IDENTITY CASCADE");
+      jdbcTemplate.execute("TRUNCATE TABLE support_tickets RESTART IDENTITY CASCADE");
+      jdbcTemplate.execute("TRUNCATE TABLE subscriptions RESTART IDENTITY CASCADE");
+      jdbcTemplate.execute("TRUNCATE TABLE subscription_plans RESTART IDENTITY CASCADE");
+      jdbcTemplate.execute("TRUNCATE TABLE tenants RESTART IDENTITY CASCADE");
 
-      jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY TRUE");
+      jdbcTemplate.execute("SET session_replication_role = 'origin'");
 
       // Seed System Tenant
       jdbcTemplate.execute(
@@ -147,19 +195,20 @@ public abstract class BaseIntegrationTest {
       entityManager.clear();
       return null;
     });
+  }
 
-    // Default Redis mocks to prevent NPE in RateLimitFilter
-    when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-    when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
-    when(zSetOperations.zCard(notNull())).thenReturn(0L);
+  protected void mockRedisAndCache() {
+    // Redis Mocks to prevent NPEs (e.g., in RateLimitFilter)
+    doReturn(valueOperations).when(redisTemplate).opsForValue();
+    doReturn(zSetOperations).when(redisTemplate).opsForZSet();
+    doReturn(1L).when(valueOperations).increment(anyString());
+    doReturn(0L).when(zSetOperations).zCard(anyString());
 
-    // Fix for RbacIntegrationTest and Cache resolution in tests
+    // Cache Mocks for TenantAwareCacheResolver
     org.springframework.cache.Cache dummyCache = new org.springframework.cache.concurrent.ConcurrentMapCache("dummy");
-
     doReturn(Collections.singletonList(dummyCache))
         .when(tenantAwareCacheResolver)
-        .resolveCaches(notNull());
-
-    when(cacheManager.getCache(notNull())).thenReturn(dummyCache);
+        .resolveCaches(org.mockito.ArgumentMatchers.<CacheOperationInvocationContext<?>>any());
+    doReturn(dummyCache).when(cacheManager).getCache(anyString());
   }
 }

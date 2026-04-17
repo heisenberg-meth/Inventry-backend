@@ -1,5 +1,8 @@
 package com.ims.tenant.service;
 
+import com.ims.shared.audit.AuditAction;
+import com.ims.shared.audit.AuditResource;
+
 import com.ims.dto.request.AssignPermissionsRequest;
 import com.ims.dto.request.CreateUserRequest;
 import com.ims.dto.response.UserResponse;
@@ -96,7 +99,7 @@ public class UserService {
 
     user = Objects.requireNonNull(userRepository.save(Objects.requireNonNull(user)));
     
-    auditLogService.logAudit("CREATE", "USER", user.getId(), "Created user: " + user.getEmail() + " with role: " + user.getRole());
+    auditLogService.logAudit(AuditAction.CREATE, AuditResource.USER, user.getId(), "Created user: " + user.getEmail() + " with role: " + user.getRole());
     
     log.info("User created: id={} email={} role={}", user.getId(), user.getEmail(), user.getRole());
     return toResponse(user);
@@ -117,7 +120,7 @@ public class UserService {
     user.setRole(newRole);
     user = Objects.requireNonNull(userRepository.save(Objects.requireNonNull(user)));
     
-    auditLogService.logAudit("UPDATE_ROLE", "USER", id, "Updated role for user " + user.getEmail() + " to " + newRole);
+    auditLogService.logAudit(AuditAction.UPDATE_ROLE, AuditResource.USER, id, "Updated role for user " + user.getEmail() + " to " + newRole);
     
     log.info("User role updated: id={} newRole={}", id, newRole);
     return toResponse(user);
@@ -132,7 +135,7 @@ public class UserService {
     user.setCustomPermissions(new HashSet<>(perms));
     userRepository.save(user);
 
-    auditLogService.logAudit("ASSIGN_PERMISSIONS", "USER", id, "Assigned " + perms.size() + " custom permissions to user: " + user.getEmail());
+    auditLogService.logAudit(AuditAction.ASSIGN_PERMISSIONS, AuditResource.USER, id, "Assigned " + perms.size() + " custom permissions to user: " + user.getEmail());
     
     return toResponse(user);
   }
@@ -147,7 +150,7 @@ public class UserService {
     user.setIsActive(false);
     userRepository.save(Objects.requireNonNull(user));
 
-    auditLogService.logAudit("DEACTIVATE", "USER", id, "Deactivated user account: " + user.getEmail());
+    auditLogService.logAudit(AuditAction.DEACTIVATE, AuditResource.USER, id, "Deactivated user account: " + user.getEmail());
     log.info("User deactivated: id={}", id);
   }
 

@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -96,6 +97,40 @@ public class AuthController {
   public ResponseEntity<Map<String, String>> resetPassword(
       @Valid @RequestBody ResetPasswordRequest request) {
     return ResponseEntity.ok(authService.resetPassword(request));
+  }
+
+  @GetMapping("/verify-email")
+  @Operation(summary = "Verify email", description = "Verify user email using verification token")
+  public ResponseEntity<Map<String, String>> verifyEmail(@RequestParam String token) {
+    return ResponseEntity.ok(authService.verifyEmail(token));
+  }
+
+  @PostMapping("/resend-verification")
+  @Operation(summary = "Resend verification email", description = "Resend email verification token")
+  public ResponseEntity<Map<String, String>> resendVerification(@RequestBody Map<String, String> body) {
+    String email = body.get("email");
+    if (email == null || email.isBlank()) {
+      return ResponseEntity.badRequest().build();
+    }
+    return ResponseEntity.ok(authService.resendVerification(email));
+  }
+
+  @GetMapping("/check-email")
+  @Operation(summary = "Check email availability")
+  public ResponseEntity<Map<String, Boolean>> checkEmail(@RequestParam String email) {
+    return ResponseEntity.ok(authService.checkEmail(email));
+  }
+
+  @GetMapping("/check-slug")
+  @Operation(summary = "Check workspace slug availability")
+  public ResponseEntity<Map<String, Boolean>> checkSlug(@RequestParam String slug) {
+    return ResponseEntity.ok(authService.checkSlug(slug));
+  }
+
+  @GetMapping("/check-company-code")
+  @Operation(summary = "Check if company code exists")
+  public ResponseEntity<Map<String, Boolean>> checkCompanyCode(@RequestParam String code) {
+    return ResponseEntity.ok(authService.checkCompanyCode(code));
   }
 
   @GetMapping("/permissions")

@@ -12,6 +12,7 @@ import com.ims.model.User;
 import com.ims.platform.repository.SubscriptionPlanRepository;
 import com.ims.platform.repository.SubscriptionRepository;
 import com.ims.platform.repository.TenantRepository;
+import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditLogService;
 import com.ims.shared.auth.UserCreationService;
 import com.ims.tenant.repository.UserRepository;
@@ -34,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class TenantService {
 
   private final TenantRepository tenantRepository;
@@ -43,9 +45,10 @@ public class TenantService {
   private final AuditLogService auditLogService;
   private final SubscriptionRepository subscriptionRepository;
   private final SubscriptionPlanRepository subscriptionPlanRepository;
+  private final com.ims.shared.utils.CompanyCodeGenerator companyCodeGenerator;
 
   public Page<TenantResponse> getAllTenants(@NonNull Pageable pageable) {
-    Page<Tenant> tenants = Objects.requireNonNull(tenantRepository.findAll(pageable));
+    Page<Tenant> tenants = tenantRepository.findAll(pageable);
     return tenants.map(this::toResponse);
   }
 
@@ -55,7 +58,13 @@ public class TenantService {
         tenantRepository
             .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
-    return toResponse(Objects.requireNonNull(tenant));
+    return toResponse(tenant);
+  }
+
+  public boolean isWarehouse(Long tenantId) {
+    return tenantRepository.findById(tenantId)
+        .map(t -> "WAREHOUSE".equals(t.getBusinessType()))
+        .orElse(false);
   }
 
   @Transactional
@@ -64,10 +73,16 @@ public class TenantService {
       throw new IllegalArgumentException("Workspace slug already taken");
     }
 
+    String companyCode;
+    do {
+        companyCode = companyCodeGenerator.generateCode(request.getName());
+    } while (tenantRepository.existsByCompanyCode(companyCode));
+
     Tenant tenant =
         Tenant.builder()
             .name(request.getName())
             .workspaceSlug(request.getWorkspaceSlug())
+            .companyCode(companyCode)
             .businessType(request.getBusinessType())
             .plan(request.getPlan() != null ? request.getPlan() : "FREE")
             .status("ACTIVE")
@@ -75,7 +90,7 @@ public class TenantService {
             .maxUsers(request.getMaxUsers())
             .build();
 
-    Tenant savedTenant = tenantRepository.save(Objects.requireNonNull(tenant));
+    Tenant savedTenant = tenantRepository.save(tenant);
 
     log.info(
         "Tenant created: id={} name={} type={}",
@@ -84,7 +99,7 @@ public class TenantService {
         savedTenant.getBusinessType());
 
     auditLogService.log(
-        "CREATE_TENANT",
+        AuditAction.CREATE_TENANT,
         savedTenant.getId(),
         null,
         "Created tenant: " + savedTenant.getName());
@@ -116,7 +131,7 @@ public class TenantService {
       tenant.setMaxUsers(request.getMaxUsers());
     }
 
-    Tenant updatedTenant = tenantRepository.save(Objects.requireNonNull(tenant));
+    Tenant updatedTenant = tenantRepository.save(tenant);
     return toResponse(updatedTenant);
   }
 
@@ -143,7 +158,7 @@ public class TenantService {
     tenantRepository.save(tenant);
 
     auditLogService.log(
-        "UPDATE_TENANT_STATUS", id, null, "Tenant suspended: " + tenant.getName());
+        AuditAction.UPDATE_TENANT_STATUS, id, null, "Tenant suspended: " + tenant.getName());
     log.info("Tenant suspended: id={}", id);
     return Map.of("message", "Tenant suspended successfully", "status", "SUSPENDED");
   }
@@ -159,7 +174,7 @@ public class TenantService {
     tenantRepository.save(tenant);
 
     auditLogService.log(
-        "UPDATE_TENANT_STATUS", id, null, "Tenant activated: " + tenant.getName());
+        AuditAction.UPDATE_TENANT_STATUS, id, null, "Tenant activated: " + tenant.getName());
     log.info("Tenant activated: id={}", id);
     return Map.of("message", "Tenant activated successfully", "status", "ACTIVE");
   }
@@ -209,7 +224,7 @@ public class TenantService {
     userRepository.save(user);
 
     auditLogService.log(
-        "RESET_TENANT_USER_PASSWORD",
+        AuditAction.RESET_TENANT_USER_PASSWORD,
         user.getTenantId(),
         userId,
         "Reset password for tenant user: " + user.getEmail());
@@ -235,7 +250,7 @@ public class TenantService {
 
     SubscriptionPlan plan =
         subscriptionPlanRepository
-            .findById(Objects.requireNonNull(request.getPlanId()))
+            .findById(request.getPlanId())
             .orElseThrow(() -> new EntityNotFoundException("Subscription plan not found"));
 
     if (!"ACTIVE".equals(plan.getStatus())) {
@@ -274,11 +289,10 @@ public class TenantService {
             .startDate(startDate)
             .endDate(endDate)
             .build();
-    @SuppressWarnings("null")
-    Subscription savedSub = Objects.requireNonNull(subscriptionRepository.save(subscription));
+    Subscription savedSub = subscriptionRepository.save(subscription);
 
     auditLogService.log(
-        "ASSIGN_PLAN",
+        AuditAction.ASSIGN_PLAN,
         tenantId,
         null,
         "Assigned plan " + plan.getName() + " to tenant " + tenant.getName());
@@ -324,7 +338,7 @@ public class TenantService {
       throw new EntityNotFoundException("Tenant not found with id: " + tenantId);
     }
 
-    String email = Objects.requireNonNull(request.getEmail(), "Email cannot be null");
+    String email = request.getEmail();
     if (userRepository.existsByEmail(email)) {
       throw new IllegalArgumentException("Email already in use");
     }
@@ -353,7 +367,7 @@ public class TenantService {
       }
     }
 
-    userCreationService.createUserForTenant(Objects.requireNonNull(user), tenantId);
+    userCreationService.createUserForTenant(user, tenantId);
 
     return UserResponse.builder()
         .id(user.getId())
@@ -364,6 +378,21 @@ public class TenantService {
         .isActive(user.getIsActive())
         .createdAt(user.getCreatedAt())
         .build();
+  }
+
+  @Transactional
+  public void hardDeleteTenantUser(@NonNull Long tenantId, @NonNull Long userId) {
+    User user = userRepository.findByIdUnfiltered(userId)
+        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+    if (!Objects.equals(user.getTenantId(), tenantId)) {
+        throw new IllegalArgumentException("User does not belong to this tenant");
+    }
+
+    userRepository.delete(user);
+    log.info("Platform hard-deleted user: {} (tenant={})", user.getEmail(), tenantId);
+    
+    auditLogService.log(AuditAction.PLATFORM_DELETE_USER, tenantId, null, "Platform admin hard-deleted user: " + user.getEmail());
   }
 
   private TenantResponse toResponse(@NonNull Tenant tenant) {

@@ -42,6 +42,13 @@ public class InvoiceController {
     return ResponseEntity.ok(invoiceService.getInvoices(pageable));
   }
 
+  @GetMapping("/overdue")
+  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @Operation(summary = "List overdue invoices")
+  public ResponseEntity<Page<Invoice>> getOverdueInvoices(@NonNull Pageable pageable) {
+    return ResponseEntity.ok(invoiceService.getOverdueInvoices(pageable));
+  }
+
   @PostMapping
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Manually generate invoice from order")

@@ -39,6 +39,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
   @Query(value = "SELECT * FROM users WHERE reset_token = :token", nativeQuery = true)
   Optional<User> findByResetToken(@Param("token") String token);
 
+  @Query(value = "SELECT * FROM users WHERE tenant_id = :tenantId AND role = :role LIMIT 1", nativeQuery = true)
+  Optional<User> findFirstByTenantIdAndRole(@Param("tenantId") Long tenantId, @Param("role") String role);
+
   @Query(
       value = "SELECT * FROM users WHERE tenant_id = :tenantId AND scope = 'TENANT'",
       nativeQuery = true)

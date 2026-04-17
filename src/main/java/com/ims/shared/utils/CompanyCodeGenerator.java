@@ -1,12 +1,12 @@
 package com.ims.shared.utils;
 
-import java.util.Random;
+import java.security.SecureRandom;
 import org.springframework.stereotype.Component;
 
 @Component
 public class CompanyCodeGenerator {
 
-    private final Random random = new Random();
+    private final SecureRandom random = new SecureRandom();
 
     public String generateCode(String businessName) {
         String prefix = businessName.replaceAll("[^A-Za-z]", "")

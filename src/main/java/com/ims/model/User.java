@@ -50,7 +50,12 @@ public class User {
   private String role;
 
   @Column(nullable = false)
-  private String scope;
+  @Builder.Default
+  private String scope = "TENANT";
+
+  @Column(name = "is_platform_user")
+  @Builder.Default
+  private Boolean isPlatformUser = false;
 
   @ManyToMany(fetch = jakarta.persistence.FetchType.EAGER)
   @JoinTable(
@@ -63,6 +68,10 @@ public class User {
   @Column(name = "is_active")
   @Builder.Default
   private Boolean isActive = true;
+
+  @Column(name = "is_verified")
+  @Builder.Default
+  private Boolean isVerified = false;
 
   @Column(name = "reset_token")
   private String resetToken;

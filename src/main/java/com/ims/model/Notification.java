@@ -14,12 +14,12 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "categories")
+@Table(name = "notifications")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Category {
+public class Notification {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,14 +29,24 @@ public class Category {
   @Column(name = "tenant_id", nullable = false)
   private Long tenantId;
 
+  @Column(name = "user_id", nullable = false)
+  private Long userId;
+
   @Column(nullable = false)
-  private String name;
+  private String title;
 
-  @Column private String description;
+  @Column(nullable = false, columnDefinition = "TEXT")
+  private String message;
 
-  @Column(name = "tax_rate")
+  @Column(nullable = false)
+  private String type;
+
+  @Column(name = "resource_id")
+  private Long resourceId;
+
+  @Column(name = "is_read")
   @Builder.Default
-  private java.math.BigDecimal taxRate = java.math.BigDecimal.ZERO;
+  private Boolean isRead = false;
 
   @Column(name = "created_at")
   @Builder.Default
