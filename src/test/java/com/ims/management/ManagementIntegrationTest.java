@@ -75,6 +75,7 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
         .andExpect(status().isCreated());
 
     // 3. Verify Staff isolation (STAFF cannot access management)
+    verifyUserEmail("staff-mgt1@t1.com");
     String staffToken = login("staff-mgt1@t1.com", "staff123", response.getCompanyCode());
     mockMvc
         .perform(get("/api/tenant/users").header("Authorization", "Bearer " + staffToken))

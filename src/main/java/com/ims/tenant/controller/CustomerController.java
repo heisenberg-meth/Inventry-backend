@@ -3,7 +3,6 @@ package com.ims.tenant.controller;
 import com.ims.model.Customer;
 import com.ims.shared.rbac.RequiresRole;
 import com.ims.tenant.service.CustomerService;
-import com.ims.tenant.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,7 +30,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class CustomerController {
 
   private final CustomerService customerService;
-  private final OrderService orderService;
   private final com.ims.tenant.service.CustomerImportService importService;
   private final com.ims.shared.utils.CsvExportService csvExportService;
   private final com.ims.tenant.repository.CustomerRepository customerRepository;
