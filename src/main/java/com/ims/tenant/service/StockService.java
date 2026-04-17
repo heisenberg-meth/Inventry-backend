@@ -6,7 +6,6 @@ import com.ims.model.TransferOrder;
 import com.ims.shared.auth.TenantContext;
 import com.ims.shared.exception.InsufficientStockException;
 import com.ims.tenant.domain.warehouse.WarehouseProduct;
-import com.ims.product.ProductService;
 import com.ims.platform.service.TenantService;
 import com.ims.tenant.repository.StockMovementRepository;
 import com.ims.tenant.repository.TransferOrderRepository;
@@ -31,7 +30,6 @@ import org.springframework.context.annotation.Lazy;
 @SuppressWarnings("null")
 public class StockService {
 
-  private final ProductService productService;
   private final StockMovementRepository stockMovementRepository;
   private final TenantService tenantService;
   private final WarehouseProductRepository warehouseProductRepository;

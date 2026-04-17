@@ -2,7 +2,6 @@ package com.ims.tenant.controller;
 
 import com.ims.model.Supplier;
 import com.ims.shared.rbac.RequiresRole;
-import com.ims.tenant.service.OrderService;
 import com.ims.tenant.service.SupplierService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -31,7 +30,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class SupplierController {
 
   private final SupplierService supplierService;
-  private final OrderService orderService;
   private final com.ims.tenant.service.SupplierImportService importService;
   private final com.ims.shared.utils.CsvExportService csvExportService;
   private final com.ims.tenant.repository.SupplierRepository supplierRepository;
