@@ -53,10 +53,9 @@ public class InvoiceService {
   @SuppressWarnings("null")
   @Transactional
   public @NonNull Invoice createManual(@NonNull CreateInvoiceRequest request) {
-    Order order =
-        orderRepository
-            .findById(Objects.requireNonNull(request.getOrderId()))
-            .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+    Order order = orderRepository
+        .findById(Objects.requireNonNull(request.getOrderId()))
+        .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
     if (!"SALE".equals(order.getType())) {
       throw new IllegalArgumentException("Invoice can only be created for SALE orders");
@@ -68,19 +67,18 @@ public class InvoiceService {
 
     String invoiceNumber = incrementAndGetInvoiceNumber();
 
-    Invoice invoice =
-        Invoice.builder()
-            .orderId(order.getId())
-            .invoiceNumber(invoiceNumber)
-            .amount(order.getTotalAmount())
-            .taxAmount(order.getTaxAmount())
-            .discount(order.getDiscount())
-            .status("UNPAID")
-            .dueDate(
-                request.getDueDate() != null
-                    ? request.getDueDate()
-                    : LocalDate.now().plusDays(DEFAULT_DUE_DAYS))
-            .build();
+    Invoice invoice = Invoice.builder()
+        .orderId(order.getId())
+        .invoiceNumber(invoiceNumber)
+        .amount(order.getTotalAmount())
+        .taxAmount(order.getTaxAmount())
+        .discount(order.getDiscount())
+        .status("UNPAID")
+        .dueDate(
+            request.getDueDate() != null
+                ? request.getDueDate()
+                : LocalDate.now().plusDays(DEFAULT_DUE_DAYS))
+        .build();
 
     log.info("Manual invoice created: {} for order {}", invoiceNumber, order.getId());
     return invoiceRepository.save(invoice);
@@ -88,10 +86,9 @@ public class InvoiceService {
 
   @Transactional
   public @NonNull Invoice updateStatus(@NonNull Long id, @NonNull InvoiceStatusRequest request) {
-    Invoice invoice =
-        invoiceRepository
-            .findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
+    Invoice invoice = invoiceRepository
+        .findById(id)
+        .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
 
     String currentStatus = invoice.getStatus();
     String newStatus = request.getStatus();
@@ -118,16 +115,15 @@ public class InvoiceService {
   public @NonNull Invoice createFromOrder(@NonNull Order order) {
     String invoiceNumber = incrementAndGetInvoiceNumber();
 
-    Invoice invoice =
-        Invoice.builder()
-            .orderId(order.getId())
-            .invoiceNumber(invoiceNumber)
-            .amount(order.getTotalAmount())
-            .taxAmount(order.getTaxAmount())
-            .discount(order.getDiscount())
-            .status("UNPAID")
-            .dueDate(LocalDate.now().plusDays(DEFAULT_DUE_DAYS))
-            .build();
+    Invoice invoice = Invoice.builder()
+        .orderId(order.getId())
+        .invoiceNumber(invoiceNumber)
+        .amount(order.getTotalAmount())
+        .taxAmount(order.getTaxAmount())
+        .discount(order.getDiscount())
+        .status("UNPAID")
+        .dueDate(LocalDate.now().plusDays(DEFAULT_DUE_DAYS))
+        .build();
 
     log.info("Invoice created: {} for order {}", invoiceNumber, order.getId());
     return invoiceRepository.save(invoice);
@@ -138,28 +134,26 @@ public class InvoiceService {
   public @NonNull Invoice createCreditNote(@NonNull Order returnOrder, Long parentInvoiceId) {
     String invoiceNumber = "CN-" + incrementAndGetInvoiceNumber().substring(4); // Use CN prefix
 
-    Invoice creditNote =
-        Invoice.builder()
-            .orderId(returnOrder.getId())
-            .invoiceNumber(invoiceNumber)
-            .amount(returnOrder.getTotalAmount().negate())
-            .taxAmount(returnOrder.getTaxAmount() != null ? returnOrder.getTaxAmount().negate() : BigDecimal.ZERO)
-            .discount(returnOrder.getDiscount() != null ? returnOrder.getDiscount().negate() : BigDecimal.ZERO)
-            .status("PAID") // Credit notes are usually considered "settled" immediately as a reduction
-            .parentInvoiceId(parentInvoiceId)
-            .dueDate(LocalDate.now())
-            .paidAt(LocalDateTime.now())
-            .build();
+    Invoice creditNote = Invoice.builder()
+        .orderId(returnOrder.getId())
+        .invoiceNumber(invoiceNumber)
+        .amount(returnOrder.getTotalAmount().negate())
+        .taxAmount(returnOrder.getTaxAmount() != null ? returnOrder.getTaxAmount().negate() : BigDecimal.ZERO)
+        .discount(returnOrder.getDiscount() != null ? returnOrder.getDiscount().negate() : BigDecimal.ZERO)
+        .status("PAID") // Credit notes are usually considered "settled" immediately as a reduction
+        .parentInvoiceId(parentInvoiceId)
+        .dueDate(LocalDate.now())
+        .paidAt(LocalDateTime.now())
+        .build();
 
     log.info("Credit note created: {} for return order {}", invoiceNumber, returnOrder.getId());
     return invoiceRepository.save(creditNote);
   }
 
   private String incrementAndGetInvoiceNumber() {
-    Tenant tenant =
-        tenantRepository
-            .findById(Objects.requireNonNull(TenantContext.get()))
-            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+    Tenant tenant = tenantRepository
+        .findById(Objects.requireNonNull(TenantContext.getTenantId()))
+        .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
     tenant.setInvoiceSequence(tenant.getInvoiceSequence() + 1);
     tenantRepository.save(tenant);
@@ -170,45 +164,39 @@ public class InvoiceService {
 
   @Transactional(readOnly = true)
   public byte[] generatePdf(@NonNull Long id) {
-    Invoice invoice =
-        invoiceRepository
-            .findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
+    Invoice invoice = invoiceRepository
+        .findById(id)
+        .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
 
-    Order order =
-        orderRepository
-            .findById(Objects.requireNonNull(invoice.getOrderId()))
-            .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+    Order order = orderRepository
+        .findById(Objects.requireNonNull(invoice.getOrderId()))
+        .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
-    Tenant tenant =
-        tenantRepository
-            .findById(Objects.requireNonNull(TenantContext.get()))
-            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+    Tenant tenant = tenantRepository
+        .findById(Objects.requireNonNull(TenantContext.getTenantId()))
+        .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
-    Customer customer =
-        customerRepository
-            .findById(Objects.requireNonNull(order.getCustomerId()))
-            .orElseThrow(() -> new EntityNotFoundException("Customer not found"));
+    Customer customer = customerRepository
+        .findById(Objects.requireNonNull(order.getCustomerId()))
+        .orElseThrow(() -> new EntityNotFoundException("Customer not found"));
 
     List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
 
-    List<Map<String, Object>> items =
-        orderItems.stream()
-            .map(
-                item -> {
-                  Product product =
-                      productRepository
-                          .findById(Objects.requireNonNull(item.getProductId()))
-                          .orElseThrow(() -> new EntityNotFoundException("Product not found"));
-                  Map<String, Object> map = new HashMap<>();
-                  map.put("productName", product.getName());
-                  map.put("quantity", item.getQuantity());
-                  map.put("unitPrice", item.getUnitPrice());
-                  map.put("discount", item.getDiscount());
-                  map.put("total", item.getTotal());
-                  return map;
-                })
-            .collect(Collectors.toList());
+    List<Map<String, Object>> items = orderItems.stream()
+        .map(
+            item -> {
+              Product product = productRepository
+                  .findById(Objects.requireNonNull(item.getProductId()))
+                  .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+              Map<String, Object> map = new HashMap<>();
+              map.put("productName", product.getName());
+              map.put("quantity", item.getQuantity());
+              map.put("unitPrice", item.getUnitPrice());
+              map.put("discount", item.getDiscount());
+              map.put("total", item.getTotal());
+              return map;
+            })
+        .collect(Collectors.toList());
 
     Context context = new Context();
     context.setVariable("tenantName", tenant.getName());

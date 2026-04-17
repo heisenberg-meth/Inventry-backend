@@ -19,14 +19,14 @@ public class AuditLogService {
 
   public void log(AuditAction action, Long tenantId, Long userId, String details) {
     log.info("AUDIT: tenant={} user={} action={} details={}", tenantId, userId, action, details);
-    
+
     com.ims.model.AuditLog auditEntry = com.ims.model.AuditLog.builder()
         .tenantId(tenantId)
         .userId(userId)
         .action(action.name())
         .details(details)
         .build();
-    
+
     auditLogRepository.save(auditEntry);
   }
 
@@ -35,19 +35,19 @@ public class AuditLogService {
    */
   @Deprecated
   public void log(String action, Long tenantId, Long userId, String details) {
-      try {
-          AuditAction a = AuditAction.valueOf(action);
-          log(a, tenantId, userId, details);
-      } catch (IllegalArgumentException e) {
-          log.warn("Legacy log called with non-enum value: {}. Logging as string.", action);
-          com.ims.model.AuditLog auditEntry = com.ims.model.AuditLog.builder()
-              .tenantId(tenantId)
-              .userId(userId)
-              .action(action)
-              .details(details)
-              .build();
-          auditLogRepository.save(auditEntry);
-      }
+    try {
+      AuditAction a = AuditAction.valueOf(action);
+      log(a, tenantId, userId, details);
+    } catch (IllegalArgumentException e) {
+      log.warn("Legacy log called with non-enum value: {}. Logging as string.", action);
+      com.ims.model.AuditLog auditEntry = com.ims.model.AuditLog.builder()
+          .tenantId(tenantId)
+          .userId(userId)
+          .action(action)
+          .details(details)
+          .build();
+      auditLogRepository.save(auditEntry);
+    }
   }
 
   public void logAudit(AuditAction action, AuditResource resource, Long resourceId, String details) {
@@ -62,7 +62,7 @@ public class AuditLogService {
 
     // Fallback for tenantId if not in auth (e.g., during creation flows)
     if (tenantId == null) {
-        tenantId = com.ims.shared.auth.TenantContext.get();
+      tenantId = com.ims.shared.auth.TenantContext.getTenantId();
     }
 
     String fullDetails = String.format("[%s:%s] %s", resource.name(), resourceId != null ? resourceId : "N/A", details);
@@ -70,38 +70,42 @@ public class AuditLogService {
   }
 
   /**
-   * @deprecated Use {@link #logAudit(AuditAction, AuditResource, Long, String)} instead.
+   * @deprecated Use {@link #logAudit(AuditAction, AuditResource, Long, String)}
+   *             instead.
    */
   @Deprecated
   public void logAudit(String action, String resource, Long resourceId, String details) {
-      try {
-          AuditAction a = AuditAction.valueOf(action);
-          AuditResource r = AuditResource.valueOf(resource);
-          logAudit(a, r, resourceId, details);
-      } catch (IllegalArgumentException e) {
-          log.warn("Legacy audit log called with non-enum values: action={}, resource={}. Logging as string.", action, resource);
-          // Fallback if enums don't match yet
-          Long tenantId = com.ims.shared.auth.TenantContext.get();
-          log.info("LEGACY-AUDIT: tenant={} action={} details={}", tenantId, action, details);
-      }
+    try {
+      AuditAction a = AuditAction.valueOf(action);
+      AuditResource r = AuditResource.valueOf(resource);
+      logAudit(a, r, resourceId, details);
+    } catch (IllegalArgumentException e) {
+      log.warn("Legacy audit log called with non-enum values: action={}, resource={}. Logging as string.", action,
+          resource);
+      // Fallback if enums don't match yet
+      Long tenantId = com.ims.shared.auth.TenantContext.getTenantId();
+      log.info("LEGACY-AUDIT: tenant={} action={} details={}", tenantId, action, details);
+    }
   }
 
-  public org.springframework.data.domain.Page<com.ims.model.AuditLog> getAllLogs(@NonNull org.springframework.data.domain.Pageable pageable) {
+  public org.springframework.data.domain.Page<com.ims.model.AuditLog> getAllLogs(
+      @NonNull org.springframework.data.domain.Pageable pageable) {
     var logs = auditLogRepository.findAll(pageable);
-    
+
     // Unmask for ROOT when support mode is explicitly enabled
     if (isSystemAdmin() && systemConfigService.isSupportModeEnabled()) {
-        return logs; // full data visible for support investigation
+      return logs; // full data visible for support investigation
     }
     return logs.map(this::maskSensitiveData); // everyone else gets masked
   }
 
-  public org.springframework.data.domain.Page<com.ims.model.AuditLog> getTenantLogs(Long tenantId, @NonNull org.springframework.data.domain.Pageable pageable) {
+  public org.springframework.data.domain.Page<com.ims.model.AuditLog> getTenantLogs(Long tenantId,
+      @NonNull org.springframework.data.domain.Pageable pageable) {
     var logs = auditLogRepository.findByTenantId(tenantId, pageable);
-    
+
     // Unmask for ROOT when support mode is explicitly enabled
     if (isSystemAdmin() && systemConfigService.isSupportModeEnabled()) {
-        return logs;
+      return logs;
     }
     return logs.map(this::maskSensitiveData);
   }

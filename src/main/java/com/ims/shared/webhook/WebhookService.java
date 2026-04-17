@@ -21,13 +21,13 @@ public class WebhookService {
   private final RestTemplate restTemplate = new RestTemplate();
 
   public List<Webhook> getMyWebhooks() {
-    return webhookRepository.findByTenantId(TenantContext.get());
+    return webhookRepository.findByTenantId(TenantContext.getTenantId());
   }
 
   @Transactional
   public Webhook createWebhook(String url, String eventTypes, String secret) {
     Webhook webhook = Webhook.builder()
-        .tenantId(TenantContext.get())
+        .tenantId(TenantContext.getTenantId())
         .url(url)
         .eventTypes(eventTypes)
         .secret(secret)
@@ -39,7 +39,7 @@ public class WebhookService {
   @Transactional
   public void deleteWebhook(Long id) {
     webhookRepository.findById(id).ifPresent(w -> {
-      if (w.getTenantId().equals(TenantContext.get())) {
+      if (w.getTenantId().equals(TenantContext.getTenantId())) {
         webhookRepository.delete(w);
       }
     });
@@ -48,7 +48,7 @@ public class WebhookService {
   @Async
   public void dispatch(Long tenantId, String eventType, Object payload) {
     List<Webhook> webhooks = webhookRepository.findByTenantId(tenantId);
-    
+
     for (Webhook webhook : webhooks) {
       if (Boolean.TRUE.equals(webhook.getIsActive()) && webhook.getEventTypes().contains(eventType)) {
         try {
@@ -56,8 +56,7 @@ public class WebhookService {
               "event", eventType,
               "tenant_id", tenantId,
               "timestamp", java.time.LocalDateTime.now().toString(),
-              "data", payload
-          );
+              "data", payload);
           restTemplate.postForEntity(webhook.getUrl(), body, String.class);
           log.debug("Webhook dispatched to {} for event {}", webhook.getUrl(), eventType);
         } catch (Exception e) {

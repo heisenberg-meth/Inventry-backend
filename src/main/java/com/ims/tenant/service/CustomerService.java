@@ -37,7 +37,7 @@ public class CustomerService {
 
   @Transactional
   public @NonNull Customer create(@NonNull Customer customer) {
-    customer.setTenantId(com.ims.shared.auth.TenantContext.get());
+    customer.setTenantId(com.ims.shared.auth.TenantContext.getTenantId());
     return customerRepository.save(customer);
   }
 
@@ -70,7 +70,7 @@ public class CustomerService {
 
   public Map<String, Object> getCustomerLedger(@NonNull Long id) {
     Customer customer = getById(id);
-    
+
     List<com.ims.model.Order> orders = orderRepository.findByCustomerId(id, Pageable.unpaged()).getContent();
     List<com.ims.model.Invoice> invoices = invoiceRepository.findByCustomerId(id);
     List<com.ims.model.Payment> payments = paymentRepository.findByCustomerId(id);
@@ -79,7 +79,6 @@ public class CustomerService {
         "customer", customer,
         "orders", orders,
         "invoices", invoices,
-        "payments", payments
-    );
+        "payments", payments);
   }
 }

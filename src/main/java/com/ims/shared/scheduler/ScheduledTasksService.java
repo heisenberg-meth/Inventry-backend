@@ -43,8 +43,8 @@ public class ScheduledTasksService {
 
     for (Tenant tenant : tenants) {
       try {
-        TenantContext.set(tenant.getId());
-        List<Product> lowStock = productRepository.findLowStock();
+        TenantContext.setTenantId(tenant.getId());
+        List<Product> lowStock = productRepository.findLowStock(tenant.getId());
         
         for (Product p : lowStock) {
           // Create or update alert
@@ -79,7 +79,7 @@ public class ScheduledTasksService {
 
     for (Tenant tenant : tenants) {
       try {
-        TenantContext.set(tenant.getId());
+        TenantContext.setTenantId(tenant.getId());
         // Simple unpaged check for all overdue
         var overdue = invoiceRepository.findByStatusNotAndDueDateBefore("PAID", LocalDate.now(), org.springframework.data.domain.Pageable.unpaged());
         

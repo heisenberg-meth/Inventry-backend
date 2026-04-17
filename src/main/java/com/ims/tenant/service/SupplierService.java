@@ -42,7 +42,7 @@ public class SupplierService {
 
   @Transactional
   public @NonNull Supplier create(@NonNull Supplier supplier) {
-    supplier.setTenantId(com.ims.shared.auth.TenantContext.get());
+    supplier.setTenantId(com.ims.shared.auth.TenantContext.getTenantId());
     Supplier savedSupplier = Objects.requireNonNull(supplierRepository.save(supplier));
 
     auditLogService.logAudit(
@@ -107,7 +107,6 @@ public class SupplierService {
         "supplier", supplier,
         "orders", orders,
         "invoices", invoices,
-        "payments", payments
-    );
+        "payments", payments);
   }
 }

@@ -8,6 +8,7 @@ import com.ims.product.ProductRepository;
 import com.ims.category.CategoryRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -30,15 +31,27 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.ArgumentMatchers.anyString;
 import org.springframework.cache.interceptor.CacheOperationInvocationContext;
 
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+
 @SpringBootTest
 @ActiveProfiles("test")
 @Testcontainers
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @SuppressWarnings("null")
 public abstract class BaseIntegrationTest {
 
   @Container
   @ServiceConnection
   static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine");
+
+  @DynamicPropertySource
+  static void configureProperties(DynamicPropertyRegistry registry) {
+    registry.add("spring.datasource.url", postgres::getJdbcUrl);
+    registry.add("spring.datasource.username", postgres::getUsername);
+    registry.add("spring.datasource.password", postgres::getPassword);
+  }
 
   @Autowired
   protected TenantRepository tenantRepository;
@@ -108,16 +121,24 @@ public abstract class BaseIntegrationTest {
   protected long testTenant2Id;
 
   @BeforeEach
+  void setupTenant() {
+    TenantContext.setTenantId(1L);
+  }
+
+  @AfterEach
+  void clearTenant() {
+    TenantContext.clear();
+  }
+
+  @BeforeEach
   void setUp() {
-    // Ensure tenant context is set for each test
-    TenantContext.set(systemTenantId > 0 ? systemTenantId : 1L);
     mockRedisAndCache();
   }
 
   protected void cleanupDatabase() {
     new TransactionTemplate(Objects.requireNonNull(transactionManager)).execute(status -> {
       // Ensure tenant context is set during cleanup to avoid Hibernate issues
-      TenantContext.set(1L);
+      TenantContext.setTenantId(1L);
       entityManager.flush();
       
       // PostgreSQL: Disable triggers to allow truncation of tables with FKs

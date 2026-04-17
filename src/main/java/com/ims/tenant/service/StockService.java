@@ -34,10 +34,11 @@ public class StockService {
   private final TenantService tenantService;
   private final WarehouseProductRepository warehouseProductRepository;
   private final TransferOrderRepository transferOrderRepository;
-  private final com.ims.product.ProductRepository productRepository; // Kept for JPA operations if needed, but primarily using productService
+  private final com.ims.product.ProductRepository productRepository; // Kept for JPA operations if needed, but primarily
+                                                                     // using productService
 
   private void checkWarehouseType() {
-    Long tenantId = TenantContext.get();
+    Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
       throw new IllegalStateException("No tenant context found");
     }

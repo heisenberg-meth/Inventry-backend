@@ -51,10 +51,20 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
     SignupRequest t2Signup = createSignupRequest("Tenant 2", "t2-auth", "admin2@t2.com");
     com.ims.dto.response.SignupResponse t2Response = signupService.signup(t2Signup);
 
-    // 3. Login Tenant 1
+    // 3. Verify users (simulating email verification)
+    userRepository.findByEmailUnfiltered("admin1@t1.com").ifPresent(u -> {
+      u.setIsVerified(true);
+      userRepository.save(u);
+    });
+    userRepository.findByEmailUnfiltered("admin2@t2.com").ifPresent(u -> {
+      u.setIsVerified(true);
+      userRepository.save(u);
+    });
+
+    // 4. Login Tenant 1
     String t1Token = login("admin1@t1.com", "password123", t1Response.getCompanyCode());
 
-    // 4. Verify Tenant 1 Isolation (Should only see 1 user: admin1)
+    // 5. Verify Tenant 1 Isolation (Should only see 1 user: admin1)
     mockMvc
         .perform(get("/api/tenant/users").header("Authorization", "Bearer " + t1Token))
         .andExpect(status().isOk())
@@ -64,14 +74,14 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
     // 5. Login Tenant 2
     String t2Token = login("admin2@t2.com", "password123", t2Response.getCompanyCode());
 
-    // 6. Verify Tenant 2 Isolation (Should only see 1 user: admin2)
+    // 7. Verify Tenant 2 Isolation (Should only see 1 user: admin2)
     mockMvc
         .perform(get("/api/tenant/users").header("Authorization", "Bearer " + t2Token))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content.length()").value(1))
         .andExpect(jsonPath("$.content[0].email").value("admin2@t2.com"));
 
-    // 7. Verify Logout and Blacklisting
+    // 8. Verify Logout and Blacklisting
     mockMvc
         .perform(post("/api/auth/logout").header("Authorization", "Bearer " + t1Token))
         .andExpect(status().isOk());
