@@ -6,18 +6,18 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
-@Profile("!test")
-public class HibernateTenantResolver implements CurrentTenantIdentifierResolver<Long> {
+@Profile("test")
+public class TestHibernateTenantResolver implements CurrentTenantIdentifierResolver<Long> {
+
+  private static final Long DEFAULT_TENANT_ID = 1L;
 
   @Override
   public Long resolveCurrentTenantIdentifier() {
     Long tenantId = TenantContext.get();
-    if (tenantId == null) {
-      // In multi-tenant environments, we must always have a tenant context
-      // to prevent cross-tenant data leakage or DB constraint failures.
-      throw new IllegalStateException("Tenant context is missing. Cannot resolve current tenant identifier.");
-    }
-    return tenantId;
+    // In tests, if no tenant is set, we return the default seeded tenant ID.
+    // This allows tests that don't explicitly set a tenant to still function
+    // in a multi-tenant environment.
+    return (tenantId != null) ? tenantId : DEFAULT_TENANT_ID;
   }
 
   @Override

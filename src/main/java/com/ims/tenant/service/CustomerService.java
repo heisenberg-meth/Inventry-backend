@@ -37,6 +37,7 @@ public class CustomerService {
 
   @Transactional
   public @NonNull Customer create(@NonNull Customer customer) {
+    customer.setTenantId(com.ims.shared.auth.TenantContext.get());
     return customerRepository.save(customer);
   }
 
