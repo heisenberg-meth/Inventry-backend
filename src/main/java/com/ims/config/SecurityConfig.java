@@ -51,9 +51,10 @@ public class SecurityConfig {
             ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
         .authorizeHttpRequests(
             auth ->
-                auth.requestMatchers("/auth/**")
-                    .permitAll()
-                    .requestMatchers("/api/auth/**")
+                auth.requestMatchers("/api/auth/login", "/api/auth/refresh", "/api/auth/signup", 
+                                    "/api/auth/forgot-password", "/api/auth/reset-password", 
+                                    "/api/auth/verify-email", "/api/auth/resend-verification",
+                                    "/api/auth/check-email", "/api/auth/check-slug", "/api/auth/check-company-code")
                     .permitAll()
                     .requestMatchers("/api/platform/auth/**")
                     .permitAll()
