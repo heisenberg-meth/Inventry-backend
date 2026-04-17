@@ -126,8 +126,8 @@ public class StockService {
   @Transactional
   @CacheEvict(value = { "stock", "products" }, allEntries = true)
   public void stockIn(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
-    Product product = productRepository
-        .findById(productId)
+    Product product = productService
+        .findByIdWithLock(productId)
         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
     int previousStock = product.getStock();
