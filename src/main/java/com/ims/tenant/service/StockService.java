@@ -27,7 +27,7 @@ import org.springframework.context.annotation.Lazy;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@SuppressWarnings("null")
+@SuppressWarnings({"null", "unused"})
 public class StockService {
 
   private final StockMovementRepository stockMovementRepository;
@@ -36,6 +36,13 @@ public class StockService {
   private final TransferOrderRepository transferOrderRepository;
   private final com.ims.product.ProductRepository productRepository; // Kept for JPA operations if needed, but primarily
                                                                      // using productService
+  private String getSafeTenantKey(String suffix) {
+      Long tenantId = TenantContext.getTenantId();
+      if (tenantId == null) {
+          throw new IllegalStateException("Tenant not resolved from request");
+      }
+      return tenantId + suffix;
+  }
 
   private void checkWarehouseType() {
     Long tenantId = TenantContext.getTenantId();
@@ -48,16 +55,34 @@ public class StockService {
   }
 
   public @NonNull Page<WarehouseProduct> getProductsByLocation(@NonNull String location, @NonNull Pageable pageable) {
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) {
+      log.error("Tenant ID is missing in StockService.getProductsByLocation");
+      throw new IllegalStateException("Tenant context is missing");
+    }
+    log.info("TenantContext: {}", tenantId);
     checkWarehouseType();
     return Objects.requireNonNull(warehouseProductRepository.findByLocation(location, pageable));
   }
 
   public @NonNull Page<TransferOrder> getTransferOrders(@NonNull Pageable pageable) {
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) {
+      log.error("Tenant ID is missing in StockService.getTransferOrders");
+      throw new IllegalStateException("Tenant context is missing");
+    }
+    log.info("TenantContext: {}", tenantId);
     checkWarehouseType();
     return Objects.requireNonNull(transferOrderRepository.findAll(pageable));
   }
 
   public @NonNull TransferOrder getTransferOrderById(@NonNull Long id) {
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) {
+      log.error("Tenant ID is missing in StockService.getTransferOrderById");
+      throw new IllegalStateException("Tenant context is missing");
+    }
+    log.info("TenantContext: {}", tenantId);
     checkWarehouseType();
     return Objects.requireNonNull(transferOrderRepository
         .findById(id)
@@ -68,6 +93,12 @@ public class StockService {
   @CacheEvict(value = { "stock", "products" }, allEntries = true)
   public @NonNull TransferOrder updateTransferStatus(@NonNull Long id, @NonNull TransferOrderStatusRequest request,
       @NonNull Long userId) {
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) {
+      log.error("Tenant ID is missing in StockService.updateTransferStatus");
+      throw new IllegalStateException("Tenant context is missing");
+    }
+    log.info("TenantContext: {}", tenantId);
     checkWarehouseType();
     TransferOrder order = transferOrderRepository
         .findById(id)
@@ -124,6 +155,12 @@ public class StockService {
   }
 
   public void stockIn(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) {
+      log.error("Tenant ID is missing in StockService.stockIn");
+      throw new IllegalStateException("Tenant context is missing");
+    }
+    log.info("TenantContext: {}", tenantId);
     int attempts = 0;
     while (attempts < 3) {
       try {
@@ -236,6 +273,12 @@ public class StockService {
 
 
   public void stockAdjust(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) {
+      log.error("Tenant ID is missing in StockService.stockAdjust");
+      throw new IllegalStateException("Tenant context is missing");
+    }
+    log.info("TenantContext: {}", tenantId);
     int attempts = 0;
     while (attempts < 3) {
       try {
@@ -282,11 +325,23 @@ public class StockService {
   }
 
   public @NonNull Page<StockMovement> getMovements(@NonNull Pageable pageable) {
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) {
+      log.error("Tenant ID is missing in StockService.getMovements");
+      throw new IllegalStateException("Tenant context is missing");
+    }
+    log.info("TenantContext: {}", tenantId);
     return Objects.requireNonNull(stockMovementRepository.findAllByOrderByCreatedAtDesc(pageable));
   }
 
   public @NonNull Page<StockMovement> getFilteredMovements(
       @NonNull Long productId, LocalDateTime from, LocalDateTime to, @NonNull Pageable pageable) {
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) {
+      log.error("Tenant ID is missing in StockService.getFilteredMovements");
+      throw new IllegalStateException("Tenant context is missing");
+    }
+    log.info("TenantContext: {}", tenantId);
     return Objects.requireNonNull(stockMovementRepository.findByFilters(productId, from, to, pageable));
   }
 }
