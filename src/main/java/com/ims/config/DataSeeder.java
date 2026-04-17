@@ -2,42 +2,41 @@ package com.ims.config;
 
 import com.ims.model.User;
 import com.ims.tenant.repository.UserRepository;
-import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.ApplicationArguments;
-import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
 
-//@Component
+@Component
+@org.springframework.context.annotation.Profile("dev")
 @RequiredArgsConstructor
 @Slf4j
-public class DataSeeder implements ApplicationRunner {
+public class DataSeeder implements CommandLineRunner {
 
-  private final UserRepository userRepository;
-  private final PasswordEncoder passwordEncoder;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-  @Override
-  public void run(ApplicationArguments args) {
-    // Check if root already exists anywhere (to avoid duplicates due to multi-tenancy filters)
-    boolean exists = userRepository.findByEmail("root@ims.com").isPresent();
-
-    if (!exists) {
-      log.info("Seed data: ROOT user not found. Creating...");
-      User root =
-          User.builder()
-              .name("Root Admin")
-              .email("root@ims.com")
-              .passwordHash(passwordEncoder.encode("root123"))
-              .role("ROOT")
-              .scope("PLATFORM")
-              .tenantId(0L) // Assigned to system tenant 0
-              .isActive(true)
-              .build();
-      userRepository.save(Objects.requireNonNull(root));
-      log.info("Seed data: ROOT user created (root@ims.com / root123)");
-    } else {
-      log.info("Seed data: ROOT user already exists");
+    @Override
+    public void run(String... args) {
+        seedPlatformAdmin();
     }
-  }
+
+    @SuppressWarnings("null")
+    private void seedPlatformAdmin() {
+        String adminEmail = "admin@platform.com";
+        if (userRepository.findByEmailUnfiltered(adminEmail).isEmpty()) {
+            User admin = User.builder()
+                    .name("Platform Admin")
+                    .email(adminEmail)
+                    .passwordHash(passwordEncoder.encode("admin-Secret-1234!"))
+                    .role("PLATFORM_ADMIN")
+                    .scope("PLATFORM")
+                    .isPlatformUser(true)
+                    .isActive(true)
+                    .build();
+            userRepository.save(admin);
+            log.info("Platform Admin seeded: {}", adminEmail);
+        }
+    }
 }

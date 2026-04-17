@@ -55,6 +55,9 @@ public class Invoice {
   @Column(name = "paid_at")
   private LocalDateTime paidAt;
 
+  @Column(name = "parent_invoice_id")
+  private Long parentInvoiceId;
+
   @Column(name = "created_at")
   @Builder.Default
   private LocalDateTime createdAt = LocalDateTime.now();

@@ -1,9 +1,17 @@
 package com.ims.tenant.service;
 
+import com.ims.shared.audit.AuditAction;
+import com.ims.shared.audit.AuditResource;
+
 import com.ims.model.Supplier;
 import com.ims.shared.rbac.RequiresPermission;
 import com.ims.tenant.repository.SupplierRepository;
+import com.ims.tenant.repository.OrderRepository;
+import com.ims.tenant.repository.InvoiceRepository;
+import com.ims.tenant.repository.PaymentRepository;
 import jakarta.persistence.EntityNotFoundException;
+import java.util.Map;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,6 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class SupplierService {
 
   private final SupplierRepository supplierRepository;
+  private final OrderRepository orderRepository;
+  private final InvoiceRepository invoiceRepository;
+  private final PaymentRepository paymentRepository;
   private final com.ims.shared.audit.AuditLogService auditLogService;
 
   public @NonNull Page<Supplier> getSuppliers(@NonNull Pageable pageable) {
@@ -31,11 +42,12 @@ public class SupplierService {
 
   @Transactional
   public @NonNull Supplier create(@NonNull Supplier supplier) {
+    supplier.setTenantId(com.ims.shared.auth.TenantContext.getTenantId());
     Supplier savedSupplier = Objects.requireNonNull(supplierRepository.save(supplier));
 
     auditLogService.logAudit(
-        "CREATE",
-        "SUPPLIER",
+        AuditAction.CREATE,
+        AuditResource.SUPPLIER,
         savedSupplier.getId(),
         "Created supplier: " + savedSupplier.getName());
 
@@ -63,8 +75,8 @@ public class SupplierService {
     Supplier updatedSupplier = Objects.requireNonNull(supplierRepository.save(supplier));
 
     auditLogService.logAudit(
-        "UPDATE",
-        "SUPPLIER",
+        AuditAction.UPDATE,
+        AuditResource.SUPPLIER,
         updatedSupplier.getId(),
         "Updated supplier: " + updatedSupplier.getName());
 
@@ -78,9 +90,23 @@ public class SupplierService {
     supplierRepository.delete(supplier);
 
     auditLogService.logAudit(
-        "DELETE",
-        "SUPPLIER",
+        AuditAction.DELETE,
+        AuditResource.SUPPLIER,
         id,
         "Deleted supplier: " + supplier.getName());
+  }
+
+  public Map<String, Object> getSupplierLedger(@NonNull Long id) {
+    Supplier supplier = getById(id);
+
+    List<com.ims.model.Order> orders = orderRepository.findBySupplierId(id, Pageable.unpaged()).getContent();
+    List<com.ims.model.Invoice> invoices = invoiceRepository.findBySupplierId(id);
+    List<com.ims.model.Payment> payments = paymentRepository.findBySupplierId(id);
+
+    return Map.of(
+        "supplier", supplier,
+        "orders", orders,
+        "invoices", invoices,
+        "payments", payments);
   }
 }

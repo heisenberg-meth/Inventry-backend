@@ -1,10 +1,14 @@
 package com.ims.shared.auth;
 
+import com.ims.shared.audit.AuditAction;
+import com.ims.shared.audit.AuditResource;
+
 import com.ims.dto.request.ChangePasswordRequest;
 import com.ims.dto.request.ForgotPasswordRequest;
 import com.ims.dto.request.LoginRequest;
 import com.ims.dto.request.ResetPasswordRequest;
 import com.ims.dto.response.LoginResponse;
+import com.ims.model.EmailVerification;
 import com.ims.model.Tenant;
 import com.ims.model.User;
 import com.ims.platform.repository.TenantRepository;
@@ -29,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class AuthService {
 
   private static final int LOGOUT_EXPIRY_HOURS = 24;
@@ -38,10 +43,160 @@ public class AuthService {
 
   private final UserRepository userRepository;
   private final TenantRepository tenantRepository;
+  private final EmailVerificationRepository emailVerificationRepository;
   private final JwtUtil jwtUtil;
   private final PasswordEncoder passwordEncoder;
   private final RedisTemplate<String, Object> redisTemplate;
   private final com.ims.shared.audit.AuditLogService auditLogService;
+
+  @Transactional(readOnly = true)
+  public Map<String, Boolean> checkEmail(String email) {
+    boolean exists = userRepository.findByEmailUnfiltered(email.trim().toLowerCase()).isPresent();
+    return Map.of("available", !exists);
+  }
+
+  @Transactional(readOnly = true)
+  public Map<String, Boolean> checkSlug(String slug) {
+    boolean exists = tenantRepository.existsByWorkspaceSlug(slug.trim().toLowerCase());
+    return Map.of("available", !exists);
+  }
+
+  @Transactional(readOnly = true)
+  public Map<String, Boolean> checkCompanyCode(String code) {
+    boolean exists = tenantRepository.existsByCompanyCode(code.trim().toUpperCase());
+    return Map.of("exists", exists);
+  }
+
+  @Transactional
+  public Map<String, String> verifyEmail(String token) {
+    EmailVerification verification = emailVerificationRepository.findByToken(token)
+        .orElseThrow(() -> new IllegalArgumentException("Invalid verification token"));
+
+    if (verification.isExpired()) {
+      throw new IllegalArgumentException("Verification token has expired");
+    }
+
+    User user = userRepository.findByIdUnfiltered(verification.getUserId())
+        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+    user.setIsVerified(true);
+    userRepository.save(user);
+    emailVerificationRepository.delete(verification);
+
+    log.info("Email verified for user: {}", user.getEmail());
+    return Map.of("message", "Email verified successfully");
+  }
+
+  @Transactional
+  public Map<String, String> resendVerification(String email) {
+    User user = userRepository.findByEmailUnfiltered(email)
+        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+    if (Boolean.TRUE.equals(user.getIsVerified())) {
+      throw new IllegalArgumentException("Email is already verified");
+    }
+
+    // Delete existing tokens
+    emailVerificationRepository.deleteByUserId(user.getId());
+
+    // Generate new token
+    String token = java.util.UUID.randomUUID().toString();
+    EmailVerification verification = EmailVerification.builder()
+        .userId(user.getId())
+        .token(token)
+        .expiresAt(LocalDateTime.now().plusHours(24))
+        .build();
+
+    emailVerificationRepository.save(verification);
+
+    log.info("Verification email resent to: {}", email);
+    // In production: send email with token
+    return Map.of("message", "Verification email sent", "token", token); // Token returned for dev
+  }
+
+  @Transactional(readOnly = true)
+  public LoginResponse impersonateTenant(Long tenantId) {
+    Tenant tenant = tenantRepository.findById(tenantId)
+        .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+
+    User targetUser = userRepository.findFirstByTenantIdAndRole(tenantId, "ADMIN")
+        .orElseThrow(() -> new EntityNotFoundException("No admin user found for this tenant"));
+
+    String scope = targetUser.getScope();
+    String businessType = tenant.getBusinessType();
+    
+    // Generate tokens with impersonation flag or just as the user
+    String accessToken = jwtUtil.generateToken(
+        targetUser.getId(), tenantId, targetUser.getRole(), scope, businessType, false);
+    
+    log.info("ROOT user impersonating tenant admin: {} (tenant={})", targetUser.getEmail(), tenantId);
+
+    return LoginResponse.builder()
+        .accessToken(accessToken)
+        .expiresIn(jwtUtil.getExpirySeconds())
+        .user(LoginResponse.UserResponse.builder()
+            .id(targetUser.getId().toString())
+            .name(targetUser.getName())
+            .email(targetUser.getEmail())
+            .role(targetUser.getRole())
+            .scope(targetUser.getScope())
+            .isPlatformUser(false)
+            .build())
+        .tenant(LoginResponse.TenantResponse.builder()
+            .id(tenant.getId())
+            .name(tenant.getName())
+            .type(tenant.getBusinessType())
+            .companyCode(tenant.getCompanyCode())
+            .workspaceSlug(tenant.getWorkspaceSlug())
+            .build())
+        .build();
+  }
+
+  @Transactional
+  public LoginResponse platformLogin(LoginRequest request) {
+    User user =
+        userRepository
+            .findByEmailUnfiltered(request.getEmail())
+            .orElseThrow(() -> new EntityNotFoundException("Invalid email or password"));
+
+    if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+      throw new IllegalArgumentException("Invalid email or password");
+    }
+
+    if (!Boolean.TRUE.equals(user.getIsActive())) {
+      throw new IllegalArgumentException("Account is deactivated");
+    }
+
+    if (!"PLATFORM".equals(user.getScope())) {
+      throw new IllegalArgumentException("Only platform administrators can log in here");
+    }
+
+    String scope = user.getScope();
+    String accessToken =
+        jwtUtil.generateToken(user.getId(), null, user.getRole(), scope, null, true);
+    String refreshToken =
+        jwtUtil.generateRefreshToken(user.getId(), null, user.getRole(), scope, null, true);
+
+    // Update last login
+    user.setLastLogin(LocalDateTime.now());
+    userRepository.save(user);
+
+    return LoginResponse.builder()
+        .accessToken(accessToken)
+        .refreshToken(refreshToken)
+        .expiresIn(jwtUtil.getExpirySeconds())
+        .user(
+            LoginResponse.UserResponse.builder()
+                .id(user.getId().toString())
+                .name(user.getName())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .role(user.getRole())
+                .scope(user.getScope())
+                .isPlatformUser(true)
+                .build())
+        .build();
+  }
 
   @Transactional
   public LoginResponse login(LoginRequest request) {
@@ -56,6 +211,11 @@ public class AuthService {
 
     if (!Boolean.TRUE.equals(user.getIsActive())) {
       throw new IllegalArgumentException("Account is deactivated");
+    }
+
+    // Check email verification for tenant users
+    if ("TENANT".equals(user.getScope()) && !Boolean.TRUE.equals(user.getIsVerified())) {
+      throw new IllegalArgumentException("Email not verified. Please verify your email before logging in.");
     }
 
     // Validate companyCode
@@ -91,9 +251,9 @@ public class AuthService {
     }
 
     String accessToken =
-        jwtUtil.generateToken(user.getId(), tenantId, user.getRole(), scope, businessType);
+        jwtUtil.generateToken(user.getId(), tenantId, user.getRole(), scope, businessType, Boolean.TRUE.equals(user.getIsPlatformUser()));
     String refreshToken =
-        jwtUtil.generateRefreshToken(user.getId(), tenantId, user.getRole(), scope, businessType);
+        jwtUtil.generateRefreshToken(user.getId(), tenantId, user.getRole(), scope, businessType, Boolean.TRUE.equals(user.getIsPlatformUser()));
 
     // Update last login
     user.setLastLogin(LocalDateTime.now());
@@ -111,6 +271,7 @@ public class AuthService {
                 .phone(user.getPhone())
                 .role(user.getRole())
                 .scope(user.getScope())
+                .isPlatformUser(Boolean.TRUE.equals(user.getIsPlatformUser()))
                 .build());
 
     if (tenantId != null) {
@@ -130,7 +291,7 @@ public class AuthService {
     }
 
     auditLogService.log(
-        "LOGIN",
+        AuditAction.LOGIN,
         tenantId,
         user.getId(),
         "User logged in: " + user.getEmail() + " (" + user.getScope() + ")");
@@ -179,9 +340,9 @@ public class AuthService {
     }
 
     String newAccessToken =
-        jwtUtil.generateToken(user.getId(), tenantId, user.getRole(), scope, businessType);
+        jwtUtil.generateToken(user.getId(), tenantId, user.getRole(), scope, businessType, Boolean.TRUE.equals(user.getIsPlatformUser()));
     String newRefreshToken =
-        jwtUtil.generateRefreshToken(user.getId(), tenantId, user.getRole(), scope, businessType);
+        jwtUtil.generateRefreshToken(user.getId(), tenantId, user.getRole(), scope, businessType, Boolean.TRUE.equals(user.getIsPlatformUser()));
 
     // Blacklist old refresh token
     logout(refreshToken);
@@ -198,6 +359,7 @@ public class AuthService {
                 .phone(user.getPhone())
                 .role(user.getRole())
                 .scope(user.getScope())
+                .isPlatformUser(Boolean.TRUE.equals(user.getIsPlatformUser()))
                 .build());
 
     if (tenantId != null) {
@@ -237,13 +399,14 @@ public class AuthService {
     userMap.put("phone", user.getPhone());
     userMap.put("role", user.getRole());
     userMap.put("scope", user.getScope());
+    userMap.put("isPlatformUser", Boolean.TRUE.equals(user.getIsPlatformUser()));
     userMap.put("isActive", user.getIsActive());
     userMap.put("lastLogin", user.getLastLogin());
     
     result.put("user", userMap);
 
     if (user.getTenantId() != null) {
-      tenantRepository.findById(Objects.requireNonNull(user.getTenantId())).ifPresent(tenant -> {
+      tenantRepository.findById(user.getTenantId()).ifPresent(tenant -> {
         Map<String, Object> tenantMap = new HashMap<>();
         tenantMap.put("id", tenant.getId());
         tenantMap.put("name", tenant.getName());
@@ -278,8 +441,8 @@ public class AuthService {
     userRepository.save(user);
 
     auditLogService.logAudit(
-        "PASSWORD_CHANGE",
-        "USER",
+        AuditAction.PASSWORD_CHANGE,
+        AuditResource.USER,
         user.getId(),
         "User changed their password: " + user.getEmail());
 
@@ -339,8 +502,8 @@ public class AuthService {
     userRepository.save(user);
 
     auditLogService.logAudit(
-        "PASSWORD_RESET",
-        "USER",
+        AuditAction.PASSWORD_RESET,
+        AuditResource.USER,
         user.getId(),
         "User reset their password: " + user.getEmail());
 

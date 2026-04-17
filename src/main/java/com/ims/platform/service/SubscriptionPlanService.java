@@ -5,11 +5,11 @@ import com.ims.dto.request.UpdateSubscriptionPlanRequest;
 import com.ims.model.SubscriptionPlan;
 import com.ims.platform.repository.SubscriptionPlanRepository;
 import com.ims.platform.repository.SubscriptionRepository;
+import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditLogService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
-import java.util.Objects;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class SubscriptionPlanService {
 
   private final SubscriptionPlanRepository planRepository;
@@ -58,9 +59,8 @@ public class SubscriptionPlanService {
             .status("ACTIVE")
             .build();
 
-    @SuppressWarnings("null")
-    SubscriptionPlan saved = Objects.requireNonNull(planRepository.save(plan));
-    auditLogService.log("CREATE_PLAN", null, null, "Created plan: " + saved.getName());
+    SubscriptionPlan saved = planRepository.save(plan);
+    auditLogService.log(AuditAction.CREATE_PLAN, null, null, "Created plan: " + saved.getName());
     log.info("Subscription plan created: id={} name={}", saved.getId(), saved.getName());
     return saved;
   }
@@ -117,7 +117,7 @@ public class SubscriptionPlanService {
     plan.setUpdatedAt(LocalDateTime.now());
     planRepository.save(plan);
 
-    auditLogService.log("DELETE_PLAN", null, null, "Deleted plan: " + plan.getName());
+    auditLogService.log(AuditAction.DELETE_PLAN, null, null, "Deleted plan: " + plan.getName());
     return Map.of("message", "Plan soft-deleted", "plan", plan.getName());
   }
 

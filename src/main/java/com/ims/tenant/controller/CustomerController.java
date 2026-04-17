@@ -1,6 +1,5 @@
 package com.ims.tenant.controller;
 
-import com.ims.model.Order;
 import com.ims.model.Customer;
 import com.ims.shared.rbac.RequiresRole;
 import com.ims.tenant.service.CustomerService;
@@ -33,6 +32,9 @@ public class CustomerController {
 
   private final CustomerService customerService;
   private final OrderService orderService;
+  private final com.ims.tenant.service.CustomerImportService importService;
+  private final com.ims.shared.utils.CsvExportService csvExportService;
+  private final com.ims.tenant.repository.CustomerRepository customerRepository;
 
   @GetMapping
   @RequiresRole({"ADMIN", "MANAGER"})
@@ -70,11 +72,39 @@ public class CustomerController {
     return ResponseEntity.noContent().build();
   }
 
-  @GetMapping("/{id}/orders")
+  @GetMapping("/{id}/ledger")
   @RequiresRole({"ADMIN", "MANAGER"})
-  @Operation(summary = "Get order history for customer")
-  public ResponseEntity<Page<Order>> getCustomerOrders(
-      @PathVariable @NonNull Long id, @NonNull Pageable pageable) {
-    return ResponseEntity.ok(orderService.getOrdersByCustomer(id, pageable));
+  @Operation(summary = "Get full ledger for customer")
+  public ResponseEntity<java.util.Map<String, Object>> getCustomerLedger(@PathVariable @NonNull Long id) {
+    return ResponseEntity.ok(customerService.getCustomerLedger(id));
+  }
+
+  @PostMapping("/bulk-import")
+  @RequiresRole({"ADMIN", "MANAGER"})
+  @Operation(summary = "Bulk import customers via CSV")
+  public ResponseEntity<java.util.Map<String, Object>> bulkImport(@org.springframework.web.bind.annotation.RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+    return ResponseEntity.ok(importService.importCustomers(file));
+  }
+
+  @GetMapping("/export")
+  @RequiresRole({"ADMIN", "MANAGER"})
+  @Operation(summary = "Export customers as CSV")
+  public ResponseEntity<String> export() {
+    var data = customerRepository.findAll().stream().map(c -> {
+      java.util.Map<String, Object> map = new java.util.LinkedHashMap<>();
+      map.put("ID", c.getId());
+      map.put("Name", c.getName());
+      map.put("Phone", c.getPhone());
+      map.put("Email", c.getEmail());
+      map.put("Address", c.getAddress());
+      map.put("GSTIN", c.getGstin());
+      return map;
+    }).collect(java.util.stream.Collectors.toList());
+
+    String csv = csvExportService.exportToCsv(java.util.List.of("ID", "Name", "Phone", "Email", "Address", "GSTIN"), data);
+    return ResponseEntity.ok()
+        .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=customers.csv")
+        .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "text/csv")
+        .body(csv);
   }
 }

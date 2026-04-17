@@ -36,6 +36,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class TenantController {
 
   private final TenantService tenantService;
+  private final com.ims.shared.auth.AuthService authService;
+  private final com.ims.shared.audit.AuditLogService auditLogService;
 
   @GetMapping
   @RequiresRole({"ROOT"})
@@ -82,11 +84,26 @@ public class TenantController {
     return ResponseEntity.ok(tenantService.suspendTenant(id));
   }
 
+  @SuppressWarnings("null")
   @PostMapping("/{id}/activate")
   @RequiresRole({"ROOT"})
-  @Operation(summary = "Activate a tenant")
-  public ResponseEntity<Map<String, String>> activateTenant(@NonNull @PathVariable Long id) {
+  @Operation(summary = "Activate tenant")
+  public ResponseEntity<Map<String, String>> activate(@PathVariable Long id) {
     return ResponseEntity.ok(tenantService.activateTenant(id));
+  }
+
+  @PostMapping("/{id}/impersonate")
+  @RequiresRole({"ROOT"})
+  @Operation(summary = "Impersonate tenant admin")
+  public ResponseEntity<com.ims.dto.response.LoginResponse> impersonate(@PathVariable Long id) {
+    return ResponseEntity.ok(authService.impersonateTenant(id));
+  }
+
+  @GetMapping("/{id}/audit")
+  @RequiresRole({"ROOT", "PLATFORM_ADMIN"})
+  @Operation(summary = "Get audit logs for a specific tenant")
+  public ResponseEntity<Page<com.ims.model.AuditLog>> getTenantAuditLogs(@PathVariable Long id, @NonNull Pageable pageable) {
+    return ResponseEntity.ok(auditLogService.getTenantLogs(id, pageable));
   }
 
   @GetMapping("/{id}/users")
@@ -94,9 +111,18 @@ public class TenantController {
   @Operation(summary = "List tenant users", description = "List users of a specific tenant with optional search")
   public ResponseEntity<Page<UserResponse>> getTenantUsers(
       @NonNull @PathVariable Long id,
-      @RequestParam(required = false) String search,
+      @RequestParam(required = false) String q,
       @NonNull Pageable pageable) {
-    return ResponseEntity.ok(tenantService.getTenantUsers(id, search, pageable));
+    return ResponseEntity.ok(tenantService.getTenantUsers(id, q, pageable));
+  }
+
+  @SuppressWarnings("null")
+  @DeleteMapping("/{id}/users/{userId}")
+  @RequiresRole({"ROOT"})
+  @Operation(summary = "Platform hard-delete a tenant user")
+  public ResponseEntity<Void> hardDeleteTenantUser(@PathVariable Long id, @PathVariable Long userId) {
+    tenantService.hardDeleteTenantUser(id, userId);
+    return ResponseEntity.noContent().build();
   }
 
   @PostMapping("/users/{userId}/reset-password")

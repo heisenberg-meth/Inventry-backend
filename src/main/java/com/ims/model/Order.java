@@ -56,6 +56,9 @@ public class Order {
   @Column(name = "created_by")
   private Long createdBy;
 
+  @Column(name = "reference_order_id")
+  private Long referenceOrderId;
+
   @Column(name = "created_at")
   @Builder.Default
   private LocalDateTime createdAt = LocalDateTime.now();
