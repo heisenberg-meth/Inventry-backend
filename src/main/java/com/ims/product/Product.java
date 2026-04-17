@@ -30,7 +30,7 @@ public class Product {
   private Long id;
 
   @Version
-  private Integer version;
+  private Long version;
 
   @TenantId
   @Column(name = "tenant_id", nullable = false)

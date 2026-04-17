@@ -32,7 +32,7 @@ public class User {
   private Long id;
 
   @Version
-  private Integer version;
+  private Long version;
 
   @TenantId
   @Column(name = "tenant_id")
