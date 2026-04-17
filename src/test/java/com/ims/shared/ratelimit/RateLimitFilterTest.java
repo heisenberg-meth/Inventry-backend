@@ -281,11 +281,38 @@ class RateLimitFilterTest {
 
   @Test
   void rejectsInvalidConfiguration() {
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> new RateLimitFilter(redisTemplate, jwtUtil, 0, PUBLIC_RPM, TENANT_RPM, WINDOW_SECONDS));
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> new RateLimitFilter(redisTemplate, jwtUtil, AUTH_RPM, PUBLIC_RPM, TENANT_RPM, 0));
+    // Each setting is checked and reported independently so operators see the exact property key
+    // (e.g. app.rate-limit.public-rpm) that needs fixing.
+    IllegalArgumentException authEx =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new RateLimitFilter(
+                    redisTemplate, jwtUtil, 0, PUBLIC_RPM, TENANT_RPM, WINDOW_SECONDS));
+    assertEquals("app.rate-limit.auth-rpm must be >= 1 (got 0)", authEx.getMessage());
+
+    IllegalArgumentException publicEx =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new RateLimitFilter(
+                    redisTemplate, jwtUtil, AUTH_RPM, 0, TENANT_RPM, WINDOW_SECONDS));
+    assertEquals("app.rate-limit.public-rpm must be >= 1 (got 0)", publicEx.getMessage());
+
+    IllegalArgumentException tenantEx =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new RateLimitFilter(
+                    redisTemplate, jwtUtil, AUTH_RPM, PUBLIC_RPM, 0, WINDOW_SECONDS));
+    assertEquals(
+        "app.rate-limit.authenticated-rpm must be >= 1 (got 0)", tenantEx.getMessage());
+
+    IllegalArgumentException windowEx =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> new RateLimitFilter(redisTemplate, jwtUtil, AUTH_RPM, PUBLIC_RPM, TENANT_RPM, 0));
+    assertEquals(
+        "app.rate-limit.window-seconds must be >= 1 (got 0)", windowEx.getMessage());
   }
 }
