@@ -54,6 +54,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
   /** Explicit prefixes that route to the authentication endpoints (strict brute-force tier). */
   private static final List<String> AUTH_PREFIXES = List.of("/auth", "/api/auth");
 
+  /** Shared format string for config-validation errors; pinned by {@code RateLimitFilterTest}. */
+  private static final String CONFIG_POSITIVE_MESSAGE = "%s must be >= 1 (got %d)";
+
   private final RedisTemplate<String, Object> redisTemplate;
   private final JwtUtil jwtUtil;
   private final int authRpm;
@@ -68,24 +71,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
       @Value("${app.rate-limit.public-rpm:100}") int publicRpm,
       @Value("${app.rate-limit.authenticated-rpm:500}") int tenantRpm,
       @Value("${app.rate-limit.window-seconds:60}") int windowSeconds) {
-    // Use the config property keys in the error messages (not the Java field names) so operators
+    // Error messages reference the config property keys (not the Java field names) so operators
     // can grep the stack trace against their application.yml without a translation step.
-    if (authRpm <= 0) {
-      throw new IllegalArgumentException(
-          "app.rate-limit.auth-rpm must be >= 1 (got " + authRpm + ")");
-    }
-    if (publicRpm <= 0) {
-      throw new IllegalArgumentException(
-          "app.rate-limit.public-rpm must be >= 1 (got " + publicRpm + ")");
-    }
-    if (tenantRpm <= 0) {
-      throw new IllegalArgumentException(
-          "app.rate-limit.authenticated-rpm must be >= 1 (got " + tenantRpm + ")");
-    }
-    if (windowSeconds <= 0) {
-      throw new IllegalArgumentException(
-          "app.rate-limit.window-seconds must be >= 1 (got " + windowSeconds + ")");
-    }
+    requirePositive("app.rate-limit.auth-rpm", authRpm);
+    requirePositive("app.rate-limit.public-rpm", publicRpm);
+    requirePositive("app.rate-limit.authenticated-rpm", tenantRpm);
+    requirePositive("app.rate-limit.window-seconds", windowSeconds);
     this.redisTemplate = redisTemplate;
     this.jwtUtil = jwtUtil;
     this.authRpm = authRpm;
@@ -223,6 +214,16 @@ public class RateLimitFilter extends OncePerRequestFilter {
       return true;
     }
     return path.startsWith(prefix + "/");
+  }
+
+  /**
+   * Throws {@link IllegalArgumentException} if {@code value} is not positive. The message quotes
+   * the {@code configKey} verbatim so operators can grep their {@code application.yml}.
+   */
+  private static void requirePositive(String configKey, int value) {
+    if (value <= 0) {
+      throw new IllegalArgumentException(String.format(CONFIG_POSITIVE_MESSAGE, configKey, value));
+    }
   }
 
   private boolean isAuthEndpoint(String path) {
