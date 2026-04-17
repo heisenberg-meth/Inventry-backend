@@ -42,6 +42,7 @@ public class SupplierService {
 
   @Transactional
   public @NonNull Supplier create(@NonNull Supplier supplier) {
+    supplier.setTenantId(com.ims.shared.auth.TenantContext.get());
     Supplier savedSupplier = Objects.requireNonNull(supplierRepository.save(supplier));
 
     auditLogService.logAudit(
