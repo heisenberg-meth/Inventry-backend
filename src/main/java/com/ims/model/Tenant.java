@@ -26,7 +26,7 @@ public class Tenant {
   private Long id;
 
   @Version
-  private Integer version;
+  private Long version;
 
   @Column(nullable = false)
   private String name;
