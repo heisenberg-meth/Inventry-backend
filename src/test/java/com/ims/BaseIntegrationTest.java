@@ -197,6 +197,14 @@ public abstract class BaseIntegrationTest {
     });
   }
 
+  protected void verifyUser(String email) {
+    userRepository.findByEmailUnfiltered(email).ifPresent(u -> {
+      u.setIsVerified(true);
+      userRepository.save(u);
+      entityManager.flush();
+    });
+  }
+
   protected void mockRedisAndCache() {
     // Redis Mocks to prevent NPEs (e.g., in RateLimitFilter)
     doReturn(valueOperations).when(redisTemplate).opsForValue();

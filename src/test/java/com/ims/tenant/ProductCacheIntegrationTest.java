@@ -60,6 +60,7 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
     signup.setOwnerEmail("admin@cache.com");
     signup.setPassword("password123");
     com.ims.dto.response.SignupResponse response = signupService.signup(signup);
+    verifyUser("admin@cache.com");
     
     String token = login("admin@cache.com", "password123", response.getCompanyCode());
 

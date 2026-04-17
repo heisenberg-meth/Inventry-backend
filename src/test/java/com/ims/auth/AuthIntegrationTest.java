@@ -52,14 +52,8 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
     com.ims.dto.response.SignupResponse t2Response = signupService.signup(t2Signup);
 
     // 3. Verify users (simulating email verification)
-    userRepository.findByEmailUnfiltered("admin1@t1.com").ifPresent(u -> {
-      u.setIsVerified(true);
-      userRepository.save(u);
-    });
-    userRepository.findByEmailUnfiltered("admin2@t2.com").ifPresent(u -> {
-      u.setIsVerified(true);
-      userRepository.save(u);
-    });
+    verifyUser("admin1@t1.com");
+    verifyUser("admin2@t2.com");
 
     // 4. Login Tenant 1
     String t1Token = login("admin1@t1.com", "password123", t1Response.getCompanyCode());
