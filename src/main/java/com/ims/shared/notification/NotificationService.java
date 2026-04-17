@@ -43,7 +43,7 @@ public class NotificationService {
   public void createNotification(Long userId, String title, String message, String type, Long resourceId) {
     Notification notification = Notification.builder()
         .userId(userId)
-        .tenantId(TenantContext.get())
+        .tenantId(TenantContext.getTenantId())
         .title(title)
         .message(message)
         .type(type)

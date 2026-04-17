@@ -26,7 +26,8 @@ public class PaymentService {
   private final InvoiceRepository invoiceRepository;
 
   @Transactional
-  public Payment recordPayment(@NonNull Long invoiceId, BigDecimal amount, String mode, String reference, String notes, Long userId) {
+  public Payment recordPayment(@NonNull Long invoiceId, BigDecimal amount, String mode, String reference, String notes,
+      Long userId) {
     Invoice invoice = invoiceRepository.findById(invoiceId)
         .orElseThrow(() -> new ResourceNotFoundException("Invoice not found: " + invoiceId));
 
@@ -35,7 +36,7 @@ public class PaymentService {
     }
 
     Payment payment = Payment.builder()
-        .tenantId(TenantContext.get())
+        .tenantId(TenantContext.getTenantId())
         .invoiceId(invoiceId)
         .amount(amount)
         .paymentMode(mode)

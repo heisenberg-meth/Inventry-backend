@@ -34,32 +34,32 @@ public class CategoryController {
   private final CategoryService categoryService;
 
   @GetMapping
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @RequiresRole({ "ADMIN", "MANAGER", "STAFF" })
   @Operation(summary = "List categories")
   public ResponseEntity<Page<CategoryResponse>> list(@NonNull Pageable pageable) {
-    Long tenantId = TenantContext.get();
+    Long tenantId = TenantContext.getTenantId();
     return ResponseEntity.ok(categoryService.getCategories(tenantId, pageable).map(categoryService::toResponse));
   }
 
   @PostMapping
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresRole({ "ADMIN", "MANAGER" })
   @Operation(summary = "Create category")
   public ResponseEntity<CategoryResponse> create(@Valid @RequestBody CategoryRequest request) {
-    if (TenantContext.get() == null) {
-        throw new IllegalStateException("Tenant context is required to create a category");
+    if (TenantContext.getTenantId() == null) {
+      throw new IllegalStateException("Tenant context is required to create a category");
     }
     return ResponseEntity.status(HttpStatus.CREATED).body(categoryService.toResponse(categoryService.create(request)));
   }
 
   @GetMapping("/{id}")
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @RequiresRole({ "ADMIN", "MANAGER", "STAFF" })
   @Operation(summary = "Get category details")
   public ResponseEntity<CategoryResponse> get(@NonNull @PathVariable Long id) {
     return ResponseEntity.ok(categoryService.toResponse(categoryService.getById(id)));
   }
 
   @PutMapping("/{id}")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresRole({ "ADMIN", "MANAGER" })
   @Operation(summary = "Update category")
   public ResponseEntity<CategoryResponse> update(
       @NonNull @PathVariable Long id, @Valid @RequestBody CategoryRequest request) {
@@ -67,7 +67,7 @@ public class CategoryController {
   }
 
   @DeleteMapping("/{id}")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresRole({ "ADMIN", "MANAGER" })
   @Operation(summary = "Delete category")
   public ResponseEntity<Void> delete(@NonNull @PathVariable Long id) {
     categoryService.delete(id);
