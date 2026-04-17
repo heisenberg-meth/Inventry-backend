@@ -42,6 +42,7 @@ public class RbacIntegrationTest extends BaseIntegrationTest {
   @Test
   void testRBAC() throws Exception {
     com.ims.dto.response.SignupResponse response = signupService.signup(createSignupRequest("RBAC Corp", "rbac-corp", "admin@rbac.com"));
+    verifyUserEmail("admin@rbac.com");
     String token = login("admin@rbac.com", "password123", response.getCompanyCode());
 
 

@@ -1,39 +1,40 @@
 package com.ims;
 
-import com.ims.platform.repository.*;
-import com.ims.shared.audit.AuditLogRepository;
-import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.repository.*;
+import com.ims.platform.repository.*;
+import com.ims.shared.auth.AuthService;
+import com.ims.shared.auth.TenantContext;
 import com.ims.product.ProductRepository;
 import com.ims.category.CategoryRepository;
+import com.ims.shared.audit.AuditLogRepository;
+import com.ims.shared.auth.EmailVerificationRepository;
+import java.util.Objects;
+import java.util.Collections;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ZSetOperations;
+import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
-import org.springframework.data.redis.core.ZSetOperations;
-import org.testcontainers.containers.PostgreSQLContainer;
+import org.springframework.cache.interceptor.CacheOperationInvocationContext;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import java.util.Collections;
-import java.util.Objects;
+import org.testcontainers.containers.PostgreSQLContainer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.ArgumentMatchers.anyString;
-import org.springframework.cache.interceptor.CacheOperationInvocationContext;
-
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -102,6 +103,10 @@ public abstract class BaseIntegrationTest {
   protected EntityManager entityManager;
   @Autowired
   protected PlatformTransactionManager transactionManager;
+  @Autowired
+  protected EmailVerificationRepository emailVerificationRepository;
+  @Autowired
+  protected AuthService authService;
 
   @MockitoBean
   protected RedisTemplate<String, Object> redisTemplate;
@@ -140,7 +145,7 @@ public abstract class BaseIntegrationTest {
       // Ensure tenant context is set during cleanup to avoid Hibernate issues
       TenantContext.setTenantId(1L);
       entityManager.flush();
-      
+
       // PostgreSQL: Disable triggers to allow truncation of tables with FKs
       jdbcTemplate.execute("SET session_replication_role = 'replica'");
 
@@ -194,6 +199,15 @@ public abstract class BaseIntegrationTest {
 
       entityManager.clear();
       return null;
+    });
+  }
+
+  protected void verifyUserEmail(String email) {
+    userRepository.findByEmailUnfiltered(email).ifPresent(u -> {
+      emailVerificationRepository.findAll().stream()
+          .filter(v -> v.getUserId().equals(u.getId()))
+          .findFirst()
+          .ifPresent(v -> authService.verifyEmail(v.getToken()));
     });
   }
 

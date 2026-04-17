@@ -41,7 +41,7 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
     
     // Tenant 1
     TenantContext.setTenantId(testTenant1Id);
-    User u1 = User.builder().tenantId(testTenant1Id).email("u1@t1.com").name("U1").passwordHash("p").role("ADMIN").scope("TENANT").build();
+    User u1 = User.builder().tenantId(testTenant1Id).email("u1@t1.com").name("U1").passwordHash("p").role("ADMIN").scope("TENANT").isVerified(true).build();
     u1 = userRepository.save(Objects.requireNonNull(u1));
     user1Id = u1.getId();
 
@@ -59,7 +59,7 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
 
     // Tenant 2
     TenantContext.setTenantId(testTenant2Id);
-    User u2 = User.builder().tenantId(testTenant2Id).email("u2@t2.com").name("U2").passwordHash("p").role("ADMIN").scope("TENANT").build();
+    User u2 = User.builder().tenantId(testTenant2Id).email("u2@t2.com").name("U2").passwordHash("p").role("ADMIN").scope("TENANT").isVerified(true).build();
     u2 = userRepository.save(Objects.requireNonNull(u2));
     user2Id = u2.getId();
 

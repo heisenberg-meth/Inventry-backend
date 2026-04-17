@@ -52,6 +52,7 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
     signup.setOwnerEmail("admin@pharmacy.com");
     signup.setPassword("password123");
     com.ims.dto.response.SignupResponse response = signupService.signup(signup);
+    verifyUserEmail("admin@pharmacy.com");
     String token = login("admin@pharmacy.com", "password123", response.getCompanyCode());
 
 
@@ -95,6 +96,7 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
     signup.setOwnerEmail("admin@expired.com");
     signup.setPassword("password123");
     com.ims.dto.response.SignupResponse response = signupService.signup(signup);
+    verifyUserEmail("admin@expired.com");
     
     String token = login("admin@expired.com", "password123", response.getCompanyCode());
 
@@ -138,6 +140,7 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
     signup.setOwnerEmail("admin@missing.com");
     signup.setPassword("password123");
     com.ims.dto.response.SignupResponse response = signupService.signup(signup);
+    verifyUserEmail("admin@missing.com");
     
     String token = login("admin@missing.com", "password123", response.getCompanyCode());
 
