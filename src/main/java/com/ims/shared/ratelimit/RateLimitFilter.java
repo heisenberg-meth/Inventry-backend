@@ -51,6 +51,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
           "/favicon.ico",
           "/error");
 
+  /** Explicit prefixes that route to the authentication endpoints (strict brute-force tier). */
+  private static final List<String> AUTH_PREFIXES = List.of("/auth", "/api/auth");
+
   private final RedisTemplate<String, Object> redisTemplate;
   private final JwtUtil jwtUtil;
   private final int authRpm;
@@ -65,6 +68,15 @@ public class RateLimitFilter extends OncePerRequestFilter {
       @Value("${app.rate-limit.public-rpm:100}") int publicRpm,
       @Value("${app.rate-limit.authenticated-rpm:500}") int tenantRpm,
       @Value("${app.rate-limit.window-seconds:60}") int windowSeconds) {
+    if (authRpm <= 0 || publicRpm <= 0 || tenantRpm <= 0) {
+      throw new IllegalArgumentException(
+          "app.rate-limit.*-rpm must be >= 1 (got auth=" + authRpm
+              + ", public=" + publicRpm + ", authenticated=" + tenantRpm + ")");
+    }
+    if (windowSeconds <= 0) {
+      throw new IllegalArgumentException(
+          "app.rate-limit.window-seconds must be >= 1 (got " + windowSeconds + ")");
+    }
     this.redisTemplate = redisTemplate;
     this.jwtUtil = jwtUtil;
     this.authRpm = authRpm;
@@ -75,12 +87,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
   @Override
   protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
-    String path = request.getRequestURI();
-    if (path == null) {
-      return false;
-    }
+    String path = normalizedPath(request);
     for (String prefix : EXCLUDED_PREFIXES) {
-      if (path.startsWith(prefix)) {
+      if (matchesPrefix(path, prefix)) {
         return true;
       }
     }
@@ -95,8 +104,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
     String clientIp = resolveClientIp(req);
     String tenantId = resolveTenantId(req);
 
-    String path = req.getRequestURI() == null ? "" : req.getRequestURI();
-    boolean isAuthEndpoint = path.contains("/auth/");
+    String path = normalizedPath(req);
+    boolean isAuthEndpoint = isAuthEndpoint(path);
 
     int limit;
     String key;
@@ -151,8 +160,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
       }
     } catch (Exception e) {
       // Fail open if Redis/Valkey is unreachable — do not block legitimate traffic because of
-      // an infrastructure issue. The warning is logged so ops can alert on it.
-      log.warn("Rate limit check skipped due to cache backend failure: {}", e.getMessage());
+      // an infrastructure issue. The full exception is logged so ops can diagnose the outage.
+      log.warn("Rate limit check skipped due to cache backend failure", e);
     }
 
     chain.doFilter(req, res);
@@ -177,6 +186,43 @@ public class RateLimitFilter extends OncePerRequestFilter {
       return real.trim();
     }
     return req.getRemoteAddr() == null ? "unknown" : req.getRemoteAddr();
+  }
+
+  /**
+   * Returns the request path with any servlet/context prefix stripped, so that prefix matching
+   * works regardless of how the app is deployed (root or under a context path).
+   */
+  private String normalizedPath(HttpServletRequest req) {
+    String servletPath = req.getServletPath();
+    if (servletPath != null && !servletPath.isEmpty()) {
+      return servletPath;
+    }
+    String uri = req.getRequestURI();
+    if (uri == null) {
+      return "";
+    }
+    String ctx = req.getContextPath();
+    if (ctx != null && !ctx.isEmpty() && uri.startsWith(ctx)) {
+      return uri.substring(ctx.length());
+    }
+    return uri;
+  }
+
+  /** {@code true} iff {@code path} equals {@code prefix} or starts with {@code prefix + '/'}. */
+  private boolean matchesPrefix(String path, String prefix) {
+    if (path.equals(prefix)) {
+      return true;
+    }
+    return path.startsWith(prefix + "/");
+  }
+
+  private boolean isAuthEndpoint(String path) {
+    for (String prefix : AUTH_PREFIXES) {
+      if (matchesPrefix(path, prefix)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
