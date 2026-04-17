@@ -1,7 +1,9 @@
 package com.ims.shared.ratelimit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -13,6 +15,7 @@ import static org.mockito.Mockito.when;
 
 import com.ims.shared.auth.JwtUtil;
 import jakarta.servlet.FilterChain;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -112,6 +115,8 @@ class RateLimitFilterTest {
     assertEquals(200, res.getStatus());
     assertEquals(String.valueOf(TENANT_RPM), res.getHeader("X-RateLimit-Limit"));
     verify(zSet).add(eq("rate:tenant:42:10.0.0.4"), any(), anyDouble());
+    verify(redisTemplate)
+        .expire(eq("rate:tenant:42:10.0.0.4"), eq((long) WINDOW_SECONDS), eq(TimeUnit.SECONDS));
     verify(chain).doFilter(req, res);
   }
 
@@ -149,6 +154,51 @@ class RateLimitFilterTest {
   }
 
   @Test
+  void usesSingleXForwardedForIpWhenPresent() throws Exception {
+    when(zSet.zCard(anyString())).thenReturn(1L);
+
+    MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/public/ping");
+    req.setRemoteAddr("10.0.0.99");
+    req.addHeader("X-Forwarded-For", "198.51.100.23");
+    MockHttpServletResponse res = new MockHttpServletResponse();
+    FilterChain chain = mock(FilterChain.class);
+
+    filter.doFilter(req, res, chain);
+
+    verify(zSet).add(eq("rate:public:198.51.100.23"), any(), anyDouble());
+  }
+
+  @Test
+  void fallsBackToXRealIpWhenForwardedForBlank() throws Exception {
+    when(zSet.zCard(anyString())).thenReturn(1L);
+
+    MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/public/ping");
+    req.setRemoteAddr("10.0.0.99");
+    req.addHeader("X-Forwarded-For", "   ");
+    req.addHeader("X-Real-IP", "198.51.100.42");
+    MockHttpServletResponse res = new MockHttpServletResponse();
+    FilterChain chain = mock(FilterChain.class);
+
+    filter.doFilter(req, res, chain);
+
+    verify(zSet).add(eq("rate:public:198.51.100.42"), any(), anyDouble());
+  }
+
+  @Test
+  void fallsBackToRemoteAddrWhenNoProxyHeaders() throws Exception {
+    when(zSet.zCard(anyString())).thenReturn(1L);
+
+    MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/public/ping");
+    req.setRemoteAddr("192.0.2.55");
+    MockHttpServletResponse res = new MockHttpServletResponse();
+    FilterChain chain = mock(FilterChain.class);
+
+    filter.doFilter(req, res, chain);
+
+    verify(zSet).add(eq("rate:public:192.0.2.55"), any(), anyDouble());
+  }
+
+  @Test
   void failsOpenWhenRedisThrows() throws Exception {
     when(zSet.zCard(anyString())).thenThrow(new RuntimeException("redis down"));
 
@@ -160,11 +210,16 @@ class RateLimitFilterTest {
     filter.doFilter(req, res, chain);
 
     assertEquals(200, res.getStatus());
+    // Cache outage → rate-limit headers are intentionally absent so downstream code cannot
+    // mistake them for an authoritative count. Contract locked in by this assertion.
+    assertNull(res.getHeader("X-RateLimit-Limit"));
+    assertNull(res.getHeader("X-RateLimit-Remaining"));
+    assertNull(res.getHeader("Retry-After"));
     verify(chain).doFilter(req, res);
   }
 
   @Test
-  void skipsExcludedPaths() throws Exception {
+  void skipsExcludedActuatorPath() throws Exception {
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/actuator/health");
     req.setRemoteAddr("10.0.0.7");
     MockHttpServletResponse res = new MockHttpServletResponse();
@@ -175,5 +230,62 @@ class RateLimitFilterTest {
     assertNull(res.getHeader("X-RateLimit-Limit"));
     verify(chain).doFilter(req, res);
     verify(zSet, never()).zCard(anyString());
+  }
+
+  @Test
+  void skipsExcludedSwaggerAndApiDocsPaths() throws Exception {
+    for (String path : new String[] {"/swagger-ui/index.html", "/v3/api-docs/ims-api"}) {
+      MockHttpServletRequest req = new MockHttpServletRequest("GET", path);
+      req.setRemoteAddr("10.0.0.8");
+      MockHttpServletResponse res = new MockHttpServletResponse();
+      FilterChain chain = mock(FilterChain.class);
+
+      filter.doFilter(req, res, chain);
+
+      assertNull(res.getHeader("X-RateLimit-Limit"), "headers set for " + path);
+      verify(chain).doFilter(req, res);
+    }
+    verify(zSet, never()).zCard(anyString());
+  }
+
+  @Test
+  void stillRateLimitsNearMissOfExcludedPath() throws Exception {
+    when(zSet.zCard(anyString())).thenReturn(1L);
+
+    MockHttpServletRequest req = new MockHttpServletRequest("GET", "/actuatorx/health");
+    req.setRemoteAddr("10.0.0.9");
+    MockHttpServletResponse res = new MockHttpServletResponse();
+    FilterChain chain = mock(FilterChain.class);
+
+    filter.doFilter(req, res, chain);
+
+    assertNotNull(res.getHeader("X-RateLimit-Limit"));
+    verify(chain).doFilter(req, res);
+    verify(zSet).zCard(anyString());
+  }
+
+  @Test
+  void doesNotTreatUnrelatedAuthSubstringAsAuthEndpoint() throws Exception {
+    when(zSet.zCard(anyString())).thenReturn(1L);
+
+    MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/tenant/auth-logs");
+    req.setRemoteAddr("10.0.0.10");
+    MockHttpServletResponse res = new MockHttpServletResponse();
+    FilterChain chain = mock(FilterChain.class);
+
+    filter.doFilter(req, res, chain);
+
+    // Not the auth tier — contains "/auth" as a substring but is not /auth or /api/auth subtree.
+    assertEquals(String.valueOf(PUBLIC_RPM), res.getHeader("X-RateLimit-Limit"));
+  }
+
+  @Test
+  void rejectsInvalidConfiguration() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new RateLimitFilter(redisTemplate, jwtUtil, 0, PUBLIC_RPM, TENANT_RPM, WINDOW_SECONDS));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new RateLimitFilter(redisTemplate, jwtUtil, AUTH_RPM, PUBLIC_RPM, TENANT_RPM, 0));
   }
 }
