@@ -48,8 +48,14 @@ app:
     tenant-ttl-hours: 1
 
   rate-limit:
-    public-rpm: 100
-    authenticated-rpm: 500
+    # Strict per-IP cap on /auth/** to mitigate credential stuffing / brute force.
+    auth-rpm: ${APP_RATE_LIMIT_AUTH_RPM:20}
+    # Per-IP cap on unauthenticated traffic.
+    public-rpm: ${APP_RATE_LIMIT_PUBLIC_RPM:100}
+    # Per-tenant+IP cap on authenticated API traffic.
+    authenticated-rpm: ${APP_RATE_LIMIT_AUTHENTICATED_RPM:500}
+    # Sliding-window size, in seconds.
+    window-seconds: ${APP_RATE_LIMIT_WINDOW_SECONDS:60}
 
 management:
   endpoints:
