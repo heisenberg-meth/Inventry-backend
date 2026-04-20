@@ -1,15 +1,15 @@
 spring:
   datasource:
-    url: ${DB_URL}
-    username: ${DB_USER}
-    password: ${DB_PASS}
+    url: ${DB_URL:jdbc:postgresql://dpg-d7itbv67r5hc73b7549g-a:5432/ims_bs9t}
+    username: ${DB_USERNAME:ims_bs9t_user}
+    password: ${DB_PASSWORD:D0JWxAxXR73r4qe5AQJVDP4R0lKCRqZf}
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
     open-in-view: false
     properties:
@@ -18,9 +18,14 @@ spring:
         # dialect: org.hibernate.dialect.PostgreSQLDialect
 
   flyway:
-    enabled: false
+    enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
+    fail-on-missing-locations: false
+    connect-retries: 20
+    connect-retries-interval: 5
+    # Optional: repair-on-migrate can help with checksum mismatches on startup
+    # repair-on-migrate: true
 
   data:
     redis:
