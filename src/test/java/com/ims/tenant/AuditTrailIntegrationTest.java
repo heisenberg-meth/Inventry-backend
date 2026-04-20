@@ -52,6 +52,7 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
     signup.setPassword("password123");
     com.ims.dto.response.SignupResponse response = signupService.signup(signup);
     verifyUserEmail("admin@audit.com");
+    verifyUser("admin@audit.com");
     
     String token = login("admin@audit.com", "password123", response.getCompanyCode());
 
@@ -98,11 +99,13 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
     // Tenant 1
     com.ims.dto.response.SignupResponse r1 = signupService.signup(createSignupRequest("T1", "t1-audit", "admin@t1.com"));
     verifyUserEmail("admin@t1.com");
+    verifyUser("admin@t1.com");
     String t1Token = login("admin@t1.com", "password123", r1.getCompanyCode());
     
     // Tenant 2
     com.ims.dto.response.SignupResponse r2 = signupService.signup(createSignupRequest("T2", "t2-audit", "admin@t2.com"));
     verifyUserEmail("admin@t2.com");
+    verifyUser("admin@t2.com");
     String t2Token = login("admin@t2.com", "password123", r2.getCompanyCode());
 
     // T1 performs an action

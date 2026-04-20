@@ -54,6 +54,9 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
     // 3. Verify users (simulating realistic email verification flow)
     verifyUserEmail("admin1@t1.com");
     verifyUserEmail("admin2@t2.com");
+    // 3. Verify users (simulating email verification)
+    verifyUser("admin1@t1.com");
+    verifyUser("admin2@t2.com");
 
     // 4. Login Tenant 1
     String t1Token = login("admin1@t1.com", "password123", t1Response.getCompanyCode());

@@ -208,6 +208,11 @@ public abstract class BaseIntegrationTest {
           .filter(v -> v.getUserId().equals(u.getId()))
           .findFirst()
           .ifPresent(v -> authService.verifyEmail(v.getToken()));
+  protected void verifyUser(String email) {
+    userRepository.findByEmailUnfiltered(email).ifPresent(u -> {
+      u.setIsVerified(true);
+      userRepository.save(u);
+      entityManager.flush();
     });
   }
 

@@ -56,6 +56,7 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
     SignupRequest t1Signup = createSignupRequest("Tenant 1", "t1-mgt", "admin-mgt1@t1.com");
     com.ims.dto.response.SignupResponse response = signupService.signup(t1Signup);
     verifyUserEmail("admin-mgt1@t1.com");
+    verifyUser("admin-mgt1@t1.com");
     String t1Token = login("admin-mgt1@t1.com", "password123", response.getCompanyCode());
 
     // 2. Tenant ADMIN can create users in their tenant
@@ -87,11 +88,13 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
     // 1. Signup Tenant 1
     com.ims.dto.response.SignupResponse r1 = signupService.signup(createSignupRequest("Tenant 1-Iso", "t1-iso", "admin-iso1@t1.com"));
     verifyUserEmail("admin-iso1@t1.com");
+    verifyUser("admin-iso1@t1.com");
     String t1Token = login("admin-iso1@t1.com", "password123", r1.getCompanyCode());
 
     // 2. Signup Tenant 2
     com.ims.dto.response.SignupResponse r2 = signupService.signup(createSignupRequest("Tenant 2-Iso", "t2-iso", "admin-iso2@t2.com"));
     verifyUserEmail("admin-iso2@t2.com");
+    verifyUser("admin-iso2@t2.com");
     login("admin-iso2@t2.com", "password123", r2.getCompanyCode());
 
     // 3. Tenant 1 Admin cannot see Tenant 2 Admin (Users should be isolated)
@@ -107,6 +110,7 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
     // 1. Signup Tenant 1
     com.ims.dto.response.SignupResponse r1 = signupService.signup(createSignupRequest("Tenant 1-RBAC", "t1-rbac", "admin-rbac1@t1.com"));
     verifyUserEmail("admin-rbac1@t1.com");
+    verifyUser("admin-rbac1@t1.com");
     String t1Token = login("admin-rbac1@t1.com", "password123", r1.getCompanyCode());
 
     // 2. Tenant ADMIN cannot access Platform APIs (ROOT only)

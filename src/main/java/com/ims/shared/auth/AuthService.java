@@ -177,9 +177,8 @@ public class AuthService {
     String refreshToken =
         jwtUtil.generateRefreshToken(user.getId(), null, user.getRole(), scope, null, true);
 
-    // Update last login
-    user.setLastLogin(LocalDateTime.now());
-    userRepository.save(user);
+    // Update last login (atomic update, no version increment)
+    userRepository.updateLastLogin(user.getId(), LocalDateTime.now());
 
     return LoginResponse.builder()
         .accessToken(accessToken)
@@ -255,9 +254,8 @@ public class AuthService {
     String refreshToken =
         jwtUtil.generateRefreshToken(user.getId(), tenantId, user.getRole(), scope, businessType, Boolean.TRUE.equals(user.getIsPlatformUser()));
 
-    // Update last login
-    user.setLastLogin(LocalDateTime.now());
-    userRepository.save(user);
+    // Update last login (atomic update, no version increment)
+    userRepository.updateLastLogin(user.getId(), LocalDateTime.now());
 
     LoginResponse.LoginResponseBuilder responseBuilder = LoginResponse.builder()
         .accessToken(accessToken)
