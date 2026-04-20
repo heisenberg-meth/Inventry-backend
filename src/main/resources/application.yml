@@ -31,7 +31,7 @@ spring:
     redis:
       repositories:
         enabled: false
-      host: localhost
+      host: redis://red-d7iti5d8nd3s738mn5jg:6379
       port: 6379
       password: "ims@123"
       timeout: 3000ms
