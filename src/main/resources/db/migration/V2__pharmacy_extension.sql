@@ -3,7 +3,10 @@
 -- Pharmacy-specific extension tables
 -- ============================================
 
-CREATE TABLE pharmacy_products (
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'pharmacy_products') THEN
+        CREATE TABLE pharmacy_products (
   product_id    BIGINT       PRIMARY KEY REFERENCES products(id) ON DELETE CASCADE,
   batch_number  VARCHAR(100),
   expiry_date   DATE         NOT NULL,
@@ -11,4 +14,11 @@ CREATE TABLE pharmacy_products (
   hsn_code      VARCHAR(50),
   schedule      VARCHAR(10)
 );
-CREATE INDEX idx_pharmacy_expiry ON pharmacy_products(expiry_date);
+    END IF;
+END $$;
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_pharmacy_expiry') THEN
+        CREATE INDEX idx_pharmacy_expiry ON pharmacy_products(expiry_date);
+    END IF;
+END $$;

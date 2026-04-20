@@ -3,8 +3,18 @@
 -- Add product and user limits to tenants
 -- ============================================
 
-ALTER TABLE tenants ADD COLUMN max_products INTEGER;
-ALTER TABLE tenants ADD COLUMN max_users INTEGER;
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'tenants' AND column_name = 'max_products') THEN
+        ALTER TABLE tenants ADD COLUMN max_products INTEGER;
+    END IF;
+END $$;
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'tenants' AND column_name = 'max_users') THEN
+        ALTER TABLE tenants ADD COLUMN max_users INTEGER;
+    END IF;
+END $$;
 
 -- Set default values for existing tenants
 -- FREE: 50 products, 2 users
