@@ -59,6 +59,7 @@ public class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
         jdbcTemplate.queryForObject("SELECT id FROM tenants WHERE workspace_slug = 'conc-corp'", Long.class));
     userId = Objects
         .requireNonNull(jdbcTemplate.queryForObject("SELECT id FROM users WHERE email = 'admin@conc.com'", Long.class));
+    verifyUser("admin@conc.com");
 
     TenantContext.setTenantId(tenantId);
     Product product = Product.builder()

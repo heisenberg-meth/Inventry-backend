@@ -173,6 +173,9 @@ public class StockService {
   public void stockInInternal(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
     Product product = productRepository
         .findById(productId)
+  public void stockIn(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
+    Product product = productService
+        .findByIdWithLock(productId)
         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
     int previousStock = product.getStock();

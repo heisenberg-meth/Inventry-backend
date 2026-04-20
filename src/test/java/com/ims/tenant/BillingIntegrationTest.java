@@ -67,6 +67,7 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
     signup.setGstin("29ABCDE1234F1Z5");
     com.ims.dto.response.SignupResponse response = signupService.signup(signup);
     verifyUserEmail("admin@billing.com");
+    verifyUser("admin@billing.com");
 
     Long tenantId = tenantRepository.findByWorkspaceSlug("billing-corp").orElseThrow().getId();
     String token = login("admin@billing.com", "password123", response.getCompanyCode());
