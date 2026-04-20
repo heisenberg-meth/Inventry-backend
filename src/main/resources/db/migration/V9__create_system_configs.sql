@@ -3,12 +3,17 @@
 -- Create system_configs table for global feature flags and support mode
 -- ============================================
 
-CREATE TABLE system_configs (
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'system_configs') THEN
+        CREATE TABLE system_configs (
     config_key VARCHAR(100) PRIMARY KEY,
     config_value VARCHAR(255) NOT NULL,
     description TEXT,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+    END IF;
+END $$;
 
 -- Seed initial configs
 INSERT INTO system_configs (config_key, config_value, description) VALUES 
