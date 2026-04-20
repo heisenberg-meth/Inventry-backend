@@ -41,7 +41,13 @@ public class NotificationService {
 
   @Transactional
   public void createNotification(Long userId, String title, String message, String type, Long resourceId) {
-    Notification notification = Notification.builder()
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) {
+      log.error("Tenant ID is missing in NotificationService.createNotification");
+      throw new IllegalStateException("Tenant context is missing");
+    }
+    log.info("TenantContext: {}", tenantId);
+    var notification = Notification.builder()
         .userId(userId)
         .tenantId(TenantContext.getTenantId())
         .title(title)

@@ -24,6 +24,7 @@ public class GlobalExceptionHandler {
   private static final int STATUS_FORBIDDEN = 403;
   private static final int STATUS_UNPROCESSABLE = 422;
   private static final int STATUS_CONFLICT = 409;
+  private static final int STATUS_UNAUTHORIZED = 401;
   private static final int STATUS_INTERNAL_ERROR = 500;
 
 
@@ -61,6 +62,13 @@ public class GlobalExceptionHandler {
       AccessDeniedException ex, HttpServletRequest request) {
     return ResponseEntity.status(HttpStatus.FORBIDDEN)
         .body(errorBody(STATUS_FORBIDDEN, "FORBIDDEN", ex.getMessage(), request.getRequestURI()));
+  }
+
+  @ExceptionHandler(UnauthorizedException.class)
+  public ResponseEntity<Map<String, Object>> handleUnauthorized(
+      UnauthorizedException ex, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+        .body(errorBody(STATUS_UNAUTHORIZED, "UNAUTHORIZED", ex.getMessage(), request.getRequestURI()));
   }
 
   @ExceptionHandler(InsufficientStockException.class)

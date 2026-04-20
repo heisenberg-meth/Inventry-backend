@@ -63,6 +63,7 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
     signup.setOwnerEmail("admin@order.com");
     signup.setPassword("password123");
     SignupResponse response = signupService.signup(signup);
+    verifyUserEmail("admin@order.com");
     verifyUser("admin@order.com");
 
     Long tenantId = tenantRepository.findByWorkspaceSlug(response.getWorkspaceSlug()).orElseThrow().getId();

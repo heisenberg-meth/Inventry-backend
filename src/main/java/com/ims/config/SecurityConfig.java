@@ -20,7 +20,6 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.http.HttpStatus;
 
-
 import org.springframework.beans.factory.annotation.Value;
 
 @Configuration
@@ -51,23 +50,23 @@ public class SecurityConfig {
             ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
         .authorizeHttpRequests(
             auth ->
-                auth.requestMatchers("/auth/**")
-                    .permitAll()
-                    .requestMatchers("/api/auth/**")
-                    .permitAll()
-                    .requestMatchers("/api/platform/auth/**")
-                    .permitAll()
-                    .requestMatchers("/api/platform/invites/accept", "/api/platform/invites/complete")
-                    .permitAll()
-                    .requestMatchers("/api/tenant/payments/gateway/webhook")
-                    .permitAll()
-                    .requestMatchers("/actuator/**")
-                    .permitAll()
-                    .requestMatchers(
-                        "/swagger-ui/**", "/api-docs/**", "/swagger-ui.html", "/v3/api-docs/**")
-                    .permitAll()
-                    .anyRequest()
-                    .authenticated())
+                auth.requestMatchers(
+                        "/api/auth/login",
+                        "/api/auth/signup",
+                        "/api/auth/refresh",
+                        "/api/auth/forgot-password",
+                        "/api/auth/reset-password",
+                        "/api/auth/verify-email",
+                        "/api/auth/resend-verification",
+                        "/api/auth/check-email",
+                        "/api/auth/check-slug",
+                        "/api/auth/check-company-code"
+                    ).permitAll()
+                    .requestMatchers("/api/platform/auth/login").permitAll()
+                    .requestMatchers("/api/platform/invites/accept", "/api/platform/invites/complete").permitAll()
+                    .requestMatchers("/api/tenant/payments/gateway/webhook").permitAll()
+                    .requestMatchers("/actuator/**", "/swagger-ui/**", "/swagger-ui.html", "/api-docs/**", "/v3/api-docs/**").permitAll()
+                    .anyRequest().authenticated())
         .addFilterBefore(traceFilter, UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

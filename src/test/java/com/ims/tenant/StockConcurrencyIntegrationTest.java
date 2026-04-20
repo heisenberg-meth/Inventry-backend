@@ -52,6 +52,7 @@ public class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
     signup.setOwnerEmail("admin@conc.com");
     signup.setPassword("password123");
     signupService.signup(signup);
+    verifyUserEmail("admin@conc.com");
 
     // Query directly via JDBC to avoid transaction lag or cache issues in setup
     tenantId = Objects.requireNonNull(
