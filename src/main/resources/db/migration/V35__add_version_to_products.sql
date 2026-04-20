@@ -1,4 +1,7 @@
 -- V35__add_version_to_products.sql
-ALTER TABLE products
-ADD COLUMN version BIGINT DEFAULT 0;
-ALTER TABLE products ADD COLUMN version BIGINT DEFAULT 0;
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'version') THEN
+        ALTER TABLE products ADD COLUMN version BIGINT DEFAULT 0;
+    END IF;
+END $$;
