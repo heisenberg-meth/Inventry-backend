@@ -21,7 +21,7 @@ public class SwaggerConfig {
                 .title("IMS — Inventory Management System API")
                 .version("1.0.0")
                 .description("Multi-tenant SaaS Inventory Platform"))
-        .servers(List.of(new Server().url("http://localhost:8080")))
+        .servers(List.of(new Server().url("https://inventry-backend-3zc8.onrender.com")))
         .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
         .components(
             new Components()
