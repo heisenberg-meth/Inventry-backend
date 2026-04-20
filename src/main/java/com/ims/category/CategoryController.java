@@ -1,6 +1,7 @@
 package com.ims.category;
 
 import com.ims.dto.response.CategoryResponse;
+import com.ims.dto.response.PagedResponse;
 import com.ims.shared.auth.TenantContext;
 
 import com.ims.dto.CategoryRequest;
@@ -10,7 +11,6 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,9 +36,9 @@ public class CategoryController {
   @GetMapping
   @RequiresRole({ "ADMIN", "MANAGER", "STAFF" })
   @Operation(summary = "List categories")
-  public ResponseEntity<Page<CategoryResponse>> list(@NonNull Pageable pageable) {
+  public ResponseEntity<PagedResponse<CategoryResponse>> list(@NonNull Pageable pageable) {
     Long tenantId = TenantContext.getTenantId();
-    return ResponseEntity.ok(categoryService.getCategories(tenantId, pageable).map(categoryService::toResponse));
+    return ResponseEntity.ok(categoryService.getCategories(tenantId, pageable));
   }
 
   @PostMapping

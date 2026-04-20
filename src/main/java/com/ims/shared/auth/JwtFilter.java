@@ -10,6 +10,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
+@Slf4j
 @RequiredArgsConstructor
 public class JwtFilter extends OncePerRequestFilter {
 
@@ -73,6 +75,7 @@ public class JwtFilter extends OncePerRequestFilter {
       boolean isPlatformUser = jwtUtil.extractIsPlatformUser(token);
 
       TenantContext.setTenantId(tenantId);
+      log.info("Tenant ID from JWT: {}", tenantId);
 
       UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
           userId, null, List.of(new SimpleGrantedAuthority(role)));
@@ -100,12 +103,9 @@ public class JwtFilter extends OncePerRequestFilter {
   @Override
   protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
     String path = request.getRequestURI();
-    return path.endsWith("/auth/login")
-        || path.endsWith("/auth/signup")
-        || path.endsWith("/auth/forgot-password")
-        || path.endsWith("/auth/reset-password")
-        || path.startsWith("/actuator/")
+    return path.startsWith("/actuator/")
         || path.startsWith("/swagger-ui")
-        || path.startsWith("/api-docs");
+        || path.startsWith("/api-docs")
+        || path.startsWith("/v3/api-docs");
   }
 }

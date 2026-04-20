@@ -1,16 +1,16 @@
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/ims_db}
-    username: ${SPRING_DATASOURCE_USERNAME:ims_user}
-    password: ${SPRING_DATASOURCE_PASSWORD:ims@123}
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASS}
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
 
   jpa:
     hibernate:
-      ddl-auto: validate
-    show-sql: false
+      ddl-auto: update
+    show-sql: true
     open-in-view: false
     properties:
       hibernate:
@@ -18,7 +18,7 @@ spring:
         # dialect: org.hibernate.dialect.PostgreSQLDialect
 
   flyway:
-    enabled: true
+    enabled: false
     locations: classpath:db/migration
     baseline-on-migrate: true
 
@@ -70,7 +70,7 @@ springdoc:
     path: /swagger-ui.html
 
 server:
-  port: 8080
+  port: ${PORT:8080}
   error:
     include-message: never
     include-stacktrace: never

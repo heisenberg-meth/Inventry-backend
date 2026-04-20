@@ -1,5 +1,7 @@
 package com.ims.shared.auth;
 
+import com.ims.shared.exception.UnauthorizedException;
+
 import com.ims.dto.request.ChangePasswordRequest;
 import com.ims.dto.request.ForgotPasswordRequest;
 import com.ims.dto.request.LoginRequest;
@@ -153,6 +155,6 @@ public class AuthController {
     if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
       return details.getUserId();
     }
-    throw new IllegalStateException("User not authenticated");
+    throw new UnauthorizedException("User not authenticated");
   }
 }

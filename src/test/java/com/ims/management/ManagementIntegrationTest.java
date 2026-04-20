@@ -55,6 +55,7 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
     // 1. Signup Tenant 1
     SignupRequest t1Signup = createSignupRequest("Tenant 1", "t1-mgt", "admin-mgt1@t1.com");
     com.ims.dto.response.SignupResponse response = signupService.signup(t1Signup);
+    verifyUserEmail("admin-mgt1@t1.com");
     verifyUser("admin-mgt1@t1.com");
     String t1Token = login("admin-mgt1@t1.com", "password123", response.getCompanyCode());
 
@@ -75,6 +76,7 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
         .andExpect(status().isCreated());
 
     // 3. Verify Staff isolation (STAFF cannot access management)
+    verifyUserEmail("staff-mgt1@t1.com");
     String staffToken = login("staff-mgt1@t1.com", "staff123", response.getCompanyCode());
     mockMvc
         .perform(get("/api/tenant/users").header("Authorization", "Bearer " + staffToken))
@@ -85,11 +87,13 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
   void testIsolationBetweenTenants() throws Exception {
     // 1. Signup Tenant 1
     com.ims.dto.response.SignupResponse r1 = signupService.signup(createSignupRequest("Tenant 1-Iso", "t1-iso", "admin-iso1@t1.com"));
+    verifyUserEmail("admin-iso1@t1.com");
     verifyUser("admin-iso1@t1.com");
     String t1Token = login("admin-iso1@t1.com", "password123", r1.getCompanyCode());
 
     // 2. Signup Tenant 2
     com.ims.dto.response.SignupResponse r2 = signupService.signup(createSignupRequest("Tenant 2-Iso", "t2-iso", "admin-iso2@t2.com"));
+    verifyUserEmail("admin-iso2@t2.com");
     verifyUser("admin-iso2@t2.com");
     login("admin-iso2@t2.com", "password123", r2.getCompanyCode());
 
@@ -105,6 +109,7 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
   void testRBACEnforcement() throws Exception {
     // 1. Signup Tenant 1
     com.ims.dto.response.SignupResponse r1 = signupService.signup(createSignupRequest("Tenant 1-RBAC", "t1-rbac", "admin-rbac1@t1.com"));
+    verifyUserEmail("admin-rbac1@t1.com");
     verifyUser("admin-rbac1@t1.com");
     String t1Token = login("admin-rbac1@t1.com", "password123", r1.getCompanyCode());
 
