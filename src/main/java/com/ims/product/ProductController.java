@@ -2,6 +2,7 @@ package com.ims.product;
 
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.response.ProductResponse;
+import com.ims.dto.response.PagedResponse;
 import com.ims.shared.auth.TenantContext;
 import com.ims.shared.rbac.RequiresPermission;
 import com.ims.shared.rbac.RequiresRole;
@@ -11,7 +12,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
 import org.springframework.http.HttpStatus;
@@ -42,8 +42,8 @@ public class ProductController {
 
   @GetMapping
   @RequiresRole({ "ADMIN", "MANAGER", "STAFF" })
-  @Operation(summary = "List products", description = "Paginated, cached 15min")
-  public ResponseEntity<Page<ProductResponse>> getProducts(Pageable pageable) {
+  @Operation(summary = "List products", description = "Paginated")
+  public ResponseEntity<PagedResponse<ProductResponse>> getProducts(Pageable pageable) {
     return ResponseEntity.ok(productService.getProducts(pageable));
   }
 
@@ -113,7 +113,7 @@ public class ProductController {
   @GetMapping("/search")
   @RequiresRole({ "ADMIN", "MANAGER", "STAFF" })
   @Operation(summary = "Search by name/SKU/barcode")
-  public ResponseEntity<Page<ProductResponse>> search(@RequestParam String q, Pageable pageable) {
+  public ResponseEntity<PagedResponse<ProductResponse>> search(@RequestParam String q, Pageable pageable) {
     return ResponseEntity.ok(productService.searchProducts(q, pageable));
   }
 

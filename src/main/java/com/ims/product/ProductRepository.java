@@ -2,7 +2,6 @@ package com.ims.product;
 
 import java.util.List;
 import java.util.Optional;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -69,7 +68,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
   long countByCategoryId(Long categoryId);
 
-  @Query("SELECT p FROM Product p WHERE p.isActive = true")
+  @Query("SELECT COUNT(p) FROM Product p WHERE p.isActive = true")
   long countActive();
 
   @Query("SELECT p FROM Product p WHERE p.tenantId = :tenantId AND p.stock < p.reorderLevel")

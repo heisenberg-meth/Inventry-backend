@@ -27,7 +27,7 @@ import org.springframework.context.annotation.Lazy;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@SuppressWarnings({"null", "unused"})
+@SuppressWarnings("null")
 public class StockService {
 
   private final StockMovementRepository stockMovementRepository;
@@ -36,13 +36,6 @@ public class StockService {
   private final TransferOrderRepository transferOrderRepository;
   private final com.ims.product.ProductRepository productRepository; // Kept for JPA operations if needed, but primarily
                                                                      // using productService
-  private String getSafeTenantKey(String suffix) {
-      Long tenantId = TenantContext.getTenantId();
-      if (tenantId == null) {
-          throw new IllegalStateException("Tenant not resolved from request");
-      }
-      return tenantId + suffix;
-  }
 
   private void checkWarehouseType() {
     Long tenantId = TenantContext.getTenantId();

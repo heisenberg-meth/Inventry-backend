@@ -56,7 +56,7 @@ public class ReportService {
         .orElse(DEFAULT_DAYS);
   }
 
-  @Cacheable(value = "reports", key = "#root.target.getSafeTenantKey(':purchases:' + #from + ':' + #to)")
+  @Cacheable(value = "reports", key = "T(com.ims.util.CacheKeyUtil).tenantKey('purchases:' + #from + ':' + #to)")
   public @NonNull Map<String, Object> getPurchasesReport(@NonNull LocalDate from, @NonNull LocalDate to) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
@@ -85,7 +85,7 @@ public class ReportService {
     return analytics;
   }
 
-  @Cacheable(value = "reports", key = "#root.target.getSafeTenantKey(':dashboard')")
+  @Cacheable(value = "dashboard", key = "T(com.ims.util.CacheKeyUtil).tenantKey('dashboard')")
   public @NonNull Map<String, Object> getDashboard() {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
@@ -159,7 +159,7 @@ public class ReportService {
         .collect(Collectors.toList());
   }
 
-  @Cacheable(value = "reports", key = "T(com.ims.shared.auth.TenantContext).getTenantId() + ':stock-report'")
+  @Cacheable(value = "reports", key = "T(com.ims.util.CacheKeyUtil).tenantKey('stock-report')")
   public @NonNull List<Map<String, Object>> getStockReport(@Nullable String filter) {
     var products = Objects.requireNonNull(productRepository.findByIsActiveTrue(Pageable.unpaged())).getContent();
     List<Map<String, Object>> report = new ArrayList<>();
@@ -222,7 +222,7 @@ public class ReportService {
     return report;
   }
 
-  @Cacheable(value = "reports", key = "T(com.ims.shared.auth.TenantContext).getTenantId() + ':sales:' + #from + ':' + #to")
+  @Cacheable(value = "reports", key = "T(com.ims.util.CacheKeyUtil).tenantKey('sales:' + #from + ':' + #to)")
   public @NonNull Map<String, Object> getSalesAnalytics(@NonNull LocalDate from, @NonNull LocalDate to) {
     LocalDateTime fromDt = Objects.requireNonNull(from).atStartOfDay();
     LocalDateTime toDt = Objects.requireNonNull(to).atTime(LocalTime.MAX);
@@ -338,14 +338,4 @@ public class ReportService {
     }
     return null;
   }
-
-    // Helper method for safe cache keys
-    @SuppressWarnings("unused")
-    private String getSafeTenantKey(String suffix) {
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId == null) {
-            throw new IllegalStateException("Tenant not resolved from request");
-        }
-        return tenantId + ":" + suffix;
-    }
 }
