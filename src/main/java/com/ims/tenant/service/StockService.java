@@ -23,6 +23,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.context.annotation.Lazy;
+import com.ims.product.ProductService;
+
 
 @Service
 @RequiredArgsConstructor
@@ -34,8 +36,8 @@ public class StockService {
   private final TenantService tenantService;
   private final WarehouseProductRepository warehouseProductRepository;
   private final TransferOrderRepository transferOrderRepository;
-  private final com.ims.product.ProductRepository productRepository; // Kept for JPA operations if needed, but primarily
-                                                                     // using productService
+  private final com.ims.product.ProductRepository productRepository;
+  private final ProductService productService;
 
   private void checkWarehouseType() {
     Long tenantId = TenantContext.getTenantId();
@@ -171,9 +173,6 @@ public class StockService {
   @Transactional
   @CacheEvict(value = { "stock", "products" }, allEntries = true)
   public void stockInInternal(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
-    Product product = productRepository
-        .findById(productId)
-  public void stockIn(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
     Product product = productService
         .findByIdWithLock(productId)
         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
