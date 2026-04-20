@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: ${DB_URL:jdbc:postgresql://dpg-d7itbv67r5hc73b7549g-a:5432/ims_bs9t}
-    username: ${DB_USERNAME:ims_bs9t_user}
-    password: ${DB_PASSWORD:D0JWxAxXR73r4qe5AQJVDP4R0lKCRqZf}
+    url: jdbc:postgresql://dpg-d7itbv67r5hc73b7549g-a:5432/ims_bs9t
+    username: ims_bs9t_user
+    password: D0JWxAxXR73r4qe5AQJVDP4R0lKCRqZf
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
