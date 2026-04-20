@@ -1,9 +1,9 @@
 package com.ims.category;
 
 import com.ims.dto.response.CategoryResponse;
+import com.ims.dto.response.PagedResponse;
 import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditResource;
-
 import com.ims.dto.CategoryRequest;
 import com.ims.shared.rbac.RequiresPermission;
 import com.ims.product.ProductRepository;
@@ -12,8 +12,6 @@ import java.util.Objects;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -31,18 +29,20 @@ public class CategoryService {
   private final ProductRepository productRepository;
   private final com.ims.shared.audit.AuditLogService auditLogService;
 
-  @Cacheable(cacheResolver = "tenantAwareCacheResolver", value = "categories", key = "#root.target.getSafeTenantKey(':list:' + #tenantId + ':' + #pageable.pageNumber + ':' + #pageable.pageSize)")
-  public Page<Category> getCategories(Long tenantId, @NonNull Pageable pageable) {
+  public PagedResponse<CategoryResponse> getCategories(Long tenantId, @NonNull Pageable pageable) {
     if (tenantId == null) {
       log.error("Tenant ID is missing in CategoryService.getCategories");
       throw new IllegalArgumentException("Tenant context is missing");
     }
     log.info("TenantContext: {}", tenantId);
-    return categoryRepository.findByTenantId(tenantId, pageable);
-  }
-
-  public String getSafeTenantKey(String key) {
-    return TenantContext.getTenantId() + key;
+    Page<CategoryResponse> page = categoryRepository.findByTenantId(tenantId, pageable).map(this::toResponse);
+    return new PagedResponse<>(
+        page.getContent(),
+        page.getTotalElements(),
+        page.getTotalPages(),
+        page.getNumber(),
+        page.getSize()
+    );
   }
 
   public Category getById(@NonNull Long id) {
@@ -56,7 +56,6 @@ public class CategoryService {
   }
 
   @Transactional
-  @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "categories", allEntries = true)
   public Category create(CategoryRequest request) {
     if (categoryRepository.existsByNameIgnoreCaseAndTenantId(request.getName(), TenantContext.getTenantId())) {
       throw new IllegalArgumentException("Category with this name already exists");
@@ -81,7 +80,6 @@ public class CategoryService {
   }
 
   @Transactional
-  @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "categories", allEntries = true)
   public Category update(@NonNull Long id, CategoryRequest request) {
     Category category = getById(id);
     Long tenantId = TenantContext.getTenantId();
@@ -112,7 +110,6 @@ public class CategoryService {
   }
 
   @Transactional
-  @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "categories", allEntries = true)
   @RequiresPermission("delete_category")
   public void delete(@NonNull Long id) {
     Category category = getById(id);

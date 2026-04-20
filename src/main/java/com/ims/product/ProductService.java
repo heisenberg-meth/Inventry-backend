@@ -5,6 +5,7 @@ import com.ims.shared.audit.AuditResource;
 
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.response.ProductResponse;
+import com.ims.dto.response.PagedResponse;
 import com.ims.model.Tenant;
 import com.ims.shared.auth.JwtAuthDetails;
 import com.ims.shared.rbac.RequiresPermission;
@@ -23,8 +24,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import java.util.Objects;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -46,11 +45,7 @@ public class ProductService {
   private static final int DEFAULT_REORDER_LEVEL = 10;
   private static final int MAX_PAGE_SIZE = 100;
 
-  @Cacheable(
-      cacheResolver = "tenantAwareCacheResolver",
-      value = "products",
-      key = "#root.target.getSafeTenantKey('list:' + (#pageable?.pageNumber ?: 0) + ':' + (#pageable?.pageSize ?: 10) + ':' + (#pageable?.sort?.toString() ?: ''))")
-  public Page<ProductResponse> getProducts(Pageable pageable) {
+  public PagedResponse<ProductResponse> getProducts(Pageable pageable) {
         Long tenantId = getTenantId();
         if (tenantId == null) {
             log.error("Tenant ID is missing in ProductService.getProducts");
@@ -64,7 +59,14 @@ public class ProductService {
         pageable = org.springframework.data.domain.PageRequest.of(pageable.getPageNumber(), MAX_PAGE_SIZE, pageable.getSort());
     }
 
-    return productRepository.findAllWithDetails(tenantId, pageable).map(this::toResponse);
+    Page<ProductResponse> page = productRepository.findAllWithDetails(tenantId, pageable).map(this::toResponse);
+    return new PagedResponse<>(
+        page.getContent(),
+        page.getTotalElements(),
+        page.getTotalPages(),
+        page.getNumber(),
+        page.getSize()
+    );
   }
 
   public List<ProductResponse> getNextProducts(Long tenantId, Long lastId, int limit) {
@@ -90,7 +92,6 @@ public class ProductService {
 
   @SuppressWarnings("null")
   @Transactional
-  @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "products", allEntries = true)
   public ProductResponse createProduct(CreateProductRequest request) {
         Long tenantId = getTenantId();
         if (tenantId == null) {
@@ -183,7 +184,6 @@ public class ProductService {
 
   @SuppressWarnings("null")
   @Transactional
-  @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "products", allEntries = true)
   public ProductResponse updateProduct(@NonNull Long id, CreateProductRequest request) {
     Product product =
         productRepository
@@ -263,7 +263,6 @@ public class ProductService {
     }
 
     @Transactional
-  @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "products", allEntries = true)
   @RequiresPermission("delete_product")
   public void deleteProduct(@NonNull Long id) {
     Product product =
@@ -284,7 +283,6 @@ public class ProductService {
   }
 
   @Transactional
-  @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "products", allEntries = true)
   public ProductResponse duplicateProduct(@NonNull Long id) {
     Product original = productRepository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
@@ -372,15 +370,22 @@ public class ProductService {
         .collect(Collectors.toList());
   }
 
-  public Page<ProductResponse> searchProducts(String query, Pageable pageable) {
+  public PagedResponse<ProductResponse> searchProducts(String query, Pageable pageable) {
         Long tenantId = getTenantId();
         if (tenantId == null) {
             log.error("Tenant ID is missing in ProductService.searchProducts");
-            return Page.empty();
+            return new PagedResponse<>(java.util.Collections.emptyList(), 0, 0);
         }
         log.info("TenantContext: {}", tenantId);
 
-    return productRepository.searchFast(tenantId, query, pageable).map(this::toResponse);
+    Page<ProductResponse> page = productRepository.searchFast(tenantId, query, pageable).map(this::toResponse);
+    return new PagedResponse<>(
+        page.getContent(),
+        page.getTotalElements(),
+        page.getTotalPages(),
+        page.getNumber(),
+        page.getSize()
+    );
   }
 
   private String getBusinessType() {
@@ -393,16 +398,6 @@ public class ProductService {
             log.trace("Caught expected exception in business type retrieval: {}", e.getMessage());
         }
         return null;
-    }
-
-    // Helper method for safe cache keys
-    @SuppressWarnings("unused")
-    private String getSafeTenantKey(String suffix) {
-        Long tenantId = getTenantId();
-        if (tenantId == null) {
-            throw new IllegalStateException("Tenant not resolved from request");
-        }
-        return tenantId + ":" + suffix;
     }
 
   private Long getTenantId() {

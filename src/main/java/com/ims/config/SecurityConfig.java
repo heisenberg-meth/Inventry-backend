@@ -50,8 +50,21 @@ public class SecurityConfig {
             ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
         .authorizeHttpRequests(
             auth ->
-                auth.requestMatchers("/api/auth/**", "/api/platform/auth/**").permitAll()
-                    .requestMatchers("/api/platform/invites/**", "/api/tenant/payments/gateway/webhook").permitAll()
+                auth.requestMatchers(
+                        "/api/auth/login",
+                        "/api/auth/signup",
+                        "/api/auth/refresh",
+                        "/api/auth/forgot-password",
+                        "/api/auth/reset-password",
+                        "/api/auth/verify-email",
+                        "/api/auth/resend-verification",
+                        "/api/auth/check-email",
+                        "/api/auth/check-slug",
+                        "/api/auth/check-company-code"
+                    ).permitAll()
+                    .requestMatchers("/api/platform/auth/login").permitAll()
+                    .requestMatchers("/api/platform/invites/accept", "/api/platform/invites/complete").permitAll()
+                    .requestMatchers("/api/tenant/payments/gateway/webhook").permitAll()
                     .requestMatchers("/actuator/**", "/swagger-ui/**", "/swagger-ui.html", "/api-docs/**", "/v3/api-docs/**").permitAll()
                     .anyRequest().authenticated())
         .addFilterBefore(traceFilter, UsernamePasswordAuthenticationFilter.class)
