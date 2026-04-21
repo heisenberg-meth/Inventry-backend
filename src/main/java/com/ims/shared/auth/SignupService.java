@@ -5,13 +5,14 @@ import com.ims.dto.request.SignupRequest;
 import com.ims.dto.response.SignupResponse;
 import com.ims.model.Tenant;
 import com.ims.model.User;
-import com.ims.model.EmailVerification;
 import com.ims.platform.repository.TenantRepository;
 import com.ims.tenant.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import com.ims.shared.email.EmailService;
+import com.ims.shared.audit.AuditLogService;
 
 @Service
 @RequiredArgsConstructor
@@ -25,9 +26,9 @@ public class SignupService {
   private final UserCreationService userCreationService;
   private final TenantPersistenceService tenantPersistenceService;
   private final com.ims.category.CategoryService categoryService;
-  private final EmailVerificationRepository emailVerificationRepository;
-  private final com.ims.shared.audit.AuditLogService auditLogService;
+  private final AuditLogService auditLogService;
   private final com.ims.shared.utils.CompanyCodeGenerator companyCodeGenerator;
+  private final EmailService emailService;
 
   // No @Transactional here — each step manages its own transaction
   public SignupResponse signup(SignupRequest request) {
@@ -82,15 +83,17 @@ public class SignupService {
       catReq.setDescription("Default category");
       categoryService.create(catReq);
 
-      // Generate email verification token
-      String verificationToken = java.util.UUID.randomUUID().toString();
-      EmailVerification verification = EmailVerification.builder()
-          .userId(user.getId())
-          .token(verificationToken)
-          .expiresAt(java.time.LocalDateTime.now().plusHours(24))
-          .build();
-      emailVerificationRepository.save(verification);
-      log.info("Signup: Created email verification token for user={}", user.getId());
+      // Generate and hash email verification token
+      String rawToken = java.util.UUID.randomUUID().toString();
+      String hashedToken = passwordEncoder.encode(rawToken);
+      
+      user.setVerificationToken(hashedToken);
+      user.setVerificationTokenExpiry(java.time.LocalDateTime.now().plusMinutes(15));
+      userRepository.save(user);
+      
+      log.info("Signup: Created and hashed email verification token for user={}", user.getId());
+
+      emailService.sendVerificationEmail(user.getEmail(), rawToken);
 
       auditLogService.log(
           AuditAction.SIGNUP,

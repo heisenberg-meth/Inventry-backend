@@ -8,7 +8,6 @@ import com.ims.dto.request.ForgotPasswordRequest;
 import com.ims.dto.request.LoginRequest;
 import com.ims.dto.request.ResetPasswordRequest;
 import com.ims.dto.response.LoginResponse;
-import com.ims.model.EmailVerification;
 import com.ims.model.Tenant;
 import com.ims.model.User;
 import com.ims.platform.repository.TenantRepository;
@@ -16,17 +15,20 @@ import com.ims.tenant.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import com.ims.shared.email.EmailService;
+import com.ims.shared.audit.AuditLogService;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,16 +40,15 @@ public class AuthService {
 
   private static final int LOGOUT_EXPIRY_HOURS = 24;
   private static final int HASH_LOG_LENGTH = 8;
-  private static final int RESET_TOKEN_BYTE_LENGTH = 32;
   private static final int RESET_TOKEN_EXPIRY_MINUTES = 15;
 
   private final UserRepository userRepository;
   private final TenantRepository tenantRepository;
-  private final EmailVerificationRepository emailVerificationRepository;
   private final JwtUtil jwtUtil;
   private final PasswordEncoder passwordEncoder;
   private final RedisTemplate<String, Object> redisTemplate;
-  private final com.ims.shared.audit.AuditLogService auditLogService;
+  private final AuditLogService auditLogService;
+  private final EmailService emailService;
 
   @Transactional(readOnly = true)
   public Map<String, Boolean> checkEmail(String email) {
@@ -68,50 +69,54 @@ public class AuthService {
   }
 
   @Transactional
-  public Map<String, String> verifyEmail(String token) {
-    EmailVerification verification = emailVerificationRepository.findByToken(token)
+  public Map<String, String> verifyEmail(String token, String email) {
+    User user = userRepository.findByEmailUnfiltered(email.trim().toLowerCase())
         .orElseThrow(() -> new IllegalArgumentException("Invalid verification token"));
 
-    if (verification.isExpired()) {
+    if (user.getVerificationToken() == null || !passwordEncoder.matches(token, user.getVerificationToken())) {
+      throw new IllegalArgumentException("Invalid verification token");
+    }
+
+    if (user.getVerificationTokenExpiry() == null || LocalDateTime.now().isAfter(user.getVerificationTokenExpiry())) {
       throw new IllegalArgumentException("Verification token has expired");
     }
 
-    User user = userRepository.findByIdUnfiltered(verification.getUserId())
-        .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
     user.setIsVerified(true);
+    user.setVerificationToken(null);
+    user.setVerificationTokenExpiry(null);
     userRepository.save(user);
-    emailVerificationRepository.delete(verification);
 
     log.info("Email verified for user: {}", user.getEmail());
     return Map.of("message", "Email verified successfully");
   }
 
   @Transactional
+  @RateLimiter(name = "resendVerification")
   public Map<String, String> resendVerification(String email) {
-    User user = userRepository.findByEmailUnfiltered(email)
-        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User user = userRepository.findByEmailUnfiltered(email.trim().toLowerCase()).orElse(null);
 
-    if (Boolean.TRUE.equals(user.getIsVerified())) {
-      throw new IllegalArgumentException("Email is already verified");
+    // Always return generic success message to prevent email enumeration
+    String responseMessage = "Verification email sent if account exists";
+
+    if (user == null) {
+      return Map.of("message", responseMessage);
     }
 
-    // Delete existing tokens
-    emailVerificationRepository.deleteByUserId(user.getId());
+    if (Boolean.TRUE.equals(user.getIsVerified())) {
+      return Map.of("message", "Email is already verified");
+    }
 
-    // Generate new token
-    String token = java.util.UUID.randomUUID().toString();
-    EmailVerification verification = EmailVerification.builder()
-        .userId(user.getId())
-        .token(token)
-        .expiresAt(LocalDateTime.now().plusHours(24))
-        .build();
+    // Generate and hash new token
+    String rawToken = UUID.randomUUID().toString();
+    String hashedToken = passwordEncoder.encode(rawToken);
 
-    emailVerificationRepository.save(verification);
+    user.setVerificationToken(hashedToken);
+    user.setVerificationTokenExpiry(LocalDateTime.now().plusMinutes(15));
+    userRepository.save(user);
 
     log.info("Verification email resent to: {}", email);
-    // In production: send email with token
-    return Map.of("message", "Verification email sent", "token", token); // Token returned for dev
+    emailService.sendVerificationEmail(email, rawToken);
+    return Map.of("message", responseMessage);
   }
 
   @Transactional(readOnly = true)
@@ -454,29 +459,27 @@ public class AuthService {
    */
   @Transactional
   public Map<String, String> forgotPassword(ForgotPasswordRequest request) {
-    User user = userRepository.findByEmailUnfiltered(request.getEmail()).orElse(null);
+    User user = userRepository.findByEmailUnfiltered(request.getEmail().trim().toLowerCase()).orElse(null);
 
-    // Always return success (security: don't reveal if email exists)
+    // Always return generic success message to prevent email enumeration
+    String responseMessage = "If the email exists, a password reset link has been sent";
+
     if (user == null) {
-      return Map.of("message", "Password reset link sent to email");
+      return Map.of("message", responseMessage);
     }
 
-    byte[] tokenBytes = new byte[RESET_TOKEN_BYTE_LENGTH];
-    new SecureRandom().nextBytes(tokenBytes);
-    String resetToken = HexFormat.of().formatHex(tokenBytes);
+    String rawToken = UUID.randomUUID().toString();
+    String hashedToken = passwordEncoder.encode(rawToken);
 
-    user.setResetToken(resetToken);
+    user.setResetToken(hashedToken);
     user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(RESET_TOKEN_EXPIRY_MINUTES));
     userRepository.save(user);
 
-    log.info("Password reset token generated for user: {}", user.getEmail());
+    log.info("Password reset token generated and hashed for user: {}", user.getEmail());
 
-    // In production: send email with resetToken
-    // For dev/testing, return the token directly
-    Map<String, String> response = new HashMap<>();
-    response.put("message", "Password reset link sent to email");
-    response.put("resetToken", resetToken); // Remove in production
-    return response;
+    emailService.sendPasswordResetEmail(user.getEmail(), rawToken);
+
+    return Map.of("message", responseMessage);
   }
 
   /**
@@ -484,14 +487,16 @@ public class AuthService {
    */
   @Transactional
   public Map<String, String> resetPassword(ResetPasswordRequest request) {
-    User user =
-        userRepository
-            .findByResetToken(request.getResetToken())
-            .orElseThrow(() -> new IllegalArgumentException("Invalid or expired reset token"));
+    User user = userRepository.findByEmailUnfiltered(request.getEmail().trim().toLowerCase())
+        .orElseThrow(() -> new IllegalArgumentException("Invalid or expired reset token"));
+
+    if (user.getResetToken() == null || !passwordEncoder.matches(request.getResetToken(), user.getResetToken())) {
+      throw new IllegalArgumentException("Invalid or expired reset token");
+    }
 
     if (user.getResetTokenExpiry() == null
         || LocalDateTime.now().isAfter(user.getResetTokenExpiry())) {
-      throw new IllegalArgumentException("Reset token has expired");
+      throw new IllegalArgumentException("Invalid or expired reset token");
     }
 
     user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
