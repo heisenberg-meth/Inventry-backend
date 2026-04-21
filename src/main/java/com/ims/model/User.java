@@ -83,6 +83,12 @@ public class User {
   @Column(name = "reset_token_expiry")
   private LocalDateTime resetTokenExpiry;
 
+  @Column(name = "verification_token")
+  private String verificationToken;
+
+  @Column(name = "verification_token_expiry")
+  private LocalDateTime verificationTokenExpiry;
+
   @Column(name = "last_login")
   private LocalDateTime lastLogin;
 
