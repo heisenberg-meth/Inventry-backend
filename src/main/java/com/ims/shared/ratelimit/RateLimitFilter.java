@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
+import org.springframework.security.web.util.matcher.IpAddressMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
@@ -63,6 +64,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
   private final int publicRpm;
   private final int tenantRpm;
   private final int windowSeconds;
+  private final List<IpAddressMatcher> trustedProxyMatchers;
 
   public RateLimitFilter(
       RedisTemplate<String, Object> redisTemplate,
@@ -70,7 +72,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
       @Value("${app.rate-limit.auth-rpm:20}") int authRpm,
       @Value("${app.rate-limit.public-rpm:100}") int publicRpm,
       @Value("${app.rate-limit.authenticated-rpm:500}") int tenantRpm,
-      @Value("${app.rate-limit.window-seconds:60}") int windowSeconds) {
+      @Value("${app.rate-limit.window-seconds:60}") int windowSeconds,
+      @Value("${app.security.trusted-proxies:127.0.0.1,::1}") List<String> trustedProxies) {
     // Error messages reference the config property keys (not the Java field names) so operators
     // can grep the stack trace against their application.yml without a translation step.
     requirePositive("app.rate-limit.auth-rpm", authRpm);
@@ -83,6 +86,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
     this.publicRpm = publicRpm;
     this.tenantRpm = tenantRpm;
     this.windowSeconds = windowSeconds;
+    this.trustedProxyMatchers =
+        trustedProxies.stream().map(IpAddressMatcher::new).toList();
   }
 
   @Override
@@ -168,11 +173,17 @@ public class RateLimitFilter extends OncePerRequestFilter {
   }
 
   /**
-   * Resolves the client IP, honoring the first entry of {@code X-Forwarded-For} when the request
-   * comes through a trusted proxy (e.g. Nginx). Falls back to {@code X-Real-IP} and finally to the
-   * remote address.
+   * Resolves the client IP, honoring {@code X-Forwarded-For} only when the request comes through a
+   * trusted proxy (e.g. Nginx, Load Balancer).
    */
   private String resolveClientIp(HttpServletRequest req) {
+    String remoteAddr = req.getRemoteAddr();
+
+    // If the immediate neighbor is not a trusted proxy, do not trust any forwarded headers.
+    if (!isTrustedProxy(remoteAddr)) {
+      return remoteAddr == null ? "unknown" : remoteAddr;
+    }
+
     String forwarded = req.getHeader("X-Forwarded-For");
     if (forwarded != null && !forwarded.isBlank()) {
       int comma = forwarded.indexOf(',');
@@ -185,7 +196,15 @@ public class RateLimitFilter extends OncePerRequestFilter {
     if (real != null && !real.isBlank()) {
       return real.trim();
     }
-    return req.getRemoteAddr() == null ? "unknown" : req.getRemoteAddr();
+    return remoteAddr == null ? "unknown" : remoteAddr;
+  }
+
+  /** Checks if the given IP address matches any of the configured trusted proxy ranges (CIDR). */
+  private boolean isTrustedProxy(String ip) {
+    if (ip == null) {
+      return false;
+    }
+    return trustedProxyMatchers.stream().anyMatch(matcher -> matcher.matches(ip));
   }
 
   /**

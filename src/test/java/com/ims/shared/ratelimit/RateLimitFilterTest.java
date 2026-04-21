@@ -15,6 +15,7 @@ import static org.mockito.Mockito.when;
 
 import com.ims.shared.auth.JwtUtil;
 import jakarta.servlet.FilterChain;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,7 +47,13 @@ class RateLimitFilterTest {
     when(redisTemplate.opsForZSet()).thenReturn(zSet);
     filter =
         new RateLimitFilter(
-            redisTemplate, jwtUtil, AUTH_RPM, PUBLIC_RPM, TENANT_RPM, WINDOW_SECONDS);
+            redisTemplate,
+            jwtUtil,
+            AUTH_RPM,
+            PUBLIC_RPM,
+            TENANT_RPM,
+            WINDOW_SECONDS,
+            List.of("127.0.0.1", "10.0.0.0/8"));
   }
 
   @Test
@@ -200,6 +207,37 @@ class RateLimitFilterTest {
   }
 
   @Test
+  void ignoresXForwardedForFromUntrustedProxy() throws Exception {
+    when(zSet.zCard(anyString())).thenReturn(1L);
+
+    MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/public/ping");
+    req.setRemoteAddr("203.0.113.1"); // untrusted attacker IP
+    req.addHeader("X-Forwarded-For", "1.2.3.4");
+    MockHttpServletResponse res = new MockHttpServletResponse();
+    FilterChain chain = mock(FilterChain.class);
+
+    filter.doFilter(req, res, chain);
+
+    // Should use the untrusted remote address, NOT the spoofed XFF
+    verify(zSet).add(eq("rate:public:203.0.113.1"), any(), anyDouble());
+  }
+
+  @Test
+  void honorsXForwardedForFromTrustedCidrProxy() throws Exception {
+    when(zSet.zCard(anyString())).thenReturn(1L);
+
+    MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/public/ping");
+    req.setRemoteAddr("10.0.0.50"); // trusted by 10.0.0.0/8
+    req.addHeader("X-Forwarded-For", "1.2.3.4");
+    MockHttpServletResponse res = new MockHttpServletResponse();
+    FilterChain chain = mock(FilterChain.class);
+
+    filter.doFilter(req, res, chain);
+
+    verify(zSet).add(eq("rate:public:1.2.3.4"), any(), anyDouble());
+  }
+
+  @Test
   void failsOpenWhenRedisThrows() throws Exception {
     when(zSet.zCard(anyString())).thenThrow(new RuntimeException("redis down"));
 
@@ -289,7 +327,7 @@ class RateLimitFilterTest {
             IllegalArgumentException.class,
             () ->
                 new RateLimitFilter(
-                    redisTemplate, jwtUtil, 0, PUBLIC_RPM, TENANT_RPM, WINDOW_SECONDS));
+                    redisTemplate, jwtUtil, 0, PUBLIC_RPM, TENANT_RPM, WINDOW_SECONDS, List.of()));
     assertEquals("app.rate-limit.auth-rpm must be >= 1 (got 0)", authEx.getMessage());
 
     IllegalArgumentException publicEx =
@@ -297,7 +335,7 @@ class RateLimitFilterTest {
             IllegalArgumentException.class,
             () ->
                 new RateLimitFilter(
-                    redisTemplate, jwtUtil, AUTH_RPM, 0, TENANT_RPM, WINDOW_SECONDS));
+                    redisTemplate, jwtUtil, AUTH_RPM, 0, TENANT_RPM, WINDOW_SECONDS, List.of()));
     assertEquals("app.rate-limit.public-rpm must be >= 1 (got 0)", publicEx.getMessage());
 
     IllegalArgumentException tenantEx =
@@ -305,14 +343,16 @@ class RateLimitFilterTest {
             IllegalArgumentException.class,
             () ->
                 new RateLimitFilter(
-                    redisTemplate, jwtUtil, AUTH_RPM, PUBLIC_RPM, 0, WINDOW_SECONDS));
+                    redisTemplate, jwtUtil, AUTH_RPM, PUBLIC_RPM, 0, WINDOW_SECONDS, List.of()));
     assertEquals(
         "app.rate-limit.authenticated-rpm must be >= 1 (got 0)", tenantEx.getMessage());
 
     IllegalArgumentException windowEx =
         assertThrows(
             IllegalArgumentException.class,
-            () -> new RateLimitFilter(redisTemplate, jwtUtil, AUTH_RPM, PUBLIC_RPM, TENANT_RPM, 0));
+            () ->
+                new RateLimitFilter(
+                    redisTemplate, jwtUtil, AUTH_RPM, PUBLIC_RPM, TENANT_RPM, 0, List.of()));
     assertEquals(
         "app.rate-limit.window-seconds must be >= 1 (got 0)", windowEx.getMessage());
   }

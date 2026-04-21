@@ -7,7 +7,6 @@ import com.ims.shared.auth.TenantContext;
 import com.ims.product.ProductRepository;
 import com.ims.category.CategoryRepository;
 import com.ims.shared.audit.AuditLogRepository;
-import com.ims.shared.auth.EmailVerificationRepository;
 import java.util.Objects;
 import java.util.Collections;
 import jakarta.persistence.EntityManager;
@@ -103,8 +102,6 @@ public abstract class BaseIntegrationTest {
   protected EntityManager entityManager;
   @Autowired
   protected PlatformTransactionManager transactionManager;
-  @Autowired
-  protected EmailVerificationRepository emailVerificationRepository;
   @Autowired
   protected AuthService authService;
 
@@ -202,14 +199,6 @@ public abstract class BaseIntegrationTest {
     });
   }
 
-  protected void verifyUserEmail(String email) {
-    userRepository.findByEmailUnfiltered(email).ifPresent(u -> {
-      emailVerificationRepository.findAll().stream()
-          .filter(v -> v.getUserId().equals(u.getId()))
-          .findFirst()
-          .ifPresent(v -> authService.verifyEmail(v.getToken()));
-    });
-  }
 
   protected void verifyUser(String email) {
     userRepository.findByEmailUnfiltered(email).ifPresent(u -> {
@@ -217,6 +206,10 @@ public abstract class BaseIntegrationTest {
       userRepository.save(u);
       entityManager.flush();
     });
+  }
+
+  protected void verifyUserEmail(String email) {
+    verifyUser(email);
   }
 
   protected void mockRedisAndCache() {

@@ -51,6 +51,13 @@ app:
     public-rpm: ${APP_RATE_LIMIT_PUBLIC_RPM:100}
     authenticated-rpm: ${APP_RATE_LIMIT_AUTHENTICATED_RPM:500}
     window-seconds: ${APP_RATE_LIMIT_WINDOW_SECONDS:60}
+  security:
+    trusted-proxies:
+      - 127.0.0.1
+      - ::1
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+      - 192.168.0.0/16
 
 management:
   endpoints:
@@ -66,6 +73,7 @@ springdoc:
 
 server:
   port: ${PORT:8080}
+  forward-headers-strategy: native
   error:
     include-message: never
     include-stacktrace: never
@@ -78,3 +86,11 @@ logging:
     org.springframework.security: INFO
     org.springdoc: DEBUG
     org.springframework.web: DEBUG
+
+resilience4j:
+  ratelimiter:
+    instances:
+      resendVerification:
+        limitForPeriod: 3
+        limitRefreshPeriod: 15m
+        timeoutDuration: 0
