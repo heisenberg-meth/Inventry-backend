@@ -31,9 +31,9 @@ spring:
     redis:
       repositories:
         enabled: false
-      host: redis://red-d7iti5d8nd3s738mn5jg:6379
+      host: red-d7iti5d8nd3s738mn5jg
       port: 6379
-      password: "ims@123"
+      password: ims@123
       timeout: 3000ms
       lettuce:
         pool:
