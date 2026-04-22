@@ -8,7 +8,6 @@ import com.ims.dto.CategoryRequest;
 import com.ims.shared.rbac.RequiresPermission;
 import com.ims.product.ProductRepository;
 import com.ims.shared.auth.TenantContext;
-import java.util.Objects;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -67,7 +66,7 @@ public class CategoryService {
         .taxRate(request.getTaxRate() != null ? request.getTaxRate() : java.math.BigDecimal.ZERO)
         .build();
 
-    Category savedCategory = Objects.requireNonNull(categoryRepository.save(category));
+    Category savedCategory = categoryRepository.save(category);
 
     auditLogService.logAudit(
         AuditAction.CREATE,
@@ -97,7 +96,7 @@ public class CategoryService {
       category.setTaxRate(request.getTaxRate());
     }
 
-    Category updatedCategory = Objects.requireNonNull(categoryRepository.save(category));
+    Category updatedCategory = categoryRepository.save(category);
 
     auditLogService.logAudit(
         AuditAction.UPDATE,
