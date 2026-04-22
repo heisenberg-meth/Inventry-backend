@@ -9,6 +9,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.UUID;
+import org.slf4j.MDC;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -73,20 +75,27 @@ public class JwtFilter extends OncePerRequestFilter {
       String scope = jwtUtil.extractScope(token);
       String businessType = jwtUtil.extractBusinessType(token);
       boolean isPlatformUser = jwtUtil.extractIsPlatformUser(token);
+      java.util.Set<String> permissions = jwtUtil.extractPermissions(token);
+      boolean impersonation = jwtUtil.extractImpersonation(token);
+      Long impersonatedBy = jwtUtil.extractImpersonatedBy(token);
 
       TenantContext.setTenantId(tenantId);
-      log.info("Tenant ID from JWT: {}", tenantId);
+      
+      MDC.put("tenantId", tenantId != null ? String.valueOf(tenantId) : "none");
+      MDC.put("userId", userId != null ? String.valueOf(userId) : "anonymous");
+      MDC.put("requestId", UUID.randomUUID().toString());
 
       UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
           userId, null, List.of(new SimpleGrantedAuthority(role)));
 
       // Store additional details for downstream use
-      auth.setDetails(new JwtAuthDetails(userId, tenantId, role, scope, businessType, isPlatformUser));
+      auth.setDetails(new JwtAuthDetails(userId, tenantId, role, scope, businessType, isPlatformUser, permissions, impersonation, impersonatedBy));
       SecurityContextHolder.getContext().setAuthentication(auth);
 
       chain.doFilter(request, response);
     } finally {
       TenantContext.clear(); // CRITICAL — prevents tenant bleed between requests
+      MDC.clear(); // CRITICAL — avoids MDC leakage across threads
     }
   }
 

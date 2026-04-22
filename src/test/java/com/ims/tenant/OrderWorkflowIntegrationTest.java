@@ -35,7 +35,6 @@ import org.springframework.test.web.servlet.MvcResult;
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@SuppressWarnings("null")
 public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
 
   @Autowired
@@ -120,7 +119,7 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
     Map<String, Object> orderResponse = objectMapper.readValue(orderResult.getResponse().getContentAsString(),
         new TypeReference<Map<String, Object>>() {
         });
-    Long orderId = Long.valueOf(orderResponse.get("order_id").toString());
+    Long orderId = Long.valueOf(orderResponse.get("id").toString());
 
     // 4. Confirm Order (Status -> CONFIRMED, stock 100 -> 90)
     mockMvc.perform(post("/api/tenant/orders/" + orderId + "/confirm")

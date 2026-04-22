@@ -2,6 +2,7 @@ package com.ims.platform.service;
 
 import com.ims.dto.CreatePlatformUserRequest;
 import com.ims.model.User;
+import com.ims.model.UserRole;
 import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditLogService;
 import com.ims.tenant.repository.UserRepository;
@@ -15,6 +16,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,7 +31,7 @@ public class PlatformUserService {
 
   @Transactional
   public @NonNull User createPlatformUser(@NonNull CreatePlatformUserRequest request) {
-    if (!request.getRole().equals("PLATFORM_ADMIN") && !request.getRole().equals("SUPPORT_ADMIN")) {
+    if (!request.getRole().equals(UserRole.PLATFORM_ADMIN.name()) && !request.getRole().equals(UserRole.SUPPORT_ADMIN.name())) {
       throw new IllegalArgumentException("Invalid role. Must be PLATFORM_ADMIN or SUPPORT_ADMIN.");
     }
     if (userRepository.existsByEmail(request.getEmail())) {
@@ -41,7 +43,7 @@ public class PlatformUserService {
             .name(request.getName())
             .email(request.getEmail())
             .passwordHash(passwordEncoder.encode(request.getPassword()))
-            .role(request.getRole())
+            .role(UserRole.valueOf(request.getRole()))
             .scope("PLATFORM")
             .tenantId(null)
             .isActive(true)
@@ -69,7 +71,7 @@ public class PlatformUserService {
     response.put("id", user.getId());
     response.put("name", user.getName());
     response.put("email", user.getEmail());
-    response.put("role", user.getRole());
+    response.put("role", user.getRole() != null ? user.getRole().name() : null);
     response.put("status", Boolean.TRUE.equals(user.getIsActive()) ? "ACTIVE" : "SUSPENDED");
     response.put("lastLogin", user.getLastLogin());
     response.put("createdAt", user.getCreatedAt());
@@ -77,8 +79,9 @@ public class PlatformUserService {
   }
 
   @Transactional
+  @CacheEvict(value = "permissions", key = "#id", cacheResolver = "tenantAwareCacheResolver")
   public @NonNull User updatePlatformUserRole(@NonNull Long id, @NonNull String role) {
-    if (!role.equals("PLATFORM_ADMIN") && !role.equals("SUPPORT_ADMIN")) {
+    if (!role.equals(UserRole.PLATFORM_ADMIN.name()) && !role.equals(UserRole.SUPPORT_ADMIN.name())) {
       throw new IllegalArgumentException("Invalid role. Must be PLATFORM_ADMIN or SUPPORT_ADMIN.");
     }
     User user =
@@ -86,11 +89,11 @@ public class PlatformUserService {
             .findByIdAndTenantIdIsNull(id)
             .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
 
-    if (user.getRole().equals("ROOT")) {
+    if (user.getRole() == UserRole.ROOT) {
       throw new IllegalArgumentException("Cannot modify ROOT user role");
     }
 
-    user.setRole(role);
+    user.setRole(UserRole.valueOf(role));
     return Objects.requireNonNull(userRepository.save(user));
   }
 
@@ -101,7 +104,7 @@ public class PlatformUserService {
             .findByIdAndTenantIdIsNull(id)
             .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
 
-    if (user.getRole().equals("ROOT")) {
+    if (user.getRole() == UserRole.ROOT) {
       throw new IllegalArgumentException("Cannot suspend ROOT user");
     }
 
@@ -133,7 +136,7 @@ public class PlatformUserService {
             .findByIdAndTenantIdIsNull(id)
             .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
 
-    if (user.getRole().equals("ROOT")) {
+    if (user.getRole() == UserRole.ROOT) {
       throw new IllegalArgumentException("Cannot deactivate ROOT user");
     }
 

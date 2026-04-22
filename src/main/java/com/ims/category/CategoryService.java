@@ -22,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@SuppressWarnings("null")
 public class CategoryService {
 
   private final CategoryRepository categoryRepository;
@@ -34,7 +33,7 @@ public class CategoryService {
       log.error("Tenant ID is missing in CategoryService.getCategories");
       throw new IllegalArgumentException("Tenant context is missing");
     }
-    log.info("TenantContext: {}", tenantId);
+
     Page<CategoryResponse> page = categoryRepository.findByTenantId(tenantId, pageable).map(this::toResponse);
     return new PagedResponse<>(
         page.getContent(),

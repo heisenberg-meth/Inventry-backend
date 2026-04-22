@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@SuppressWarnings("null")
 public class NotificationService {
 
   private final NotificationRepository notificationRepository;
@@ -46,7 +45,7 @@ public class NotificationService {
       log.error("Tenant ID is missing in NotificationService.createNotification");
       throw new IllegalStateException("Tenant context is missing");
     }
-    log.info("TenantContext: {}", tenantId);
+
     var notification = Notification.builder()
         .userId(userId)
         .tenantId(TenantContext.getTenantId())

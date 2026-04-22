@@ -13,7 +13,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/tenant/payments/gateway")
+@RequestMapping("/tenant/payments/gateway")
 @RequiredArgsConstructor
 @Tag(name = "Tenant - Payments Gateway", description = "Online payment integration")
 public class PaymentGatewayController {

@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/platform/tenants")
+@RequestMapping("/platform/tenants")
 @RequiredArgsConstructor
 @Tag(name = "Platform - Tenants", description = "Platform-level tenant management")
 @SecurityRequirement(name = "bearerAuth")
@@ -83,8 +83,6 @@ public class TenantController {
   public ResponseEntity<Map<String, String>> suspendTenant(@NonNull @PathVariable Long id) {
     return ResponseEntity.ok(tenantService.suspendTenant(id));
   }
-
-  @SuppressWarnings("null")
   @PostMapping("/{id}/activate")
   @RequiresRole({"ROOT"})
   @Operation(summary = "Activate tenant")
@@ -116,7 +114,6 @@ public class TenantController {
     return ResponseEntity.ok(tenantService.getTenantUsers(id, q, pageable));
   }
 
-  @SuppressWarnings("null")
   @DeleteMapping("/{id}/users/{userId}")
   @RequiresRole({"ROOT"})
   @Operation(summary = "Platform hard-delete a tenant user")

@@ -14,4 +14,5 @@ public interface TenantRepository extends JpaRepository<Tenant, Long> {
   Optional<Tenant> findByCompanyCode(String companyCode);
 
   boolean existsByCompanyCode(String companyCode);
+  java.util.List<Tenant> findAllByCreatedAtBefore(java.time.LocalDateTime dateTime);
 }

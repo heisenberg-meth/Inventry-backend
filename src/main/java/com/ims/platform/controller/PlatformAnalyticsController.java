@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/platform/analytics")
+@RequestMapping("/platform/analytics")
 @RequiredArgsConstructor
 @Tag(name = "Platform - Analytics", description = "System-wide analytics for ROOT users")
 @SecurityRequirement(name = "bearerAuth")
