@@ -90,6 +90,13 @@ public class GlobalExceptionHandler {
                 STATUS_CONFLICT, "CONFLICT", "Data integrity violation", request.getRequestURI()));
   }
 
+  @ExceptionHandler(BadRequestException.class)
+  public ResponseEntity<Map<String, Object>> handleBadRequestException(
+      BadRequestException ex, HttpServletRequest request) {
+    return ResponseEntity.badRequest()
+        .body(errorBody(STATUS_BAD_REQUEST, "BAD_REQUEST", ex.getMessage(), request.getRequestURI()));
+  }
+
   @ExceptionHandler(IllegalArgumentException.class)
   public ResponseEntity<Map<String, Object>> handleBadRequest(
       IllegalArgumentException ex, HttpServletRequest request) {

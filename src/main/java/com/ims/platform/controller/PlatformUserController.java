@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @Tag(name = "Platform - Users", description = "Platform user management")
 @SecurityRequirement(name = "bearerAuth")
-@RequestMapping("/api/platform/users")
+@RequestMapping("/platform/users")
 @RequiredArgsConstructor
 public class PlatformUserController {
 

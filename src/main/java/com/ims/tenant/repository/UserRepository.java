@@ -1,6 +1,7 @@
 package com.ims.tenant.repository;
 
 import com.ims.model.User;
+import com.ims.model.UserRole;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -41,6 +42,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
   @Query(value = "SELECT * FROM users WHERE tenant_id = :tenantId AND role = :role LIMIT 1", nativeQuery = true)
   Optional<User> findFirstByTenantIdAndRole(@Param("tenantId") Long tenantId, @Param("role") String role);
+  
+  default Optional<User> findFirstByTenantIdAndAdminRole(Long tenantId) {
+      return findFirstByTenantIdAndRole(tenantId, UserRole.ADMIN.name());
+  }
 
   @Query(
       value = "SELECT * FROM users WHERE tenant_id = :tenantId AND scope = 'TENANT'",
@@ -60,4 +65,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
   @org.springframework.data.jpa.repository.Modifying
   @Query("UPDATE User u SET u.lastLogin = :lastLogin WHERE u.id = :id")
   void updateLastLogin(@Param("id") Long id, @Param("lastLogin") java.time.LocalDateTime lastLogin);
+  @Query(value = "SELECT EXISTS(SELECT 1 FROM users WHERE tenant_id = :tenantId)", nativeQuery = true)
+  boolean existsByTenantId(@Param("tenantId") Long tenantId);
 }

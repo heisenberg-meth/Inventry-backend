@@ -27,11 +27,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/tenant/products")
+@RequestMapping("/tenant/products")
 @RequiredArgsConstructor
 @Tag(name = "Tenant - Products", description = "Product management")
 @SecurityRequirement(name = "bearerAuth")
-@SuppressWarnings("null")
 public class ProductController {
 
   private final ProductService productService;

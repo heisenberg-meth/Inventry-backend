@@ -14,6 +14,7 @@ import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,11 +55,12 @@ public class RoleService {
     Role saved = roleRepository.save(Objects.requireNonNull(role));
     auditLogService.log(
         AuditAction.CREATE_ROLE, tenantId, null, "Created role: " + saved.getName());
-    log.info("Role created: id={} name={} tenant={}", saved.getId(), saved.getName(), tenantId);
+    log.info("Role created: id={} name={}", saved.getId(), saved.getName());
     return saved;
   }
 
   @Transactional
+  @CacheEvict(value = "permissions", allEntries = true, cacheResolver = "tenantAwareCacheResolver")
   public Role assignPermissions(
       @NonNull Long tenantId,
       @NonNull Long roleId,

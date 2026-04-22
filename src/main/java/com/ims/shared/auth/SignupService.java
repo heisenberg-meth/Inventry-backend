@@ -4,7 +4,9 @@ import com.ims.shared.audit.AuditAction;
 import com.ims.dto.request.SignupRequest;
 import com.ims.dto.response.SignupResponse;
 import com.ims.model.Tenant;
+import com.ims.model.TenantStatus;
 import com.ims.model.User;
+import com.ims.model.UserRole;
 import com.ims.platform.repository.TenantRepository;
 import com.ims.tenant.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -13,11 +15,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import com.ims.shared.email.EmailService;
 import com.ims.shared.audit.AuditLogService;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@SuppressWarnings("null")
 public class SignupService {
 
   private final TenantRepository tenantRepository;
@@ -30,7 +34,7 @@ public class SignupService {
   private final com.ims.shared.utils.CompanyCodeGenerator companyCodeGenerator;
   private final EmailService emailService;
 
-  // No @Transactional here — each step manages its own transaction
+  @Transactional
   public SignupResponse signup(SignupRequest request) {
     String normalizedEmail = request.getOwnerEmail().trim().toLowerCase();
 
@@ -43,6 +47,10 @@ public class SignupService {
       throw new IllegalArgumentException("Email already registered");
     }
 
+    if (tenantRepository.existsByWorkspaceSlug(workspaceSlug)) {
+        throw new IllegalArgumentException("Workspace URL already taken");
+    }
+
     String companyCode = generateUniqueCompanyCode(request.getBusinessName());
 
     // 1. Save tenant in its own committed transaction
@@ -51,8 +59,7 @@ public class SignupService {
         .businessType(request.getBusinessType())
         .workspaceSlug(workspaceSlug)
         .companyCode(companyCode)
-        .status("ACTIVE")
-        .status("ACTIVE")
+        .status(TenantStatus.ACTIVE)
         .plan("FREE")
         .address(request.getAddress())
         .gstin(request.getGstin())
@@ -67,7 +74,7 @@ public class SignupService {
         .email(normalizedEmail)
         .phone(request.getOwnerPhone())
         .passwordHash(passwordEncoder.encode(request.getPassword()))
-        .role("ADMIN")
+        .role(UserRole.ADMIN)
         .scope("TENANT")
         .tenantId(tenant.getId())
         .isActive(true)
@@ -90,16 +97,26 @@ public class SignupService {
       user.setVerificationToken(hashedToken);
       user.setVerificationTokenExpiry(java.time.LocalDateTime.now().plusMinutes(15));
       userRepository.save(user);
-      
+
       log.info("Signup: Created and hashed email verification token for user={}", user.getId());
 
-      emailService.sendVerificationEmail(user.getEmail(), rawToken);
+      final String finalEmail = user.getEmail();
+      final String finalRawToken = rawToken;
+      final Long finalTenantId = tenant.getId();
+      final Long finalUserId = user.getId();
+      final String finalTenantName = tenant.getName();
 
-      auditLogService.log(
-          AuditAction.SIGNUP,
-          tenant.getId(),
-          user.getId(),
-          "New business registered: " + tenant.getName() + " by " + user.getEmail());
+      TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+          @Override
+          public void afterCommit() {
+              emailService.sendVerificationEmail(finalEmail, finalRawToken);
+              auditLogService.log(
+                  AuditAction.SIGNUP,
+                  finalTenantId,
+                  finalUserId,
+                  "New business registered: " + finalTenantName + " by " + finalEmail);
+          }
+      });
     } finally {
       TenantContext.clear();
     }

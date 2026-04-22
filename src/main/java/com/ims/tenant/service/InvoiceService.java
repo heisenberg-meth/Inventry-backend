@@ -31,6 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.thymeleaf.context.Context;
@@ -50,7 +51,6 @@ public class InvoiceService {
 
   private static final int DEFAULT_DUE_DAYS = 30;
 
-  @SuppressWarnings("null")
   @Transactional
   public @NonNull Invoice createManual(@NonNull CreateInvoiceRequest request) {
     Order order = orderRepository
@@ -110,7 +110,6 @@ public class InvoiceService {
     return invoiceRepository.save(invoice);
   }
 
-  @SuppressWarnings("null")
   @Transactional
   public @NonNull Invoice createFromOrder(@NonNull Order order) {
     String invoiceNumber = incrementAndGetInvoiceNumber();
@@ -129,7 +128,6 @@ public class InvoiceService {
     return invoiceRepository.save(invoice);
   }
 
-  @SuppressWarnings("null")
   @Transactional
   public @NonNull Invoice createCreditNote(@NonNull Order returnOrder, Long parentInvoiceId) {
     String invoiceNumber = "CN-" + incrementAndGetInvoiceNumber().substring(4); // Use CN prefix
@@ -177,7 +175,7 @@ public class InvoiceService {
         .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
     Customer customer = customerRepository
-        .findById(Objects.requireNonNull(order.getCustomerId()))
+        .findById(Objects.requireNonNull(order.getCustomerId(), "customer id required"))
         .orElseThrow(() -> new EntityNotFoundException("Customer not found"));
 
     List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
@@ -186,7 +184,7 @@ public class InvoiceService {
         .map(
             item -> {
               Product product = productRepository
-                  .findById(Objects.requireNonNull(item.getProductId()))
+                  .findById(Objects.requireNonNull(item.getProductId(), "product id required"))
                   .orElseThrow(() -> new EntityNotFoundException("Product not found"));
               Map<String, Object> map = new HashMap<>();
               map.put("productName", product.getName());
@@ -228,12 +226,9 @@ public class InvoiceService {
     return invoiceRepository.findAll(pageable);
   }
 
-  @SuppressWarnings("null")
   public @NonNull Page<Invoice> getOverdueInvoices(@NonNull Pageable pageable) {
     return invoiceRepository.findByStatusNotAndDueDateBefore("PAID", LocalDate.now(), pageable);
   }
-
-  @SuppressWarnings("null")
   public @NonNull Invoice getInvoiceById(@NonNull Long id) {
     return invoiceRepository
         .findById(id)

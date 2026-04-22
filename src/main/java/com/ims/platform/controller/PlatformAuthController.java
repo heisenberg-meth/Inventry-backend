@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/platform/auth")
+@RequestMapping("/platform/auth")
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Platform - Authentication", description = "Login for platform administrators")

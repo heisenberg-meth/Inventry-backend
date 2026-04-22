@@ -13,7 +13,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/tenant/notifications")
+@RequestMapping("/tenant/notifications")
 @RequiredArgsConstructor
 @Tag(name = "Tenant - Notifications", description = "In-app notification feed")
 @SecurityRequirement(name = "bearerAuth")

@@ -9,6 +9,7 @@ import com.ims.dto.response.UserResponse;
 import com.ims.model.Permission;
 import com.ims.model.Role;
 import com.ims.model.User;
+import com.ims.model.UserRole;
 import com.ims.platform.repository.TenantRepository;
 import com.ims.shared.audit.AuditLogService;
 import com.ims.shared.auth.JwtAuthDetails;
@@ -25,10 +26,12 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -92,7 +95,7 @@ public class UserService {
             .name(request.getName())
             .email(request.getEmail())
             .passwordHash(passwordEncoder.encode(request.getPassword()))
-            .role(request.getRole())
+            .role(UserRole.valueOf(request.getRole()))
             .scope("TENANT")
             .isActive(true)
             .build();
@@ -106,6 +109,7 @@ public class UserService {
   }
 
   @Transactional
+  @CacheEvict(value = "permissions", key = "#id", cacheResolver = "tenantAwareCacheResolver")
   public @NonNull UserResponse updateRole(@NonNull Long id, @NonNull String newRole) {
     if (!VALID_TENANT_ROLES.contains(newRole)) {
       throw new IllegalArgumentException("Invalid role. Must be one of: " + VALID_TENANT_ROLES);
@@ -117,7 +121,7 @@ public class UserService {
                 .findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new EntityNotFoundException("User not found")));
 
-    user.setRole(newRole);
+    user.setRole(UserRole.valueOf(newRole));
     user = Objects.requireNonNull(userRepository.save(Objects.requireNonNull(user)));
     
     auditLogService.logAudit(AuditAction.UPDATE_ROLE, AuditResource.USER, id, "Updated role for user " + user.getEmail() + " to " + newRole);
@@ -127,7 +131,10 @@ public class UserService {
   }
 
   @Transactional
-  public UserResponse assignPermissions(@NonNull Long id, @NonNull AssignPermissionsRequest request) {
+  @CacheEvict(value = "permissions", key = "#id", cacheResolver = "tenantAwareCacheResolver")
+  public @NonNull UserResponse assignPermissions(@NonNull Long id, @NonNull AssignPermissionsRequest request) {
+    Objects.requireNonNull(id, "user id required");
+    Objects.requireNonNull(request, "request body required");
     User user = userRepository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
@@ -154,7 +161,7 @@ public class UserService {
     log.info("User deactivated: id={}", id);
   }
 
-  private Long getTenantId() {
+  private @Nullable Long getTenantId() {
     try {
       var auth = SecurityContextHolder.getContext().getAuthentication();
       if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
@@ -173,8 +180,8 @@ public class UserService {
     if (user.getRole() != null) {
       Long tenantId = getTenantId();
       Optional<Role> roleOpt = tenantId != null 
-          ? roleRepository.findByNameAndTenantId(user.getRole(), tenantId)
-          : roleRepository.findByNameAndTenantIdIsNull(user.getRole());
+          ? roleRepository.findByNameAndTenantId(user.getRole().name(), tenantId)
+          : roleRepository.findByNameAndTenantIdIsNull(user.getRole().name());
       
       roleOpt.ifPresent(role -> 
           allPermissions.addAll(role.getPermissions().stream()
@@ -192,7 +199,7 @@ public class UserService {
         .id(user.getId())
         .name(user.getName())
         .email(user.getEmail())
-        .role(user.getRole())
+        .role(user.getRole() != null ? user.getRole().name() : null)
         .scope(user.getScope())
         .isActive(user.getIsActive())
         .permissions(new java.util.ArrayList<>(allPermissions))

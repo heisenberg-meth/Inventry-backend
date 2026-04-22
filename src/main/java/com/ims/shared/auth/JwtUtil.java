@@ -1,4 +1,5 @@
 package com.ims.shared.auth;
+import com.ims.model.UserRole;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -9,6 +10,9 @@ import java.util.HashMap;
 import java.util.Map;
 import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
+import java.util.Objects;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -32,13 +36,26 @@ public class JwtUtil {
     this.refreshExpirySeconds = refreshExpirySeconds;
   }
 
-  public String generateToken(
-      Long userId, Long tenantId, String role, String scope, String businessType, boolean isPlatformUser) {
+  public @NonNull String generateToken(
+      @NonNull Long userId, @Nullable Long tenantId, @Nullable UserRole role, @NonNull String scope, @Nullable String businessType, boolean isPlatformUser, @Nullable java.util.Collection<String> permissions) {
+    return generateToken(userId, tenantId, role, scope, businessType, isPlatformUser, permissions, false, null, expirySeconds);
+  }
+
+  public @NonNull String generateToken(
+      @NonNull Long userId, @Nullable Long tenantId, @Nullable UserRole role, @NonNull String scope, @Nullable String businessType, boolean isPlatformUser, @Nullable java.util.Collection<String> permissions,
+      boolean impersonation, @Nullable Long impersonatedBy, long customExpirySeconds) {
+    Objects.requireNonNull(userId, "user id required");
+    Objects.requireNonNull(scope, "scope required");
     Map<String, Object> claims = new HashMap<>();
     claims.put("user_id", userId);
-    claims.put("role", role);
+    claims.put("role", role != null ? role.name() : null);
     claims.put("scope", scope);
     claims.put("is_platform_user", isPlatformUser);
+    claims.put("permissions", permissions);
+    claims.put("impersonation", impersonation);
+    if (impersonatedBy != null) {
+      claims.put("impersonated_by", impersonatedBy);
+    }
     if (tenantId != null) {
       claims.put("tenant_id", tenantId);
     }
@@ -46,24 +63,36 @@ public class JwtUtil {
       claims.put("business_type", businessType);
     }
 
-
     return Jwts.builder()
         .claims(claims)
         .subject(userId.toString())
         .issuedAt(new Date())
-        .expiration(new Date(System.currentTimeMillis() + expirySeconds * MILLIS_IN_SECOND))
+        .expiration(new Date(System.currentTimeMillis() + customExpirySeconds * MILLIS_IN_SECOND))
         .signWith(key)
         .compact();
   }
 
-  public String generateRefreshToken(
-      Long userId, Long tenantId, String role, String scope, String businessType, boolean isPlatformUser) {
+  public @NonNull String generateRefreshToken(
+      @NonNull Long userId, @Nullable Long tenantId, @Nullable UserRole role, @NonNull String scope, @Nullable String businessType, boolean isPlatformUser, @Nullable java.util.Collection<String> permissions) {
+    return generateRefreshToken(userId, tenantId, role, scope, businessType, isPlatformUser, permissions, false, null, refreshExpirySeconds);
+  }
+
+  public @NonNull String generateRefreshToken(
+      @NonNull Long userId, @Nullable Long tenantId, @Nullable UserRole role, @NonNull String scope, @Nullable String businessType, boolean isPlatformUser, @Nullable java.util.Collection<String> permissions,
+      boolean impersonation, @Nullable Long impersonatedBy, long customExpirySeconds) {
+    Objects.requireNonNull(userId, "user id required");
+    Objects.requireNonNull(scope, "scope required");
     Map<String, Object> claims = new HashMap<>();
     claims.put("user_id", userId);
-    claims.put("role", role);
+    claims.put("role", role != null ? role.name() : null);
     claims.put("scope", scope);
     claims.put("is_platform_user", isPlatformUser);
     claims.put("token_type", "refresh");
+    claims.put("permissions", permissions);
+    claims.put("impersonation", impersonation);
+    if (impersonatedBy != null) {
+      claims.put("impersonated_by", impersonatedBy);
+    }
     if (tenantId != null) {
       claims.put("tenant_id", tenantId);
     }
@@ -71,17 +100,17 @@ public class JwtUtil {
       claims.put("business_type", businessType);
     }
 
-
     return Jwts.builder()
         .claims(claims)
         .subject(userId.toString())
         .issuedAt(new Date())
-        .expiration(new Date(System.currentTimeMillis() + refreshExpirySeconds * MILLIS_IN_SECOND))
+        .expiration(new Date(System.currentTimeMillis() + customExpirySeconds * MILLIS_IN_SECOND))
         .signWith(key)
         .compact();
   }
 
-  public boolean validateToken(String token) {
+  public boolean validateToken(@Nullable String token) {
+    if (token == null || token.isBlank()) return false;
     try {
       Jwts.parser().verifyWith(key).build().parseSignedClaims(token);
       return true;
@@ -90,7 +119,8 @@ public class JwtUtil {
     }
   }
 
-  public Claims extractAllClaims(String token) {
+  public @NonNull Claims extractAllClaims(@NonNull String token) {
+    Objects.requireNonNull(token, "token required");
     return Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
   }
 
@@ -119,8 +149,26 @@ public class JwtUtil {
     return isPlatformUser != null && isPlatformUser;
   }
 
+  public java.util.Set<String> extractPermissions(String token) {
+    java.util.List<String> perms = extractAllClaims(token).get("permissions", java.util.List.class);
+    return perms != null ? new java.util.HashSet<>(perms) : java.util.Collections.emptySet();
+  }
+
+  public boolean extractImpersonation(String token) {
+    Boolean val = extractAllClaims(token).get("impersonation", Boolean.class);
+    return val != null && val;
+  }
+
+  public Long extractImpersonatedBy(String token) {
+    return extractAllClaims(token).get("impersonated_by", Long.class);
+  }
+
   public long getExpirySeconds() {
     return expirySeconds;
+  }
+
+  public long getRefreshExpirySeconds() {
+    return refreshExpirySeconds;
   }
 
   private byte[] hexStringToByteArray(String s) {

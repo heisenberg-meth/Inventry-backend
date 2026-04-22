@@ -31,7 +31,6 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@SuppressWarnings("null")
 public class ReportService {
 
   private final ProductRepository productRepository;
@@ -56,15 +55,15 @@ public class ReportService {
         .orElse(DEFAULT_DAYS);
   }
 
-  @Cacheable(value = "reports", key = "T(com.ims.util.CacheKeyUtil).tenantKey('purchases:' + #from + ':' + #to)")
+  @Cacheable(value = "reports", key = "'purchases:' + #from + ':' + #to", cacheResolver = "tenantAwareCacheResolver")
   public @NonNull Map<String, Object> getPurchasesReport(@NonNull LocalDate from, @NonNull LocalDate to) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
       throw new IllegalStateException("Tenant not resolved from request");
     }
-    log.info("TenantContext: {}", tenantId);
-    LocalDateTime fromDt = Objects.requireNonNull(from).atStartOfDay();
-    LocalDateTime toDt = Objects.requireNonNull(to).atTime(LocalTime.MAX);
+
+    LocalDateTime fromDt = Objects.requireNonNull(from, "from date required").atStartOfDay();
+    LocalDateTime toDt = Objects.requireNonNull(to, "to date required").atTime(LocalTime.MAX);
 
     BigDecimal totalSpent = orderRepository.sumAmountByTypeAndDateRange("PURCHASE",
         Objects.requireNonNull(fromDt), Objects.requireNonNull(toDt));
@@ -85,13 +84,13 @@ public class ReportService {
     return analytics;
   }
 
-  @Cacheable(value = "dashboard", key = "T(com.ims.util.CacheKeyUtil).tenantKey('dashboard')")
+  @Cacheable(value = "dashboard", key = "'dashboard'", cacheResolver = "tenantAwareCacheResolver")
   public @NonNull Map<String, Object> getDashboard() {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
       throw new IllegalStateException("Tenant not resolved from request");
     }
-    log.info("TenantContext: {}", tenantId);
+
     LocalDateTime todayStart = LocalDate.now().atStartOfDay();
     LocalDateTime todayEnd = LocalDate.now().atTime(LocalTime.MAX);
 
@@ -159,7 +158,7 @@ public class ReportService {
         .collect(Collectors.toList());
   }
 
-  @Cacheable(value = "reports", key = "T(com.ims.util.CacheKeyUtil).tenantKey('stock-report')")
+  @Cacheable(value = "reports", key = "'stock-report'", cacheResolver = "tenantAwareCacheResolver")
   public @NonNull List<Map<String, Object>> getStockReport(@Nullable String filter) {
     var products = Objects.requireNonNull(productRepository.findByIsActiveTrue(Pageable.unpaged())).getContent();
     List<Map<String, Object>> report = new ArrayList<>();
@@ -176,17 +175,12 @@ public class ReportService {
       }
 
       // Check expiry for pharmacy
-      LocalDate expiryDate = null;
-      try {
-        var pp = pharmacyProductRepository.findById(Objects.requireNonNull(product.getId()));
-        if (pp.isPresent()) {
-          expiryDate = pp.get().getExpiryDate();
-          if (expiryDate != null && expiryDate.isBefore(LocalDate.now().plusDays(thresholdDays))) {
-            status = "EXPIRING";
-          }
-        }
-      } catch (Exception e) {
-        log.trace("Caught expected exception for non-pharmacy product: {}", e.getMessage());
+      LocalDate expiryDate = pharmacyProductRepository.findById(Objects.requireNonNull(product.getId()))
+          .map(com.ims.tenant.domain.pharmacy.PharmacyProduct::getExpiryDate)
+          .orElse(null);
+
+      if (expiryDate != null && expiryDate.isBefore(LocalDate.now().plusDays(thresholdDays))) {
+          status = "EXPIRING";
       }
 
       // Apply filter
@@ -222,10 +216,10 @@ public class ReportService {
     return report;
   }
 
-  @Cacheable(value = "reports", key = "T(com.ims.util.CacheKeyUtil).tenantKey('sales:' + #from + ':' + #to)")
+  @Cacheable(value = "reports", key = "'sales:' + #from + ':' + #to", cacheResolver = "tenantAwareCacheResolver")
   public @NonNull Map<String, Object> getSalesAnalytics(@NonNull LocalDate from, @NonNull LocalDate to) {
-    LocalDateTime fromDt = Objects.requireNonNull(from).atStartOfDay();
-    LocalDateTime toDt = Objects.requireNonNull(to).atTime(LocalTime.MAX);
+    LocalDateTime fromDt = Objects.requireNonNull(from, "from date required").atStartOfDay();
+    LocalDateTime toDt = Objects.requireNonNull(to, "to date required").atTime(LocalTime.MAX);
 
     BigDecimal totalRevenue = orderRepository.sumAmountByTypeAndDateRange("SALE",
         Objects.requireNonNull(fromDt), Objects.requireNonNull(toDt));
@@ -247,8 +241,8 @@ public class ReportService {
   }
 
   public @NonNull Map<String, Object> getProfitLoss(@NonNull LocalDate from, @NonNull LocalDate to) {
-    LocalDateTime fromDt = Objects.requireNonNull(from).atStartOfDay();
-    LocalDateTime toDt = Objects.requireNonNull(to).atTime(LocalTime.MAX);
+    LocalDateTime fromDt = Objects.requireNonNull(from, "from date required").atStartOfDay();
+    LocalDateTime toDt = Objects.requireNonNull(to, "to date required").atTime(LocalTime.MAX);
 
     BigDecimal salesRevenue = orderRepository.sumAmountByTypeAndDateRange("SALE",
         Objects.requireNonNull(fromDt), Objects.requireNonNull(toDt));
@@ -273,9 +267,9 @@ public class ReportService {
     return report;
   }
 
-  public Map<String, Object> getGstReport(LocalDate from, LocalDate to) {
-    LocalDateTime fromDt = from.atStartOfDay();
-    LocalDateTime toDt = to.atTime(LocalTime.MAX);
+  public @NonNull Map<String, Object> getGstReport(@NonNull LocalDate from, @NonNull LocalDate to) {
+    LocalDateTime fromDt = Objects.requireNonNull(from, "from date required").atStartOfDay();
+    LocalDateTime toDt = Objects.requireNonNull(to, "to date required").atTime(LocalTime.MAX);
 
     BigDecimal totalSalesTax = orderRepository.sumTaxAmountByTypeAndDateRange("SALE", fromDt, toDt);
     
@@ -290,7 +284,7 @@ public class ReportService {
     return gst;
   }
 
-  public List<Map<String, Object>> getAlerts() {
+  public @NonNull List<Map<String, Object>> getAlerts() {
     return alertRepository.findByTenantIdAndIsDismissedFalse(TenantContext.getTenantId()).stream()
         .map(a -> {
           Map<String, Object> map = new java.util.HashMap<>();
@@ -306,7 +300,7 @@ public class ReportService {
   }
 
   @org.springframework.transaction.annotation.Transactional
-  public void dismissAlert(Long id) {
+  public void dismissAlert(@NonNull Long id) {
     alertRepository.findById(id).ifPresent(a -> {
       if (a.getTenantId().equals(TenantContext.getTenantId())) {
         a.setIsDismissed(true);

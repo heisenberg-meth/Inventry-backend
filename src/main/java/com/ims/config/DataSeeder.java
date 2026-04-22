@@ -1,6 +1,7 @@
 package com.ims.config;
 
 import com.ims.model.User;
+import com.ims.model.UserRole;
 import com.ims.tenant.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +23,6 @@ public class DataSeeder implements CommandLineRunner {
         seedPlatformAdmin();
     }
 
-    @SuppressWarnings("null")
     private void seedPlatformAdmin() {
         String adminEmail = "admin@platform.com";
         if (userRepository.findByEmailUnfiltered(adminEmail).isEmpty()) {
@@ -30,7 +30,7 @@ public class DataSeeder implements CommandLineRunner {
                     .name("Platform Admin")
                     .email(adminEmail)
                     .passwordHash(passwordEncoder.encode("admin-Secret-1234!"))
-                    .role("PLATFORM_ADMIN")
+                    .role(UserRole.PLATFORM_ADMIN)
                     .scope("PLATFORM")
                     .isPlatformUser(true)
                     .isActive(true)

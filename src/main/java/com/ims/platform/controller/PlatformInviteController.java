@@ -13,7 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/platform/invites")
+@RequestMapping("/platform/invites")
 @RequiredArgsConstructor
 @Tag(name = "Platform - Invites", description = "Invite mechanism for platform administrators")
 public class PlatformInviteController {

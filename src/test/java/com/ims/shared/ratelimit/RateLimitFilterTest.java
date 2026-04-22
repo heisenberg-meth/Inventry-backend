@@ -24,7 +24,6 @@ import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
-@SuppressWarnings("null")
 class RateLimitFilterTest {
 
   private static final int AUTH_RPM = 5;
@@ -32,10 +31,8 @@ class RateLimitFilterTest {
   private static final int TENANT_RPM = 20;
   private static final int WINDOW_SECONDS = 60;
 
-  @SuppressWarnings("unchecked")
   private final RedisTemplate<String, Object> redisTemplate = mock(RedisTemplate.class);
 
-  @SuppressWarnings("unchecked")
   private final ZSetOperations<String, Object> zSet = mock(ZSetOperations.class);
 
   private final JwtUtil jwtUtil = mock(JwtUtil.class);
