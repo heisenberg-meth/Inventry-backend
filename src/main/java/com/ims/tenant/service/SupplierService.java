@@ -40,7 +40,7 @@ public class SupplierService {
       log.error("Tenant ID is missing in SupplierService.getSuppliers");
       throw new IllegalStateException("Tenant context is missing");
     }
-    log.info("TenantContext: {}", tenantId);
+
     return Objects.requireNonNull(supplierRepository.findAll(pageable));
   }
 
@@ -50,7 +50,7 @@ public class SupplierService {
       log.error("Tenant ID is missing in SupplierService.getById");
       throw new IllegalStateException("Tenant context is missing");
     }
-    log.info("TenantContext: {}", tenantId);
+
     return Objects.requireNonNull(supplierRepository
         .findById(id)
         .orElseThrow(() -> new EntityNotFoundException("Supplier not found")));
@@ -63,7 +63,7 @@ public class SupplierService {
       log.error("Tenant ID is missing in SupplierService.create");
       throw new IllegalStateException("Tenant context is missing");
     }
-    log.info("TenantContext: {}", tenantId);
+
     supplier.setTenantId(TenantContext.getTenantId());
     Supplier savedSupplier = Objects.requireNonNull(supplierRepository.save(supplier));
 
@@ -83,7 +83,7 @@ public class SupplierService {
       log.error("Tenant ID is missing in SupplierService.update");
       throw new IllegalStateException("Tenant context is missing");
     }
-    log.info("TenantContext: {}", tenantId);
+
     Supplier supplier = getById(id);
     if (updates.getName() != null) {
       supplier.setName(updates.getName());
@@ -119,7 +119,7 @@ public class SupplierService {
       log.error("Tenant ID is missing in SupplierService.delete");
       throw new IllegalStateException("Tenant context is missing");
     }
-    log.info("TenantContext: {}", tenantId);
+
     Supplier supplier = getById(id);
     supplierRepository.delete(supplier);
 
@@ -136,7 +136,7 @@ public class SupplierService {
       log.error("Tenant ID is missing in SupplierService.getSupplierLedger");
       throw new IllegalStateException("Tenant context is missing");
     }
-    log.info("TenantContext: {}", tenantId);
+
     Supplier supplier = getById(id);
 
     List<com.ims.model.Order> orders = orderRepository.findBySupplierId(id, Pageable.unpaged()).getContent();

@@ -3,6 +3,8 @@ package com.ims.model;
 import org.hibernate.annotations.TenantId;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -51,7 +53,8 @@ public class User {
   private String passwordHash;
 
   @Column(nullable = false)
-  private String role;
+  @Enumerated(EnumType.STRING)
+  private UserRole role;
 
   @Column(nullable = false)
   @Builder.Default
@@ -95,4 +98,14 @@ public class User {
   @Column(name = "created_at")
   @Builder.Default
   private LocalDateTime createdAt = LocalDateTime.now();
+
+  public static class UserBuilder {
+    public UserBuilder role(UserRole role) {
+      if (this.role != null) {
+        throw new IllegalStateException("Role already set to: " + this.role);
+      }
+      this.role = role;
+      return this;
+    }
+  }
 }

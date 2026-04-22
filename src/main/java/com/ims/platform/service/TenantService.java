@@ -8,7 +8,9 @@ import com.ims.dto.response.UserResponse;
 import com.ims.model.Subscription;
 import com.ims.model.SubscriptionPlan;
 import com.ims.model.Tenant;
+import com.ims.model.TenantStatus;
 import com.ims.model.User;
+import com.ims.model.UserRole;
 import com.ims.platform.repository.SubscriptionPlanRepository;
 import com.ims.platform.repository.SubscriptionRepository;
 import com.ims.platform.repository.TenantRepository;
@@ -35,7 +37,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@SuppressWarnings("null")
 public class TenantService {
 
   private final TenantRepository tenantRepository;
@@ -85,7 +86,7 @@ public class TenantService {
             .companyCode(companyCode)
             .businessType(request.getBusinessType())
             .plan(request.getPlan() != null ? request.getPlan() : "FREE")
-            .status("ACTIVE")
+            .status(TenantStatus.ACTIVE)
             .maxProducts(request.getMaxProducts())
             .maxUsers(request.getMaxUsers())
             .build();
@@ -142,7 +143,7 @@ public class TenantService {
         tenantRepository
             .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
-    tenant.setStatus("INACTIVE");
+    tenant.setStatus(TenantStatus.INACTIVE);
     tenantRepository.save(tenant);
     log.info("Tenant deactivated: id={}", id);
   }
@@ -154,7 +155,7 @@ public class TenantService {
         tenantRepository
             .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
-    tenant.setStatus("SUSPENDED");
+    tenant.setStatus(TenantStatus.SUSPENDED);
     tenantRepository.save(tenant);
 
     auditLogService.log(
@@ -170,7 +171,7 @@ public class TenantService {
         tenantRepository
             .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
-    tenant.setStatus("ACTIVE");
+    tenant.setStatus(TenantStatus.ACTIVE);
     tenantRepository.save(tenant);
 
     auditLogService.log(
@@ -273,7 +274,7 @@ public class TenantService {
     if (plan.getMaxProducts() != null && plan.getMaxProducts() > 0) {
       tenant.setMaxProducts(plan.getMaxProducts());
     }
-    tenant.setStatus("ACTIVE");
+    tenant.setStatus(TenantStatus.ACTIVE);
     tenantRepository.save(tenant);
 
     // Create new subscription
@@ -318,7 +319,7 @@ public class TenantService {
 
     Map<String, Object> response = new HashMap<>();
     response.put("plan", tenant.getPlan());
-    response.put("status", tenant.getStatus());
+    response.put("status", tenant.getStatus() != null ? tenant.getStatus().name() : null);
 
     subscriptionRepository
         .findFirstByTenantIdOrderByCreatedAtDesc(tenantId)
@@ -348,7 +349,7 @@ public class TenantService {
             .name(request.getUsername())
             .email(email)
             .passwordHash(passwordEncoder.encode(request.getPassword()))
-            .role(request.getRole())
+            .role(UserRole.valueOf(request.getRole()))
             .scope(request.getScope())
             .tenantId(tenantId)
             .isActive(true)
@@ -373,7 +374,7 @@ public class TenantService {
         .id(user.getId())
         .name(user.getName())
         .email(user.getEmail())
-        .role(user.getRole())
+        .role(user.getRole() != null ? user.getRole().name() : null)
         .scope(user.getScope())
         .isActive(user.getIsActive())
         .createdAt(user.getCreatedAt())
@@ -390,7 +391,7 @@ public class TenantService {
     }
 
     userRepository.delete(user);
-    log.info("Platform hard-deleted user: {} (tenant={})", user.getEmail(), tenantId);
+    log.info("Platform hard-deleted user: {}", user.getEmail());
     
     auditLogService.log(AuditAction.PLATFORM_DELETE_USER, tenantId, null, "Platform admin hard-deleted user: " + user.getEmail());
   }
@@ -402,7 +403,7 @@ public class TenantService {
         .workspaceSlug(tenant.getWorkspaceSlug())
         .businessType(tenant.getBusinessType())
         .plan(tenant.getPlan())
-        .status(tenant.getStatus())
+        .status(tenant.getStatus() != null ? tenant.getStatus().name() : null)
         .maxProducts(tenant.getMaxProducts())
         .maxUsers(tenant.getMaxUsers())
         .createdAt(tenant.getCreatedAt())
@@ -414,7 +415,7 @@ public class TenantService {
         .id(user.getId())
         .name(user.getName())
         .email(user.getEmail())
-        .role(user.getRole())
+        .role(user.getRole() != null ? user.getRole().name() : null)
         .scope(user.getScope())
         .isActive(user.getIsActive())
         .createdAt(user.getCreatedAt())

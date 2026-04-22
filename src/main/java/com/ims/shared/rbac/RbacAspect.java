@@ -1,17 +1,11 @@
 package com.ims.shared.rbac;
 
-import com.ims.model.Permission;
-import com.ims.model.Role;
-import com.ims.model.User;
 import com.ims.platform.service.SystemConfigService;
 import com.ims.shared.auth.JwtAuthDetails;
 import com.ims.tenant.repository.RoleRepository;
 import com.ims.tenant.repository.UserRepository;
 import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -28,6 +22,7 @@ public class RbacAspect {
   private final SystemConfigService systemConfigService;
   private final UserRepository userRepository;
   private final RoleRepository roleRepository;
+  private final PermissionService permissionService;
 
   private boolean isRoot() {
     var auth = SecurityContextHolder.getContext().getAuthentication();
@@ -83,34 +78,23 @@ public class RbacAspect {
       Long userId = details.getUserId();
       Long tenantId = details.getTenantId();
 
-      User user = userRepository.findByIdWithPermissions(userId)
-          .orElseThrow(() -> new AccessDeniedException("User not found"));
+      // HYBRID APPROACH:
+      // 1. Try permissions from JWT (primary)
+      Set<String> permissions = details.getPermissions();
 
-      Set<String> permissions = new HashSet<>();
-      
-      // 1. Get permissions from Role
-      if (user.getRole() != null) {
-        Optional<Role> roleOpt = tenantId != null 
-            ? roleRepository.findByNameAndTenantIdWithPermissions(user.getRole(), tenantId)
-            : roleRepository.findByNameAndTenantIdIsNullWithPermissions(user.getRole());
-        
-        roleOpt.ifPresent(role -> 
-            permissions.addAll(role.getPermissions().stream()
-                .map(Permission::getKey)
-                .collect(Collectors.toSet()))
-        );
+      // 2. Fallback to PermissionService (Redis Cache -> DB)
+      // We check if permissions are null or empty. 
+      // Note: PLATFORM users might have empty permissions if not set, 
+      // but we still want to hit the cache/DB once if JWT is empty.
+      if (permissions == null || permissions.isEmpty()) {
+        permissions = permissionService.getUserPermissions(userId, tenantId);
       }
-
-      // 2. Get custom permissions
-      permissions.addAll(user.getCustomPermissions().stream()
-          .map(Permission::getKey)
-          .collect(Collectors.toSet()));
 
       String requiredPermission = requiresPermission.value();
       boolean allowed = permissions.contains(requiredPermission);
 
       // ROOT override
-      if (!allowed && "ROOT".equals(user.getRole()) && systemConfigService.isSupportModeEnabled()) {
+      if (!allowed && "ROOT".equals(details.getRole()) && systemConfigService.isSupportModeEnabled()) {
         allowed = true;
       }
 

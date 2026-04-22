@@ -50,13 +50,12 @@ public class SupportService {
             .status("OPEN")
             .build();
 
-    @SuppressWarnings("null")
     SupportTicket saved = ticketRepository.save(ticket);
     Objects.requireNonNull(saved);
 
     auditLogService.log(
         AuditAction.CREATE_TICKET, tenantId, userId, "Created ticket: " + saved.getTitle());
-    log.info("Support ticket created: id={} tenant={}", saved.getId(), tenantId);
+    log.info("Support ticket created: id={}", saved.getId());
     return Objects.requireNonNull(saved);
   }
 
@@ -205,7 +204,6 @@ public class SupportService {
             .message(request.getMessage())
             .build();
 
-    @SuppressWarnings("null")
     SupportMessage saved = messageRepository.save(message);
     Objects.requireNonNull(saved);
 

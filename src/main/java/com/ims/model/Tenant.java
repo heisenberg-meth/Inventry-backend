@@ -2,6 +2,8 @@ package com.ims.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -42,7 +44,10 @@ public class Tenant {
 
   @Column @Builder.Default private String plan = "FREE";
 
-  @Column @Builder.Default private String status = "ACTIVE";
+  @Column
+  @Enumerated(EnumType.STRING)
+  @Builder.Default
+  private TenantStatus status = TenantStatus.ACTIVE;
 
   @Column(name = "invoice_sequence")
   @Builder.Default
@@ -67,4 +72,16 @@ public class Tenant {
   @Column(name = "created_at")
   @Builder.Default
   private LocalDateTime createdAt = LocalDateTime.now();
+
+  public static class TenantBuilder {
+    private Object status;
+
+    public TenantBuilder status(TenantStatus status) {
+      if (this.status != null) {
+        throw new IllegalStateException("Status already set to: " + this.status);
+      }
+      this.status = status;
+      return this;
+    }
+  }
 }

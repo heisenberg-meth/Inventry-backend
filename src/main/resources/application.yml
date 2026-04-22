@@ -10,7 +10,14 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
-    show-sql: true
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+        batch_versioned_data: true
+    show-sql: false
     open-in-view: false
 
   flyway:
@@ -73,6 +80,8 @@ springdoc:
 
 server:
   port: ${PORT:8080}
+  servlet:
+    context-path: /api/v1
   forward-headers-strategy: native
   error:
     include-message: never
@@ -81,11 +90,16 @@ server:
     include-exception: false
 
 logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger - [tenant:%X{tenantId}] [user:%X{userId}] [req:%X{requestId}] %msg%n"
   level:
     com.ims: INFO
     org.springframework.security: INFO
     org.springdoc: DEBUG
     org.springframework.web: DEBUG
+    org.hibernate.SQL: OFF
+    org.hibernate.type.descriptor.sql: OFF
+    org.hibernate.orm.jdbc.bind: OFF
 
 resilience4j:
   ratelimiter:
@@ -94,3 +108,13 @@ resilience4j:
         limitForPeriod: 3
         limitRefreshPeriod: 15m
         timeoutDuration: 0
+  circuitbreaker:
+    instances:
+      webhook:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10

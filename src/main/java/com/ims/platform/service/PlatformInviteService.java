@@ -2,6 +2,7 @@ package com.ims.platform.service;
 
 import com.ims.model.PlatformInvite;
 import com.ims.model.User;
+import com.ims.model.UserRole;
 import com.ims.platform.repository.PlatformInviteRepository;
 import com.ims.tenant.repository.UserRepository;
 import com.ims.shared.auth.JwtAuthDetails;
@@ -18,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@SuppressWarnings("null")
 public class PlatformInviteService {
 
   private final PlatformInviteRepository inviteRepository;
@@ -43,7 +43,7 @@ public class PlatformInviteService {
 
     PlatformInvite invite = PlatformInvite.builder()
         .email(email)
-        .role(role)
+        .role(UserRole.valueOf(role))
         .token(token)
         .expiresAt(LocalDateTime.now().plusHours(24))
         .createdBy(currentUserId)

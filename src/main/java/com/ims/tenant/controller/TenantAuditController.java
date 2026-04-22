@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/tenant/audits")
+@RequestMapping("/tenant/audits")
 @RequiredArgsConstructor
 @Tag(name = "Tenant - Audit", description = "Tenant-specific activity logs")
 @SecurityRequirement(name = "bearerAuth")

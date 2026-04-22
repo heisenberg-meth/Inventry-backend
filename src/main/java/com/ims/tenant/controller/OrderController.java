@@ -2,10 +2,12 @@ package com.ims.tenant.controller;
 
 import com.ims.model.Order;
 import com.ims.shared.rbac.RequiresRole;
+import com.ims.tenant.dto.OrderRequest;
 import com.ims.tenant.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
@@ -25,11 +27,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/tenant/orders")
+@RequestMapping("/tenant/orders")
 @RequiredArgsConstructor
 @Tag(name = "Tenant - Orders", description = "Order management")
 @SecurityRequirement(name = "bearerAuth")
-@SuppressWarnings("null")
 public class OrderController {
 
   private final OrderService orderService;
@@ -48,8 +49,8 @@ public class OrderController {
   @PostMapping("/purchase")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Create purchase order")
-  public ResponseEntity<Map<String, Object>> createPurchaseOrder(
-      @NonNull @RequestBody Map<String, Object> request) {
+  public ResponseEntity<Order> createPurchaseOrder(
+      @Valid @RequestBody OrderRequest request) {
     Long userId = extractUserId();
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(orderService.createPurchaseOrder(request, userId));
@@ -58,8 +59,8 @@ public class OrderController {
   @PostMapping("/sale")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Create sale order")
-  public ResponseEntity<Map<String, Object>> createSalesOrder(
-      @NonNull @RequestBody Map<String, Object> request) {
+  public ResponseEntity<Order> createSalesOrder(
+      @Valid @RequestBody OrderRequest request) {
     Long userId = extractUserId();
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(orderService.createSalesOrder(request, userId));
@@ -68,7 +69,7 @@ public class OrderController {
   @PostMapping("/return")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Create return order")
-  public ResponseEntity<Order> createReturnOrder(@RequestBody Map<String, Object> request) {
+  public ResponseEntity<Order> createReturnOrder(@Valid @RequestBody OrderRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED).body(orderService.createReturnOrder(request, extractUserId()));
   }
 

@@ -15,9 +15,12 @@ import com.ims.tenant.repository.SupplierRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import com.ims.tenant.dto.OrderRequest;
+import com.ims.tenant.dto.OrderItemRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
@@ -29,7 +32,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@SuppressWarnings("null")
 public class OrderService {
 
   private final OrderRepository orderRepository;
@@ -46,10 +48,9 @@ public class OrderService {
   private static final int PERCENTAGE_BASE = 100;
 
   @Transactional
-  public @NonNull Map<String, Object> createPurchaseOrder(@NonNull Map<String, Object> request, @NonNull Long userId) {
-    Long supplierId = Long.valueOf(request.get("supplier_id").toString());
-    @SuppressWarnings("unchecked")
-    List<Map<String, Object>> items = (List<Map<String, Object>>) request.get("items");
+  public @NonNull Order createPurchaseOrder(@NonNull OrderRequest request, @NonNull Long userId) {
+    Long supplierId = request.getSupplierId();
+    List<OrderItemRequest> items = request.getItems();
 
     // Validate supplier belongs to tenant
     supplierRepository
@@ -59,27 +60,22 @@ public class OrderService {
     BigDecimal totalAmount = BigDecimal.ZERO;
     BigDecimal taxAmount = BigDecimal.ZERO;
 
-    // Save order
+    // Prepare order early but don't save yet to avoid flushing if we can
     Order order = Order.builder()
         .type("PURCHASE")
-        .status("RECEIVED")
+        .status("PENDING")
         .supplierId(supplierId)
-        .notes(request.getOrDefault("notes", "").toString())
+        .notes(request.getNotes())
         .createdBy(userId)
         .build();
 
-    // Calculate totals and validate items
-    for (Map<String, Object> item : items) {
-      // Validate product exists
-      Long.valueOf(item.get("product_id").toString());
-      int qty = Integer.parseInt(item.get("quantity").toString());
-      BigDecimal unitPrice = new BigDecimal(item.get("unit_price").toString());
-      BigDecimal discount = item.containsKey("discount")
-          ? new BigDecimal(item.get("discount").toString())
-          : BigDecimal.ZERO;
-      BigDecimal taxRate = item.containsKey("tax_rate")
-          ? new BigDecimal(item.get("tax_rate").toString())
-          : BigDecimal.ZERO;
+    // Single pass for totals and item preparation
+    List<OrderItem> orderItems = new ArrayList<>();
+    for (OrderItemRequest item : items) {
+      BigDecimal unitPrice = item.getUnitPrice();
+      int qty = item.getQuantity();
+      BigDecimal discount = item.getDiscount() != null ? item.getDiscount() : BigDecimal.ZERO;
+      BigDecimal taxRate = item.getTaxRate() != null ? item.getTaxRate() : BigDecimal.ZERO;
 
       BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(qty)).subtract(discount);
       BigDecimal itemTax = itemTotal
@@ -88,59 +84,42 @@ public class OrderService {
 
       totalAmount = totalAmount.add(itemTotal);
       taxAmount = taxAmount.add(itemTax);
-    }
 
-    order.setTotalAmount(totalAmount);
-    order.setTaxAmount(taxAmount);
-    order.setStatus("PENDING");
-    order = Objects.requireNonNull(orderRepository.save(order));
-
-    // Save items
-    for (Map<String, Object> item : items) {
-      Long productId = Long.valueOf(item.get("product_id").toString());
-      int qty = Integer.parseInt(item.get("quantity").toString());
-      BigDecimal unitPrice = new BigDecimal(item.get("unit_price").toString());
-      BigDecimal discount = item.containsKey("discount")
-          ? new BigDecimal(item.get("discount").toString())
-          : BigDecimal.ZERO;
-      BigDecimal taxRate = item.containsKey("tax_rate")
-          ? new BigDecimal(item.get("tax_rate").toString())
-          : BigDecimal.ZERO;
-
-      BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(qty)).subtract(discount);
-
-      OrderItem orderItem = OrderItem.builder()
-          .orderId(order.getId())
-          .productId(productId)
+      orderItems.add(OrderItem.builder()
+          .productId(item.getProductId())
           .quantity(qty)
           .unitPrice(unitPrice)
           .discount(discount)
           .taxRate(taxRate)
           .total(itemTotal)
-          .build();
-      orderItemRepository.save(Objects.requireNonNull(orderItem));
+          .build());
     }
 
-    log.info(
-        "Purchase order created: id={} total={}", order.getId(), totalAmount);
+    order.setTotalAmount(totalAmount);
+    order.setTaxAmount(taxAmount);
+    order = Objects.requireNonNull(orderRepository.save(order));
+
+    // Link items to order and batch save
+    final Long orderId = order.getId();
+    orderItems.forEach(oi -> oi.setOrderId(orderId));
+    orderItemRepository.saveAll(orderItems);
+
+    log.info("Purchase order created: id={} total={}", orderId, totalAmount);
 
     auditLogService.logAudit(
         AuditAction.CREATE_PURCHASE_ORDER,
         AuditResource.ORDER,
-        order.getId(),
-        String.format("Created purchase order #%d, Supplier: %d, Total: %s", order.getId(), order.getSupplierId(),
-            totalAmount));
+        orderId,
+        String.format("Created purchase order #%d, Supplier: %d, Total: %s", orderId, supplierId, totalAmount));
 
-    return Objects.requireNonNull(Map.of("order_id", order.getId(), "total", totalAmount));
+    return order;
   }
 
   @Transactional
-  public @NonNull Map<String, Object> createSalesOrder(@NonNull Map<String, Object> request, @NonNull Long userId) {
-    Long customerId = request.containsKey("customer_id")
-        ? Long.valueOf(request.get("customer_id").toString())
-        : null;
-    @SuppressWarnings("unchecked")
-    List<Map<String, Object>> items = (List<Map<String, Object>>) request.get("items");
+  public @NonNull Order createSalesOrder(@NonNull OrderRequest request, @NonNull Long userId) {
+    Long customerId = request.getCustomerId();
+    List<OrderItemRequest> items = request.getItems();
+
     // Validate customer if provided
     if (customerId != null) {
       customerRepository
@@ -148,10 +127,14 @@ public class OrderService {
           .orElseThrow(() -> new EntityNotFoundException("Customer not found"));
     }
 
-    // CHECK ALL stock availability BEFORE processing any items
-    for (Map<String, Object> item : items) {
-      Long productId = Long.valueOf(item.get("product_id").toString());
-      int qty = Integer.parseInt(item.get("quantity").toString());
+    BigDecimal totalAmount = BigDecimal.ZERO;
+    BigDecimal taxAmount = BigDecimal.ZERO;
+    List<OrderItem> orderItems = new ArrayList<>();
+
+    // Single pass for validation, totals, and item preparation
+    for (OrderItemRequest item : items) {
+      Long productId = item.getProductId();
+      int qty = item.getQuantity();
 
       Product product = productRepository
           .findById(Objects.requireNonNull(productId))
@@ -159,30 +142,14 @@ public class OrderService {
 
       if (product.getStock() < qty) {
         throw new InsufficientStockException(
-            "Insufficient stock for product: "
-                + product.getName()
-                + ". Requested: "
-                + qty
-                + ", Available: "
-                + product.getStock(),
+            "Insufficient stock for product: " + product.getName(),
             product.getStock(),
             qty);
       }
-    }
 
-    BigDecimal totalAmount = BigDecimal.ZERO;
-    BigDecimal taxAmount = BigDecimal.ZERO;
-
-    // Calculate totals
-    for (Map<String, Object> item : items) {
-      int qty = Integer.parseInt(item.get("quantity").toString());
-      BigDecimal unitPrice = new BigDecimal(item.get("unit_price").toString());
-      BigDecimal discount = item.containsKey("discount")
-          ? new BigDecimal(item.get("discount").toString())
-          : BigDecimal.ZERO;
-      BigDecimal taxRate = item.containsKey("tax_rate")
-          ? new BigDecimal(item.get("tax_rate").toString())
-          : BigDecimal.ZERO;
+      BigDecimal unitPrice = item.getUnitPrice();
+      BigDecimal discount = item.getDiscount() != null ? item.getDiscount() : BigDecimal.ZERO;
+      BigDecimal taxRate = item.getTaxRate() != null ? item.getTaxRate() : BigDecimal.ZERO;
 
       BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(qty)).subtract(discount);
       BigDecimal itemTax = itemTotal
@@ -191,25 +158,22 @@ public class OrderService {
 
       totalAmount = totalAmount.add(itemTotal);
       taxAmount = taxAmount.add(itemTax);
+
+      orderItems.add(OrderItem.builder()
+          .productId(productId)
+          .quantity(qty)
+          .unitPrice(unitPrice)
+          .discount(discount)
+          .taxRate(taxRate)
+          .total(itemTotal)
+          .build());
     }
 
-    // Apply root-level discount if any
-    BigDecimal rootDiscount = request.containsKey("discount_total")
-        ? new BigDecimal(request.get("discount_total").toString())
-        : BigDecimal.ZERO;
-
+    BigDecimal rootDiscount = request.getDiscountTotal() != null ? request.getDiscountTotal() : BigDecimal.ZERO;
     BigDecimal grandTotalCalculated = totalAmount.add(taxAmount).subtract(rootDiscount);
 
-    // Validate grand_total if provided
-    if (request.containsKey("grand_total")) {
-      BigDecimal grandTotalProvided = new BigDecimal(request.get("grand_total").toString());
-      if (grandTotalCalculated.compareTo(grandTotalProvided) != 0) {
-        throw new IllegalArgumentException(
-            "Grand total mismatch. Calculated: "
-                + grandTotalCalculated
-                + ", Provided: "
-                + grandTotalProvided);
-      }
+    if (request.getGrandTotal() != null && grandTotalCalculated.compareTo(request.getGrandTotal()) != 0) {
+      throw new IllegalArgumentException("Grand total mismatch. Calculated: " + grandTotalCalculated);
     }
 
     Order order = Order.builder()
@@ -219,57 +183,30 @@ public class OrderService {
         .totalAmount(totalAmount)
         .taxAmount(taxAmount)
         .discount(rootDiscount)
-        .notes(request.getOrDefault("notes", "").toString())
+        .notes(request.getNotes())
         .createdBy(userId)
         .build();
-    order = Objects.requireNonNull(orderRepository.save(Objects.requireNonNull(order)));
+    order = Objects.requireNonNull(orderRepository.save(order));
 
-    // Save items
-    for (Map<String, Object> item : items) {
-      Long productId = Long.valueOf(item.get("product_id").toString());
-      int qty = Integer.parseInt(item.get("quantity").toString());
-      BigDecimal unitPrice = new BigDecimal(item.get("unit_price").toString());
-      BigDecimal discount = item.containsKey("discount")
-          ? new BigDecimal(item.get("discount").toString())
-          : BigDecimal.ZERO;
-      BigDecimal taxRate = item.containsKey("tax_rate")
-          ? new BigDecimal(item.get("tax_rate").toString())
-          : BigDecimal.ZERO;
+    final Long orderId = order.getId();
+    orderItems.forEach(oi -> oi.setOrderId(orderId));
+    orderItemRepository.saveAll(orderItems);
 
-      BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(qty)).subtract(discount);
-
-      OrderItem orderItem = OrderItem.builder()
-          .orderId(order.getId())
-          .productId(productId)
-          .quantity(qty)
-          .unitPrice(unitPrice)
-          .discount(discount)
-          .taxRate(taxRate)
-          .total(itemTotal)
-          .build();
-      orderItemRepository.save(Objects.requireNonNull(orderItem));
-    }
-
-    log.info("Sales order created: id={} total={}", order.getId(), totalAmount);
+    log.info("Sales order created: id={} total={}", orderId, totalAmount);
 
     auditLogService.logAudit(
         AuditAction.CREATE_SALE_ORDER,
         AuditResource.ORDER,
-        order.getId(),
-        String.format("Created sales order #%d, Customer: %d, Total: %s", order.getId(), order.getCustomerId(),
-            totalAmount));
+        orderId,
+        String.format("Created sales order #%d, Customer: %d, Total: %s", orderId, customerId, totalAmount));
 
-    return Objects.requireNonNull(Map.of(
-        "order_id", order.getId(),
-        "total", totalAmount,
-        "grand_total", grandTotalCalculated));
+    return order;
   }
 
   @Transactional
-  public @NonNull Order createReturnOrder(@NonNull Map<String, Object> request, @NonNull Long userId) {
-    Long originalOrderId = Long.valueOf(request.get("original_order_id").toString());
-    @SuppressWarnings("unchecked")
-    List<Map<String, Object>> returnItems = (List<Map<String, Object>>) request.get("items");
+  public @NonNull Order createReturnOrder(@NonNull OrderRequest request, @NonNull Long userId) {
+    Long originalOrderId = request.getOriginalOrderId();
+    List<OrderItemRequest> returnItems = request.getItems();
 
     Order originalOrder = orderRepository.findById(originalOrderId)
         .orElseThrow(() -> new EntityNotFoundException("Original order not found"));
@@ -286,17 +223,18 @@ public class OrderService {
         .status("COMPLETED")
         .customerId(originalOrder.getCustomerId())
         .referenceOrderId(originalOrderId)
-        .notes(request.getOrDefault("notes", "Customer return").toString())
+        .notes(request.getNotes() != null ? request.getNotes() : "Customer return")
         .createdBy(userId)
         .build();
 
     returnOrder = orderRepository.save(returnOrder);
 
     List<OrderItem> originalItems = orderItemRepository.findByOrderId(originalOrderId);
+    List<OrderItem> returnOrderItems = new ArrayList<>();
 
-    for (Map<String, Object> item : returnItems) {
-      Long productId = Long.valueOf(item.get("product_id").toString());
-      int qty = Integer.parseInt(item.get("quantity").toString());
+    for (OrderItemRequest item : returnItems) {
+      Long productId = item.getProductId();
+      int qty = item.getQuantity();
 
       OrderItem originalItem = originalItems.stream()
           .filter(oi -> oi.getProductId().equals(productId))
@@ -317,19 +255,21 @@ public class OrderService {
       returnTotal = returnTotal.add(itemTotal);
       returnTax = returnTax.add(itemTax);
 
-      OrderItem returnOrderItem = OrderItem.builder()
-          .orderId(returnOrder.getId())
+      returnOrderItems.add(OrderItem.builder()
           .productId(productId)
           .quantity(qty)
           .unitPrice(unitPrice)
           .taxRate(taxRate)
           .total(itemTotal)
-          .build();
-      orderItemRepository.save(returnOrderItem);
+          .build());
 
       // Restore stock
       stockService.stockIn(productId, qty, "Return for Order #" + originalOrderId, userId);
     }
+
+    final Long returnOrderId = returnOrder.getId();
+    returnOrderItems.forEach(oi -> oi.setOrderId(returnOrderId));
+    orderItemRepository.saveAll(returnOrderItems);
 
     returnOrder.setTotalAmount(returnTotal);
     returnOrder.setTaxAmount(returnTax);
@@ -338,7 +278,7 @@ public class OrderService {
     // Create Credit Note
     invoiceService.createCreditNote(returnOrder, null);
 
-    auditLogService.logAudit(AuditAction.CREATE_RETURN_ORDER, AuditResource.ORDER, returnOrder.getId(),
+    auditLogService.logAudit(AuditAction.CREATE_RETURN_ORDER, AuditResource.ORDER, returnOrderId,
         String.format("Processed return for order #%d, Total Credit: %s", originalOrderId, returnTotal));
 
     return returnOrder;
@@ -388,9 +328,11 @@ public class OrderService {
 
     List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
     List<Map<String, Object>> items = orderItems.stream().map(item -> {
-      var product = productRepository.findById(item.getProductId()).orElse(null);
+      String productName = productRepository.findById(item.getProductId())
+          .map(Product::getName)
+          .orElse("Unknown");
       Map<String, Object> map = new java.util.HashMap<>();
-      map.put("productName", product != null ? product.getName() : "Unknown");
+      map.put("productName", productName);
       map.put("quantity", item.getQuantity());
       map.put("unitPrice", item.getUnitPrice());
       map.put("discount", item.getDiscount());

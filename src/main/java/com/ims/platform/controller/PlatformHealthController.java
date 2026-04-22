@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/platform/health")
+@RequestMapping("/platform/health")
 @RequiredArgsConstructor
 @Tag(name = "Platform - Health", description = "Extended system health monitoring")
 @SecurityRequirement(name = "bearerAuth")

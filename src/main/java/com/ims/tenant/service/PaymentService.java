@@ -33,7 +33,7 @@ public class PaymentService {
       log.error("Tenant ID is missing in PaymentService.recordPayment");
       throw new IllegalStateException("Tenant context is missing");
     }
-    log.info("TenantContext: {}", tenantId);
+
     Invoice invoice = invoiceRepository.findById(invoiceId)
         .orElseThrow(() -> new ResourceNotFoundException("Invoice not found: " + invoiceId));
 

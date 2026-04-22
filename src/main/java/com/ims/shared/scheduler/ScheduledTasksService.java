@@ -24,7 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@SuppressWarnings("null")
 public class ScheduledTasksService {
 
   private final TenantRepository tenantRepository;
@@ -119,5 +118,26 @@ public class ScheduledTasksService {
       }
     }
     log.info("Cleaned up {} expired reset tokens", count);
+  }
+
+  // Every 30 minutes
+  @Scheduled(fixedRate = 1800000)
+  @Transactional
+  public void cleanupOrphanTenants() {
+    log.info("Scheduled Task: Cleaning up orphan tenants (no users after 1 hour)");
+    LocalDateTime threshold = LocalDateTime.now().minusHours(1);
+    List<Tenant> potentiallyOrphaned = tenantRepository.findAllByCreatedAtBefore(threshold);
+
+    int count = 0;
+    for (Tenant tenant : potentiallyOrphaned) {
+      if (!userRepository.existsByTenantId(tenant.getId())) {
+        log.warn("Deleting orphan tenant: {} (ID: {})", tenant.getName(), tenant.getId());
+        tenantRepository.delete(tenant);
+        count++;
+      }
+    }
+    if (count > 0) {
+      log.info("Cleaned up {} orphan tenants", count);
+    }
   }
 }

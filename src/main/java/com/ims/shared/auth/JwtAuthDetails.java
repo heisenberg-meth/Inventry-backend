@@ -1,5 +1,6 @@
 package com.ims.shared.auth;
 
+import java.util.Set;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -12,4 +13,7 @@ public class JwtAuthDetails {
   private String scope;
   private String businessType;
   private boolean isPlatformUser;
+  private Set<String> permissions;
+  private boolean impersonation;
+  private Long impersonatedBy;
 }
