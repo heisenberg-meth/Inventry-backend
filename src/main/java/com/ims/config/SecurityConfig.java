@@ -51,20 +51,20 @@ public class SecurityConfig {
         .authorizeHttpRequests(
             auth ->
                 auth.requestMatchers(
-                        "/api/auth/login",
-                        "/api/auth/signup",
-                        "/api/auth/refresh",
-                        "/api/auth/forgot-password",
-                        "/api/auth/reset-password",
-                        "/api/auth/verify-email",
-                        "/api/auth/resend-verification",
-                        "/api/auth/check-email",
-                        "/api/auth/check-slug",
-                        "/api/auth/check-company-code"
+                        "/auth/login",
+                        "/auth/signup",
+                        "/auth/refresh",
+                        "/auth/forgot-password",
+                        "/auth/reset-password",
+                        "/auth/verify-email",
+                        "/auth/resend-verification",
+                        "/auth/check-email",
+                        "/auth/check-slug",
+                        "/auth/check-company-code"
                     ).permitAll()
-                    .requestMatchers("/api/platform/auth/login").permitAll()
-                    .requestMatchers("/api/platform/invites/accept", "/api/platform/invites/complete").permitAll()
-                    .requestMatchers("/api/tenant/payments/gateway/webhook").permitAll()
+                    .requestMatchers("/platform/auth/login").permitAll()
+                    .requestMatchers("/platform/invites/accept", "/platform/invites/complete").permitAll()
+                    .requestMatchers("/tenant/payments/gateway/webhook").permitAll()
                     .requestMatchers("/actuator/**", "/swagger-ui/**", "/swagger-ui.html", "/api-docs/**", "/v3/api-docs/**").permitAll()
                     .anyRequest().authenticated())
         .addFilterBefore(traceFilter, UsernamePasswordAuthenticationFilter.class)

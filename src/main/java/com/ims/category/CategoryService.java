@@ -8,7 +8,6 @@ import com.ims.dto.CategoryRequest;
 import com.ims.shared.rbac.RequiresPermission;
 import com.ims.product.ProductRepository;
 import com.ims.shared.auth.TenantContext;
-import java.util.Objects;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@SuppressWarnings("null")
 public class CategoryService {
 
   private final CategoryRepository categoryRepository;
@@ -34,7 +32,7 @@ public class CategoryService {
       log.error("Tenant ID is missing in CategoryService.getCategories");
       throw new IllegalArgumentException("Tenant context is missing");
     }
-    log.info("TenantContext: {}", tenantId);
+
     Page<CategoryResponse> page = categoryRepository.findByTenantId(tenantId, pageable).map(this::toResponse);
     return new PagedResponse<>(
         page.getContent(),
@@ -68,7 +66,7 @@ public class CategoryService {
         .taxRate(request.getTaxRate() != null ? request.getTaxRate() : java.math.BigDecimal.ZERO)
         .build();
 
-    Category savedCategory = Objects.requireNonNull(categoryRepository.save(category));
+    Category savedCategory = categoryRepository.save(category);
 
     auditLogService.logAudit(
         AuditAction.CREATE,
@@ -98,7 +96,7 @@ public class CategoryService {
       category.setTaxRate(request.getTaxRate());
     }
 
-    Category updatedCategory = Objects.requireNonNull(categoryRepository.save(category));
+    Category updatedCategory = categoryRepository.save(category);
 
     auditLogService.logAudit(
         AuditAction.UPDATE,

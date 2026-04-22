@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -29,7 +30,6 @@ import com.ims.product.ProductService;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@SuppressWarnings("null")
 public class StockService {
 
   private final StockMovementRepository stockMovementRepository;
@@ -49,13 +49,14 @@ public class StockService {
     }
   }
 
+  @Cacheable(value = "stock", key = "'location:' + #location", cacheResolver = "tenantAwareCacheResolver")
   public @NonNull Page<WarehouseProduct> getProductsByLocation(@NonNull String location, @NonNull Pageable pageable) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
       log.error("Tenant ID is missing in StockService.getProductsByLocation");
       throw new IllegalStateException("Tenant context is missing");
     }
-    log.info("TenantContext: {}", tenantId);
+
     checkWarehouseType();
     return Objects.requireNonNull(warehouseProductRepository.findByLocation(location, pageable));
   }
@@ -66,18 +67,19 @@ public class StockService {
       log.error("Tenant ID is missing in StockService.getTransferOrders");
       throw new IllegalStateException("Tenant context is missing");
     }
-    log.info("TenantContext: {}", tenantId);
+
     checkWarehouseType();
     return Objects.requireNonNull(transferOrderRepository.findAll(pageable));
   }
 
+  @Cacheable(value = "stock", key = "'order:' + #id", cacheResolver = "tenantAwareCacheResolver")
   public @NonNull TransferOrder getTransferOrderById(@NonNull Long id) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
       log.error("Tenant ID is missing in StockService.getTransferOrderById");
       throw new IllegalStateException("Tenant context is missing");
     }
-    log.info("TenantContext: {}", tenantId);
+
     checkWarehouseType();
     return Objects.requireNonNull(transferOrderRepository
         .findById(id)
@@ -85,7 +87,13 @@ public class StockService {
   }
 
   @Transactional
-  @CacheEvict(value = { "stock", "products" }, allEntries = true)
+  @org.springframework.cache.annotation.Caching(evict = {
+    @CacheEvict(value = "stock", key = "'order:' + #id", cacheResolver = "tenantAwareCacheResolver"),
+    @CacheEvict(value = "stock", key = "'location:' + #request.toLocation", cacheResolver = "tenantAwareCacheResolver"),
+    @CacheEvict(value = "products", key = "'list'", cacheResolver = "tenantAwareCacheResolver"),
+    @CacheEvict(value = "reports", key = "'stock-report'", cacheResolver = "tenantAwareCacheResolver"),
+    @CacheEvict(value = "dashboard", key = "'dashboard'", cacheResolver = "tenantAwareCacheResolver")
+  })
   public @NonNull TransferOrder updateTransferStatus(@NonNull Long id, @NonNull TransferOrderStatusRequest request,
       @NonNull Long userId) {
     Long tenantId = TenantContext.getTenantId();
@@ -93,7 +101,7 @@ public class StockService {
       log.error("Tenant ID is missing in StockService.updateTransferStatus");
       throw new IllegalStateException("Tenant context is missing");
     }
-    log.info("TenantContext: {}", tenantId);
+
     checkWarehouseType();
     TransferOrder order = transferOrderRepository
         .findById(id)
@@ -155,7 +163,7 @@ public class StockService {
       log.error("Tenant ID is missing in StockService.stockIn");
       throw new IllegalStateException("Tenant context is missing");
     }
-    log.info("TenantContext: {}", tenantId);
+
     int attempts = 0;
     while (attempts < 3) {
       try {
@@ -171,7 +179,13 @@ public class StockService {
   }
 
   @Transactional
-  @CacheEvict(value = { "stock", "products" }, allEntries = true)
+  @org.springframework.cache.annotation.Caching(evict = {
+    @CacheEvict(value = "stock", key = "'id:' + #productId", cacheResolver = "tenantAwareCacheResolver"),
+    @CacheEvict(value = "products", key = "'id:' + #productId", cacheResolver = "tenantAwareCacheResolver"),
+    @CacheEvict(value = "products", key = "'list'", cacheResolver = "tenantAwareCacheResolver"),
+    @CacheEvict(value = "reports", key = "'stock-report'", cacheResolver = "tenantAwareCacheResolver"),
+    @CacheEvict(value = "dashboard", key = "'dashboard'", cacheResolver = "tenantAwareCacheResolver")
+  })
   public void stockInInternal(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
     Product product = productService
         .findByIdWithLock(productId)
@@ -202,7 +216,13 @@ public class StockService {
   }
 
   @Transactional
-  @CacheEvict(value = { "stock", "products" }, allEntries = true)
+  @org.springframework.cache.annotation.Caching(evict = {
+    @CacheEvict(value = "stock", key = "'id:' + #productId", cacheResolver = "tenantAwareCacheResolver"),
+    @CacheEvict(value = "products", key = "'id:' + #productId", cacheResolver = "tenantAwareCacheResolver"),
+    @CacheEvict(value = "products", key = "'list'", cacheResolver = "tenantAwareCacheResolver"),
+    @CacheEvict(value = "reports", key = "'stock-report'", cacheResolver = "tenantAwareCacheResolver"),
+    @CacheEvict(value = "dashboard", key = "'dashboard'", cacheResolver = "tenantAwareCacheResolver")
+  })
   public void stockOutInternal(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
     // Optimistic checking: using findById (non-blocking)
     Product product = productRepository
@@ -273,7 +293,7 @@ public class StockService {
       log.error("Tenant ID is missing in StockService.stockAdjust");
       throw new IllegalStateException("Tenant context is missing");
     }
-    log.info("TenantContext: {}", tenantId);
+
     int attempts = 0;
     while (attempts < 3) {
       try {
@@ -289,7 +309,13 @@ public class StockService {
   }
 
   @Transactional
-  @CacheEvict(value = { "stock", "products" }, allEntries = true)
+  @org.springframework.cache.annotation.Caching(evict = {
+    @CacheEvict(value = "stock", key = "'id:' + #productId", cacheResolver = "tenantAwareCacheResolver"),
+    @CacheEvict(value = "products", key = "'id:' + #productId", cacheResolver = "tenantAwareCacheResolver"),
+    @CacheEvict(value = "products", key = "'list'", cacheResolver = "tenantAwareCacheResolver"),
+    @CacheEvict(value = "reports", key = "'stock-report'", cacheResolver = "tenantAwareCacheResolver"),
+    @CacheEvict(value = "dashboard", key = "'dashboard'", cacheResolver = "tenantAwareCacheResolver")
+  })
   public void stockAdjustInternal(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
     Product product = productRepository
         .findById(productId)
@@ -325,7 +351,7 @@ public class StockService {
       log.error("Tenant ID is missing in StockService.getMovements");
       throw new IllegalStateException("Tenant context is missing");
     }
-    log.info("TenantContext: {}", tenantId);
+
     return Objects.requireNonNull(stockMovementRepository.findAllByOrderByCreatedAtDesc(pageable));
   }
 
@@ -336,7 +362,7 @@ public class StockService {
       log.error("Tenant ID is missing in StockService.getFilteredMovements");
       throw new IllegalStateException("Tenant context is missing");
     }
-    log.info("TenantContext: {}", tenantId);
+
     return Objects.requireNonNull(stockMovementRepository.findByFilters(productId, from, to, pageable));
   }
 }

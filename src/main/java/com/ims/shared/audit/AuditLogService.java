@@ -11,14 +11,13 @@ import org.springframework.lang.NonNull;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-@SuppressWarnings("null")
 public class AuditLogService {
 
   private final AuditLogRepository auditLogRepository;
   private final SystemConfigService systemConfigService;
 
   public void log(AuditAction action, Long tenantId, Long userId, String details) {
-    log.info("AUDIT: tenant={} user={} action={} details={}", tenantId, userId, action, details);
+    log.info("AUDIT: action={} details={}", action, details);
 
     com.ims.model.AuditLog auditEntry = com.ims.model.AuditLog.builder()
         .tenantId(tenantId)
@@ -84,7 +83,7 @@ public class AuditLogService {
           resource);
       // Fallback if enums don't match yet
       Long tenantId = com.ims.shared.auth.TenantContext.getTenantId();
-      log.info("LEGACY-AUDIT: tenant={} action={} details={}", tenantId, action, details);
+      log.info("LEGACY-AUDIT: action={} details={}", action, details);
     }
   }
 

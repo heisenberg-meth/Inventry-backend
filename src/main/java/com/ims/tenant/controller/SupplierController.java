@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/tenant/suppliers")
+@RequestMapping("/tenant/suppliers")
 @RequiredArgsConstructor
 @Tag(name = "Tenant - Suppliers")
 @SecurityRequirement(name = "bearerAuth")

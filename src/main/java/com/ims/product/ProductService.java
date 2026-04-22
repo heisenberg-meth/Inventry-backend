@@ -23,10 +23,14 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import java.util.Objects;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,13 +49,14 @@ public class ProductService {
   private static final int DEFAULT_REORDER_LEVEL = 10;
   private static final int MAX_PAGE_SIZE = 100;
 
-  public PagedResponse<ProductResponse> getProducts(Pageable pageable) {
+  @Cacheable(value = "products", key = "'list'", cacheResolver = "tenantAwareCacheResolver")
+  public @NonNull PagedResponse<ProductResponse> getProducts(@NonNull Pageable pageable) {
         Long tenantId = getTenantId();
         if (tenantId == null) {
             log.error("Tenant ID is missing in ProductService.getProducts");
             throw new IllegalArgumentException("Tenant context is missing");
         }
-        log.info("TenantContext: {}", tenantId);
+
 
 
     if (pageable.getPageSize() > MAX_PAGE_SIZE) {
@@ -69,7 +74,7 @@ public class ProductService {
     );
   }
 
-  public List<ProductResponse> getNextProducts(Long tenantId, Long lastId, int limit) {
+  public @NonNull List<ProductResponse> getNextProducts(@NonNull Long tenantId, @Nullable Long lastId, int limit) {
       if (tenantId == null) throw new IllegalArgumentException("Tenant context missing");
       Pageable pageable = org.springframework.data.domain.PageRequest.of(0, Math.min(limit, MAX_PAGE_SIZE));
       return productRepository.findNextProducts(tenantId, lastId, pageable).stream()
@@ -77,8 +82,9 @@ public class ProductService {
           .collect(Collectors.toList());
   }
 
-  @SuppressWarnings("null")
-  public ProductResponse getProductById(@NonNull Long id) {
+  @Cacheable(value = "products", key = "'id:' + #id", cacheResolver = "tenantAwareCacheResolver")
+  public @NonNull ProductResponse getProductById(@NonNull Long id) {
+    Objects.requireNonNull(id, "product id required");
     Product product =
         productRepository
             .findById(id)
@@ -86,19 +92,24 @@ public class ProductService {
     return toResponse(product);
   }
 
-  public java.util.Optional<Product> findByIdWithLock(Long id) {
+  public @NonNull java.util.Optional<Product> findByIdWithLock(@NonNull Long id) {
     return productRepository.findByIdWithLock(id);
   }
 
-  @SuppressWarnings("null")
   @Transactional
-  public ProductResponse createProduct(CreateProductRequest request) {
+  @Caching(evict = {
+    @CacheEvict(value = "products", key = "'list'", cacheResolver = "tenantAwareCacheResolver"),
+    @CacheEvict(value = "reports", key = "'stock-report'", cacheResolver = "tenantAwareCacheResolver"),
+    @CacheEvict(value = "dashboard", key = "'dashboard'", cacheResolver = "tenantAwareCacheResolver")
+  })
+  public @NonNull ProductResponse createProduct(@NonNull CreateProductRequest request) {
+    Objects.requireNonNull(request, "request body required");
         Long tenantId = getTenantId();
         if (tenantId == null) {
             log.error("Tenant ID is missing in ProductService.createProduct");
             throw new IllegalStateException("Tenant not resolved from request");
         }
-        log.info("TenantContext: {}", tenantId);
+
 
     if (tenantId != null) {
       var tenant =
@@ -182,9 +193,16 @@ public class ProductService {
     return toResponse(product);
   }
 
-  @SuppressWarnings("null")
   @Transactional
-  public ProductResponse updateProduct(@NonNull Long id, CreateProductRequest request) {
+  @Caching(evict = {
+    @CacheEvict(value = "products", key = "'id:' + #id", cacheResolver = "tenantAwareCacheResolver"),
+    @CacheEvict(value = "products", key = "'list'", cacheResolver = "tenantAwareCacheResolver"),
+    @CacheEvict(value = "reports", key = "'stock-report'", cacheResolver = "tenantAwareCacheResolver"),
+    @CacheEvict(value = "dashboard", key = "'dashboard'", cacheResolver = "tenantAwareCacheResolver")
+  })
+  public @NonNull ProductResponse updateProduct(@NonNull Long id, @NonNull CreateProductRequest request) {
+    Objects.requireNonNull(id, "product id required");
+    Objects.requireNonNull(request, "request body required");
     Product product =
         productRepository
             .findById(id)
@@ -264,6 +282,12 @@ public class ProductService {
 
     @Transactional
   @RequiresPermission("delete_product")
+  @Caching(evict = {
+    @CacheEvict(value = "products", key = "'id:' + #id", cacheResolver = "tenantAwareCacheResolver"),
+    @CacheEvict(value = "products", key = "'list'", cacheResolver = "tenantAwareCacheResolver"),
+    @CacheEvict(value = "reports", key = "'stock-report'", cacheResolver = "tenantAwareCacheResolver"),
+    @CacheEvict(value = "dashboard", key = "'dashboard'", cacheResolver = "tenantAwareCacheResolver")
+  })
   public void deleteProduct(@NonNull Long id) {
     Product product =
         productRepository
@@ -283,7 +307,8 @@ public class ProductService {
   }
 
   @Transactional
-  public ProductResponse duplicateProduct(@NonNull Long id) {
+  public @NonNull ProductResponse duplicateProduct(@NonNull Long id) {
+    Objects.requireNonNull(id, "product id required");
     Product original = productRepository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
@@ -301,7 +326,6 @@ public class ProductService {
         .isActive(true)
         .build();
 
-    @SuppressWarnings("null")
     Product saved = productRepository.save(clone);
     log.info("Product duplicated: original_id={} new_id={}", id, saved.getId());
     
@@ -322,13 +346,13 @@ public class ProductService {
     return newSku;
   }
 
-  public List<ProductResponse> getLowStockProducts() {
+  public @NonNull List<ProductResponse> getLowStockProducts() {
         Long tenantId = getTenantId();
         if (tenantId == null) {
             log.error("Tenant ID is missing in ProductService.getLowStockProducts");
             throw new IllegalStateException("Tenant not resolved from request");
         }
-        log.info("TenantContext: {}", tenantId);
+
 
 
     
@@ -337,14 +361,13 @@ public class ProductService {
         .collect(Collectors.toList());
   }
 
-  @SuppressWarnings("null")
-  public List<ProductResponse> getExpiringProducts(Integer days) {
+  public @NonNull List<ProductResponse> getExpiringProducts(@Nullable Integer days) {
         Long tenantId = getTenantId();
         if (tenantId == null) {
             log.error("Tenant ID is missing in ProductService.getExpiringProducts");
             throw new IllegalStateException("Tenant not resolved from request");
         }
-        log.info("TenantContext: {}", tenantId);
+
     String businessType = getBusinessType();
 
     if (!"PHARMACY".equals(businessType)) {
@@ -370,13 +393,13 @@ public class ProductService {
         .collect(Collectors.toList());
   }
 
-  public PagedResponse<ProductResponse> searchProducts(String query, Pageable pageable) {
+  public @NonNull PagedResponse<ProductResponse> searchProducts(@NonNull String query, @NonNull Pageable pageable) {
         Long tenantId = getTenantId();
         if (tenantId == null) {
             log.error("Tenant ID is missing in ProductService.searchProducts");
             return new PagedResponse<>(java.util.Collections.emptyList(), 0, 0);
         }
-        log.info("TenantContext: {}", tenantId);
+
 
     Page<ProductResponse> page = productRepository.searchFast(tenantId, query, pageable).map(this::toResponse);
     return new PagedResponse<>(

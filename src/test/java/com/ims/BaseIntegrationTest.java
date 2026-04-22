@@ -33,13 +33,12 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.containers.PostgreSQLContainer;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.*;
 
 @SpringBootTest
 @ActiveProfiles("test")
 @Testcontainers
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-@SuppressWarnings("null")
 public abstract class BaseIntegrationTest {
 
   @Container
@@ -199,7 +198,6 @@ public abstract class BaseIntegrationTest {
     });
   }
 
-
   protected void verifyUser(String email) {
     userRepository.findByEmailUnfiltered(email).ifPresent(u -> {
       u.setIsVerified(true);
@@ -216,14 +214,15 @@ public abstract class BaseIntegrationTest {
     // Redis Mocks to prevent NPEs (e.g., in RateLimitFilter)
     doReturn(valueOperations).when(redisTemplate).opsForValue();
     doReturn(zSetOperations).when(redisTemplate).opsForZSet();
-    doReturn(1L).when(valueOperations).increment(anyString());
-    doReturn(0L).when(zSetOperations).zCard(anyString());
+    doReturn(1L).when(valueOperations).increment(any(String.class));
+    doReturn(0L).when(zSetOperations).zCard(any(String.class));
 
     // Cache Mocks for TenantAwareCacheResolver
     org.springframework.cache.Cache dummyCache = new org.springframework.cache.concurrent.ConcurrentMapCache("dummy");
-    doReturn(Collections.singletonList(dummyCache))
+
+    doReturn(Collections.<org.springframework.cache.Cache>singletonList(dummyCache))
         .when(tenantAwareCacheResolver)
-        .resolveCaches(org.mockito.ArgumentMatchers.<CacheOperationInvocationContext<?>>any());
-    doReturn(dummyCache).when(cacheManager).getCache(anyString());
+        .resolveCaches(any(CacheOperationInvocationContext.class));
+    doReturn(dummyCache).when(cacheManager).getCache(any(String.class));
   }
 }

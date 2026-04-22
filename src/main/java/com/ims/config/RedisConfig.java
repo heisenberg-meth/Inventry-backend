@@ -37,7 +37,6 @@ public class RedisConfig {
   private static final int TTL_REPORTS_MINUTES = 30;
   private static final int TTL_TENANT_HOURS = 1;
 
-  @SuppressWarnings("null")
   @Bean
   public RedisCacheManager cacheManager(RedisConnectionFactory factory) {
     Map<String, RedisCacheConfiguration> configs = new HashMap<>();
@@ -46,6 +45,7 @@ public class RedisConfig {
     configs.put("stock", ttl(Duration.ofMinutes(TTL_STOCK_MINUTES)));
     configs.put("reports", ttl(Duration.ofMinutes(TTL_REPORTS_MINUTES)));
     configs.put("tenant", ttl(Duration.ofHours(TTL_TENANT_HOURS)));
+    configs.put("permissions", ttl(Duration.ofMinutes(5)));
 
     return RedisCacheManager.builder(factory)
         .cacheDefaults(ttl(Duration.ofMinutes(10)))
@@ -56,7 +56,7 @@ public class RedisConfig {
   @Bean
   public CacheResolver tenantAwareCacheResolver(CacheManager cacheManager) {
     return new CacheResolver() {
-      @SuppressWarnings("null")
+      
       @Override
       @NonNull
       public Collection<? extends Cache> resolveCaches(CacheOperationInvocationContext<?> context) {
@@ -79,7 +79,6 @@ public class RedisConfig {
     };
   }
 
-  @SuppressWarnings("null")
   @Bean
   public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory) {
     RedisTemplate<String, Object> template = new RedisTemplate<>();
@@ -101,7 +100,6 @@ public class RedisConfig {
     return new GenericJackson2JsonRedisSerializer(mapper);
   }
 
-  @SuppressWarnings("null")
   private RedisCacheConfiguration ttl(Duration duration) {
     return RedisCacheConfiguration.defaultCacheConfig()
         .entryTtl(duration)

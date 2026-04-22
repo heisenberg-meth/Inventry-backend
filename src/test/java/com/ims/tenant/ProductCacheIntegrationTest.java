@@ -29,7 +29,6 @@ import org.springframework.test.web.servlet.MvcResult;
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@SuppressWarnings("null")
 public class ProductCacheIntegrationTest extends BaseIntegrationTest {
 
   private org.springframework.cache.Cache spyCache;
@@ -44,10 +43,10 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
     mockRedisAndCache();
     
     spyCache = spy(new org.springframework.cache.concurrent.ConcurrentMapCache("products"));
-    doReturn(java.util.Collections.singletonList(spyCache))
+    doReturn(java.util.Collections.<org.springframework.cache.Cache>singletonList(spyCache))
         .when(tenantAwareCacheResolver)
         .resolveCaches(any(org.springframework.cache.interceptor.CacheOperationInvocationContext.class));
-    doReturn(spyCache).when(cacheManager).getCache(anyString());
+    doReturn(spyCache).when(cacheManager).getCache(any(String.class));
   }
 
   @Test

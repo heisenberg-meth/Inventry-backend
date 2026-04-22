@@ -59,7 +59,7 @@ public class TenantSettingsService {
     }
 
     tenant = Objects.requireNonNull(tenantRepository.save(Objects.requireNonNull(tenant)));
-    log.info("Tenant settings updated for id={}: workspaceSlug={}", tenantId, tenant.getWorkspaceSlug());
+    log.info("Tenant settings updated: workspaceSlug={}", tenant.getWorkspaceSlug());
     return toResponse(tenant);
   }
 
@@ -70,7 +70,7 @@ public class TenantSettingsService {
         .workspaceSlug(tenant.getWorkspaceSlug())
         .businessType(tenant.getBusinessType())
         .plan(tenant.getPlan())
-        .status(tenant.getStatus())
+        .status(tenant.getStatus() != null ? tenant.getStatus().name() : null)
         .maxProducts(tenant.getMaxProducts())
         .maxUsers(tenant.getMaxUsers())
         .expiryThresholdDays(tenant.getExpiryThresholdDays())
