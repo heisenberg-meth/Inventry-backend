@@ -73,6 +73,6 @@ public class RoleController {
     if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
       return Objects.requireNonNull(details.getTenantId(), "Tenant ID must not be null");
     }
-    throw new IllegalStateException("User not authenticated");
+    throw new com.ims.shared.exception.UnauthorizedAccessException("User not authenticated");
   }
 }

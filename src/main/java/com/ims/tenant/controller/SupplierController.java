@@ -37,29 +37,29 @@ public class SupplierController {
   @GetMapping
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "List suppliers")
-  public @NonNull ResponseEntity<Page<Supplier>> list(@NonNull Pageable pageable) {
+  public @NonNull ResponseEntity<Page<com.ims.dto.response.SupplierResponse>> list(@NonNull Pageable pageable) {
     return ResponseEntity.ok(Objects.requireNonNull(supplierService.getSuppliers(pageable)));
   }
 
   @PostMapping
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Create supplier")
-  public @NonNull ResponseEntity<Supplier> create(@RequestBody @NonNull Supplier supplier) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(Objects.requireNonNull(supplierService.create(supplier)));
+  public @NonNull ResponseEntity<com.ims.dto.response.SupplierResponse> create(@jakarta.validation.Valid @RequestBody @NonNull com.ims.dto.request.SupplierRequest request) {
+    return ResponseEntity.status(HttpStatus.CREATED).body(Objects.requireNonNull(supplierService.create(request)));
   }
 
   @GetMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Get supplier")
-  public @NonNull ResponseEntity<Supplier> get(@PathVariable @NonNull Long id) {
-    return ResponseEntity.ok(Objects.requireNonNull(supplierService.getById(id)));
+  public @NonNull ResponseEntity<com.ims.dto.response.SupplierResponse> get(@PathVariable @NonNull Long id) {
+    return ResponseEntity.ok(Objects.requireNonNull(supplierService.getSupplierResponseById(id)));
   }
 
   @PutMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Update supplier")
-  public @NonNull ResponseEntity<Supplier> update(@PathVariable @NonNull Long id, @RequestBody @NonNull Supplier supplier) {
-    return ResponseEntity.ok(Objects.requireNonNull(supplierService.update(id, supplier)));
+  public @NonNull ResponseEntity<com.ims.dto.response.SupplierResponse> update(@PathVariable @NonNull Long id, @jakarta.validation.Valid @RequestBody @NonNull com.ims.dto.request.SupplierRequest request) {
+    return ResponseEntity.ok(Objects.requireNonNull(supplierService.update(id, request)));
   }
 
   @DeleteMapping("/{id}")
@@ -80,8 +80,10 @@ public class SupplierController {
   @PostMapping("/bulk-import")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Bulk import suppliers via CSV")
-  public ResponseEntity<java.util.Map<String, Object>> bulkImport(@org.springframework.web.bind.annotation.RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
-    return ResponseEntity.ok(importService.importSuppliers(file));
+  public ResponseEntity<java.util.Map<String, Object>> bulkImport(
+      @org.springframework.web.bind.annotation.RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+      @org.springframework.web.bind.annotation.RequestParam(value = "dryRun", defaultValue = "false") boolean dryRun) {
+    return ResponseEntity.ok(importService.importSuppliers(file, dryRun));
   }
 
   @GetMapping("/export")

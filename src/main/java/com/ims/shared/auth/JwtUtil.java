@@ -31,9 +31,19 @@ public class JwtUtil {
       @Value("${app.jwt.secret}") String secret,
       @Value("${app.jwt.expiry-seconds}") long expirySeconds,
       @Value("${app.jwt.refresh-expiry-seconds}") long refreshExpirySeconds) {
-    this.key = Keys.hmacShaKeyFor(hexStringToByteArray(secret));
+    byte[] keyBytes;
+    if (isHexString(secret)) {
+      keyBytes = hexStringToByteArray(secret);
+    } else {
+      keyBytes = secret.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+    this.key = Keys.hmacShaKeyFor(keyBytes);
     this.expirySeconds = expirySeconds;
     this.refreshExpirySeconds = refreshExpirySeconds;
+  }
+
+  private boolean isHexString(String s) {
+    return s != null && s.length() % 2 == 0 && s.matches("^[0-9a-fA-F]+$");
   }
 
   public @NonNull String generateToken(

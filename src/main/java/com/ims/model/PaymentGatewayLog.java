@@ -35,6 +35,9 @@ public class PaymentGatewayLog {
   @Column(name = "event_type")
   private String eventType;
 
+  @Column(name = "event_id", unique = true)
+  private String eventId;
+
   @Column(name = "raw_payload", columnDefinition = "TEXT")
   private String rawPayload;
 

@@ -22,7 +22,7 @@ public class SupplierImportService {
     private final SupplierRepository supplierRepository;
 
     @Transactional
-    public Map<String, Object> importSuppliers(MultipartFile file) {
+    public Map<String, Object> importSuppliers(MultipartFile file, boolean dryRun) {
         List<Supplier> suppliers = new ArrayList<>();
         int successCount = 0;
         int failCount = 0;
@@ -71,7 +71,31 @@ public class SupplierImportService {
                 }
             }
 
-            supplierRepository.saveAll(suppliers);
+            if (!errors.isEmpty()) {
+                return Map.of(
+                    "success_count", 0,
+                    "fail_count", failCount,
+                    "errors", errors,
+                    "status", "FAILED"
+                );
+            }
+
+            if (dryRun) {
+                return Map.of(
+                    "success_count", successCount,
+                    "fail_count", 0,
+                    "errors", new ArrayList<>(),
+                    "status", "DRY_RUN_SUCCESS"
+                );
+            }
+
+            if (!suppliers.isEmpty()) {
+                try {
+                    supplierRepository.saveAll(suppliers);
+                } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                    throw new IllegalStateException("Import failed due to DB constraint", e);
+                }
+            }
 
         } catch (Exception e) {
             log.error("Failed to import suppliers", e);
@@ -79,8 +103,10 @@ public class SupplierImportService {
         }
 
         return Map.of(
-                "success_count", successCount,
-                "fail_count", failCount,
-                "errors", errors);
+            "success_count", successCount,
+            "fail_count", 0,
+            "errors", errors,
+            "status", "SUCCESS"
+        );
     }
 }

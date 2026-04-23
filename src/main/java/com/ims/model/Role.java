@@ -38,7 +38,7 @@ public class Role {
   @Column(name = "tenant_id")
   private Long tenantId;
 
-  @ManyToMany(fetch = jakarta.persistence.FetchType.EAGER)
+  @ManyToMany(fetch = jakarta.persistence.FetchType.LAZY)
   @JoinTable(
       name = "role_permissions",
       joinColumns = @JoinColumn(name = "role_id"),

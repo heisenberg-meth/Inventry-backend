@@ -21,4 +21,6 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
   Optional<Category> findByIdAndTenantId(Long id, Long tenantId);
 
   boolean existsByNameIgnoreCaseAndTenantId(String name, Long tenantId);
+
+  Optional<Category> findByNameIgnoreCaseAndTenantId(String name, Long tenantId);
 }

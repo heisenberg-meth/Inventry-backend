@@ -1,11 +1,11 @@
 package com.ims.tenant.service;
 
-import com.ims.model.Order;
 import com.ims.product.Product;
 import com.ims.product.ProductRepository;
 import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.repository.OrderRepository;
-import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.Month;
 import java.time.format.TextStyle;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -21,18 +21,17 @@ public class TenantAnalyticsService {
     private final ReportService reportService;
 
     public List<Map<String, Object>> getRevenueTrend() {
-        List<Order> sales = orderRepository.findByType("SALE", org.springframework.data.domain.Pageable.unpaged()).getContent();
+        Long tenantId = TenantContext.getTenantId();
+        LocalDateTime from = LocalDateTime.now().minusMonths(12).withDayOfMonth(1).withHour(0).withMinute(0);
         
-        // Group by month
-        Map<String, BigDecimal> monthlyRevenue = sales.stream()
-            .collect(Collectors.groupingBy(
-                o -> o.getCreatedAt().getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH),
-                LinkedHashMap::new,
-                Collectors.reducing(BigDecimal.ZERO, Order::getTotalAmount, BigDecimal::add)
-            ));
-
-        return monthlyRevenue.entrySet().stream()
-            .map(e -> Map.<String, Object>of("month", e.getKey(), "revenue", e.getValue()))
+        return orderRepository.getMonthlyRevenue("SALE", tenantId, from).stream()
+            .map(r -> {
+                String monthName = Month.of(r.month()).getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
+                Map<String, Object> map = new LinkedHashMap<>();
+                map.put("month", monthName + " " + r.year());
+                map.put("revenue", r.revenue());
+                return map;
+            })
             .collect(Collectors.toList());
     }
 
@@ -44,19 +43,23 @@ public class TenantAnalyticsService {
     }
 
     public List<Map<String, Object>> getOrderStatusStats() {
-        List<Order> orders = orderRepository.findAll();
-        long total = orders.size();
+        Long tenantId = TenantContext.getTenantId();
+        // Last 6 months for status distribution
+        LocalDateTime from = LocalDateTime.now().minusMonths(6);
+        
+        var stats = orderRepository.getOrderStatusStats(tenantId, from);
+        long total = stats.stream().mapToLong(com.ims.tenant.dto.OrderStatusStat::count).sum();
+        
         if (total == 0) return Collections.emptyList();
 
-        Map<String, Long> counts = orders.stream()
-            .collect(Collectors.groupingBy(Order::getStatus, Collectors.counting()));
-
-        return counts.entrySet().stream()
-            .map(e -> Map.<String, Object>of(
-                "label", e.getKey(),
-                "count", e.getValue(),
-                "pct", (double) e.getValue() / total * 100
-            ))
+        return stats.stream()
+            .map(s -> {
+                Map<String, Object> map = new LinkedHashMap<>();
+                map.put("label", s.status());
+                map.put("count", s.count());
+                map.put("pct", (double) s.count() / total * 100);
+                return map;
+            })
             .collect(Collectors.toList());
     }
 

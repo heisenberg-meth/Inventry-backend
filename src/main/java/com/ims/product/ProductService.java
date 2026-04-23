@@ -2,7 +2,6 @@ package com.ims.product;
 
 import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditResource;
-
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.response.ProductResponse;
 import com.ims.dto.response.PagedResponse;
@@ -25,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import java.util.Objects;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -51,17 +51,13 @@ public class ProductService {
 
   @Cacheable(value = "products", key = "'list'", cacheResolver = "tenantAwareCacheResolver")
   public @NonNull PagedResponse<ProductResponse> getProducts(@NonNull Pageable pageable) {
-        Long tenantId = getTenantId();
-        if (tenantId == null) {
-            log.error("Tenant ID is missing in ProductService.getProducts");
-            throw new IllegalArgumentException("Tenant context is missing");
-        }
+    Long tenantId = getRequiredTenantId();
 
 
 
     if (pageable.getPageSize() > MAX_PAGE_SIZE) {
         log.warn("Requested page size {} exceeds limit, capping to {}", pageable.getPageSize(), MAX_PAGE_SIZE);
-        pageable = org.springframework.data.domain.PageRequest.of(pageable.getPageNumber(), MAX_PAGE_SIZE, pageable.getSort());
+        pageable = PageRequest.of(pageable.getPageNumber(), MAX_PAGE_SIZE, pageable.getSort());
     }
 
     Page<ProductResponse> page = productRepository.findAllWithDetails(tenantId, pageable).map(this::toResponse);
@@ -75,9 +71,9 @@ public class ProductService {
   }
 
   public @NonNull List<ProductResponse> getNextProducts(@NonNull Long tenantId, @Nullable Long lastId, int limit) {
-      if (tenantId == null) throw new IllegalArgumentException("Tenant context missing");
-      Pageable pageable = org.springframework.data.domain.PageRequest.of(0, Math.min(limit, MAX_PAGE_SIZE));
-      return productRepository.findNextProducts(tenantId, lastId, pageable).stream()
+      getRequiredTenantId(); // Just to ensure context is present if required, though we use parameter tenantId
+      Pageable pageable = PageRequest.of(0, Math.min(limit, MAX_PAGE_SIZE));
+      return Objects.requireNonNull(productRepository.findNextProducts(tenantId, lastId, pageable)).stream()
           .map(this::toResponse)
           .collect(Collectors.toList());
   }
@@ -85,15 +81,14 @@ public class ProductService {
   @Cacheable(value = "products", key = "'id:' + #id", cacheResolver = "tenantAwareCacheResolver")
   public @NonNull ProductResponse getProductById(@NonNull Long id) {
     Objects.requireNonNull(id, "product id required");
-    Product product =
-        productRepository
-            .findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Product not found"));
-    return toResponse(product);
+    return productRepository
+        .findByIdWithDetails(id)
+        .map(this::toResponse)
+        .orElseThrow(() -> new EntityNotFoundException("Product not found"));
   }
 
   public @NonNull java.util.Optional<Product> findByIdWithLock(@NonNull Long id) {
-    return productRepository.findByIdWithLock(id);
+    return Objects.requireNonNull(productRepository.findByIdWithLock(id));
   }
 
   @Transactional
@@ -104,11 +99,7 @@ public class ProductService {
   })
   public @NonNull ProductResponse createProduct(@NonNull CreateProductRequest request) {
     Objects.requireNonNull(request, "request body required");
-        Long tenantId = getTenantId();
-        if (tenantId == null) {
-            log.error("Tenant ID is missing in ProductService.createProduct");
-            throw new IllegalStateException("Tenant not resolved from request");
-        }
+    Long tenantId = getRequiredTenantId();
 
 
     if (tenantId != null) {
@@ -152,7 +143,7 @@ public class ProductService {
             .isActive(true)
             .build();
 
-    product = productRepository.save(product);
+    product = Objects.requireNonNull(productRepository.save(product));
 
     auditLogService.logAudit(
         AuditAction.CREATE,
@@ -160,10 +151,12 @@ public class ProductService {
         product.getId(),
         "Created product: " + product.getName() + " (SKU: " + product.getSku() + ")");
 
-    // Pharmacy extension — same @Transactional
+    PharmacyProduct pp = null;
+    WarehouseProduct wp = null;
+
     if ("PHARMACY".equals(businessType) && request.getPharmacyDetails() != null) {
       var pd = request.getPharmacyDetails();
-      PharmacyProduct pp =
+      pp =
           PharmacyProduct.builder()
               .product(product)
               .batchNumber(pd.getBatchNumber())
@@ -172,13 +165,12 @@ public class ProductService {
               .hsnCode(pd.getHsnCode())
               .schedule(pd.getSchedule())
               .build();
-      pharmacyProductRepository.save(pp);
+      pp = Objects.requireNonNull(pharmacyProductRepository.save(pp));
     }
 
-    // Warehouse extension — same @Transactional
     if ("WAREHOUSE".equals(businessType) && request.getWarehouseDetails() != null) {
       var wd = request.getWarehouseDetails();
-      WarehouseProduct wp =
+      wp =
           WarehouseProduct.builder()
               .product(product)
               .storageLocation(wd.getStorageLocation())
@@ -186,11 +178,11 @@ public class ProductService {
               .rack(wd.getRack())
               .bin(wd.getBin())
               .build();
-      warehouseProductRepository.save(wp);
+      wp = Objects.requireNonNull(warehouseProductRepository.save(wp));
     }
 
     log.info("Product created: id={} name={}", product.getId(), product.getName());
-    return toResponse(product);
+    return Objects.requireNonNull(toResponse(product, pp, wp));
   }
 
   @Transactional
@@ -243,11 +235,13 @@ public class ProductService {
         "Updated product: " + product.getName());
 
     String businessType = getBusinessType();
+    PharmacyProduct pp = null;
+    WarehouseProduct wp = null;
 
     // Pharmacy extension update
     if ("PHARMACY".equals(businessType) && request.getPharmacyDetails() != null) {
       var pd = request.getPharmacyDetails();
-      PharmacyProduct pp =
+      pp =
           pharmacyProductRepository
               .findById(Objects.requireNonNull(product.getId()))
               .orElse(PharmacyProduct.builder().product(product).build());
@@ -258,13 +252,13 @@ public class ProductService {
       if (pd.getHsnCode() != null) pp.setHsnCode(pd.getHsnCode());
       if (pd.getSchedule() != null) pp.setSchedule(pd.getSchedule());
 
-      pharmacyProductRepository.save(pp);
+      pp = Objects.requireNonNull(pharmacyProductRepository.save(pp));
     }
 
     // Warehouse extension update
     if ("WAREHOUSE".equals(businessType) && request.getWarehouseDetails() != null) {
       var wd = request.getWarehouseDetails();
-      WarehouseProduct wp =
+      wp =
           warehouseProductRepository
               .findById(Objects.requireNonNull(product.getId()))
               .orElse(WarehouseProduct.builder().product(product).build());
@@ -274,10 +268,10 @@ public class ProductService {
       if (wd.getRack() != null) wp.setRack(wd.getRack());
       if (wd.getBin() != null) wp.setBin(wd.getBin());
 
-      warehouseProductRepository.save(wp);
+      wp = Objects.requireNonNull(warehouseProductRepository.save(wp));
     }
 
-    return toResponse(product);
+    return Objects.requireNonNull(toResponse(product, pp, wp));
     }
 
     @Transactional
@@ -331,10 +325,12 @@ public class ProductService {
     
     auditLogService.logAudit(AuditAction.DUPLICATE_PRODUCT, AuditResource.PRODUCT, saved.getId(), "Duplicated from product #" + id);
     
-    return toResponse(saved);
+    return productRepository.findByIdWithDetails(saved.getId())
+        .map(this::toResponse)
+        .orElse(toResponse(saved)); // Fallback to pure mapper if detail fetch fails for some reason
   }
 
-  private String generateUniqueSku(String originalSku, Long tenantId) {
+  private @Nullable String generateUniqueSku(@Nullable String originalSku, @NonNull Long tenantId) {
     if (originalSku == null) return null;
     // Remove existing -COPY or -COPY-N suffix to get base
     String baseSku = originalSku.replaceAll("-COPY(-\\d+)?$", "");
@@ -347,26 +343,18 @@ public class ProductService {
   }
 
   public @NonNull List<ProductResponse> getLowStockProducts() {
-        Long tenantId = getTenantId();
-        if (tenantId == null) {
-            log.error("Tenant ID is missing in ProductService.getLowStockProducts");
-            throw new IllegalStateException("Tenant not resolved from request");
-        }
+    Long tenantId = getRequiredTenantId();
 
 
 
     
-    return productRepository.findLowStockByTenant(tenantId).stream()
+    return Objects.requireNonNull(productRepository.findLowStockByTenant(tenantId)).stream()
         .map(this::toResponse)
         .collect(Collectors.toList());
   }
 
   public @NonNull List<ProductResponse> getExpiringProducts(@Nullable Integer days) {
-        Long tenantId = getTenantId();
-        if (tenantId == null) {
-            log.error("Tenant ID is missing in ProductService.getExpiringProducts");
-            throw new IllegalStateException("Tenant not resolved from request");
-        }
+    Long tenantId = getRequiredTenantId();
 
     String businessType = getBusinessType();
 
@@ -384,21 +372,17 @@ public class ProductService {
           tenantRepository
               .findById(tenantId)
               .map(Tenant::getExpiryThresholdDays)
-              .orElse(DEFAULT_REORDER_LEVEL * 3); // 30
+              .orElse(30);
     }
 
     LocalDate threshold = LocalDate.now().plusDays(thresholdDays);
-    return pharmacyProductRepository.findExpiring(threshold).stream()
-        .map(pp -> toResponseWithPharmacy(pp.getProduct(), pp))
+    return Objects.requireNonNull(pharmacyProductRepository.findExpiring(threshold)).stream()
+        .map(pp -> toResponseWithPharmacy(Objects.requireNonNull(pp.getProduct()), pp))
         .collect(Collectors.toList());
   }
 
   public @NonNull PagedResponse<ProductResponse> searchProducts(@NonNull String query, @NonNull Pageable pageable) {
-        Long tenantId = getTenantId();
-        if (tenantId == null) {
-            log.error("Tenant ID is missing in ProductService.searchProducts");
-            return new PagedResponse<>(java.util.Collections.emptyList(), 0, 0);
-        }
+    Long tenantId = getRequiredTenantId();
 
 
     Page<ProductResponse> page = productRepository.searchFast(tenantId, query, pageable).map(this::toResponse);
@@ -411,7 +395,15 @@ public class ProductService {
     );
   }
 
-  private String getBusinessType() {
+  private @NonNull Long getRequiredTenantId() {
+    Long tenantId = getTenantId();
+    if (tenantId == null) {
+      throw new com.ims.shared.exception.TenantContextException("Tenant not found in security context");
+    }
+    return tenantId;
+  }
+
+  private @Nullable String getBusinessType() {
         try {
             var auth = SecurityContextHolder.getContext().getAuthentication();
             if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
@@ -423,11 +415,10 @@ public class ProductService {
         return null;
     }
 
-  private Long getTenantId() {
+  private @Nullable Long getTenantId() {
         try {
             var auth = SecurityContextHolder.getContext().getAuthentication();
             if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
-                log.error("Tenant extracted: {}", details.getTenantId());
                 return details.getTenantId();
             }
         } catch (Exception e) {
@@ -437,6 +428,10 @@ public class ProductService {
     }
 
   private ProductResponse toResponse(@NonNull Product product) {
+    return toResponse(product, null, null);
+  }
+
+  private ProductResponse toResponse(@NonNull Product product, @Nullable PharmacyProduct pp, @Nullable WarehouseProduct wp) {
     ProductResponse.ProductResponseBuilder builder =
         ProductResponse.builder()
             .id(product.getId())
@@ -452,41 +447,29 @@ public class ProductService {
             .isActive(product.getIsActive())
             .createdAt(product.getCreatedAt());
 
-    // Enrich with pharmacy details if available
-    Long productId = product.getId();
-    if (productId != null) {
-      pharmacyProductRepository
-          .findById(productId)
-          .ifPresent(
-              pp -> {
-                builder
-                    .batchNumber(pp.getBatchNumber())
-                    .expiryDate(pp.getExpiryDate())
-                    .manufacturer(pp.getManufacturer())
-                    .hsnCode(pp.getHsnCode())
-                    .schedule(pp.getSchedule());
-              });
+    if (pp != null) {
+      builder
+          .batchNumber(pp.getBatchNumber())
+          .expiryDate(pp.getExpiryDate())
+          .manufacturer(pp.getManufacturer())
+          .hsnCode(pp.getHsnCode())
+          .schedule(pp.getSchedule());
     }
 
-    // Enrich with warehouse details if available
-    if (productId != null) {
-      warehouseProductRepository
-          .findById(productId)
-          .ifPresent(
-              wp -> {
-                builder
-                    .storageLocation(wp.getStorageLocation())
-                    .zone(wp.getZone())
-                    .rack(wp.getRack())
-                    .bin(wp.getBin());
-              });
+    if (wp != null) {
+      builder
+          .storageLocation(wp.getStorageLocation())
+          .zone(wp.getZone())
+          .rack(wp.getRack())
+          .bin(wp.getBin());
     }
 
     return builder.build();
   }
 
-  private ProductResponse toResponse(ProductListView view) {
-    return ProductResponse.builder()
+  private @NonNull ProductResponse toResponse(@NonNull ProductListView view) {
+    Objects.requireNonNull(view, "view cannot be null");
+    return Objects.requireNonNull(ProductResponse.builder()
         .id(view.getId())
         .name(view.getName())
         .sku(view.getSku())
@@ -508,7 +491,7 @@ public class ProductService {
         .zone(view.getZone())
         .rack(view.getRack())
         .bin(view.getBin())
-        .build();
+        .build());
   }
 
   private ProductResponse toResponseWithPharmacy(@NonNull Product product, @NonNull PharmacyProduct pp) {

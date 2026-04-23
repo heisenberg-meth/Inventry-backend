@@ -28,10 +28,7 @@ public class CategoryService {
   private final com.ims.shared.audit.AuditLogService auditLogService;
 
   public PagedResponse<CategoryResponse> getCategories(Long tenantId, @NonNull Pageable pageable) {
-    if (tenantId == null) {
-      log.error("Tenant ID is missing in CategoryService.getCategories");
-      throw new IllegalArgumentException("Tenant context is missing");
-    }
+    TenantContext.assertTenantPresent();
 
     Page<CategoryResponse> page = categoryRepository.findByTenantId(tenantId, pageable).map(this::toResponse);
     return new PagedResponse<>(
@@ -44,10 +41,8 @@ public class CategoryService {
   }
 
   public Category getById(@NonNull Long id) {
+    TenantContext.assertTenantPresent();
     Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) {
-      throw new IllegalStateException("Tenant context is missing");
-    }
     return categoryRepository
         .findByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Category not found"));
@@ -80,10 +75,8 @@ public class CategoryService {
   @Transactional
   public Category update(@NonNull Long id, CategoryRequest request) {
     Category category = getById(id);
+    TenantContext.assertTenantPresent();
     Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) {
-      throw new IllegalStateException("Tenant context is missing");
-    }
 
     if (!category.getName().equalsIgnoreCase(request.getName())
         && categoryRepository.existsByNameIgnoreCaseAndTenantId(request.getName(), tenantId)) {

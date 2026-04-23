@@ -64,7 +64,7 @@ public class User {
   @Builder.Default
   private Boolean isPlatformUser = false;
 
-  @ManyToMany(fetch = jakarta.persistence.FetchType.EAGER)
+  @ManyToMany(fetch = jakarta.persistence.FetchType.LAZY)
   @JoinTable(
       name = "user_permissions",
       joinColumns = @JoinColumn(name = "user_id"),

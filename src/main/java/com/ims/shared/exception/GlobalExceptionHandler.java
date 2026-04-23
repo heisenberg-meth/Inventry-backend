@@ -107,9 +107,23 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(IllegalStateException.class)
   public ResponseEntity<Map<String, Object>> handleIllegalState(
       IllegalStateException ex, HttpServletRequest request) {
-    log.warn("Illegal state encountered at {}: {}", request.getRequestURI(), ex.getMessage());
-    return ResponseEntity.status(HttpStatus.CONFLICT)
-        .body(errorBody(STATUS_CONFLICT, "ILLEGAL_STATE", ex.getMessage(), request.getRequestURI()));
+    log.error("Illegal state encountered at {}: {}", request.getRequestURI(), ex.getMessage());
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+        .body(errorBody(STATUS_INTERNAL_ERROR, "INTERNAL_ERROR", ex.getMessage(), request.getRequestURI()));
+  }
+
+  @ExceptionHandler(TenantContextException.class)
+  public ResponseEntity<Map<String, Object>> handleTenantContext(
+      TenantContextException ex, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(errorBody(STATUS_BAD_REQUEST, "TENANT_CONTEXT_MISSING", ex.getMessage(), request.getRequestURI()));
+  }
+
+  @ExceptionHandler(UnauthorizedAccessException.class)
+  public ResponseEntity<Map<String, Object>> handleAuthAccess(
+      UnauthorizedAccessException ex, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+        .body(errorBody(STATUS_UNAUTHORIZED, "UNAUTHORIZED", ex.getMessage(), request.getRequestURI()));
   }
 
   @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)

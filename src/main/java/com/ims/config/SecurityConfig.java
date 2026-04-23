@@ -7,6 +7,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -30,13 +31,66 @@ public class SecurityConfig {
   private final JwtFilter jwtFilter;
   private final RateLimitFilter rateLimitFilter;
   private final TraceFilter traceFilter;
+  private final com.ims.shared.auth.TenantFilter tenantFilter;
 
   @Value("${app.security.allowed-origins:*}")
   private String allowedOrigins;
 
+  private static final String[] AUTH_WHITELIST = {
+      "/auth/login",
+      "/auth/signup",
+      "/auth/refresh",
+      "/auth/forgot-password",
+      "/auth/reset-password",
+      "/auth/verify-email",
+      "/auth/resend-verification",
+      "/auth/check-email",
+      "/auth/check-slug",
+      "/auth/check-company-code",
+      "/platform/auth/login",
+      "/platform/invites/accept",
+      "/platform/invites/complete",
+      "/tenant/payments/gateway/webhook"
+  };
+
+  private static final String[] SWAGGER_WHITELIST = {
+      "/swagger-ui/**",
+      "/swagger-ui.html",
+      "/api-docs/**",
+      "/v3/api-docs/**"
+  };
+
   @Bean
-  public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-    http.csrf(csrf -> csrf.disable())
+  @Profile("dev")
+  public SecurityFilterChain devSecurityFilterChain(HttpSecurity http) throws Exception {
+    return configureCommon(http)
+        .authorizeHttpRequests(auth -> auth
+            .requestMatchers(AUTH_WHITELIST).permitAll()
+            .requestMatchers("/actuator/**").permitAll()
+            .requestMatchers(SWAGGER_WHITELIST).permitAll()
+            .requestMatchers("/internal/**").hasRole("ROOT")
+            .anyRequest().authenticated()
+        )
+        .build();
+  }
+
+  @Bean
+  @Profile("!dev")
+  public SecurityFilterChain prodSecurityFilterChain(HttpSecurity http) throws Exception {
+    return configureCommon(http)
+        .authorizeHttpRequests(auth -> auth
+            .requestMatchers(AUTH_WHITELIST).permitAll()
+            .requestMatchers("/actuator/health").permitAll()
+            .requestMatchers("/actuator/**").hasRole("ROOT")
+            .requestMatchers(SWAGGER_WHITELIST).hasRole("ROOT")
+            .requestMatchers("/internal/**").hasRole("ROOT")
+            .anyRequest().authenticated()
+        )
+        .build();
+  }
+
+  private HttpSecurity configureCommon(HttpSecurity http) throws Exception {
+    return http.csrf(csrf -> csrf.disable())
         .cors(cors -> cors.configurationSource(corsConfigurationSource()))
         .sessionManagement(
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -48,30 +102,10 @@ public class SecurityConfig {
         )
         .exceptionHandling(
             ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
-        .authorizeHttpRequests(
-            auth ->
-                auth.requestMatchers(
-                        "/auth/login",
-                        "/auth/signup",
-                        "/auth/refresh",
-                        "/auth/forgot-password",
-                        "/auth/reset-password",
-                        "/auth/verify-email",
-                        "/auth/resend-verification",
-                        "/auth/check-email",
-                        "/auth/check-slug",
-                        "/auth/check-company-code"
-                    ).permitAll()
-                    .requestMatchers("/platform/auth/login").permitAll()
-                    .requestMatchers("/platform/invites/accept", "/platform/invites/complete").permitAll()
-                    .requestMatchers("/tenant/payments/gateway/webhook").permitAll()
-                    .requestMatchers("/actuator/**", "/swagger-ui/**", "/swagger-ui.html", "/api-docs/**", "/v3/api-docs/**").permitAll()
-                    .anyRequest().authenticated())
         .addFilterBefore(traceFilter, UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+        .addFilterBefore(tenantFilter, UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
-
-    return http.build();
   }
 
   @Bean

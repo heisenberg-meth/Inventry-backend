@@ -31,7 +31,7 @@ public class PaymentService {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
       log.error("Tenant ID is missing in PaymentService.recordPayment");
-      throw new IllegalStateException("Tenant context is missing");
+      throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
     Invoice invoice = invoiceRepository.findById(invoiceId)

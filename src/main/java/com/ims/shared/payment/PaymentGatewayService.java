@@ -7,6 +7,7 @@ import com.ims.tenant.repository.InvoiceRepository;
 import com.ims.tenant.repository.PaymentRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -46,33 +47,43 @@ public class PaymentGatewayService {
         "gateway_order_id", gatewayOrderId,
         "amount", amount,
         "currency", "INR",
-        "payment_id", payment.getId());
+        "payment_id", payment.getId(),
+        "tenant_id", payment.getTenantId()); // Client should pass this to Razorpay in 'notes'
+  }
+
+  @Transactional(readOnly = true)
+  public boolean isEventProcessed(String eventId) {
+    return logRepository.existsByEventId(eventId);
   }
 
   @Transactional
-  public void processWebhook(Map<String, Object> payload) {
-    String event = (String) payload.get("event");
-    log.info("Processing payment gateway webhook: {}", event);
-
-    // Simplified: in real scenario, validate signature here
+  public void processWebhook(Long tenantId, String eventId, String eventType, JsonNode payload) {
+    log.info("Processing validated payment gateway webhook: {} for tenant {}", eventType, tenantId);
 
     PaymentGatewayLog pgLog = PaymentGatewayLog.builder()
-        .tenantId(0L) // Webhooks are usually global, need to extract tenant from payload if possible
-        .eventType(event)
+        .tenantId(tenantId)
+        .eventId(eventId)
+        .eventType(eventType)
         .rawPayload(payload.toString())
         .build();
     logRepository.save(pgLog);
 
-    if ("payment.captured".equals(event)) {
-      // Map<String, Object> data = (Map<String, Object>) payload.get("payload");
-      // Map<String, Object> paymentData = (Map<String, Object>) data.get("payment");
+    if ("payment.captured".equals(eventType)) {
+      String gatewayOrderId = payload.path("payload").path("payment").path("entity").path("order_id").asText();
+      BigDecimal amount = new BigDecimal(payload.path("payload").path("payment").path("entity").path("amount").asLong())
+          .divide(new BigDecimal(100)); // Razorpay amount is in paise
+      String currency = payload.path("payload").path("payment").path("entity").path("currency").asText();
 
-      // In real scenario, find payment by gatewayTransactionId
-      // For this demo, let's assume we find it.
-      // Payment payment =
-      // paymentRepository.findByGatewayTransactionId(gatewayOrderId);
-      // update payment.status = 'COMPLETED'
-      // update invoice.status = 'PAID'
+      // Validate business details
+      // Payment payment = paymentRepository.findByGatewayTransactionId(gatewayOrderId)
+      //    .orElseThrow(() -> new EntityNotFoundException("Payment not found"));
+      
+      // if (!payment.getAmount().equals(amount)) { ... }
+      // if (!"INR".equals(currency)) { ... }
+
+      log.info("Payment captured for order {}: {} {}", gatewayOrderId, amount, currency);
+      
+      // Update payment and invoice status here
     }
   }
 }
