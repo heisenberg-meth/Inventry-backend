@@ -78,17 +78,9 @@ public class RbacAspect {
       Long userId = details.getUserId();
       Long tenantId = details.getTenantId();
 
-      // HYBRID APPROACH:
-      // 1. Try permissions from JWT (primary)
-      Set<String> permissions = details.getPermissions();
-
-      // 2. Fallback to PermissionService (Redis Cache -> DB)
-      // We check if permissions are null or empty. 
-      // Note: PLATFORM users might have empty permissions if not set, 
-      // but we still want to hit the cache/DB once if JWT is empty.
-      if (permissions == null || permissions.isEmpty()) {
-        permissions = permissionService.getUserPermissions(userId, tenantId);
-      }
+      // Resolve permissions from PermissionService (Redis Cache -> DB)
+      // Always use the service to ensure permissions are up-to-date and never stale.
+      Set<String> permissions = permissionService.getUserPermissions(userId, tenantId);
 
       String requiredPermission = requiresPermission.value();
       boolean allowed = permissions.contains(requiredPermission);

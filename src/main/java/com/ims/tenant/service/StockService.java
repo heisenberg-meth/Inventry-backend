@@ -17,9 +17,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import com.ims.product.ProductService;
-
 
 @Service
 @RequiredArgsConstructor
@@ -99,18 +97,7 @@ public class StockService {
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
-    int attempts = 0;
-    while (attempts < 3) {
-      try {
-        stockTransactionService.stockInInternal(productId, qty, notes, userId);
-        return;
-      } catch (ObjectOptimisticLockingFailureException e) {
-        attempts++;
-        if (attempts >= 3) throw e;
-        log.warn("Optimistic locking failure for stockIn product {}, retrying (attempt {})", productId, attempts);
-        try { Thread.sleep(50); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
-      }
-    }
+    stockTransactionService.stockInInternal(productId, qty, notes, userId);
   }
 
   public void stockOut(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
@@ -120,18 +107,7 @@ public class StockService {
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
-    int attempts = 0;
-    while (attempts < 3) {
-      try {
-        stockTransactionService.stockOutInternal(productId, qty, notes, userId);
-        return;
-      } catch (ObjectOptimisticLockingFailureException e) {
-        attempts++;
-        if (attempts >= 3) throw e;
-        log.warn("Optimistic locking failure for product {}, retrying (attempt {})", productId, attempts);
-        try { Thread.sleep(50); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
-      }
-    }
+    stockTransactionService.stockOutInternal(productId, qty, notes, userId);
   }
 
   public void stockAdjust(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
@@ -141,18 +117,7 @@ public class StockService {
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
-    int attempts = 0;
-    while (attempts < 3) {
-      try {
-        stockTransactionService.stockAdjustInternal(productId, qty, notes, userId);
-        return;
-      } catch (ObjectOptimisticLockingFailureException e) {
-        attempts++;
-        if (attempts >= 3) throw e;
-        log.warn("Optimistic locking failure for stockAdjust product {}, retrying (attempt {})", productId, attempts);
-        try { Thread.sleep(50); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
-      }
-    }
+    stockTransactionService.stockAdjustInternal(productId, qty, notes, userId);
   }
 
   public @NonNull Page<StockMovement> getMovements(@NonNull Pageable pageable) {

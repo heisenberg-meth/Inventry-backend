@@ -61,7 +61,6 @@ public class JwtUtil {
     claims.put("role", role != null ? role.name() : null);
     claims.put("scope", scope);
     claims.put("is_platform_user", isPlatformUser);
-    claims.put("permissions", permissions);
     claims.put("impersonation", impersonation);
     if (impersonatedBy != null) {
       claims.put("impersonated_by", impersonatedBy);
@@ -98,7 +97,6 @@ public class JwtUtil {
     claims.put("scope", scope);
     claims.put("is_platform_user", isPlatformUser);
     claims.put("token_type", "refresh");
-    claims.put("permissions", permissions);
     claims.put("impersonation", impersonation);
     if (impersonatedBy != null) {
       claims.put("impersonated_by", impersonatedBy);

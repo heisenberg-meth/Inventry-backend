@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import java.util.Objects;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,5 +50,44 @@ public class TransferOrderService {
         fromLocation,
         toLocation);
     return transfer;
+  }
+
+  @Transactional(readOnly = true)
+  public @NonNull Page<TransferOrder> getTransfers(@NonNull Pageable pageable) {
+    return Objects.requireNonNull(transferOrderRepository.findAll(pageable));
+  }
+
+  @Transactional
+  public @NonNull TransferOrder updateStatus(@NonNull Long id, @NonNull String status, @NonNull Long userId) {
+    TransferOrder transfer = transferOrderRepository.findById(id)
+        .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Transfer order not found"));
+
+    String oldStatus = transfer.getStatus();
+    if (oldStatus.equals(status)) return transfer;
+
+    // Basic State Machine
+    if ("PENDING".equals(oldStatus)) {
+        if ("SHIPPED".equals(status)) {
+            // Deduct stock from source (assuming source is current stock)
+            // In a more complex system, we'd have per-location stock.
+            // For now, we'll log it as a stock out from the source location.
+            // But we don't actually deduct from the 'global' stock until it leaves the system?
+            // Actually, usually SHIPPED means it's in transit.
+        } else if (!"CANCELLED".equals(status)) {
+            throw new IllegalArgumentException("Cannot transition from PENDING to " + status);
+        }
+    } else if ("SHIPPED".equals(oldStatus)) {
+        if ("RECEIVED".equals(status)) {
+            // Logic for receipt
+        } else if (!"LOST".equals(status)) {
+             throw new IllegalArgumentException("Cannot transition from SHIPPED to " + status);
+        }
+    }
+
+    transfer.setStatus(status);
+    TransferOrder saved = Objects.requireNonNull(transferOrderRepository.save(transfer));
+    
+    log.info("Transfer order {} updated from {} to {} by user {}", id, oldStatus, status, userId);
+    return saved;
   }
 }

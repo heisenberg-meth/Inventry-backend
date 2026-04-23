@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/tenant/products")
+@RequestMapping("/api/v1/tenant/products")
 @RequiredArgsConstructor
 @Tag(name = "Tenant - Products", description = "Product management")
 @SecurityRequirement(name = "bearerAuth")

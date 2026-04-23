@@ -140,6 +140,11 @@ public class AuthService {
     Tenant tenant = tenantRepository.findById(tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
+    if (com.ims.model.TenantStatus.SUSPENDED.equals(tenant.getStatus()) || 
+        com.ims.model.TenantStatus.INACTIVE.equals(tenant.getStatus())) {
+        throw new IllegalStateException("Cannot impersonate a " + tenant.getStatus() + " tenant");
+    }
+
     User targetUser = userRepository.findFirstByTenantIdAndAdminRole(tenantId)
         .orElseThrow(() -> new EntityNotFoundException("No admin user found for this tenant"));
 
@@ -559,12 +564,12 @@ public class AuthService {
     User user = userRepository.findByEmailUnfiltered(request.getEmail().trim().toLowerCase())
         .orElseThrow(() -> new IllegalArgumentException("Invalid or expired reset token"));
 
-    if (user.getResetToken() == null || !passwordEncoder.matches(request.getResetToken(), user.getResetToken())) {
-      throw new IllegalArgumentException("Invalid or expired reset token");
-    }
+    // timing attack protection: always run passwordEncoder.matches
+    String storedToken = user.getResetToken() != null ? user.getResetToken() : "$2a$10$invalid-placeholder-hash-prevents-timing";
+    boolean tokenMatches = passwordEncoder.matches(request.getResetToken(), storedToken);
+    boolean notExpired = user.getResetTokenExpiry() != null && !LocalDateTime.now().isAfter(user.getResetTokenExpiry());
 
-    if (user.getResetTokenExpiry() == null
-        || LocalDateTime.now().isAfter(user.getResetTokenExpiry())) {
+    if (!tokenMatches || !notExpired) {
       throw new IllegalArgumentException("Invalid or expired reset token");
     }
 
