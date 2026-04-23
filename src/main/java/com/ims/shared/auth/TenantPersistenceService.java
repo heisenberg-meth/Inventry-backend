@@ -6,7 +6,6 @@ import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -14,7 +13,7 @@ public class TenantPersistenceService {
 
   private final TenantRepository tenantRepository;
 
-  @Transactional
+  @org.springframework.transaction.annotation.Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
   public @NonNull Tenant saveTenant(@NonNull Tenant tenant) {
     return Objects.requireNonNull(tenantRepository.saveAndFlush(Objects.requireNonNull(tenant))); // commits immediately
   }
