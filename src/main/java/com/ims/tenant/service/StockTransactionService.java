@@ -90,8 +90,8 @@ public class StockTransactionService {
         @CacheEvict(value = "dashboard", key = "'dashboard'", cacheResolver = "tenantAwareCacheResolver")
     })
     public void stockOutInternal(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
-        Product product = productRepository
-            .findById(productId)
+        Product product = productService
+            .findByIdWithLock(productId)
             .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
         if (product.getStock() < qty) {
@@ -139,7 +139,16 @@ public class StockTransactionService {
             .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
         int previousStock = product.getStock();
-        product.setStock(previousStock + qty);
+        int newStock = previousStock + qty;
+        
+        if (newStock < 0) {
+            throw new InsufficientStockException(
+                "Adjustment would result in negative stock. Current: " + previousStock + ", Adjustment: " + qty,
+                previousStock,
+                Math.abs(qty));
+        }
+
+        product.setStock(newStock);
         product.setUpdatedAt(LocalDateTime.now());
         productRepository.save(product);
 

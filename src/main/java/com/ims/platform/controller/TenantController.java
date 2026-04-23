@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/platform/tenants")
+@RequestMapping("/api/v1/platform/tenants")
 @RequiredArgsConstructor
 @Tag(name = "Platform - Tenants", description = "Platform-level tenant management")
 @SecurityRequirement(name = "bearerAuth")
@@ -88,6 +88,23 @@ public class TenantController {
   @Operation(summary = "Activate tenant")
   public ResponseEntity<Map<String, String>> activate(@PathVariable Long id) {
     return ResponseEntity.ok(tenantService.activateTenant(id));
+  }
+
+  @PatchMapping("/{id}/status")
+  @RequiresRole({"ROOT"})
+  @Operation(summary = "Update tenant status (ACTIVE/SUSPENDED/INACTIVE)")
+  public ResponseEntity<Map<String, String>> updateStatus(
+      @PathVariable Long id, @RequestBody Map<String, String> body) {
+    String status = body.get("status");
+    if (status == null) throw new IllegalArgumentException("Status is required");
+    
+    if ("ACTIVE".equals(status)) return ResponseEntity.ok(tenantService.activateTenant(id));
+    if ("SUSPENDED".equals(status)) return ResponseEntity.ok(tenantService.suspendTenant(id));
+    if ("INACTIVE".equals(status)) {
+        tenantService.deactivateTenant(id);
+        return ResponseEntity.ok(Map.of("message", "Tenant deactivated successfully", "status", "INACTIVE"));
+    }
+    throw new IllegalArgumentException("Invalid status: " + status);
   }
 
   @PostMapping("/{id}/impersonate")

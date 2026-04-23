@@ -97,8 +97,8 @@ public class SecurityConfig {
             ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
         .addFilterBefore(traceFilter, UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-        .addFilterBefore(tenantFilter, UsernamePasswordAuthenticationFilter.class)
-        .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+        .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+        .addFilterBefore(tenantFilter, UsernamePasswordAuthenticationFilter.class);
   }
 
   @Bean

@@ -25,7 +25,7 @@ public class Order {
 
   @Id
   @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "order_seq")
-  @SequenceGenerator(name = "order_seq", sequenceName = "orders_id_seq", allocationSize = 50)
+  @SequenceGenerator(name = "order_seq", sequenceName = "orders_id_seq", allocationSize = 1)
   private Long id;
 
   @TenantId
@@ -34,6 +34,10 @@ public class Order {
 
   @Column(nullable = false)
   private String type;
+
+  @Column(nullable = false)
+  @Builder.Default
+  private String currency = "INR";
 
   @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
   @Column(nullable = false)
