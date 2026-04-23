@@ -1,7 +1,11 @@
 package com.ims.tenant.service;
 
-import com.ims.model.Customer;
+import com.ims.dto.request.CustomerRequest;
 import com.ims.dto.response.CustomerResponse;
+import com.ims.model.Customer;
+import com.ims.model.Order;
+import com.ims.model.Invoice;
+import com.ims.model.Payment;
 import com.ims.tenant.repository.CustomerRepository;
 import com.ims.tenant.repository.OrderRepository;
 import com.ims.tenant.repository.InvoiceRepository;
@@ -41,7 +45,7 @@ public class CustomerService {
   }
 
   @Transactional
-  public @NonNull CustomerResponse create(@NonNull com.ims.dto.request.CustomerRequest request) {
+  public @NonNull CustomerResponse create(@NonNull CustomerRequest request) {
     Long tenantId = com.ims.shared.auth.TenantContext.getTenantId();
     if (tenantId == null) {
       throw new com.ims.shared.exception.TenantContextException("Tenant context missing");
@@ -60,7 +64,7 @@ public class CustomerService {
   }
 
   @Transactional
-  public @NonNull CustomerResponse update(@NonNull Long id, @NonNull com.ims.dto.request.CustomerRequest updates) {
+  public @NonNull CustomerResponse update(@NonNull Long id, @NonNull CustomerRequest updates) {
     Customer customer = getById(id);
     if (updates.getName() != null) {
       customer.setName(updates.getName());
@@ -87,12 +91,12 @@ public class CustomerService {
     customerRepository.delete(customer);
   }
 
-  public Map<String, Object> getCustomerLedger(@NonNull Long id) {
+  public @NonNull Map<String, Object> getCustomerLedger(@NonNull Long id) {
     Customer customer = getById(id);
 
-    List<com.ims.model.Order> orders = orderRepository.findByCustomerId(id, Pageable.unpaged()).getContent();
-    List<com.ims.model.Invoice> invoices = invoiceRepository.findByCustomerId(id);
-    List<com.ims.model.Payment> payments = paymentRepository.findByCustomerId(id);
+    List<Order> orders = orderRepository.findByCustomerId(id, Pageable.unpaged()).getContent();
+    List<Invoice> invoices = invoiceRepository.findByCustomerId(id);
+    List<Payment> payments = paymentRepository.findByCustomerId(id);
 
     return Map.of(
         "customer", toResponse(customer),
@@ -101,8 +105,8 @@ public class CustomerService {
         "payments", payments);
   }
 
-  private com.ims.dto.response.CustomerResponse toResponse(Customer customer) {
-    return com.ims.dto.response.CustomerResponse.builder()
+  private @NonNull CustomerResponse toResponse(Customer customer) {
+    return CustomerResponse.builder()
         .id(customer.getId())
         .name(customer.getName())
         .phone(customer.getPhone())

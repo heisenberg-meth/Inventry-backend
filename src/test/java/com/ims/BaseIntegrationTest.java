@@ -35,11 +35,18 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.ArgumentMatchers.*;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration"
+})
 @ActiveProfiles("test")
 @Testcontainers
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public abstract class BaseIntegrationTest {
+
+  @org.junit.jupiter.api.BeforeAll
+  static void globalSetup() {
+    TenantContext.setTenantId(1L);
+  }
 
   @Container
   @ServiceConnection
@@ -117,15 +124,15 @@ public abstract class BaseIntegrationTest {
   protected org.springframework.cache.CacheManager cacheManager;
   @MockitoBean(name = "tenantAwareCacheResolver")
   protected org.springframework.cache.interceptor.CacheResolver tenantAwareCacheResolver;
+  @MockitoBean
+  protected org.springframework.mail.javamail.JavaMailSender javaMailSender;
 
   protected long systemTenantId;
   protected long testTenant1Id;
   protected long testTenant2Id;
 
   @BeforeEach
-  void setupTenant() {
-    TenantContext.setTenantId(1L);
-  }
+  void setupTenant() {}
 
   @AfterEach
   void clearTenant() {
@@ -225,5 +232,13 @@ public abstract class BaseIntegrationTest {
         .when(tenantAwareCacheResolver)
         .resolveCaches(any(CacheOperationInvocationContext.class));
     doReturn(dummyCache).when(cacheManager).getCache(any(String.class));
+  }
+
+  protected org.springframework.test.web.servlet.request.RequestPostProcessor tenant(String tenantId) {
+    return request -> {
+      request.addHeader("X-Tenant-ID", tenantId);
+      TenantContext.setTenantId(Long.valueOf(tenantId)); // Sync with Hibernate/Context
+      return request;
+    };
   }
 }

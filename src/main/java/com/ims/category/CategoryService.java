@@ -4,17 +4,20 @@ import com.ims.dto.response.CategoryResponse;
 import com.ims.dto.response.PagedResponse;
 import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditResource;
+import com.ims.shared.audit.AuditLogService;
 import com.ims.dto.CategoryRequest;
 import com.ims.shared.rbac.RequiresPermission;
 import com.ims.product.ProductRepository;
 import com.ims.shared.auth.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
+import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,9 +28,9 @@ public class CategoryService {
 
   private final CategoryRepository categoryRepository;
   private final ProductRepository productRepository;
-  private final com.ims.shared.audit.AuditLogService auditLogService;
+  private final AuditLogService auditLogService;
 
-  public PagedResponse<CategoryResponse> getCategories(Long tenantId, @NonNull Pageable pageable) {
+  public @NonNull PagedResponse<CategoryResponse> getCategories(@NonNull Long tenantId, @NonNull Pageable pageable) {
     TenantContext.assertTenantPresent();
 
     Page<CategoryResponse> page = categoryRepository.findByTenantId(tenantId, pageable).map(this::toResponse);
@@ -40,7 +43,7 @@ public class CategoryService {
     );
   }
 
-  public Category getById(@NonNull Long id) {
+  public @NonNull Category getById(@NonNull Long id) {
     TenantContext.assertTenantPresent();
     Long tenantId = TenantContext.getTenantId();
     return categoryRepository
@@ -49,7 +52,7 @@ public class CategoryService {
   }
 
   @Transactional
-  public Category create(CategoryRequest request) {
+  public @NonNull Category create(@NonNull CategoryRequest request) {
     if (categoryRepository.existsByNameIgnoreCaseAndTenantId(request.getName(), TenantContext.getTenantId())) {
       throw new IllegalArgumentException("Category with this name already exists");
     }
@@ -58,7 +61,7 @@ public class CategoryService {
         .tenantId(TenantContext.getTenantId())
         .name(request.getName())
         .description(request.getDescription())
-        .taxRate(request.getTaxRate() != null ? request.getTaxRate() : java.math.BigDecimal.ZERO)
+        .taxRate(request.getTaxRate() != null ? request.getTaxRate() : BigDecimal.ZERO)
         .build();
 
     Category savedCategory = categoryRepository.save(category);
@@ -73,7 +76,7 @@ public class CategoryService {
   }
 
   @Transactional
-  public Category update(@NonNull Long id, CategoryRequest request) {
+  public @NonNull Category update(@NonNull Long id, @Nullable CategoryRequest request) {
     Category category = getById(id);
     TenantContext.assertTenantPresent();
     Long tenantId = TenantContext.getTenantId();
@@ -120,7 +123,7 @@ public class CategoryService {
         "Deleted category: " + category.getName());
   }
 
-  public CategoryResponse toResponse(Category category) {
+  public @NonNull CategoryResponse toResponse(@NonNull Category category) {
     return CategoryResponse.builder()
         .id(category.getId())
         .name(category.getName())
