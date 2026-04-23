@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @Tag(name = "Platform - Users", description = "Platform user management")
 @SecurityRequirement(name = "bearerAuth")
-@RequestMapping("/api/platform/users")
+@RequestMapping("/api/v1/platform/users")
 @RequiredArgsConstructor
 public class PlatformUserController {
 
@@ -55,6 +55,14 @@ public class PlatformUserController {
   @PreAuthorize("hasAnyAuthority('ROLE_ROOT', 'ROLE_PLATFORM_ADMIN')")
   public Map<String, Object> getPlatformUser(@NonNull @PathVariable Long id) {
     return platformUserService.getPlatformUser(id);
+  }
+
+  @Operation(summary = "Update platform user profile (ROOT only)")
+  @org.springframework.web.bind.annotation.PutMapping("/{id}")
+  @PreAuthorize("hasAuthority('ROLE_ROOT')")
+  public @NonNull User updatePlatformUser(
+      @NonNull @PathVariable Long id, @Valid @NonNull @RequestBody CreatePlatformUserRequest request) {
+    return Objects.requireNonNull(platformUserService.updatePlatformUser(id, request));
   }
 
   @Operation(summary = "Update platform user role (ROOT only)")
