@@ -100,7 +100,7 @@ public class TenantController {
   @GetMapping("/{id}/audit")
   @RequiresRole({"ROOT", "PLATFORM_ADMIN"})
   @Operation(summary = "Get audit logs for a specific tenant")
-  public ResponseEntity<Page<com.ims.model.AuditLog>> getTenantAuditLogs(@PathVariable Long id, @NonNull Pageable pageable) {
+  public ResponseEntity<Page<com.ims.dto.response.AuditLogResponse>> getTenantAuditLogs(@PathVariable Long id, @NonNull Pageable pageable) {
     return ResponseEntity.ok(auditLogService.getTenantLogs(id, pageable));
   }
 

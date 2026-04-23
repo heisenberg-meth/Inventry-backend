@@ -11,9 +11,8 @@ public class HibernateTenantResolver implements CurrentTenantIdentifierResolver<
     public Long resolveCurrentTenantIdentifier() {
         Long tenantId = TenantContext.getTenantId();
 
-        // 🔥 FORCE fallback
         if (tenantId == null) {
-            return 1L;  // hardcode for now
+            throw new com.ims.shared.exception.TenantContextException("Tenant context not set — request rejected");
         }
 
         return tenantId;

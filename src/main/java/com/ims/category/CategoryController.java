@@ -45,9 +45,7 @@ public class CategoryController {
   @RequiresRole({ "ADMIN", "MANAGER" })
   @Operation(summary = "Create category")
   public ResponseEntity<CategoryResponse> create(@Valid @RequestBody CategoryRequest request) {
-    if (TenantContext.getTenantId() == null) {
-      throw new IllegalStateException("Tenant context is required to create a category");
-    }
+    TenantContext.assertTenantPresent();
     return ResponseEntity.status(HttpStatus.CREATED).body(categoryService.toResponse(categoryService.create(request)));
   }
 

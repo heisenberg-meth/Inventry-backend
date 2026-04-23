@@ -1,6 +1,7 @@
 package com.ims.tenant.service;
 
 import com.ims.model.Customer;
+import com.ims.dto.response.CustomerResponse;
 import com.ims.tenant.repository.CustomerRepository;
 import com.ims.tenant.repository.OrderRepository;
 import com.ims.tenant.repository.InvoiceRepository;
@@ -8,6 +9,7 @@ import com.ims.tenant.repository.PaymentRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.Map;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -24,24 +26,41 @@ public class CustomerService {
   private final InvoiceRepository invoiceRepository;
   private final PaymentRepository paymentRepository;
 
-  public @NonNull Page<Customer> getCustomers(@NonNull Pageable pageable) {
-    return customerRepository.findAll(pageable);
+  public @NonNull Page<CustomerResponse> getCustomers(@NonNull Pageable pageable) {
+    return customerRepository.findAll(pageable).map(this::toResponse);
   }
 
   public @NonNull Customer getById(@NonNull Long id) {
-    return customerRepository
+    return Objects.requireNonNull(customerRepository
         .findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Customer not found"));
+        .orElseThrow(() -> new EntityNotFoundException("Customer not found")));
+  }
+
+  public @NonNull CustomerResponse getCustomerResponseById(@NonNull Long id) {
+    return toResponse(getById(id));
   }
 
   @Transactional
-  public @NonNull Customer create(@NonNull Customer customer) {
-    customer.setTenantId(com.ims.shared.auth.TenantContext.getTenantId());
-    return customerRepository.save(customer);
+  public @NonNull CustomerResponse create(@NonNull com.ims.dto.request.CustomerRequest request) {
+    Long tenantId = com.ims.shared.auth.TenantContext.getTenantId();
+    if (tenantId == null) {
+      throw new com.ims.shared.exception.TenantContextException("Tenant context missing");
+    }
+
+    Customer customer = new Customer();
+    customer.setName(request.getName());
+    customer.setPhone(request.getPhone());
+    customer.setEmail(request.getEmail());
+    customer.setAddress(request.getAddress());
+    customer.setGstin(request.getGstin());
+    customer.setTenantId(tenantId);
+
+    Customer saved = customerRepository.save(customer);
+    return toResponse(saved);
   }
 
   @Transactional
-  public @NonNull Customer update(@NonNull Long id, @NonNull Customer updates) {
+  public @NonNull CustomerResponse update(@NonNull Long id, @NonNull com.ims.dto.request.CustomerRequest updates) {
     Customer customer = getById(id);
     if (updates.getName() != null) {
       customer.setName(updates.getName());
@@ -58,7 +77,8 @@ public class CustomerService {
     if (updates.getGstin() != null) {
       customer.setGstin(updates.getGstin());
     }
-    return customerRepository.save(customer);
+    Customer updated = customerRepository.save(customer);
+    return toResponse(updated);
   }
 
   @Transactional
@@ -75,9 +95,20 @@ public class CustomerService {
     List<com.ims.model.Payment> payments = paymentRepository.findByCustomerId(id);
 
     return Map.of(
-        "customer", customer,
+        "customer", toResponse(customer),
         "orders", orders,
         "invoices", invoices,
         "payments", payments);
+  }
+
+  private com.ims.dto.response.CustomerResponse toResponse(Customer customer) {
+    return com.ims.dto.response.CustomerResponse.builder()
+        .id(customer.getId())
+        .name(customer.getName())
+        .phone(customer.getPhone())
+        .email(customer.getEmail())
+        .address(customer.getAddress())
+        .gstin(customer.getGstin())
+        .build();
   }
 }

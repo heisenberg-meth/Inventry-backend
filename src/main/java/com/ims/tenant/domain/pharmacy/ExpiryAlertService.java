@@ -16,24 +16,36 @@ public class ExpiryAlertService {
 
 
   private final PharmacyProductRepository pharmacyProductRepository;
+  private final com.ims.platform.repository.TenantRepository tenantRepository;
 
   @Scheduled(cron = "0 0 8 * * *")
   public void checkExpiryAlerts() {
-    LocalDate threshold = LocalDate.now().plusDays(EXPIRY_THRESHOLD_DAYS);
-    List<PharmacyProduct> expiring = pharmacyProductRepository.findByExpiryDateBefore(threshold);
+    com.ims.shared.auth.TenantContext.runWithTenant(com.ims.shared.auth.TenantContext.SYSTEM_TENANT_ID, () -> {
+      log.info("Scheduled Task: Checking pharmacy expiry alerts across all tenants");
+      List<Long> tenantIds = tenantRepository.findAllIds();
+      int totalExpiring[] = {0};
 
-    expiring.forEach(
-        pp ->
+      for (Long tenantId : tenantIds) {
+        com.ims.shared.auth.TenantContext.runWithTenant(tenantId, () -> {
+          LocalDate threshold = LocalDate.now().plusDays(EXPIRY_THRESHOLD_DAYS);
+          List<PharmacyProduct> expiring = pharmacyProductRepository.findByExpiryDateBefore(threshold);
+
+          for (PharmacyProduct pp : expiring) {
             log.warn(
                 "EXPIRY ALERT: tenant={} product={} expires={}",
-                pp.getProduct().getTenantId(),
+                tenantId,
                 pp.getProduct().getName(),
-                pp.getExpiryDate()));
+                pp.getExpiryDate());
+            totalExpiring[0]++;
+          }
+        });
+      }
 
-    log.info(
-        "Expiry check complete. {} products expiring within {} days.",
-        expiring.size(),
-        EXPIRY_THRESHOLD_DAYS);
+      log.info(
+          "Expiry check complete. {} products expiring within {} days across all tenants.",
+          totalExpiring[0],
+          EXPIRY_THRESHOLD_DAYS);
+    });
   }
 
 }

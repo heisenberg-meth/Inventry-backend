@@ -35,7 +35,9 @@ public class Order {
   @Column(nullable = false)
   private String type;
 
-  @Column @Builder.Default private String status = "PENDING";
+  @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+  @Column(nullable = false)
+  @Builder.Default private OrderStatus status = OrderStatus.PENDING;
 
   @Column(name = "customer_id")
   private Long customerId;

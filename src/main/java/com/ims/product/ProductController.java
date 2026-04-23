@@ -120,8 +120,9 @@ public class ProductController {
   @RequiresRole({ "ADMIN", "MANAGER" })
   @Operation(summary = "Bulk import products via CSV")
   public ResponseEntity<java.util.Map<String, Object>> bulkImport(
-      @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
-    return ResponseEntity.ok(importService.importProducts(file));
+      @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+      @RequestParam(value = "dryRun", defaultValue = "false") boolean dryRun) {
+    return ResponseEntity.ok(importService.importProducts(file, dryRun));
   }
 
   @GetMapping("/export")

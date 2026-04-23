@@ -14,6 +14,7 @@ spring:
       hibernate:
         jdbc:
           batch_size: 50
+        default_batch_fetch_size: 50
         order_inserts: true
         order_updates: true
         batch_versioned_data: true
@@ -70,13 +71,17 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health
+  endpoint:
+    health:
+      show-details: never
 
 springdoc:
   api-docs:
-    path: /api-docs
+    enabled: false
   swagger-ui:
-    path: /swagger-ui.html
+    enabled: false
+  path: /api-docs
 
 server:
   port: ${PORT:8080}

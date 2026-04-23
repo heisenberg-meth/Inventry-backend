@@ -15,4 +15,11 @@ public interface TenantRepository extends JpaRepository<Tenant, Long> {
 
   boolean existsByCompanyCode(String companyCode);
   java.util.List<Tenant> findAllByCreatedAtBefore(java.time.LocalDateTime dateTime);
+
+  @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+  @org.springframework.data.jpa.repository.Query("SELECT t FROM Tenant t WHERE t.id = :id")
+  Optional<Tenant> lockById(@org.springframework.data.repository.query.Param("id") Long id);
+
+  @org.springframework.data.jpa.repository.Query("SELECT t.id FROM Tenant t")
+  java.util.List<Long> findAllIds();
 }

@@ -150,7 +150,7 @@ public class InvoiceService {
 
   private String incrementAndGetInvoiceNumber() {
     Tenant tenant = tenantRepository
-        .findById(Objects.requireNonNull(TenantContext.getTenantId()))
+        .lockById(Objects.requireNonNull(TenantContext.getTenantId()))
         .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
     tenant.setInvoiceSequence(tenant.getInvoiceSequence() + 1);

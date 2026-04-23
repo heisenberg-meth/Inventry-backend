@@ -1,6 +1,6 @@
 package com.ims.platform.controller;
 
-import com.ims.model.AuditLog;
+import com.ims.dto.response.AuditLogResponse;
 import com.ims.shared.audit.AuditLogService;
 import com.ims.shared.rbac.RequiresRole;
 import io.swagger.v3.oas.annotations.Operation;
@@ -28,7 +28,7 @@ public class PlatformAuditController {
   @GetMapping("/logs")
   @RequiresRole({"ROOT", "PLATFORM_ADMIN"})
   @Operation(summary = "View aggregated audit logs", description = "Shows combined logs across all tenants for platform monitoring")
-  public ResponseEntity<Page<AuditLog>> getAggregatedLogs(@NonNull Pageable pageable) {
+  public ResponseEntity<Page<AuditLogResponse>> getAggregatedLogs(@NonNull Pageable pageable) {
     return ResponseEntity.ok(auditLogService.getAllLogs(Objects.requireNonNull(pageable)));
   }
 }
