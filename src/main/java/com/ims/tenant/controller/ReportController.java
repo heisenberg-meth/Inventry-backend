@@ -30,7 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/tenant")
+@RequestMapping("/api/tenant")
 @RequiredArgsConstructor
 @Tag(name = "Tenant - Reports", description = "Reports and analytics")
 @SecurityRequirement(name = "bearerAuth")

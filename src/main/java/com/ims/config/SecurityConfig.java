@@ -7,7 +7,6 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -37,20 +36,20 @@ public class SecurityConfig {
   private String allowedOrigins;
 
   private static final String[] AUTH_WHITELIST = {
-      "/auth/login",
-      "/auth/signup",
-      "/auth/refresh",
-      "/auth/forgot-password",
-      "/auth/reset-password",
-      "/auth/verify-email",
-      "/auth/resend-verification",
-      "/auth/check-email",
-      "/auth/check-slug",
-      "/auth/check-company-code",
-      "/platform/auth/login",
-      "/platform/invites/accept",
-      "/platform/invites/complete",
-      "/tenant/payments/gateway/webhook"
+      "/api/auth/login",
+      "/api/auth/signup",
+      "/api/auth/refresh",
+      "/api/auth/forgot-password",
+      "/api/auth/reset-password",
+      "/api/auth/verify-email",
+      "/api/auth/resend-verification",
+      "/api/auth/check-email",
+      "/api/auth/check-slug",
+      "/api/auth/check-company-code",
+      "/api/platform/auth/login",
+      "/api/platform/invites/accept",
+      "/api/platform/invites/complete",
+      "/api/tenant/payments/gateway/webhook"
   };
 
   private static final String[] SWAGGER_WHITELIST = {
@@ -61,31 +60,25 @@ public class SecurityConfig {
   };
 
   @Bean
-  @Profile("dev")
-  public SecurityFilterChain devSecurityFilterChain(HttpSecurity http) throws Exception {
-    return configureCommon(http)
-        .authorizeHttpRequests(auth -> auth
-            .requestMatchers(AUTH_WHITELIST).permitAll()
-            .requestMatchers("/actuator/**").permitAll()
-            .requestMatchers(SWAGGER_WHITELIST).permitAll()
-            .requestMatchers("/internal/**").hasRole("ROOT")
-            .anyRequest().authenticated()
-        )
-        .build();
-  }
+  public SecurityFilterChain securityFilterChain(HttpSecurity http, org.springframework.core.env.Environment env) throws Exception {
+    boolean isDev = java.util.Arrays.asList(env.getActiveProfiles()).contains("dev");
 
-  @Bean
-  @Profile("!dev")
-  public SecurityFilterChain prodSecurityFilterChain(HttpSecurity http) throws Exception {
     return configureCommon(http)
-        .authorizeHttpRequests(auth -> auth
-            .requestMatchers(AUTH_WHITELIST).permitAll()
-            .requestMatchers("/actuator/health").permitAll()
-            .requestMatchers("/actuator/**").hasRole("ROOT")
-            .requestMatchers(SWAGGER_WHITELIST).hasRole("ROOT")
-            .requestMatchers("/internal/**").hasRole("ROOT")
-            .anyRequest().authenticated()
-        )
+        .authorizeHttpRequests(auth -> {
+          auth.requestMatchers(AUTH_WHITELIST).permitAll();
+          auth.requestMatchers("/actuator/health").permitAll();
+
+          if (isDev) {
+            auth.requestMatchers("/actuator/**").permitAll();
+            auth.requestMatchers(SWAGGER_WHITELIST).permitAll();
+          } else {
+            auth.requestMatchers("/actuator/**").hasRole("ROOT");
+            auth.requestMatchers(SWAGGER_WHITELIST).hasRole("ROOT");
+          }
+
+          auth.requestMatchers("/internal/**").hasRole("ROOT");
+          auth.anyRequest().authenticated();
+        })
         .build();
   }
 
@@ -125,7 +118,7 @@ public class SecurityConfig {
     }
     configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     configuration.setAllowCredentials(true);
-    configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Correlation-ID", "ngrok-skip-browser-warning"));
+    configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Correlation-ID", "X-Tenant-ID", "ngrok-skip-browser-warning"));
     configuration.setExposedHeaders(List.of("X-Correlation-ID", "X-RateLimit-Limit", "X-RateLimit-Remaining"));
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", configuration);

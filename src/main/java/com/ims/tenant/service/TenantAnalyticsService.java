@@ -26,10 +26,10 @@ public class TenantAnalyticsService {
         
         return orderRepository.getMonthlyRevenue("SALE", tenantId, from).stream()
             .map(r -> {
-                String monthName = Month.of(r.month()).getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
+                String monthName = Month.of(r.getMonth()).getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
                 Map<String, Object> map = new LinkedHashMap<>();
-                map.put("month", monthName + " " + r.year());
-                map.put("revenue", r.revenue());
+                map.put("month", monthName + " " + r.getYear());
+                map.put("revenue", r.getRevenue());
                 return map;
             })
             .collect(Collectors.toList());
@@ -48,16 +48,16 @@ public class TenantAnalyticsService {
         LocalDateTime from = LocalDateTime.now().minusMonths(6);
         
         var stats = orderRepository.getOrderStatusStats(tenantId, from);
-        long total = stats.stream().mapToLong(com.ims.tenant.dto.OrderStatusStat::count).sum();
+        long total = stats.stream().mapToLong(com.ims.tenant.dto.OrderStatusStat::getCount).sum();
         
         if (total == 0) return Collections.emptyList();
 
         return stats.stream()
             .map(s -> {
                 Map<String, Object> map = new LinkedHashMap<>();
-                map.put("label", s.status());
-                map.put("count", s.count());
-                map.put("pct", (double) s.count() / total * 100);
+                map.put("label", s.getStatus());
+                map.put("count", s.getCount());
+                map.put("pct", (double) s.getCount() / total * 100);
                 return map;
             })
             .collect(Collectors.toList());

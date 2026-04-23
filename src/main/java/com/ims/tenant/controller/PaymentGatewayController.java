@@ -23,7 +23,7 @@ import javax.crypto.spec.SecretKeySpec;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/tenant/payments/gateway")
+@RequestMapping("/api/tenant/payments/gateway")
 @RequiredArgsConstructor
 @Tag(name = "Tenant - Payments Gateway", description = "Online payment integration")
 public class PaymentGatewayController {

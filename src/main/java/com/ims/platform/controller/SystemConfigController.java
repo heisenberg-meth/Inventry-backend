@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/platform/config")
+@RequestMapping("/api/platform/config")
 @RequiredArgsConstructor
 @Tag(name = "Platform - Config", description = "Global system configuration and feature flags")
 @SecurityRequirement(name = "bearerAuth")

@@ -22,7 +22,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest(properties = {
-    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
+    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
     "spring.cache.type=none"
 })
 @AutoConfigureMockMvc
@@ -41,11 +41,13 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
 
   @Test
   void testPlatformAdminFlow() throws Exception {
-    String rootToken = login("root@ims.com", "root123", null);
+    String rootToken = login("root@ims.com", "root123", "SYS001", systemTenantId);
 
     // ROOT can list tenants
     mockMvc
-        .perform(get("/api/platform/tenants").header("Authorization", "Bearer " + rootToken))
+        .perform(get("/api/platform/tenants")
+            .header("Authorization", "Bearer " + rootToken)
+            .with(tenant(String.valueOf(systemTenantId))))
         .andExpect(status().isOk());
   }
 
@@ -56,7 +58,9 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
     com.ims.dto.response.SignupResponse response = signupService.signup(t1Signup);
     verifyUserEmail("admin-mgt1@t1.com");
     verifyUser("admin-mgt1@t1.com");
-    String t1Token = login("admin-mgt1@t1.com", "password123", response.getCompanyCode());
+    
+    Long t1Id = tenantRepository.findByWorkspaceSlug("t1-mgt").orElseThrow().getId();
+    String t1Token = login("admin-mgt1@t1.com", "password123", response.getCompanyCode(), t1Id);
 
     // 2. Tenant ADMIN can create users in their tenant
     CreateUserRequest createUser = new CreateUserRequest();
@@ -70,15 +74,18 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
         .perform(
             post("/api/tenant/users")
                 .header("Authorization", "Bearer " + t1Token)
+                .with(tenant(t1Id.toString()))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(createUserJson))
         .andExpect(status().isCreated());
 
     // 3. Verify Staff isolation (STAFF cannot access management)
     verifyUserEmail("staff-mgt1@t1.com");
-    String staffToken = login("staff-mgt1@t1.com", "staff123", response.getCompanyCode());
+    String staffToken = login("staff-mgt1@t1.com", "staff123", response.getCompanyCode(), t1Id);
     mockMvc
-        .perform(get("/api/tenant/users").header("Authorization", "Bearer " + staffToken))
+        .perform(get("/api/tenant/users")
+            .header("Authorization", "Bearer " + staffToken)
+            .with(tenant(t1Id.toString())))
         .andExpect(status().isForbidden());
   }
 
@@ -88,17 +95,21 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
     com.ims.dto.response.SignupResponse r1 = signupService.signup(createSignupRequest("Tenant 1-Iso", "t1-iso", "admin-iso1@t1.com"));
     verifyUserEmail("admin-iso1@t1.com");
     verifyUser("admin-iso1@t1.com");
-    String t1Token = login("admin-iso1@t1.com", "password123", r1.getCompanyCode());
+    Long t1Id = tenantRepository.findByWorkspaceSlug("t1-iso").orElseThrow().getId();
+    String t1Token = login("admin-iso1@t1.com", "password123", r1.getCompanyCode(), t1Id);
 
     // 2. Signup Tenant 2
     com.ims.dto.response.SignupResponse r2 = signupService.signup(createSignupRequest("Tenant 2-Iso", "t2-iso", "admin-iso2@t2.com"));
     verifyUserEmail("admin-iso2@t2.com");
     verifyUser("admin-iso2@t2.com");
-    login("admin-iso2@t2.com", "password123", r2.getCompanyCode());
+    Long t2Id = tenantRepository.findByWorkspaceSlug("t2-iso").orElseThrow().getId();
+    login("admin-iso2@t2.com", "password123", r2.getCompanyCode(), t2Id);
 
     // 3. Tenant 1 Admin cannot see Tenant 2 Admin (Users should be isolated)
     mockMvc
-        .perform(get("/api/tenant/users").header("Authorization", "Bearer " + t1Token))
+        .perform(get("/api/tenant/users")
+            .header("Authorization", "Bearer " + t1Token)
+            .with(tenant(t1Id.toString())))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content.length()").value(1))
         .andExpect(jsonPath("$.content[0].email").value("admin-iso1@t1.com"));
@@ -110,11 +121,14 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
     com.ims.dto.response.SignupResponse r1 = signupService.signup(createSignupRequest("Tenant 1-RBAC", "t1-rbac", "admin-rbac1@t1.com"));
     verifyUserEmail("admin-rbac1@t1.com");
     verifyUser("admin-rbac1@t1.com");
-    String t1Token = login("admin-rbac1@t1.com", "password123", r1.getCompanyCode());
+    Long t1Id = tenantRepository.findByWorkspaceSlug("t1-rbac").orElseThrow().getId();
+    String t1Token = login("admin-rbac1@t1.com", "password123", r1.getCompanyCode(), t1Id);
 
     // 2. Tenant ADMIN cannot access Platform APIs (ROOT only)
     mockMvc
-        .perform(get("/api/platform/tenants").header("Authorization", "Bearer " + t1Token))
+        .perform(get("/api/platform/tenants")
+            .header("Authorization", "Bearer " + t1Token)
+            .with(tenant(t1Id.toString())))
         .andExpect(status().isForbidden());
   }
 
@@ -129,7 +143,7 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
     return req;
   }
 
-  private String login(String email, String password, String workspace) throws Exception {
+  private String login(String email, String password, String workspace, Long tenantId) throws Exception {
     LoginRequest loginRequest = new LoginRequest();
     loginRequest.setEmail(email);
     loginRequest.setPassword(password);
@@ -141,7 +155,8 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
             .perform(
                 post("/api/auth/login")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content(loginJson))
+                    .content(loginJson)
+                    .with(tenant(String.valueOf(tenantId))))
             .andExpect(status().isOk())
             .andReturn();
 

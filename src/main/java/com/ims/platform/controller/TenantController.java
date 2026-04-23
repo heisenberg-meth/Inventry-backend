@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/platform/tenants")
+@RequestMapping("/api/platform/tenants")
 @RequiredArgsConstructor
 @Tag(name = "Platform - Tenants", description = "Platform-level tenant management")
 @SecurityRequirement(name = "bearerAuth")

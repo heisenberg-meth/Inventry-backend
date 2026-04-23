@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/platform/health")
+@RequestMapping("/api/platform/health")
 @RequiredArgsConstructor
 @Tag(name = "Platform - Health", description = "Extended system health monitoring")
 @SecurityRequirement(name = "bearerAuth")
@@ -33,8 +33,12 @@ public class PlatformHealthController {
         Map<String, Object> health = new LinkedHashMap<>();
         
         // 1. Database Health
-        try (var conn = dataSource.getConnection()) {
-            health.put("database", Map.of("status", "UP", "message", "Connection successful"));
+        try (java.sql.Connection conn = dataSource.getConnection()) {
+            boolean valid = conn.isValid(2);
+            health.put("database", Map.of(
+                "status", valid ? "UP" : "DOWN",
+                "message", valid ? "Connection successful and valid" : "Connection invalid"
+            ));
         } catch (Exception e) {
             health.put("database", Map.of("status", "DOWN", "error", e.getMessage()));
         }
