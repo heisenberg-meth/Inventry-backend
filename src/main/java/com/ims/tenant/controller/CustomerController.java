@@ -37,29 +37,29 @@ public class CustomerController {
   @GetMapping
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "List customers")
-  public @NonNull ResponseEntity<Page<Customer>> list(@NonNull Pageable pageable) {
+  public @NonNull ResponseEntity<Page<com.ims.dto.response.CustomerResponse>> list(@NonNull Pageable pageable) {
     return ResponseEntity.ok(Objects.requireNonNull(customerService.getCustomers(pageable)));
   }
 
   @PostMapping
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Create customer")
-  public @NonNull ResponseEntity<Customer> create(@RequestBody @NonNull Customer customer) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(Objects.requireNonNull(customerService.create(customer)));
+  public @NonNull ResponseEntity<com.ims.dto.response.CustomerResponse> create(@jakarta.validation.Valid @RequestBody @NonNull com.ims.dto.request.CustomerRequest request) {
+    return ResponseEntity.status(HttpStatus.CREATED).body(Objects.requireNonNull(customerService.create(request)));
   }
 
   @GetMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Get customer")
-  public @NonNull ResponseEntity<Customer> get(@PathVariable @NonNull Long id) {
-    return ResponseEntity.ok(Objects.requireNonNull(customerService.getById(id)));
+  public @NonNull ResponseEntity<com.ims.dto.response.CustomerResponse> get(@PathVariable @NonNull Long id) {
+    return ResponseEntity.ok(Objects.requireNonNull(customerService.getCustomerResponseById(id)));
   }
 
   @PutMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Update customer")
-  public @NonNull ResponseEntity<Customer> update(@PathVariable @NonNull Long id, @RequestBody @NonNull Customer customer) {
-    return ResponseEntity.ok(Objects.requireNonNull(customerService.update(id, customer)));
+  public @NonNull ResponseEntity<com.ims.dto.response.CustomerResponse> update(@PathVariable @NonNull Long id, @jakarta.validation.Valid @RequestBody @NonNull com.ims.dto.request.CustomerRequest request) {
+    return ResponseEntity.ok(Objects.requireNonNull(customerService.update(id, request)));
   }
 
   @DeleteMapping("/{id}")
@@ -80,8 +80,10 @@ public class CustomerController {
   @PostMapping("/bulk-import")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Bulk import customers via CSV")
-  public ResponseEntity<java.util.Map<String, Object>> bulkImport(@org.springframework.web.bind.annotation.RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
-    return ResponseEntity.ok(importService.importCustomers(file));
+  public ResponseEntity<java.util.Map<String, Object>> bulkImport(
+      @org.springframework.web.bind.annotation.RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+      @org.springframework.web.bind.annotation.RequestParam(value = "dryRun", defaultValue = "false") boolean dryRun) {
+    return ResponseEntity.ok(importService.importCustomers(file, dryRun));
   }
 
   @GetMapping("/export")

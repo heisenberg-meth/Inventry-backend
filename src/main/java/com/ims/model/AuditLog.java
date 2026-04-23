@@ -9,12 +9,14 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Immutable;
 
 @Entity
+@Immutable
 @Table(name = "audit_logs")
-@Data
+@Getter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder

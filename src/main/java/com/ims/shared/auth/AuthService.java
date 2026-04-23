@@ -127,7 +127,7 @@ public class AuthService {
   public @NonNull LoginResponse impersonateTenant(@NonNull Long tenantId) {
     var auth = SecurityContextHolder.getContext().getAuthentication();
     if (auth == null) {
-      throw new IllegalStateException("Authentication required");
+      throw new com.ims.shared.exception.UnauthorizedAccessException("Authentication required");
     }
     
     Long rootUserId = (Long) auth.getPrincipal();

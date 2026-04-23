@@ -67,4 +67,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
   void updateLastLogin(@Param("id") Long id, @Param("lastLogin") java.time.LocalDateTime lastLogin);
   @Query(value = "SELECT EXISTS(SELECT 1 FROM users WHERE tenant_id = :tenantId)", nativeQuery = true)
   boolean existsByTenantId(@Param("tenantId") Long tenantId);
+
+  java.util.List<User> findByResetTokenIsNotNullAndResetTokenExpiryBefore(java.time.LocalDateTime now);
+
+  @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+  @Query("""
+      UPDATE User u
+      SET u.resetToken = null,
+          u.resetTokenExpiry = null
+      WHERE u.tenantId = :tenantId AND u.resetTokenExpiry < :now
+      """)
+  int clearExpiredResetTokens(@Param("tenantId") Long tenantId, @Param("now") java.time.LocalDateTime now);
 }

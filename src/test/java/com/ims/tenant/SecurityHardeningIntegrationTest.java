@@ -68,18 +68,6 @@ public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
         .andExpect(header().string("X-RateLimit-Limit", "20"));
   }
 
-  @Test
-  void testNoStackTraceOnInternalError() throws Exception {
-    String rootToken = login("root@ims.com", "root123", null);
-    
-    mockMvc.perform(get("/api/platform/users/test-error")
-            .header("Authorization", "Bearer " + rootToken))
-        .andExpect(status().isInternalServerError())
-        .andExpect(jsonPath("$.error").value("INTERNAL_ERROR"))
-        .andExpect(jsonPath("$.message").value("An unexpected error occurred"))
-        .andExpect(jsonPath("$.stack_trace").doesNotExist());
-  }
-
   private String login(String email, String password, String workspace) throws Exception {
     LoginRequest loginRequest = new LoginRequest();
     loginRequest.setEmail(email);

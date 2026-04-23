@@ -85,8 +85,9 @@ public class JwtFilter extends OncePerRequestFilter {
       MDC.put("userId", userId != null ? String.valueOf(userId) : "anonymous");
       MDC.put("requestId", UUID.randomUUID().toString());
 
+      String authority = role.startsWith("ROLE_") ? role : "ROLE_" + role;
       UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-          userId, null, List.of(new SimpleGrantedAuthority(role)));
+          userId, null, List.of(new SimpleGrantedAuthority(authority)));
 
       // Store additional details for downstream use
       auth.setDetails(new JwtAuthDetails(userId, tenantId, role, scope, businessType, isPlatformUser, permissions, impersonation, impersonatedBy));
@@ -112,9 +113,10 @@ public class JwtFilter extends OncePerRequestFilter {
   @Override
   protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
     String path = request.getRequestURI();
-    return path.startsWith("/actuator/")
-        || path.startsWith("/swagger-ui")
-        || path.startsWith("/api-docs")
-        || path.startsWith("/v3/api-docs");
+    // Only bypass for health check. Other actuator/swagger paths need auth in prod.
+    return "/actuator/health".equals(path)
+        || path.equals("/api/v1/actuator/health")
+        || path.startsWith("/auth/")
+        || path.startsWith("/platform/auth/");
   }
 }
