@@ -76,7 +76,6 @@ public class SignupService {
         .passwordHash(passwordEncoder.encode(request.getPassword()))
         .role(UserRole.ADMIN)
         .scope("TENANT")
-        .tenantId(tenant.getId())
         .isActive(true)
         .build();
 

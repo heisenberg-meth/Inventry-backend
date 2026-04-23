@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/platform")
+@RequestMapping("/api/platform")
 @RequiredArgsConstructor
 @Tag(name = "Platform - Stats", description = "Platform-wide metrics")
 @SecurityRequirement(name = "bearerAuth")

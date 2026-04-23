@@ -57,7 +57,6 @@ public class CustomerService {
     customer.setEmail(request.getEmail());
     customer.setAddress(request.getAddress());
     customer.setGstin(request.getGstin());
-    customer.setTenantId(tenantId);
 
     Customer saved = customerRepository.save(customer);
     return toResponse(saved);
