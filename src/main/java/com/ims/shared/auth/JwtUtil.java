@@ -160,7 +160,8 @@ public class JwtUtil {
   }
 
   public java.util.Set<String> extractPermissions(String token) {
-    java.util.List<String> perms = extractAllClaims(token).get("permissions", java.util.List.class);
+    @SuppressWarnings("unchecked")
+    java.util.List<String> perms = (java.util.List<String>) extractAllClaims(token).get("permissions", java.util.List.class);
     return perms != null ? new java.util.HashSet<>(perms) : java.util.Collections.emptySet();
   }
 

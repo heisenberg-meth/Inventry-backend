@@ -74,8 +74,6 @@ public class SupplierService {
     supplier.setEmail(request.getEmail());
     supplier.setAddress(request.getAddress());
     supplier.setGstin(request.getGstin());
-    supplier.setTenantId(tenantId);
-
     Supplier savedSupplier = Objects.requireNonNull(supplierRepository.save(supplier));
 
     auditLogService.logAudit(

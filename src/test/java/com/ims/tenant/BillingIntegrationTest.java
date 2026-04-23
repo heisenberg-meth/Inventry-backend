@@ -30,7 +30,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest(properties = {
-    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
+    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
     "spring.cache.type=none"
 })
 @AutoConfigureMockMvc
@@ -69,7 +69,7 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
     verifyUser("admin@billing.com");
 
     Long tenantId = tenantRepository.findByWorkspaceSlug("billing-corp").orElseThrow().getId();
-    String token = login("admin@billing.com", "password123", response.getCompanyCode());
+    String token = login("admin@billing.com", "password123", response.getCompanyCode(), tenantId);
 
     Customer customer;
     try {
@@ -90,6 +90,7 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
     String createReqJson = Objects.requireNonNull(objectMapper.writeValueAsString(createReq));
     MvcResult prodResult = mockMvc.perform(post("/api/tenant/products")
         .header("Authorization", "Bearer " + token)
+        .with(tenant(tenantId.toString()))
         .contentType(MediaType.APPLICATION_JSON)
         .content(createReqJson))
         .andExpect(status().isCreated())
@@ -104,6 +105,7 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
         "notes", "Initial Stock")));
     mockMvc.perform(post("/api/tenant/stock/in")
         .header("Authorization", "Bearer " + token)
+        .with(tenant(tenantId.toString()))
         .contentType(MediaType.APPLICATION_JSON)
         .content(stockInJson))
         .andExpect(status().isOk());
@@ -119,6 +121,7 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
     String orderReqJson = Objects.requireNonNull(objectMapper.writeValueAsString(orderReq));
     MvcResult orderResult = mockMvc.perform(post("/api/tenant/orders/sale")
         .header("Authorization", "Bearer " + token)
+        .with(tenant(tenantId.toString()))
         .contentType(MediaType.APPLICATION_JSON)
         .content(orderReqJson))
         .andExpect(status().isCreated())
@@ -131,12 +134,14 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
 
     // 3. Confirm Order (Triggers Invoice Generation)
     mockMvc.perform(post("/api/tenant/orders/" + orderId + "/confirm")
-        .header("Authorization", "Bearer " + token))
+        .header("Authorization", "Bearer " + token)
+        .with(tenant(tenantId.toString())))
         .andExpect(status().isOk());
 
     // 4. Verify Invoice Exists
     MvcResult invoicesResult = mockMvc.perform(get("/api/tenant/invoices")
-        .header("Authorization", "Bearer " + token))
+        .header("Authorization", "Bearer " + token)
+        .with(tenant(tenantId.toString())))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content[0].orderId").value(orderId))
         .andReturn();
@@ -146,13 +151,14 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
 
     // 5. Download PDF
     mockMvc.perform(get("/api/tenant/invoices/" + invoiceId + "/pdf")
-        .header("Authorization", "Bearer " + token))
+        .header("Authorization", "Bearer " + token)
+        .with(tenant(tenantId.toString())))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_PDF))
         .andExpect(header().string("Content-Disposition", "attachment; filename=invoice-" + invoiceId + ".pdf"));
   }
 
-  private String login(String email, String password, String workspace) throws Exception {
+  private String login(String email, String password, String workspace, Long tenantId) throws Exception {
     LoginRequest loginRequest = new LoginRequest();
     loginRequest.setEmail(email);
     loginRequest.setPassword(password);
@@ -161,7 +167,8 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
     String loginJson = Objects.requireNonNull(objectMapper.writeValueAsString(loginRequest));
     MvcResult result = mockMvc.perform(post("/api/auth/login")
         .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
-        .content(loginJson))
+        .content(loginJson)
+        .with(tenant(tenantId.toString())))
         .andExpect(status().isOk())
         .andReturn();
     String content = result.getResponse().getContentAsString();

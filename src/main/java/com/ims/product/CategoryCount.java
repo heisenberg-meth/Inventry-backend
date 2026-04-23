@@ -1,13 +1,29 @@
 package com.ims.product;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class CategoryCount {
     private String categoryName;
-    private long productCount;
+    private Long productCount;
+
+    public CategoryCount() {}
+
+    public CategoryCount(String categoryName, Long productCount) {
+        this.categoryName = categoryName;
+        this.productCount = productCount;
+    }
+
+    public String getCategoryName() {
+        return categoryName;
+    }
+
+    public void setCategoryName(String categoryName) {
+        this.categoryName = categoryName;
+    }
+
+    public Long getProductCount() {
+        return productCount;
+    }
+
+    public void setProductCount(Long productCount) {
+        this.productCount = productCount;
+    }
 }

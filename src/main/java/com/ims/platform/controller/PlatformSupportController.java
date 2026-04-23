@@ -30,7 +30,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/platform/support/tickets")
+@RequestMapping("/api/platform/support/tickets")
 @RequiredArgsConstructor
 @Tag(name = "Platform - Support", description = "Platform-side support ticket management")
 @SecurityRequirement(name = "bearerAuth")

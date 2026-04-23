@@ -105,7 +105,7 @@ public class InvoiceConcurrencyTest extends BaseIntegrationTest {
             }, executor));
         }
 
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture<?>[0])).join();
         executor.shutdown();
         executor.awaitTermination(5, TimeUnit.SECONDS);
 

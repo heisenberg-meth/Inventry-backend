@@ -1,6 +1,5 @@
 package com.ims.tenant.controller;
 
-import com.ims.model.Supplier;
 import com.ims.shared.rbac.RequiresRole;
 import com.ims.tenant.service.SupplierService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,7 +22,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/tenant/suppliers")
+@RequestMapping("/api/tenant/suppliers")
 @RequiredArgsConstructor
 @Tag(name = "Tenant - Suppliers")
 @SecurityRequirement(name = "bearerAuth")
