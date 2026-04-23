@@ -52,20 +52,23 @@ public class JwtFilter extends OncePerRequestFilter {
 
       // Check JWT blacklist
       String tokenHash = hashToken(token);
+      boolean redisAvailable = true;
       Boolean isBlacklisted = false;
       try {
         isBlacklisted = redisTemplate.hasKey("jwt:blacklist:" + tokenHash);
       } catch (Exception e) {
-        logger.warn("Redis unavailable for JWT blacklist check: " + e.getMessage());
+        log.warn("Redis unavailable for JWT blacklist check — rejecting request to prevent bypass");
+        redisAvailable = false;
       }
 
-      if (Boolean.TRUE.equals(isBlacklisted)) {
+      if (!redisAvailable || Boolean.TRUE.equals(isBlacklisted)) {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json");
+        String errorMessage = !redisAvailable ? "Service temporarily unavailable" : "Token has been revoked";
         response
             .getWriter()
             .write(
-                "{\"status\":401,\"error\":\"UNAUTHORIZED\",\"message\":\"Token has been revoked\"}");
+                String.format("{\"status\":401,\"error\":\"UNAUTHORIZED\",\"message\":\"%s\"}", errorMessage));
         return;
       }
 

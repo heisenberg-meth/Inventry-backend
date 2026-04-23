@@ -98,6 +98,34 @@ public class PlatformUserService {
   }
 
   @Transactional
+  public @NonNull User updatePlatformUser(@NonNull Long id, @NonNull CreatePlatformUserRequest request) {
+    User user =
+        userRepository
+            .findByIdAndTenantIdIsNull(id)
+            .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
+
+    if (user.getRole() == UserRole.ROOT) {
+      throw new IllegalArgumentException("Cannot modify ROOT user");
+    }
+
+    if (request.getName() != null) user.setName(request.getName());
+    if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
+      if (userRepository.existsByEmail(request.getEmail())) {
+        throw new IllegalArgumentException("Email already in use");
+      }
+      user.setEmail(request.getEmail());
+    }
+    if (request.getRole() != null) {
+      if (!request.getRole().equals(UserRole.PLATFORM_ADMIN.name()) && !request.getRole().equals(UserRole.SUPPORT_ADMIN.name())) {
+          throw new IllegalArgumentException("Invalid role. Must be PLATFORM_ADMIN or SUPPORT_ADMIN.");
+      }
+      user.setRole(UserRole.valueOf(request.getRole()));
+    }
+
+    return Objects.requireNonNull(userRepository.save(user));
+  }
+
+  @Transactional
   public void suspendPlatformUser(@NonNull Long id) {
     User user =
         userRepository

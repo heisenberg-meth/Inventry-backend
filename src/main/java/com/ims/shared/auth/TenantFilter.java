@@ -19,24 +19,33 @@ public class TenantFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
+        // If context already set (by JwtFilter), trust it and skip header check
+        if (TenantContext.getTenantId() != null) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // Only allow header-based tenant identification for public tenant-routing paths
+        String path = request.getRequestURI();
+        if (!isPublicTenantRoute(path)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         try {
             String tenantHeader = request.getHeader("X-Tenant-ID");
-
-            if (tenantHeader == null) {
-                // If it's a public path, we might allow it, but let's be strict for now as requested
-                if (shouldNotFilter(request)) {
-                    filterChain.doFilter(request, response);
-                    return;
-                }
-                log.warn("Missing X-Tenant-ID header for path: {}", request.getRequestURI());
-                throw new com.ims.shared.exception.TenantContextException("Missing tenant header");
+            if (tenantHeader != null && !tenantHeader.isBlank()) {
+                TenantContext.setTenantId(Long.parseLong(tenantHeader));
             }
-
-            TenantContext.setTenantId(Long.parseLong(tenantHeader));
             filterChain.doFilter(request, response);
         } finally {
             TenantContext.clear();
         }
+    }
+
+    private boolean isPublicTenantRoute(String path) {
+        return path.startsWith("/api/auth/signup") 
+            || path.startsWith("/api/platform/invites/complete");
     }
 
     @Override

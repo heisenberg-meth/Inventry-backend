@@ -6,7 +6,6 @@ import com.ims.shared.audit.AuditResource;
 import com.ims.model.Order;
 import com.ims.model.OrderItem;
 import com.ims.product.Product;
-import com.ims.shared.exception.InsufficientStockException;
 import com.ims.tenant.repository.CustomerRepository;
 import com.ims.tenant.repository.OrderItemRepository;
 import com.ims.tenant.repository.OrderRepository;
@@ -43,6 +42,7 @@ public class OrderService {
   private final InvoiceService invoiceService;
   private final com.ims.shared.audit.AuditLogService auditLogService;
   private final com.ims.shared.pdf.PdfService pdfService;
+  private final com.ims.tenant.domain.pharmacy.PharmacyProductRepository pharmacyProductRepository;
   private final com.ims.platform.repository.TenantRepository tenantRepository;
 
   private static final int PERCENTAGE_BASE = 100;
@@ -140,11 +140,13 @@ public class OrderService {
           .findById(Objects.requireNonNull(productId))
           .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
 
-      if (product.getStock() < qty) {
-        throw new InsufficientStockException(
-            "Insufficient stock for product: " + product.getName(),
-            product.getStock(),
-            qty);
+      // STOCK CHECK REMOVED: Rely on StockService/StockTransactionService pessimistic lock during confirmation/deduction.
+
+      // PHARMACY EXPIRY CHECK
+      java.util.Optional<com.ims.tenant.domain.pharmacy.PharmacyProduct> pharmacyProduct = 
+          pharmacyProductRepository.findById(productId);
+      if (pharmacyProduct.isPresent() && pharmacyProduct.get().getExpiryDate().isBefore(java.time.LocalDate.now())) {
+        throw new IllegalArgumentException("Product " + product.getName() + " has expired on " + pharmacyProduct.get().getExpiryDate());
       }
 
       BigDecimal unitPrice = item.getUnitPrice();
@@ -242,8 +244,21 @@ public class OrderService {
           .orElseThrow(
               () -> new IllegalArgumentException("Product " + productId + " was not part of the original order"));
 
-      if (qty > originalItem.getQuantity()) {
-        throw new IllegalArgumentException("Cannot return more than originally purchased for product " + productId);
+      // Validate partial returns
+      List<Order> priorReturnOrders = orderRepository.findByReferenceOrderId(originalOrderId);
+      int alreadyReturned = 0;
+      if (!priorReturnOrders.isEmpty()) {
+          List<Long> priorReturnIds = priorReturnOrders.stream().map(Order::getId).collect(java.util.stream.Collectors.toList());
+          alreadyReturned = orderItemRepository.findByOrderIdIn(priorReturnIds).stream()
+              .filter(oi -> oi.getProductId().equals(productId))
+              .mapToInt(OrderItem::getQuantity)
+              .sum();
+      }
+
+      if (qty + alreadyReturned > originalItem.getQuantity()) {
+        throw new IllegalArgumentException(String.format(
+            "Cannot return %d units of product %d. Already returned: %d, Purchased: %d",
+            qty, productId, alreadyReturned, originalItem.getQuantity()));
       }
 
       BigDecimal unitPrice = originalItem.getUnitPrice();
@@ -292,6 +307,7 @@ public class OrderService {
     return Objects.requireNonNull(orderRepository.findByType(type, pageable));
   }
 
+  @Transactional(readOnly = true)
   public @NonNull Map<String, Object> getOrderWithItems(@NonNull Long id) {
     Order order = orderRepository
         .findById(id)
@@ -327,10 +343,14 @@ public class OrderService {
     }
 
     List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
+    
+    // Batch fetch products to avoid N+1
+    List<Long> productIds = orderItems.stream().map(OrderItem::getProductId).collect(java.util.stream.Collectors.toList());
+    Map<Long, String> productNames = productRepository.findAllById(productIds).stream()
+        .collect(java.util.stream.Collectors.toMap(Product::getId, Product::getName));
+
     List<Map<String, Object>> items = orderItems.stream().map(item -> {
-      String productName = productRepository.findById(item.getProductId())
-          .map(Product::getName)
-          .orElse("Unknown");
+      String productName = productNames.getOrDefault(item.getProductId(), "Unknown");
       Map<String, Object> map = new java.util.HashMap<>();
       map.put("productName", productName);
       map.put("quantity", item.getQuantity());
@@ -388,12 +408,7 @@ public class OrderService {
     if ("SALE".equals(order.getType())) {
       // Validate and reduce stock
       for (OrderItem item : items) {
-        Product product = productRepository.findById(Objects.requireNonNull(item.getProductId()))
-            .orElseThrow(() -> new EntityNotFoundException("Product not found: " + item.getProductId()));
-        if (product.getStock() < item.getQuantity()) {
-          throw new InsufficientStockException("Insufficient stock for " + product.getName(), product.getStock(),
-              item.getQuantity());
-        }
+        // STOCK CHECK REMOVED: stockService.stockOut handles pessimistic lock and insufficient stock check atomically.
         stockService.stockOut(Objects.requireNonNull(item.getProductId()), item.getQuantity(),
             "Confirmed Sale Order #" + order.getId(), userId);
       }
