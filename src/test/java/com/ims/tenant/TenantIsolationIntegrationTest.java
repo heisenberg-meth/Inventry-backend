@@ -2,8 +2,6 @@ package com.ims.tenant;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import static org.junit.jupiter.api.Assertions.*;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.CategoryRequest;
@@ -17,7 +15,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest(properties = {
-    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
+    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
     "spring.cache.type=none"
 })
 @AutoConfigureMockMvc
@@ -43,45 +41,46 @@ public class TenantIsolationIntegrationTest extends BaseIntegrationTest {
     @Test
     void testRequestSucceedsWithTenantHeader() throws Exception {
         // We still need a valid JWT token because of SecurityConfig
-        String token = login("root@ims.com", "root123", null);
+        String token = login("root@ims.com", "root123", "SYS001", systemTenantId);
 
-        mockMvc.perform(get("/tenant/categories")
+        mockMvc.perform(get("/api/tenant/categories")
                 .header("Authorization", "Bearer " + token)
-                .header("X-Tenant-ID", "1"))
+                .with(tenant(String.valueOf(systemTenantId))))
             .andExpect(status().isOk());
     }
 
     @Test
     void testDataIsolationBetweenTenants() throws Exception {
-        String token = login("root@ims.com", "root123", null);
+        String token = login("root@ims.com", "root123", "SYS001", systemTenantId);
 
         // Create category for Tenant 1
         CategoryRequest request1 = new CategoryRequest();
         request1.setName("Tenant 1 Category");
         
-        mockMvc.perform(post("/tenant/categories")
+        mockMvc.perform(post("/api/tenant/categories")
                 .header("Authorization", "Bearer " + token)
-                .header("X-Tenant-ID", "1")
+                .with(tenant(String.valueOf(testTenant1Id)))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request1)))
             .andExpect(status().isCreated());
 
         // Verify Tenant 1 can see it
-        mockMvc.perform(get("/tenant/categories")
+        mockMvc.perform(get("/api/tenant/categories")
                 .header("Authorization", "Bearer " + token)
-                .header("X-Tenant-ID", "1"))
+                .with(tenant(String.valueOf(testTenant1Id))))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.items[0].name").value("Tenant 1 Category"));
+            .andExpect(jsonPath("$.content.length()").value(1))
+            .andExpect(jsonPath("$.content[0].name").value("Tenant 1 Category"));
 
         // Verify Tenant 2 cannot see it
-        mockMvc.perform(get("/tenant/categories")
+        mockMvc.perform(get("/api/tenant/categories")
                 .header("Authorization", "Bearer " + token)
-                .header("X-Tenant-ID", "2"))
+                .with(tenant(String.valueOf(testTenant2Id))))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.total_elements").value(0));
+            .andExpect(jsonPath("$.totalElements").value(0));
     }
 
-    private String login(String email, String password, String workspace) throws Exception {
+    private String login(String email, String password, String workspace, Long tenantId) throws Exception {
         com.ims.dto.request.LoginRequest loginRequest = new com.ims.dto.request.LoginRequest();
         loginRequest.setEmail(email);
         loginRequest.setPassword(password);
@@ -90,7 +89,8 @@ public class TenantIsolationIntegrationTest extends BaseIntegrationTest {
         String loginJson = objectMapper.writeValueAsString(loginRequest);
         var result = mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(loginJson))
+                .content(loginJson)
+                .with(tenant(String.valueOf(tenantId))))
             .andExpect(status().isOk())
             .andReturn();
 

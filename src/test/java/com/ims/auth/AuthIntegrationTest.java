@@ -23,7 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest(properties = {
-    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
+    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
     "spring.cache.type=none"
 })
 @AutoConfigureMockMvc
@@ -53,46 +53,55 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
     // 3. Verify users (simulating realistic email verification flow)
     verifyUserEmail("admin1@t1.com");
     verifyUserEmail("admin2@t2.com");
-    // 3. Verify users (simulating email verification)
-    verifyUser("admin1@t1.com");
-    verifyUser("admin2@t2.com");
+
+    // Get IDs
+    Long t1Id = tenantRepository.findByWorkspaceSlug("t1-auth").orElseThrow().getId();
+    Long t2Id = tenantRepository.findByWorkspaceSlug("t2-auth").orElseThrow().getId();
 
     // 4. Login Tenant 1
-    String t1Token = login("admin1@t1.com", "password123", t1Response.getCompanyCode());
+    String t1Token = login("admin1@t1.com", "password123", t1Response.getCompanyCode(), t1Id);
 
     // 5. Verify Tenant 1 Isolation (Should only see 1 user: admin1)
     mockMvc
-        .perform(get("/api/tenant/users").header("Authorization", "Bearer " + t1Token))
+        .perform(get("/api/tenant/users")
+            .header("Authorization", "Bearer " + t1Token)
+            .with(tenant(t1Id.toString())))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content.length()").value(1))
         .andExpect(jsonPath("$.content[0].email").value("admin1@t1.com"));
 
     // 5. Login Tenant 2
-    String t2Token = login("admin2@t2.com", "password123", t2Response.getCompanyCode());
+    String t2Token = login("admin2@t2.com", "password123", t2Response.getCompanyCode(), t2Id);
 
     // 7. Verify Tenant 2 Isolation (Should only see 1 user: admin2)
     mockMvc
-        .perform(get("/api/tenant/users").header("Authorization", "Bearer " + t2Token))
+        .perform(get("/api/tenant/users")
+            .header("Authorization", "Bearer " + t2Token)
+            .with(tenant(t2Id.toString())))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content.length()").value(1))
         .andExpect(jsonPath("$.content[0].email").value("admin2@t2.com"));
 
     // 8. Verify Logout and Blacklisting
     mockMvc
-        .perform(post("/api/auth/logout").header("Authorization", "Bearer " + t1Token))
+        .perform(post("/api/auth/logout")
+            .header("Authorization", "Bearer " + t1Token)
+            .with(tenant(t1Id.toString())))
         .andExpect(status().isOk());
 
     // Mock Redis blacklist check for next request
     doReturn(true).when(redisTemplate).hasKey(anyString());
 
     mockMvc
-        .perform(get("/api/tenant/users").header("Authorization", "Bearer " + t1Token))
+        .perform(get("/api/tenant/users")
+            .header("Authorization", "Bearer " + t1Token)
+            .with(tenant(t1Id.toString())))
         .andExpect(status().isUnauthorized());
   }
 
   @Test
   void testUnauthorizedAccess() throws Exception {
-    mockMvc.perform(get("/api/tenant/users")).andExpect(status().isUnauthorized());
+    mockMvc.perform(get("/api/tenant/users").with(tenant("1"))).andExpect(status().isUnauthorized());
   }
 
   private SignupRequest createSignupRequest(String name, String workspaceSlug, String email) {
@@ -106,7 +115,7 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
     return req;
   }
 
-  private String login(String email, String password, String workspace) throws Exception {
+  private String login(String email, String password, String workspace, Long tenantId) throws Exception {
     LoginRequest loginRequest = new LoginRequest();
     loginRequest.setEmail(email);
     loginRequest.setPassword(password);
@@ -118,7 +127,8 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
             .perform(
                 post("/api/auth/login")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content(loginJson))
+                    .content(loginJson)
+                    .with(tenant(tenantId.toString())))
             .andExpect(status().isOk())
             .andReturn();
 

@@ -31,8 +31,10 @@ class RateLimitFilterTest {
   private static final int TENANT_RPM = 20;
   private static final int WINDOW_SECONDS = 60;
 
+  @SuppressWarnings("unchecked")
   private final RedisTemplate<String, Object> redisTemplate = mock(RedisTemplate.class);
 
+  @SuppressWarnings("unchecked")
   private final ZSetOperations<String, Object> zSet = mock(ZSetOperations.class);
 
   private final JwtUtil jwtUtil = mock(JwtUtil.class);

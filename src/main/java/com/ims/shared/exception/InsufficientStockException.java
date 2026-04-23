@@ -4,6 +4,7 @@ import lombok.Getter;
 
 @Getter
 public class InsufficientStockException extends RuntimeException {
+  private static final long serialVersionUID = 1L;
   private final int availableStock;
   private final int requestedQty;
 

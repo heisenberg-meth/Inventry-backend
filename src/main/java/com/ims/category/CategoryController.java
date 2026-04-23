@@ -44,7 +44,7 @@ public class CategoryController {
   @PostMapping
   @RequiresRole({ "ADMIN", "MANAGER" })
   @Operation(summary = "Create category")
-  public ResponseEntity<CategoryResponse> create(@Valid @RequestBody CategoryRequest request) {
+  public ResponseEntity<CategoryResponse> create(@Valid @RequestBody @NonNull CategoryRequest request) {
     TenantContext.assertTenantPresent();
     return ResponseEntity.status(HttpStatus.CREATED).body(categoryService.toResponse(categoryService.create(request)));
   }

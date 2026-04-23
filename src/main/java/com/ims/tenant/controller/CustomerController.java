@@ -1,6 +1,5 @@
 package com.ims.tenant.controller;
 
-import com.ims.model.Customer;
 import com.ims.shared.rbac.RequiresRole;
 import com.ims.tenant.service.CustomerService;
 import io.swagger.v3.oas.annotations.Operation;
