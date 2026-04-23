@@ -16,7 +16,7 @@ import com.ims.platform.repository.SubscriptionRepository;
 import com.ims.platform.repository.TenantRepository;
 import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditLogService;
-import com.ims.shared.auth.UserCreationService;
+import com.ims.shared.auth.TenantInitializationService;
 import com.ims.tenant.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
@@ -42,7 +42,7 @@ public class TenantService {
   private final TenantRepository tenantRepository;
   private final UserRepository userRepository;
   private final PasswordEncoder passwordEncoder;
-  private final UserCreationService userCreationService;
+  private final TenantInitializationService tenantInitializationService;
   private final AuditLogService auditLogService;
   private final SubscriptionRepository subscriptionRepository;
   private final SubscriptionPlanRepository subscriptionPlanRepository;
@@ -351,7 +351,6 @@ public class TenantService {
             .passwordHash(passwordEncoder.encode(request.getPassword()))
             .role(UserRole.valueOf(request.getRole()))
             .scope(request.getScope())
-            .tenantId(tenantId)
             .isActive(true)
             .build();
 
@@ -368,7 +367,7 @@ public class TenantService {
       }
     }
 
-    userCreationService.createUserForTenant(user, tenantId);
+    tenantInitializationService.createUserForTenant(user, tenantId);
 
     return UserResponse.builder()
         .id(user.getId())

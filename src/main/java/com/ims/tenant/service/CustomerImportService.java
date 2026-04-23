@@ -2,7 +2,6 @@ package com.ims.tenant.service;
 
 import com.ims.model.Customer;
 import com.ims.tenant.repository.CustomerRepository;
-import com.ims.shared.auth.TenantContext;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
@@ -55,7 +54,6 @@ public class CustomerImportService {
                     String gstin = data.length > 4 ? data[4].trim() : null;
 
                     Customer customer = Customer.builder()
-                            .tenantId(TenantContext.getTenantId())
                             .name(name)
                             .phone(phone)
                             .email(email)

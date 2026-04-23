@@ -58,7 +58,6 @@ public class CategoryService {
     }
 
     Category category = Category.builder()
-        .tenantId(TenantContext.getTenantId())
         .name(request.getName())
         .description(request.getDescription())
         .taxRate(request.getTaxRate() != null ? request.getTaxRate() : BigDecimal.ZERO)
