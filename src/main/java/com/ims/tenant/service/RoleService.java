@@ -49,7 +49,6 @@ public class RoleService {
         Role.builder()
             .name(request.getName())
             .description(request.getDescription())
-            .tenantId(tenantId)
             .build();
 
     Role saved = roleRepository.save(Objects.requireNonNull(role));

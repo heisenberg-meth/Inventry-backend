@@ -1,5 +1,6 @@
 package com.ims.auth;
-
+ 
+import org.springframework.transaction.annotation.Transactional;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -26,8 +27,10 @@ import org.springframework.test.web.servlet.MvcResult;
     "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
     "spring.cache.type=none"
 })
+
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Transactional
 public class AuthIntegrationTest extends BaseIntegrationTest {
 
   @Autowired private MockMvc mockMvc;

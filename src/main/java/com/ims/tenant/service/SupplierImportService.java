@@ -55,7 +55,6 @@ public class SupplierImportService {
                     String gstin = data.length > 4 ? data[4].trim() : null;
 
                     Supplier supplier = Supplier.builder()
-                            .tenantId(TenantContext.getTenantId())
                             .name(name)
                             .phone(phone)
                             .email(email)
