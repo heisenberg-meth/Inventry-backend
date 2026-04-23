@@ -1,5 +1,6 @@
 package com.ims.model;
 
+import org.hibernate.annotations.TenantId;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -35,6 +36,7 @@ public class Role {
   @Column
   private String description;
 
+  @TenantId
   @Column(name = "tenant_id")
   private Long tenantId;
 

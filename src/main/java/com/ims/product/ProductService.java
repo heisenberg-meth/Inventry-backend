@@ -307,7 +307,6 @@ public class ProductService {
         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
     Product clone = Product.builder()
-        .tenantId(original.getTenantId())
         .name(original.getName() + " (Copy)")
         .sku(generateUniqueSku(original.getSku(), original.getTenantId()))
         .barcode(null) // Barcode should be unique
