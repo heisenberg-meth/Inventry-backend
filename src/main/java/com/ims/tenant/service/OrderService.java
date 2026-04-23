@@ -63,7 +63,7 @@ public class OrderService {
     // Prepare order early but don't save yet to avoid flushing if we can
     Order order = Order.builder()
         .type("PURCHASE")
-        .status("PENDING")
+        .status(com.ims.model.OrderStatus.PENDING)
         .supplierId(supplierId)
         .notes(request.getNotes())
         .createdBy(userId)
@@ -178,7 +178,7 @@ public class OrderService {
 
     Order order = Order.builder()
         .type("SALE")
-        .status("PENDING")
+        .status(com.ims.model.OrderStatus.PENDING)
         .customerId(customerId)
         .totalAmount(totalAmount)
         .taxAmount(taxAmount)
@@ -220,7 +220,7 @@ public class OrderService {
 
     Order returnOrder = Order.builder()
         .type("RETURN")
-        .status("COMPLETED")
+        .status(com.ims.model.OrderStatus.COMPLETED)
         .customerId(originalOrder.getCustomerId())
         .referenceOrderId(originalOrderId)
         .notes(request.getNotes() != null ? request.getNotes() : "Customer return")
@@ -359,14 +359,29 @@ public class OrderService {
     return pdfService.generatePdfFromHtml("order-summary", context);
   }
 
+  private static final Map<com.ims.model.OrderStatus, java.util.Set<com.ims.model.OrderStatus>> ALLOWED_TRANSITIONS = Map.of(
+      com.ims.model.OrderStatus.PENDING, java.util.Set.of(com.ims.model.OrderStatus.CONFIRMED, com.ims.model.OrderStatus.CANCELLED),
+      com.ims.model.OrderStatus.CONFIRMED, java.util.Set.of(com.ims.model.OrderStatus.SHIPPED, com.ims.model.OrderStatus.CANCELLED, com.ims.model.OrderStatus.COMPLETED, com.ims.model.OrderStatus.RECEIVED),
+      com.ims.model.OrderStatus.SHIPPED, java.util.Set.of(com.ims.model.OrderStatus.COMPLETED, com.ims.model.OrderStatus.RECEIVED),
+      com.ims.model.OrderStatus.COMPLETED, java.util.Set.of(),
+      com.ims.model.OrderStatus.RECEIVED, java.util.Set.of(),
+      com.ims.model.OrderStatus.CANCELLED, java.util.Set.of()
+  );
+
+  private void validateTransition(Order order, com.ims.model.OrderStatus newStatus) {
+    if (!ALLOWED_TRANSITIONS.get(order.getStatus()).contains(newStatus)) {
+      throw new IllegalStateException(
+          "Invalid transition: " + order.getStatus() + " -> " + newStatus
+      );
+    }
+  }
+
   @Transactional
   public @NonNull Order confirmOrder(@NonNull Long id, @NonNull Long userId) {
     Order order = orderRepository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
-    if (!"PENDING".equals(order.getStatus())) {
-      throw new IllegalStateException("Only PENDING orders can be confirmed");
-    }
+    validateTransition(order, com.ims.model.OrderStatus.CONFIRMED);
 
     List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
 
@@ -382,11 +397,11 @@ public class OrderService {
         stockService.stockOut(Objects.requireNonNull(item.getProductId()), item.getQuantity(),
             "Confirmed Sale Order #" + order.getId(), userId);
       }
-      order.setStatus("CONFIRMED");
+      order.setStatus(com.ims.model.OrderStatus.CONFIRMED);
       // Auto-generate invoice for sales upon confirmation
       invoiceService.createFromOrder(order);
     } else if ("PURCHASE".equals(order.getType())) {
-      order.setStatus("CONFIRMED");
+      order.setStatus(com.ims.model.OrderStatus.CONFIRMED);
     }
 
     order = orderRepository.save(order);
@@ -400,11 +415,9 @@ public class OrderService {
     Order order = orderRepository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
-    if (!"CONFIRMED".equals(order.getStatus())) {
-      throw new IllegalStateException("Only CONFIRMED orders can be shipped");
-    }
+    validateTransition(order, com.ims.model.OrderStatus.SHIPPED);
 
-    order.setStatus("SHIPPED");
+    order.setStatus(com.ims.model.OrderStatus.SHIPPED);
     order = orderRepository.save(order);
     auditLogService.logAudit(AuditAction.SHIP_ORDER, AuditResource.ORDER, id,
         "Shipped " + order.getType() + " order #" + id);
@@ -416,20 +429,18 @@ public class OrderService {
     Order order = orderRepository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
-    if (!"SHIPPED".equals(order.getStatus()) && !"CONFIRMED".equals(order.getStatus())) {
-      throw new IllegalStateException("Order must be SHIPPED or CONFIRMED to be completed");
-    }
-
-    if ("PURCHASE".equals(order.getType()) && !"RECEIVED".equals(order.getStatus())) {
+    if ("PURCHASE".equals(order.getType())) {
+      validateTransition(order, com.ims.model.OrderStatus.RECEIVED);
       // For purchase, completion means receiving goods
       List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
       for (OrderItem item : items) {
         stockService.stockIn(Objects.requireNonNull(item.getProductId()), item.getQuantity(),
             "Received Purchase Order #" + order.getId(), userId);
       }
-      order.setStatus("RECEIVED");
+      order.setStatus(com.ims.model.OrderStatus.RECEIVED);
     } else {
-      order.setStatus("COMPLETED");
+      validateTransition(order, com.ims.model.OrderStatus.COMPLETED);
+      order.setStatus(com.ims.model.OrderStatus.COMPLETED);
     }
 
     order = orderRepository.save(order);
@@ -443,14 +454,11 @@ public class OrderService {
     Order order = orderRepository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
-    if ("COMPLETED".equals(order.getStatus()) || "RECEIVED".equals(order.getStatus())
-        || "CANCELLED".equals(order.getStatus())) {
-      throw new IllegalStateException("Cannot cancel an order that is already " + order.getStatus());
-    }
+    validateTransition(order, com.ims.model.OrderStatus.CANCELLED);
 
     // If it was CONFIRMED or SHIPPED, we might need to revert stock for SALES
     if ("SALE".equals(order.getType())
-        && ("CONFIRMED".equals(order.getStatus()) || "SHIPPED".equals(order.getStatus()))) {
+        && (order.getStatus() == com.ims.model.OrderStatus.CONFIRMED || order.getStatus() == com.ims.model.OrderStatus.SHIPPED)) {
       List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
       for (OrderItem item : items) {
         stockService.stockIn(Objects.requireNonNull(item.getProductId()), item.getQuantity(),
@@ -458,7 +466,7 @@ public class OrderService {
       }
     }
 
-    order.setStatus("CANCELLED");
+    order.setStatus(com.ims.model.OrderStatus.CANCELLED);
     order = orderRepository.save(order);
     auditLogService.logAudit(AuditAction.CANCEL_ORDER, AuditResource.ORDER, id,
         "Cancelled " + order.getType() + " order #" + id);
@@ -471,14 +479,5 @@ public class OrderService {
 
   public @NonNull Page<Order> getOrdersByCustomer(@NonNull Long customerId, @NonNull Pageable pageable) {
     return Objects.requireNonNull(orderRepository.findByCustomerId(customerId, pageable));
-  }
-
-  @Transactional
-  public @NonNull Order updateOrderStatus(@NonNull Long id, @NonNull String status) {
-    Order order = orderRepository
-        .findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Order not found"));
-    order.setStatus(status);
-    return Objects.requireNonNull(orderRepository.save(order));
   }
 }

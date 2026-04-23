@@ -18,7 +18,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -50,7 +49,7 @@ public class OrderController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Create purchase order")
   public ResponseEntity<Order> createPurchaseOrder(
-      @Valid @RequestBody OrderRequest request) {
+      @Valid @RequestBody @NonNull OrderRequest request) {
     Long userId = extractUserId();
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(orderService.createPurchaseOrder(request, userId));
@@ -60,7 +59,7 @@ public class OrderController {
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Create sale order")
   public ResponseEntity<Order> createSalesOrder(
-      @Valid @RequestBody OrderRequest request) {
+      @Valid @RequestBody @NonNull OrderRequest request) {
     Long userId = extractUserId();
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(orderService.createSalesOrder(request, userId));
@@ -69,7 +68,7 @@ public class OrderController {
   @PostMapping("/return")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Create return order")
-  public ResponseEntity<Order> createReturnOrder(@Valid @RequestBody OrderRequest request) {
+  public ResponseEntity<Order> createReturnOrder(@Valid @RequestBody @NonNull OrderRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED).body(orderService.createReturnOrder(request, extractUserId()));
   }
 
@@ -127,11 +126,4 @@ public class OrderController {
         .body(pdf);
   }
 
-  @PatchMapping("/{id}/status")
-  @RequiresRole({"ADMIN", "MANAGER"})
-  @Operation(summary = "Update order status")
-  public ResponseEntity<Order> updateStatus(
-      @NonNull @PathVariable Long id, @NonNull @RequestBody Map<String, String> body) {
-    return ResponseEntity.ok(orderService.updateOrderStatus(id, Objects.requireNonNull(body.get("status"))));
-  }
 }

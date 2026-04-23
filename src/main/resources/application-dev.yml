@@ -2,6 +2,21 @@ spring:
   jpa:
     show-sql: true
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
 logging:
   level:
     org.hibernate.SQL: DEBUG

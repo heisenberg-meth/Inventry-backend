@@ -3,7 +3,6 @@ package com.ims.shared.scheduler;
 import com.ims.model.Alert;
 import com.ims.model.Invoice;
 import com.ims.model.Tenant;
-import com.ims.model.User;
 import com.ims.product.Product;
 import com.ims.product.ProductRepository;
 import com.ims.platform.repository.TenantRepository;
@@ -37,107 +36,111 @@ public class ScheduledTasksService {
   @Scheduled(cron = "0 0 */6 * * *")
   @Transactional
   public void checkLowStock() {
-    log.info("Scheduled Task: Checking low stock across all tenants");
-    List<Tenant> tenants = tenantRepository.findAll();
+    TenantContext.runWithTenant(TenantContext.SYSTEM_TENANT_ID, () -> {
+      log.info("Scheduled Task: Checking low stock across all tenants");
+      List<Long> tenantIds = tenantRepository.findAllIds();
 
-    for (Tenant tenant : tenants) {
-      try {
-        TenantContext.setTenantId(tenant.getId());
-        List<Product> lowStock = productRepository.findLowStock(tenant.getId());
-        
-        for (Product p : lowStock) {
-          // Create or update alert
-          if (alertRepository.findByTypeAndResourceIdAndIsDismissedFalse("LOW_STOCK", p.getId()).isEmpty()) {
-            Alert alert = Alert.builder()
-                .tenantId(tenant.getId())
-                .type("LOW_STOCK")
-                .severity("HIGH")
-                .message("Low stock for " + p.getName() + " (" + p.getStock() + " remaining)")
-                .resourceId(p.getId())
-                .build();
-            alertRepository.save(alert);
-            
-            // Notify tenant admin if possible
-            userRepository.findFirstByTenantIdAndRole(tenant.getId(), "ADMIN").ifPresent(admin -> {
-                notificationService.createNotification(admin.getId(), "Low Stock Alert", alert.getMessage(), "LOW_STOCK", p.getId());
-            });
+      for (Long tenantId : tenantIds) {
+        TenantContext.runWithTenant(tenantId, () -> {
+          List<Product> lowStock = productRepository.findLowStock(tenantId);
+          
+          for (Product p : lowStock) {
+            if (alertRepository.findByTypeAndResourceIdAndIsDismissedFalse("LOW_STOCK", p.getId()).isEmpty()) {
+              Alert alert = Alert.builder()
+                  .tenantId(tenantId)
+                  .type("LOW_STOCK")
+                  .severity("HIGH")
+                  .message("Low stock for " + p.getName() + " (" + p.getStock() + " remaining)")
+                  .resourceId(p.getId())
+                  .build();
+              alertRepository.save(alert);
+              
+                userRepository.findFirstByTenantIdAndRole(tenantId, "ADMIN").ifPresent(admin -> {
+                  notificationService.createNotification(tenantId, admin.getId(), "Low Stock Alert", alert.getMessage(), "LOW_STOCK", p.getId());
+              });
+            }
           }
-        }
-      } finally {
-        TenantContext.clear();
+        });
       }
-    }
+    });
   }
 
   // Daily at midnight
   @Scheduled(cron = "0 0 0 * * *")
   @Transactional
   public void checkOverdueInvoices() {
-    log.info("Scheduled Task: Checking overdue invoices");
-    List<Tenant> tenants = tenantRepository.findAll();
+    TenantContext.runWithTenant(TenantContext.SYSTEM_TENANT_ID, () -> {
+      log.info("Scheduled Task: Checking overdue invoices");
+      List<Long> tenantIds = tenantRepository.findAllIds();
 
-    for (Tenant tenant : tenants) {
-      try {
-        TenantContext.setTenantId(tenant.getId());
-        // Simple unpaged check for all overdue
-        var overdue = invoiceRepository.findByStatusNotAndDueDateBefore("PAID", LocalDate.now(), org.springframework.data.domain.Pageable.unpaged());
-        
-        for (Invoice inv : overdue.getContent()) {
-          if (alertRepository.findByTypeAndResourceIdAndIsDismissedFalse("OVERDUE_INVOICE", inv.getId()).isEmpty()) {
-            Alert alert = Alert.builder()
-                .tenantId(tenant.getId())
-                .type("OVERDUE_INVOICE")
-                .severity("MEDIUM")
-                .message("Invoice " + inv.getInvoiceNumber() + " is overdue since " + inv.getDueDate())
-                .resourceId(inv.getId())
-                .build();
-            alertRepository.save(alert);
+      for (Long tenantId : tenantIds) {
+        TenantContext.runWithTenant(tenantId, () -> {
+          var overdue = invoiceRepository.findByStatusNotAndDueDateBefore("PAID", LocalDate.now(), org.springframework.data.domain.Pageable.unpaged());
+          
+          for (Invoice inv : overdue.getContent()) {
+            if (alertRepository.findByTypeAndResourceIdAndIsDismissedFalse("OVERDUE_INVOICE", inv.getId()).isEmpty()) {
+              Alert alert = Alert.builder()
+                  .tenantId(tenantId)
+                  .type("OVERDUE_INVOICE")
+                  .severity("MEDIUM")
+                  .message("Invoice " + inv.getInvoiceNumber() + " is overdue since " + inv.getDueDate())
+                  .resourceId(inv.getId())
+                  .build();
+              alertRepository.save(alert);
+            }
           }
-        }
-      } finally {
-        TenantContext.clear();
+        });
       }
-    }
+    });
   }
 
   // Daily at 1 AM
   @Scheduled(cron = "0 0 1 * * *")
   @Transactional
   public void cleanupTokens() {
-    log.info("Scheduled Task: Cleaning up expired reset tokens");
-    // Find users with expired reset tokens
-    List<User> users = userRepository.findAll(); // Unfiltered by default usually
-    int count = 0;
-    for (User user : users) {
-      if (user.getResetToken() != null && user.getResetTokenExpiry() != null && 
-          LocalDateTime.now().isAfter(user.getResetTokenExpiry())) {
-        user.setResetToken(null);
-        user.setResetTokenExpiry(null);
-        userRepository.save(user);
-        count++;
+    TenantContext.runWithTenant(TenantContext.SYSTEM_TENANT_ID, () -> {
+      log.info("Scheduled Task: Cleaning up expired reset tokens across all tenants");
+      List<Long> tenantIds = tenantRepository.findAllIds();
+      int count[] = {0};
+
+      for (Long tenantId : tenantIds) {
+        TenantContext.runWithTenant(tenantId, () -> {
+          int updated = userRepository.clearExpiredResetTokens(tenantId, LocalDateTime.now());
+          count[0] += updated;
+        });
       }
-    }
-    log.info("Cleaned up {} expired reset tokens", count);
+      log.info("Cleaned up {} expired reset tokens", count[0]);
+    });
   }
 
   // Every 30 minutes
   @Scheduled(fixedRate = 1800000)
   @Transactional
   public void cleanupOrphanTenants() {
-    log.info("Scheduled Task: Cleaning up orphan tenants (no users after 1 hour)");
-    LocalDateTime threshold = LocalDateTime.now().minusHours(1);
-    List<Tenant> potentiallyOrphaned = tenantRepository.findAllByCreatedAtBefore(threshold);
+    TenantContext.runWithTenant(TenantContext.SYSTEM_TENANT_ID, () -> {
+      log.info("Scheduled Task: Cleaning up orphan tenants (no users after 1 hour)");
+      LocalDateTime threshold = LocalDateTime.now().minusHours(1);
+      List<Tenant> potentiallyOrphaned = tenantRepository.findAllByCreatedAtBefore(threshold);
 
-    int count = 0;
-    for (Tenant tenant : potentiallyOrphaned) {
-      if (!userRepository.existsByTenantId(tenant.getId())) {
-        log.warn("Deleting orphan tenant: {} (ID: {})", tenant.getName(), tenant.getId());
-        tenantRepository.delete(tenant);
-        count++;
+      int count = 0;
+      for (Tenant tenant : potentiallyOrphaned) {
+        if (!hasUsers(tenant.getId())) {
+            log.warn("Deleting orphan tenant: {} (ID: {})", tenant.getName(), tenant.getId());
+            tenantRepository.delete(tenant);
+            count++;
+        }
       }
-    }
-    if (count > 0) {
-      log.info("Cleaned up {} orphan tenants", count);
-    }
+      if (count > 0) {
+        log.info("Cleaned up {} orphan tenants", count);
+      }
+    });
+  }
+
+  private boolean hasUsers(Long tenantId) {
+      final boolean[] result = {false};
+      TenantContext.runWithTenant(tenantId, () -> {
+          result[0] = userRepository.existsByTenantId(tenantId);
+      });
+      return result[0];
   }
 }

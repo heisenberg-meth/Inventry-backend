@@ -47,7 +47,7 @@ public class ReportService {
   private int getExpiryThreshold() {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      throw new IllegalStateException("Tenant not resolved from request");
+      throw new com.ims.shared.exception.TenantContextException("Tenant not resolved from request");
     }
     return tenantRepository
         .findById(tenantId)
@@ -59,7 +59,7 @@ public class ReportService {
   public @NonNull Map<String, Object> getPurchasesReport(@NonNull LocalDate from, @NonNull LocalDate to) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      throw new IllegalStateException("Tenant not resolved from request");
+      throw new com.ims.shared.exception.TenantContextException("Tenant not resolved from request");
     }
 
     LocalDateTime fromDt = Objects.requireNonNull(from, "from date required").atStartOfDay();
@@ -88,7 +88,7 @@ public class ReportService {
   public @NonNull Map<String, Object> getDashboard() {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      throw new IllegalStateException("Tenant not resolved from request");
+      throw new com.ims.shared.exception.TenantContextException("Tenant not resolved from request");
     }
 
     LocalDateTime todayStart = LocalDate.now().atStartOfDay();
@@ -123,36 +123,23 @@ public class ReportService {
       dashboard.put("expiring_soon_count", expiringSoon);
     }
 
-    dashboard.put("inventory_valuation", getInventoryValuation());
-    dashboard.put("category_distribution", getCategoryDistribution());
+    dashboard.put("inventory_valuation", getInventoryValuation(tenantId));
+    dashboard.put("category_distribution", getCategoryDistribution(tenantId));
 
     dashboard.put("cached_at", LocalDateTime.now().toString());
     return dashboard;
   }
 
-  public BigDecimal getInventoryValuation() {
-    return productRepository.findByIsActiveTrue(Pageable.unpaged()).getContent().stream()
-        .map(p -> p.getSalePrice() != null ? p.getSalePrice().multiply(BigDecimal.valueOf(p.getStock()))
-            : BigDecimal.ZERO)
-        .reduce(BigDecimal.ZERO, BigDecimal::add);
+  public BigDecimal getInventoryValuation(Long tenantId) {
+    return productRepository.getTotalInventoryValue(tenantId);
   }
 
-  public List<Map<String, Object>> getCategoryDistribution() {
-    var products = productRepository.findByIsActiveTrue(Pageable.unpaged()).getContent();
-    var categories = categoryRepository.findAll();
-    var categoryMap = categories.stream()
-        .collect(Collectors.toMap(com.ims.category.Category::getId, com.ims.category.Category::getName));
-
-    Map<Long, Long> distribution = products.stream()
-        .filter(p -> p.getCategoryId() != null)
-        .collect(Collectors.groupingBy(com.ims.product.Product::getCategoryId, Collectors.counting()));
-
-    return distribution.entrySet().stream()
-        .map(e -> {
+  public List<Map<String, Object>> getCategoryDistribution(Long tenantId) {
+    return productRepository.getCategoryDistribution(tenantId).stream()
+        .map(c -> {
           Map<String, Object> item = new LinkedHashMap<>();
-          item.put("category_id", e.getKey());
-          item.put("category_name", categoryMap.getOrDefault(e.getKey(), "Unknown"));
-          item.put("product_count", e.getValue());
+          item.put("category_name", c.getCategoryName());
+          item.put("product_count", c.getProductCount());
           return item;
         })
         .collect(Collectors.toList());
@@ -160,7 +147,13 @@ public class ReportService {
 
   @Cacheable(value = "reports", key = "'stock-report'", cacheResolver = "tenantAwareCacheResolver")
   public @NonNull List<Map<String, Object>> getStockReport(@Nullable String filter) {
-    var products = Objects.requireNonNull(productRepository.findByIsActiveTrue(Pageable.unpaged())).getContent();
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) {
+      throw new com.ims.shared.exception.TenantContextException("Tenant not resolved");
+    }
+
+    // Use findAllWithDetails to avoid N+1 query for PharmacyProduct details
+    var products = productRepository.findAllWithDetails(tenantId, Pageable.unpaged()).getContent();
     List<Map<String, Object>> report = new ArrayList<>();
     int thresholdDays = getExpiryThreshold();
 
@@ -174,10 +167,8 @@ public class ReportService {
         status = "OK";
       }
 
-      // Check expiry for pharmacy
-      LocalDate expiryDate = pharmacyProductRepository.findById(Objects.requireNonNull(product.getId()))
-          .map(com.ims.tenant.domain.pharmacy.PharmacyProduct::getExpiryDate)
-          .orElse(null);
+      // Check expiry from joined data
+      LocalDate expiryDate = product.getExpiryDate();
 
       if (expiryDate != null && expiryDate.isBefore(LocalDate.now().plusDays(thresholdDays))) {
           status = "EXPIRING";

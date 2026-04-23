@@ -74,8 +74,11 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
     Customer customer;
     try {
       TenantContext.setTenantId(tenantId);
-      customer = Objects.requireNonNull(
-          customerService.create(Customer.builder().name("Billing Customer").address("123 Street").build()));
+      com.ims.dto.request.CustomerRequest custReq = new com.ims.dto.request.CustomerRequest();
+      custReq.setName("Billing Customer");
+      custReq.setAddress("123 Street");
+      com.ims.dto.response.CustomerResponse custResponse = customerService.create(custReq);
+      customer = Customer.builder().id(custResponse.getId()).name(custResponse.getName()).address(custResponse.getAddress()).build();
     } finally {
       TenantContext.clear();
     }
@@ -157,7 +160,7 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
 
     String loginJson = Objects.requireNonNull(objectMapper.writeValueAsString(loginRequest));
     MvcResult result = mockMvc.perform(post("/api/auth/login")
-        .contentType(MediaType.APPLICATION_JSON)
+        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
         .content(loginJson))
         .andExpect(status().isOk())
         .andReturn();

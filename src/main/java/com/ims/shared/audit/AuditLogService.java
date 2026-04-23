@@ -87,26 +87,32 @@ public class AuditLogService {
     }
   }
 
-  public org.springframework.data.domain.Page<com.ims.model.AuditLog> getAllLogs(
+  public org.springframework.data.domain.Page<com.ims.dto.response.AuditLogResponse> getAllLogs(
       @NonNull org.springframework.data.domain.Pageable pageable) {
     var logs = auditLogRepository.findAll(pageable);
 
     // Unmask for ROOT when support mode is explicitly enabled
     if (isSystemAdmin() && systemConfigService.isSupportModeEnabled()) {
-      return logs; // full data visible for support investigation
+      return logs.map(this::toDto); // full data visible for support investigation
     }
-    return logs.map(this::maskSensitiveData); // everyone else gets masked
+    return logs.map(this::toMaskedDto); // everyone else gets masked
   }
 
-  public org.springframework.data.domain.Page<com.ims.model.AuditLog> getTenantLogs(Long tenantId,
+  public org.springframework.data.domain.Page<com.ims.dto.response.AuditLogResponse> getTenantLogs(Long tenantId,
       @NonNull org.springframework.data.domain.Pageable pageable) {
     var logs = auditLogRepository.findByTenantId(tenantId, pageable);
 
     // Unmask for ROOT when support mode is explicitly enabled
     if (isSystemAdmin() && systemConfigService.isSupportModeEnabled()) {
-      return logs;
+      return logs.map(this::toDto);
     }
-    return logs.map(this::maskSensitiveData);
+    return logs.map(this::toMaskedDto);
+  }
+
+  public org.springframework.data.domain.Page<com.ims.dto.response.AuditLogResponse> getTenantLogsAsDto(Long tenantId,
+      @NonNull org.springframework.data.domain.Pageable pageable) {
+    var logs = auditLogRepository.findByTenantId(tenantId, pageable);
+    return logs.map(this::toMaskedDto);
   }
 
   private boolean isSystemAdmin() {
@@ -117,10 +123,30 @@ public class AuditLogService {
     return false;
   }
 
-  private com.ims.model.AuditLog maskSensitiveData(com.ims.model.AuditLog log) {
-    if (log.getDetails() != null) {
-      log.setDetails("[MASKED - SUPPORT_MODE DISABLED]");
-    }
-    return log;
+  private com.ims.dto.response.AuditLogResponse toDto(com.ims.model.AuditLog log) {
+    return com.ims.dto.response.AuditLogResponse.builder()
+        .id(log.getId())
+        .tenantId(log.getTenantId())
+        .userId(log.getUserId())
+        .action(log.getAction())
+        .details(log.getDetails())
+        .createdAt(log.getCreatedAt())
+        .build();
+  }
+
+  private com.ims.dto.response.AuditLogResponse toMaskedDto(com.ims.model.AuditLog log) {
+    return com.ims.dto.response.AuditLogResponse.builder()
+        .id(log.getId())
+        .tenantId(log.getTenantId())
+        .userId(log.getUserId())
+        .action(log.getAction())
+        .details(log.getDetails() != null ? maskDetails(log.getDetails()) : null)
+        .createdAt(log.getCreatedAt())
+        .build();
+  }
+
+  private String maskDetails(String details) {
+    // Mask sensitive tokens/passwords while preserving audit context
+    return details.replaceAll("(?i)(password|token|secret|key)=[^,\\]\\s]+", "$1=****");
   }
 }

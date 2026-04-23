@@ -69,6 +69,9 @@ public class Tenant {
   @Column
   private String gstin;
 
+  @Column(name = "webhook_secret")
+  private String webhookSecret;
+
   @Column(name = "created_at")
   @Builder.Default
   private LocalDateTime createdAt = LocalDateTime.now();

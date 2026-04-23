@@ -10,13 +10,16 @@ import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "invoices")
+@Table(name = "invoices", uniqueConstraints = {
+    @UniqueConstraint(name = "unique_invoice_per_tenant", columnNames = {"tenant_id", "invoice_number"})
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

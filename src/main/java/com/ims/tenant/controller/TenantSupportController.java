@@ -92,6 +92,6 @@ public class TenantSupportController {
     if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
       return details;
     }
-    throw new IllegalStateException("User not authenticated");
+    throw new com.ims.shared.exception.UnauthorizedAccessException("User not authenticated");
   }
 }

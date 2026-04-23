@@ -71,7 +71,10 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
     Customer customer;
     try {
       TenantContext.setTenantId(tenantId);
-      customer = Objects.requireNonNull(customerService.create(Customer.builder().name("Test Customer").build()));
+      com.ims.dto.request.CustomerRequest custReq = new com.ims.dto.request.CustomerRequest();
+      custReq.setName("Test Customer");
+      com.ims.dto.response.CustomerResponse custResponse = customerService.create(custReq);
+      customer = Customer.builder().id(custResponse.getId()).name(custResponse.getName()).build();
     } finally {
       TenantContext.clear();
     }
@@ -152,7 +155,7 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
     loginRequest.setCompanyCode(workspace);
 
     MvcResult result = mockMvc.perform(post("/api/auth/login")
-        .contentType(MediaType.APPLICATION_JSON)
+        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
         .content(Objects.requireNonNull(objectMapper.writeValueAsString(loginRequest))))
         .andExpect(status().isOk())
         .andReturn();
