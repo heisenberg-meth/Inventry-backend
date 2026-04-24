@@ -24,7 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest(properties = {
-    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
+    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
     "spring.cache.type=none"
 })
 
@@ -46,23 +46,25 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
   @Test
   void testSecurityAndIsolationFlow() throws Exception {
     // 1. Signup Tenant 1
-    SignupRequest t1Signup = createSignupRequest("Tenant 1", "t1-auth", "admin1@t1.com");
+    String uniqueId1 = java.util.UUID.randomUUID().toString().substring(0, 8);
+    SignupRequest t1Signup = createSignupRequest("Tenant 1 " + uniqueId1, "t1-auth-" + uniqueId1, "admin1-" + uniqueId1 + "@t1.com");
     com.ims.dto.response.SignupResponse t1Response = signupService.signup(t1Signup);
 
     // 2. Signup Tenant 2
-    SignupRequest t2Signup = createSignupRequest("Tenant 2", "t2-auth", "admin2@t2.com");
+    String uniqueId2 = java.util.UUID.randomUUID().toString().substring(0, 8);
+    SignupRequest t2Signup = createSignupRequest("Tenant 2 " + uniqueId2, "t2-auth-" + uniqueId2, "admin2-" + uniqueId2 + "@t2.com");
     com.ims.dto.response.SignupResponse t2Response = signupService.signup(t2Signup);
 
     // 3. Verify users (simulating realistic email verification flow)
-    verifyUserEmail("admin1@t1.com");
-    verifyUserEmail("admin2@t2.com");
+    verifyUserEmail("admin1-" + uniqueId1 + "@t1.com");
+    verifyUserEmail("admin2-" + uniqueId2 + "@t2.com");
 
     // Get IDs
-    Long t1Id = tenantRepository.findByWorkspaceSlug("t1-auth").orElseThrow().getId();
-    Long t2Id = tenantRepository.findByWorkspaceSlug("t2-auth").orElseThrow().getId();
+    Long t1Id = tenantRepository.findByWorkspaceSlug("t1-auth-" + uniqueId1).orElseThrow().getId();
+    Long t2Id = tenantRepository.findByWorkspaceSlug("t2-auth-" + uniqueId2).orElseThrow().getId();
 
     // 4. Login Tenant 1
-    String t1Token = login("admin1@t1.com", "password123", t1Response.getCompanyCode(), t1Id);
+    String t1Token = login("admin1-" + uniqueId1 + "@t1.com", "password123", t1Response.getCompanyCode(), t1Id);
 
     // 5. Verify Tenant 1 Isolation (Should only see 1 user: admin1)
     mockMvc
@@ -71,10 +73,10 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
             .with(tenant(t1Id.toString())))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content.length()").value(1))
-        .andExpect(jsonPath("$.content[0].email").value("admin1@t1.com"));
+        .andExpect(jsonPath("$.content[0].email").value("admin1-" + uniqueId1 + "@t1.com"));
 
-    // 5. Login Tenant 2
-    String t2Token = login("admin2@t2.com", "password123", t2Response.getCompanyCode(), t2Id);
+    // 6. Login Tenant 2
+    String t2Token = login("admin2-" + uniqueId2 + "@t2.com", "password123", t2Response.getCompanyCode(), t2Id);
 
     // 7. Verify Tenant 2 Isolation (Should only see 1 user: admin2)
     mockMvc
@@ -83,7 +85,7 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
             .with(tenant(t2Id.toString())))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content.length()").value(1))
-        .andExpect(jsonPath("$.content[0].email").value("admin2@t2.com"));
+        .andExpect(jsonPath("$.content[0].email").value("admin2-" + uniqueId2 + "@t2.com"));
 
     // 8. Verify Logout and Blacklisting
     mockMvc
