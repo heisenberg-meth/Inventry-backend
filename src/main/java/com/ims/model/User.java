@@ -1,6 +1,5 @@
 package com.ims.model;
 
-import org.hibernate.annotations.TenantId;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -20,6 +19,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.TenantId;
 
 @Entity
 @Table(name = "users")
@@ -33,8 +33,7 @@ public class User {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Version
-  private Long version;
+  @Version private Long version;
 
   @TenantId
   @Column(name = "tenant_id")
@@ -46,8 +45,7 @@ public class User {
   @Column(nullable = false, unique = true)
   private String email;
 
-  @Column
-  private String phone;
+  @Column private String phone;
 
   @Column(name = "password_hash", nullable = false)
   private String passwordHash;

@@ -16,36 +16,37 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class DataSeeder implements CommandLineRunner {
 
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+  private final UserRepository userRepository;
+  private final PasswordEncoder passwordEncoder;
 
-    @Value("${app.seeder.admin-password:#{null}}")
-    private String seedAdminPassword;
+  @Value("${app.seeder.admin-password:#{null}}")
+  private String seedAdminPassword;
 
-    @Override
-    public void run(String... args) {
-        seedPlatformAdmin();
+  @Override
+  public void run(String... args) {
+    seedPlatformAdmin();
+  }
+
+  private void seedPlatformAdmin() {
+    if (seedAdminPassword == null || seedAdminPassword.isBlank()) {
+      log.warn("Seeder skipped: app.seeder.admin-password not set");
+      return;
     }
 
-    private void seedPlatformAdmin() {
-        if (seedAdminPassword == null || seedAdminPassword.isBlank()) {
-            log.warn("Seeder skipped: app.seeder.admin-password not set");
-            return;
-        }
-
-        String adminEmail = "admin@platform.com";
-        if (userRepository.findByEmailUnfiltered(adminEmail).isEmpty()) {
-            User admin = User.builder()
-                    .name("Platform Admin")
-                    .email(adminEmail)
-                    .passwordHash(passwordEncoder.encode(seedAdminPassword))
-                    .role(UserRole.PLATFORM_ADMIN)
-                    .scope("PLATFORM")
-                    .isPlatformUser(true)
-                    .isActive(true)
-                    .build();
-            userRepository.save(admin);
-            log.info("Platform Admin seeded: {}", adminEmail);
-        }
+    String adminEmail = "admin@platform.com";
+    if (userRepository.findByEmailUnfiltered(adminEmail).isEmpty()) {
+      User admin =
+          User.builder()
+              .name("Platform Admin")
+              .email(adminEmail)
+              .passwordHash(passwordEncoder.encode(seedAdminPassword))
+              .role(UserRole.PLATFORM_ADMIN)
+              .scope("PLATFORM")
+              .isPlatformUser(true)
+              .isActive(true)
+              .build();
+      userRepository.save(admin);
+      log.info("Platform Admin seeded: {}", adminEmail);
     }
+  }
 }

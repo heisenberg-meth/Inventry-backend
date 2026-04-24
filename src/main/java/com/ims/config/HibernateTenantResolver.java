@@ -7,21 +7,19 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Profile("!test")
-
 public class HibernateTenantResolver implements CurrentTenantIdentifierResolver<Long> {
 
-    @Override
-    public Long resolveCurrentTenantIdentifier() {
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId == null) {
-            throw new IllegalStateException(
-                "No tenant context — all DB access requires a tenant ID.");
-        }
-        return tenantId;
+  @Override
+  public Long resolveCurrentTenantIdentifier() {
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) {
+      throw new IllegalStateException("No tenant context — all DB access requires a tenant ID.");
     }
+    return tenantId;
+  }
 
-    @Override
-    public boolean validateExistingCurrentSessions() {
-        return true;
-    }
+  @Override
+  public boolean validateExistingCurrentSessions() {
+    return true;
+  }
 }

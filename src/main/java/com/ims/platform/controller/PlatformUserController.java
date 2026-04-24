@@ -32,6 +32,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class PlatformUserController {
 
+  /** Minimum length enforced on a reset password submitted by an operator. */
+  private static final int MIN_PASSWORD_LENGTH = 8;
+
   private final PlatformUserService platformUserService;
 
   @PostMapping
@@ -61,7 +64,8 @@ public class PlatformUserController {
   @org.springframework.web.bind.annotation.PutMapping("/{id}")
   @PreAuthorize("hasAuthority('ROLE_ROOT')")
   public @NonNull User updatePlatformUser(
-      @NonNull @PathVariable Long id, @Valid @NonNull @RequestBody CreatePlatformUserRequest request) {
+      @NonNull @PathVariable Long id,
+      @Valid @NonNull @RequestBody CreatePlatformUserRequest request) {
     return Objects.requireNonNull(platformUserService.updatePlatformUser(id, request));
   }
 
@@ -99,8 +103,9 @@ public class PlatformUserController {
   public Map<String, String> resetPassword(
       @NonNull @PathVariable Long id, @NonNull @RequestBody Map<String, String> body) {
     String newPassword = body.get("newPassword");
-    if (newPassword == null || newPassword.length() < 8) {
-      throw new IllegalArgumentException("New password must be at least 8 characters");
+    if (newPassword == null || newPassword.length() < MIN_PASSWORD_LENGTH) {
+      throw new IllegalArgumentException(
+          "New password must be at least " + MIN_PASSWORD_LENGTH + " characters");
     }
     return platformUserService.resetPlatformUserPassword(id, newPassword);
   }
@@ -112,5 +117,4 @@ public class PlatformUserController {
   public void deactivatePlatformUser(@NonNull @PathVariable Long id) {
     platformUserService.deactivatePlatformUser(id);
   }
-
 }

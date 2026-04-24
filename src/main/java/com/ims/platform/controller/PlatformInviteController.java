@@ -10,7 +10,14 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/platform/invites")
@@ -24,7 +31,8 @@ public class PlatformInviteController {
   @RequiresRole("ROOT")
   @SecurityRequirement(name = "bearerAuth")
   @Operation(summary = "Create platform admin invite")
-  public ResponseEntity<PlatformInvite> create(@jakarta.validation.Valid @RequestBody com.ims.dto.request.CreateInviteRequest request) {
+  public ResponseEntity<PlatformInvite> create(
+      @jakarta.validation.Valid @RequestBody com.ims.dto.request.CreateInviteRequest request) {
     return ResponseEntity.ok(inviteService.createInvite(request.email(), request.role().name()));
   }
 
@@ -53,7 +61,8 @@ public class PlatformInviteController {
 
   @PostMapping("/complete")
   @Operation(summary = "Complete invite and set password")
-  public ResponseEntity<Map<String, String>> complete(@jakarta.validation.Valid @RequestBody com.ims.dto.request.CompleteInviteRequest request) {
+  public ResponseEntity<Map<String, String>> complete(
+      @jakarta.validation.Valid @RequestBody com.ims.dto.request.CompleteInviteRequest request) {
     inviteService.completeInvite(request.token(), request.password(), request.name());
     return ResponseEntity.ok(Map.of("message", "Account activated successfully"));
   }

@@ -23,12 +23,14 @@ import lombok.NoArgsConstructor;
 @Builder
 public class Tenant {
 
+  /** Default number of days before expiry at which pharmacy tenants raise stock alerts. */
+  private static final int DEFAULT_EXPIRY_THRESHOLD_DAYS = 30;
+
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Version
-  private Long version;
+  @Version private Long version;
 
   @Column(nullable = false)
   private String name;
@@ -61,13 +63,11 @@ public class Tenant {
 
   @Column(name = "expiry_threshold_days")
   @Builder.Default
-  private Integer expiryThresholdDays = 30;
+  private Integer expiryThresholdDays = DEFAULT_EXPIRY_THRESHOLD_DAYS;
 
-  @Column
-  private String address;
+  @Column private String address;
 
-  @Column
-  private String gstin;
+  @Column private String gstin;
 
   @Column(name = "webhook_secret")
   private String webhookSecret;

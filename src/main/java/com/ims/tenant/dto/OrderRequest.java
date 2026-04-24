@@ -17,15 +17,15 @@ import lombok.NoArgsConstructor;
 @Builder
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class OrderRequest {
-    private Long supplierId;
-    private Long customerId;
-    private String notes;
-    private BigDecimal discountTotal;
-    private BigDecimal grandTotal;
+  private Long supplierId;
+  private Long customerId;
+  private String notes;
+  private BigDecimal discountTotal;
+  private BigDecimal grandTotal;
 
-    @NotEmpty(message = "Order items cannot be empty")
-    @Valid
-    private List<OrderItemRequest> items;
+  @NotEmpty(message = "Order items cannot be empty")
+  @Valid
+  private List<OrderItemRequest> items;
 
-    private Long originalOrderId; // for returns
+  private Long originalOrderId; // for returns
 }

@@ -61,8 +61,7 @@ public class SubscriptionPlanController {
   @RequiresRole({"ROOT"})
   @Operation(summary = "Update subscription plan")
   public ResponseEntity<SubscriptionPlan> update(
-      @NonNull @PathVariable Long id,
-      @NonNull @RequestBody UpdateSubscriptionPlanRequest request) {
+      @NonNull @PathVariable Long id, @NonNull @RequestBody UpdateSubscriptionPlanRequest request) {
     return ResponseEntity.ok(planService.updatePlan(id, request));
   }
 

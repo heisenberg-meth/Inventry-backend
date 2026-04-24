@@ -15,21 +15,23 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class SubscriptionService {
 
-    private final SubscriptionRepository subscriptionRepository;
+  private final SubscriptionRepository subscriptionRepository;
 
-    public List<Subscription> getActiveSubscriptions() {
-        return subscriptionRepository.findByStatus("ACTIVE");
-    }
+  public List<Subscription> getActiveSubscriptions() {
+    return subscriptionRepository.findByStatus("ACTIVE");
+  }
 
-    @Transactional
-    public Subscription extendSubscription(Long id, int days) {
-        Subscription subscription = subscriptionRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Subscription not found"));
-        
-        subscription.setEndDate(subscription.getEndDate().plusDays(days));
-        subscription.setUpdatedAt(LocalDateTime.now());
-        
-        log.info("Subscription {} extended by {} days", id, days);
-        return subscriptionRepository.save(subscription);
-    }
+  @Transactional
+  public Subscription extendSubscription(Long id, int days) {
+    Subscription subscription =
+        subscriptionRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Subscription not found"));
+
+    subscription.setEndDate(subscription.getEndDate().plusDays(days));
+    subscription.setUpdatedAt(LocalDateTime.now());
+
+    log.info("Subscription {} extended by {} days", id, days);
+    return subscriptionRepository.save(subscription);
+  }
 }

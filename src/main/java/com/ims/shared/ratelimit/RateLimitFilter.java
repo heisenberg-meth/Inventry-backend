@@ -13,8 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.lang.NonNull;
-import org.springframework.stereotype.Component;
 import org.springframework.security.web.util.matcher.IpAddressMatcher;
+import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
@@ -86,8 +86,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     this.publicRpm = publicRpm;
     this.tenantRpm = tenantRpm;
     this.windowSeconds = windowSeconds;
-    this.trustedProxyMatchers =
-        trustedProxies.stream().map(IpAddressMatcher::new).toList();
+    this.trustedProxyMatchers = trustedProxies.stream().map(IpAddressMatcher::new).toList();
   }
 
   @Override
