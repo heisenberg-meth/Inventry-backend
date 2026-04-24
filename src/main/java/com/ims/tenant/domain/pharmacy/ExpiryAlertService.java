@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 @Service
 @Slf4j
 @RequiredArgsConstructor
+@org.springframework.context.annotation.Profile("!test")
 public class ExpiryAlertService {
 
   private static final int EXPIRY_THRESHOLD_DAYS = 30;

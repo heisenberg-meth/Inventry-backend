@@ -3,10 +3,6 @@
 -- Optimizing scheduled task cleanup queries
 -- ============================================
 
-DO $$ 
-BEGIN 
-    -- Index for fast identification of expired reset tokens
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_users_tenant_reset_token_expiry') THEN
-        CREATE INDEX idx_users_tenant_reset_token_expiry ON users(tenant_id, reset_token_expiry);
-    END IF;
-END $$;
+-- Index for fast identification of expired reset tokens
+    CREATE INDEX IF NOT EXISTS idx_users_tenant_reset_token_expiry ON users(tenant_id, reset_token_expiry);
+
