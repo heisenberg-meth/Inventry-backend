@@ -44,9 +44,11 @@ public class TenantSupportController {
       @NonNull @Valid @RequestBody CreateTicketRequest request) {
     JwtAuthDetails auth = getAuthDetails();
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(supportService.createTicket(
-            Objects.requireNonNull(auth.getTenantId()),
-            Objects.requireNonNull(auth.getUserId()), request));
+        .body(
+            supportService.createTicket(
+                Objects.requireNonNull(auth.getTenantId()),
+                Objects.requireNonNull(auth.getUserId()),
+                request));
   }
 
   @GetMapping
@@ -74,8 +76,9 @@ public class TenantSupportController {
       @NonNull @PathVariable Long id, @NonNull @Valid @RequestBody AddMessageRequest request) {
     JwtAuthDetails auth = getAuthDetails();
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(supportService.addMessage(
-            id, Objects.requireNonNull(auth.getUserId()), "TENANT", request));
+        .body(
+            supportService.addMessage(
+                id, Objects.requireNonNull(auth.getUserId()), "TENANT", request));
   }
 
   @PatchMapping("/{id}/close")

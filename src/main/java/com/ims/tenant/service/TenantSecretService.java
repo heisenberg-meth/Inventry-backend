@@ -1,7 +1,7 @@
 package com.ims.tenant.service;
 
-import com.ims.platform.repository.TenantRepository;
 import com.ims.model.Tenant;
+import com.ims.platform.repository.TenantRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,8 +14,6 @@ public class TenantSecretService {
 
   @Transactional(readOnly = true)
   public String getWebhookSecret(Long tenantId) {
-    return tenantRepository.findById(tenantId)
-        .map(Tenant::getWebhookSecret)
-        .orElse(null);
+    return tenantRepository.findById(tenantId).map(Tenant::getWebhookSecret).orElse(null);
   }
 }

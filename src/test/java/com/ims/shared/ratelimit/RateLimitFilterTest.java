@@ -8,20 +8,21 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import com.ims.shared.auth.JwtUtil;
 import jakarta.servlet.FilterChain;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -35,20 +36,18 @@ class RateLimitFilterTest {
   private static final int TENANT_RPM = 20;
   private static final int WINDOW_SECONDS = 60;
 
-  @Mock
-  private RedisTemplate<String, Object> redisTemplate;
+  @Mock private RedisTemplate<String, Object> redisTemplate;
 
-  @Mock
-  private ZSetOperations<String, Object> zSet;
+  @Mock private ZSetOperations<String, Object> zSet;
 
-  @Mock
-  private JwtUtil jwtUtil;
+  @Mock private JwtUtil jwtUtil;
 
   private RateLimitFilter filter;
 
   @BeforeEach
   void setup() {
-    when(redisTemplate.opsForZSet()).thenReturn(zSet);
+    // Lenient: a few tests (excluded paths, constructor-validation) never hit the Redis path.
+    lenient().when(redisTemplate.opsForZSet()).thenReturn(zSet);
     filter =
         new RateLimitFilter(
             redisTemplate,
@@ -348,8 +347,7 @@ class RateLimitFilterTest {
             () ->
                 new RateLimitFilter(
                     redisTemplate, jwtUtil, AUTH_RPM, PUBLIC_RPM, 0, WINDOW_SECONDS, List.of()));
-    assertEquals(
-        "app.rate-limit.authenticated-rpm must be >= 1 (got 0)", tenantEx.getMessage());
+    assertEquals("app.rate-limit.authenticated-rpm must be >= 1 (got 0)", tenantEx.getMessage());
 
     IllegalArgumentException windowEx =
         assertThrows(
@@ -357,7 +355,6 @@ class RateLimitFilterTest {
             () ->
                 new RateLimitFilter(
                     redisTemplate, jwtUtil, AUTH_RPM, PUBLIC_RPM, TENANT_RPM, 0, List.of()));
-    assertEquals(
-        "app.rate-limit.window-seconds must be >= 1 (got 0)", windowEx.getMessage());
+    assertEquals("app.rate-limit.window-seconds must be >= 1 (got 0)", windowEx.getMessage());
   }
 }

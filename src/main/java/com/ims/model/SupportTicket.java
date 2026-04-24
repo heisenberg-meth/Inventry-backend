@@ -36,17 +36,11 @@ public class SupportTicket {
   @Column(nullable = false, columnDefinition = "TEXT")
   private String description;
 
-  @Column
-  @Builder.Default
-  private String priority = "MEDIUM";
+  @Column @Builder.Default private String priority = "MEDIUM";
 
-  @Column
-  @Builder.Default
-  private String status = "OPEN";
+  @Column @Builder.Default private String status = "OPEN";
 
-  @Column
-  @Builder.Default
-  private String category = "GENERAL";
+  @Column @Builder.Default private String category = "GENERAL";
 
   @Column(name = "assigned_to")
   private Long assignedTo;

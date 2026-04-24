@@ -19,36 +19,36 @@ import org.springframework.web.bind.annotation.RestController;
 @SecurityRequirement(name = "bearerAuth")
 public class TenantAnalyticsController {
 
-    private final TenantAnalyticsService analyticsService;
+  private final TenantAnalyticsService analyticsService;
 
-    @GetMapping("/revenue-trend")
-    @Operation(summary = "Get revenue trend by month")
-    public ResponseEntity<List<Map<String, Object>>> getRevenueTrend() {
-        return ResponseEntity.ok(analyticsService.getRevenueTrend());
-    }
+  @GetMapping("/revenue-trend")
+  @Operation(summary = "Get revenue trend by month")
+  public ResponseEntity<List<Map<String, Object>>> getRevenueTrend() {
+    return ResponseEntity.ok(analyticsService.getRevenueTrend());
+  }
 
-    @GetMapping("/top-products")
-    @Operation(summary = "Get top performing products")
-    public ResponseEntity<List<Map<String, Object>>> getTopProducts() {
-        return ResponseEntity.ok(analyticsService.getTopProducts());
-    }
+  @GetMapping("/top-products")
+  @Operation(summary = "Get top performing products")
+  public ResponseEntity<List<Map<String, Object>>> getTopProducts() {
+    return ResponseEntity.ok(analyticsService.getTopProducts());
+  }
 
-    @GetMapping("/categories")
-    @Operation(summary = "Get category distribution stats")
-    public ResponseEntity<List<Map<String, Object>>> getCategoryStats() {
-        // Reuse logic from ReportController via AnalyticsService
-        return ResponseEntity.ok(analyticsService.getQuickStats()); // Placeholder or dedicated logic
-    }
+  @GetMapping("/categories")
+  @Operation(summary = "Get category distribution stats")
+  public ResponseEntity<List<Map<String, Object>>> getCategoryStats() {
+    // Reuse logic from ReportController via AnalyticsService
+    return ResponseEntity.ok(analyticsService.getQuickStats()); // Placeholder or dedicated logic
+  }
 
-    @GetMapping("/order-statuses")
-    @Operation(summary = "Get distribution of order statuses")
-    public ResponseEntity<List<Map<String, Object>>> getOrderStatusStats() {
-        return ResponseEntity.ok(analyticsService.getOrderStatusStats());
-    }
+  @GetMapping("/order-statuses")
+  @Operation(summary = "Get distribution of order statuses")
+  public ResponseEntity<List<Map<String, Object>>> getOrderStatusStats() {
+    return ResponseEntity.ok(analyticsService.getOrderStatusStats());
+  }
 
-    @GetMapping("/quick-stats")
-    @Operation(summary = "Get quick overview statistics")
-    public ResponseEntity<List<Map<String, Object>>> getQuickStats() {
-        return ResponseEntity.ok(analyticsService.getQuickStats());
-    }
+  @GetMapping("/quick-stats")
+  @Operation(summary = "Get quick overview statistics")
+  public ResponseEntity<List<Map<String, Object>>> getQuickStats() {
+    return ResponseEntity.ok(analyticsService.getQuickStats());
+  }
 }

@@ -26,36 +26,38 @@ public class PermissionService {
 
   /**
    * Fetch all permissions for a user, including those from their role and custom permissions.
-   * Cached for 5 minutes (configured in RedisConfig).
-   * Cache key is tenant-aware.
+   * Cached for 5 minutes (configured in RedisConfig). Cache key is tenant-aware.
    */
   @Cacheable(value = "permissions", key = "#userId", cacheResolver = "tenantAwareCacheResolver")
   @Transactional(readOnly = true)
   public Set<String> getUserPermissions(Long userId, Long tenantId) {
     log.info("Fetching permissions from DB for user: {}", userId);
-    
-    User user = userRepository.findByIdWithPermissions(userId)
-        .orElseThrow(() -> new AccessDeniedException("User not found"));
+
+    User user =
+        userRepository
+            .findByIdWithPermissions(userId)
+            .orElseThrow(() -> new AccessDeniedException("User not found"));
 
     Set<String> permissions = new HashSet<>();
-    
+
     // 1. Get permissions from Role
     if (user.getRole() != null) {
-      Optional<Role> roleOpt = tenantId != null 
-          ? roleRepository.findByNameAndTenantIdWithPermissions(user.getRole().name(), tenantId)
-          : roleRepository.findByNameAndTenantIdIsNullWithPermissions(user.getRole().name());
-      
-      roleOpt.ifPresent(role -> 
-          permissions.addAll(role.getPermissions().stream()
-              .map(Permission::getKey)
-              .collect(Collectors.toSet()))
-      );
+      Optional<Role> roleOpt =
+          tenantId != null
+              ? roleRepository.findByNameAndTenantIdWithPermissions(user.getRole().name(), tenantId)
+              : roleRepository.findByNameAndTenantIdIsNullWithPermissions(user.getRole().name());
+
+      roleOpt.ifPresent(
+          role ->
+              permissions.addAll(
+                  role.getPermissions().stream()
+                      .map(Permission::getKey)
+                      .collect(Collectors.toSet())));
     }
 
     // 2. Get custom permissions
-    permissions.addAll(user.getCustomPermissions().stream()
-        .map(Permission::getKey)
-        .collect(Collectors.toSet()));
+    permissions.addAll(
+        user.getCustomPermissions().stream().map(Permission::getKey).collect(Collectors.toSet()));
 
     return permissions;
   }

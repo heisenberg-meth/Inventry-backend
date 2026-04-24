@@ -12,11 +12,11 @@ import jakarta.validation.Valid;
 import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
-import org.springframework.lang.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -38,8 +38,10 @@ public class UserController {
   @PostMapping
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Create tenant user")
-  public ResponseEntity<UserResponse> createUser(@Valid @RequestBody @NonNull CreateUserRequest request) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(userService.createUser(Objects.requireNonNull(request)));
+  public ResponseEntity<UserResponse> createUser(
+      @Valid @RequestBody @NonNull CreateUserRequest request) {
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(userService.createUser(Objects.requireNonNull(request)));
   }
 
   @GetMapping
@@ -65,15 +67,18 @@ public class UserController {
     if (role == null || role.isBlank()) {
       throw new IllegalArgumentException("Role is required");
     }
-    return ResponseEntity.ok(userService.updateRole(Objects.requireNonNull(id), Objects.requireNonNull(role)));
+    return ResponseEntity.ok(
+        userService.updateRole(Objects.requireNonNull(id), Objects.requireNonNull(role)));
   }
 
   @PostMapping("/{id}/permissions")
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Assign custom permissions to user")
   public ResponseEntity<UserResponse> assignPermissions(
-      @PathVariable @NonNull Long id, @Valid @RequestBody @NonNull AssignPermissionsRequest request) {
-    return ResponseEntity.ok(userService.assignPermissions(Objects.requireNonNull(id), Objects.requireNonNull(request)));
+      @PathVariable @NonNull Long id,
+      @Valid @RequestBody @NonNull AssignPermissionsRequest request) {
+    return ResponseEntity.ok(
+        userService.assignPermissions(Objects.requireNonNull(id), Objects.requireNonNull(request)));
   }
 
   @DeleteMapping("/{id}")

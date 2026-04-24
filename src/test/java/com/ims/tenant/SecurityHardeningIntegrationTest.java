@@ -1,13 +1,15 @@
 package com.ims.tenant;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.doReturn;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.LoginRequest;
 import com.ims.dto.response.LoginResponse;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,12 +19,12 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import java.util.Map;
 
-@SpringBootTest(properties = {
-    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
-    "spring.cache.type=none"
-})
+@SpringBootTest(
+    properties = {
+      "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
+      "spring.cache.type=none"
+    })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
@@ -38,7 +40,8 @@ public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
 
   @Test
   void testCorrelationIdInHeadersAndError() throws Exception {
-    mockMvc.perform(get("/api/auth/invalid-path"))
+    mockMvc
+        .perform(get("/api/auth/invalid-path"))
         .andExpect(status().isNotFound())
         .andExpect(header().exists("X-Correlation-ID"))
         .andExpect(jsonPath("$.correlation_id").exists());
@@ -49,7 +52,8 @@ public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
     // Mock Redis to return 100 requests already made (Public limit is 50)
     doReturn(100L).when(zSetOperations).zCard(any(String.class));
 
-    mockMvc.perform(get("/api/any-public-endpoint"))
+    mockMvc
+        .perform(get("/api/any-public-endpoint"))
         .andExpect(status().isTooManyRequests())
         .andExpect(header().string("X-RateLimit-Limit", "50"))
         .andExpect(jsonPath("$.error").value("Too Many Requests"));
@@ -60,10 +64,11 @@ public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
     // Mock Redis for auth endpoint (Limit is 20)
     doReturn(25L).when(zSetOperations).zCard(any(String.class));
 
-    String authLoginJson = objectMapper.writeValueAsString(Map.of("email","root@ims.com","password","root123"));
-    mockMvc.perform(post("/api/auth/login")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(authLoginJson))
+    String authLoginJson =
+        objectMapper.writeValueAsString(Map.of("email", "root@ims.com", "password", "root123"));
+    mockMvc
+        .perform(
+            post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(authLoginJson))
         .andExpect(status().isTooManyRequests())
         .andExpect(header().string("X-RateLimit-Limit", "20"));
   }
@@ -73,14 +78,12 @@ public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
     loginRequest.setEmail(email);
     loginRequest.setPassword(password);
     loginRequest.setCompanyCode(workspace);
-    
+
     String loginJson = objectMapper.writeValueAsString(loginRequest);
     MvcResult result =
         mockMvc
             .perform(
-                post("/api/auth/login")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(loginJson))
+                post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(loginJson))
             .andExpect(status().isOk())
             .andReturn();
 

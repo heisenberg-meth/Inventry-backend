@@ -39,6 +39,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class TenantService {
 
+  /** Fallback subscription duration when a plan does not specify one. */
+  private static final int DEFAULT_SUBSCRIPTION_DURATION_DAYS = 30;
+
+  /** Length of the auto-generated tenant-admin password. */
+  private static final int GENERATED_PASSWORD_LENGTH = 12;
+
   private final TenantRepository tenantRepository;
   private final UserRepository userRepository;
   private final PasswordEncoder passwordEncoder;
@@ -63,20 +69,22 @@ public class TenantService {
   }
 
   public boolean isWarehouse(Long tenantId) {
-    return tenantRepository.findById(tenantId)
+    return tenantRepository
+        .findById(tenantId)
         .map(t -> "WAREHOUSE".equals(t.getBusinessType()))
         .orElse(false);
   }
 
   @Transactional
   public TenantResponse createTenant(@NonNull CreateTenantRequest request) {
-    if (request.getWorkspaceSlug() != null && tenantRepository.existsByWorkspaceSlug(request.getWorkspaceSlug())) {
+    if (request.getWorkspaceSlug() != null
+        && tenantRepository.existsByWorkspaceSlug(request.getWorkspaceSlug())) {
       throw new IllegalArgumentException("Workspace slug already taken");
     }
 
     String companyCode;
     do {
-        companyCode = companyCodeGenerator.generateCode(request.getName());
+      companyCode = companyCodeGenerator.generateCode(request.getName());
     } while (tenantRepository.existsByCompanyCode(companyCode));
 
     Tenant tenant =
@@ -180,9 +188,7 @@ public class TenantService {
     return Map.of("message", "Tenant activated successfully", "status", "ACTIVE");
   }
 
-  /**
-   * List users belonging to a specific tenant with optional search.
-   */
+  /** List users belonging to a specific tenant with optional search. */
   @Transactional(readOnly = true)
   public Page<UserResponse> getTenantUsers(
       @NonNull Long tenantId, String search, @NonNull Pageable pageable) {
@@ -200,9 +206,7 @@ public class TenantService {
     return users.map(this::toUserResponse);
   }
 
-  /**
-   * Reset a tenant user's password (by platform admin).
-   */
+  /** Reset a tenant user's password (by platform admin). */
   @Transactional
   public Map<String, String> resetTenantUserPassword(@NonNull Long userId, String newPassword) {
     User user =
@@ -215,9 +219,7 @@ public class TenantService {
     }
 
     String password =
-        (newPassword != null && !newPassword.isBlank())
-            ? newPassword
-            : generateRandomPassword();
+        (newPassword != null && !newPassword.isBlank()) ? newPassword : generateRandomPassword();
 
     user.setPasswordHash(passwordEncoder.encode(password));
     user.setResetToken(null);
@@ -238,12 +240,11 @@ public class TenantService {
     return response;
   }
 
-  /**
-   * Assign a subscription plan to a tenant.
-   */
+  /** Assign a subscription plan to a tenant. */
   @Transactional
   @CacheEvict(value = "tenant", key = "#tenantId")
-  public Map<String, Object> assignPlan(@NonNull Long tenantId, @NonNull AssignPlanRequest request) {
+  public Map<String, Object> assignPlan(
+      @NonNull Long tenantId, @NonNull AssignPlanRequest request) {
     Tenant tenant =
         tenantRepository
             .findById(tenantId)
@@ -261,10 +262,11 @@ public class TenantService {
     // Deactivate current active subscriptions
     subscriptionRepository
         .findByTenantIdAndStatus(tenantId, "ACTIVE")
-        .forEach(sub -> {
-          sub.setStatus("DEACTIVATED");
-          subscriptionRepository.save(sub);
-        });
+        .forEach(
+            sub -> {
+              sub.setStatus("DEACTIVATED");
+              subscriptionRepository.save(sub);
+            });
 
     // Update tenant limits
     tenant.setPlan(plan.getName());
@@ -278,7 +280,10 @@ public class TenantService {
     tenantRepository.save(tenant);
 
     // Create new subscription
-    int durationDays = plan.getDurationDays() != null ? plan.getDurationDays() : 30;
+    int durationDays =
+        plan.getDurationDays() != null
+            ? plan.getDurationDays()
+            : DEFAULT_SUBSCRIPTION_DURATION_DAYS;
     LocalDateTime startDate = LocalDateTime.now();
     LocalDateTime endDate = startDate.plusDays(durationDays);
 
@@ -308,9 +313,7 @@ public class TenantService {
     return response;
   }
 
-  /**
-   * Get tenant subscription info.
-   */
+  /** Get tenant subscription info. */
   public Map<String, Object> getSubscription(@NonNull Long tenantId) {
     Tenant tenant =
         tenantRepository
@@ -323,11 +326,12 @@ public class TenantService {
 
     subscriptionRepository
         .findFirstByTenantIdOrderByCreatedAtDesc(tenantId)
-        .ifPresent(sub -> {
-          response.put("subscriptionStatus", sub.getStatus());
-          response.put("startDate", sub.getStartDate());
-          response.put("endDate", sub.getEndDate());
-        });
+        .ifPresent(
+            sub -> {
+              response.put("subscriptionStatus", sub.getStatus());
+              response.put("startDate", sub.getStartDate());
+              response.put("endDate", sub.getEndDate());
+            });
 
     return response;
   }
@@ -362,8 +366,7 @@ public class TenantService {
     if (tenant.getMaxUsers() != null) {
       long currentCount = userRepository.countActiveByTenantId(tenantId);
       if (currentCount >= tenant.getMaxUsers()) {
-        throw new IllegalArgumentException(
-            "User limit reached (" + tenant.getMaxUsers() + ")");
+        throw new IllegalArgumentException("User limit reached (" + tenant.getMaxUsers() + ")");
       }
     }
 
@@ -382,17 +385,23 @@ public class TenantService {
 
   @Transactional
   public void hardDeleteTenantUser(@NonNull Long tenantId, @NonNull Long userId) {
-    User user = userRepository.findByIdUnfiltered(userId)
-        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User user =
+        userRepository
+            .findByIdUnfiltered(userId)
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     if (!Objects.equals(user.getTenantId(), tenantId)) {
-        throw new IllegalArgumentException("User does not belong to this tenant");
+      throw new IllegalArgumentException("User does not belong to this tenant");
     }
 
     userRepository.delete(user);
     log.info("Platform hard-deleted user: {}", user.getEmail());
-    
-    auditLogService.log(AuditAction.PLATFORM_DELETE_USER, tenantId, null, "Platform admin hard-deleted user: " + user.getEmail());
+
+    auditLogService.log(
+        AuditAction.PLATFORM_DELETE_USER,
+        tenantId,
+        null,
+        "Platform admin hard-deleted user: " + user.getEmail());
   }
 
   private TenantResponse toResponse(@NonNull Tenant tenant) {
@@ -425,7 +434,7 @@ public class TenantService {
     String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$";
     StringBuilder sb = new StringBuilder();
     java.security.SecureRandom random = new java.security.SecureRandom();
-    for (int i = 0; i < 12; i++) {
+    for (int i = 0; i < GENERATED_PASSWORD_LENGTH; i++) {
       sb.append(chars.charAt(random.nextInt(chars.length())));
     }
     return sb.toString();

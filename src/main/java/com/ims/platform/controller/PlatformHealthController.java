@@ -23,48 +23,57 @@ import org.springframework.web.bind.annotation.RestController;
 @SecurityRequirement(name = "bearerAuth")
 public class PlatformHealthController {
 
-    private final DataSource dataSource;
-    private final RedisTemplate<String, Object> redisTemplate;
+  private static final int DB_CONNECTION_VALIDATE_TIMEOUT_SECONDS = 2;
+  private static final long BYTES_PER_KILOBYTE = 1024L;
+  private static final long BYTES_PER_GIGABYTE =
+      BYTES_PER_KILOBYTE * BYTES_PER_KILOBYTE * BYTES_PER_KILOBYTE;
+  private static final double PERCENT_MULTIPLIER = 100.0;
 
-    @GetMapping("/extended")
-    @RequiresRole({"ROOT"})
-    @Operation(summary = "Deep health check", description = "Checks DB, Redis, and Disk space")
-    public ResponseEntity<Map<String, Object>> getExtendedHealth() {
-        Map<String, Object> health = new LinkedHashMap<>();
-        
-        // 1. Database Health
-        try (java.sql.Connection conn = dataSource.getConnection()) {
-            boolean valid = conn.isValid(2);
-            health.put("database", Map.of(
-                "status", valid ? "UP" : "DOWN",
-                "message", valid ? "Connection successful and valid" : "Connection invalid"
-            ));
-        } catch (Exception e) {
-            health.put("database", Map.of("status", "DOWN", "error", e.getMessage()));
-        }
+  private final DataSource dataSource;
+  private final RedisTemplate<String, Object> redisTemplate;
 
-        // 2. Redis Health
-        try {
-            redisTemplate.execute((RedisConnection connection) -> {
-                return connection.serverCommands().info();
-            });
-            health.put("redis", Map.of("status", "UP"));
-        } catch (Exception e) {
-            health.put("redis", Map.of("status", "DOWN", "error", e.getMessage()));
-        }
+  @GetMapping("/extended")
+  @RequiresRole({"ROOT"})
+  @Operation(summary = "Deep health check", description = "Checks DB, Redis, and Disk space")
+  public ResponseEntity<Map<String, Object>> getExtendedHealth() {
+    Map<String, Object> health = new LinkedHashMap<>();
 
-        // 3. Disk Space
-        File root = new File("/");
-        long total = root.getTotalSpace();
-        long free = root.getUsableSpace();
-        health.put("disk", Map.of(
-            "total_gb", total / (1024 * 1024 * 1024),
-            "free_gb", free / (1024 * 1024 * 1024),
-            "usage_percent", total > 0 ? (double) (total - free) / total * 100 : 0
-        ));
-
-        health.put("system_time", java.time.LocalDateTime.now().toString());
-
-        return ResponseEntity.ok(health);
+    // 1. Database Health
+    try (java.sql.Connection conn = dataSource.getConnection()) {
+      boolean valid = conn.isValid(DB_CONNECTION_VALIDATE_TIMEOUT_SECONDS);
+      health.put(
+          "database",
+          Map.of(
+              "status", valid ? "UP" : "DOWN",
+              "message", valid ? "Connection successful and valid" : "Connection invalid"));
+    } catch (Exception e) {
+      health.put("database", Map.of("status", "DOWN", "error", e.getMessage()));
     }
+
+    // 2. Redis Health
+    try {
+      redisTemplate.execute(
+          (RedisConnection connection) -> {
+            return connection.serverCommands().info();
+          });
+      health.put("redis", Map.of("status", "UP"));
+    } catch (Exception e) {
+      health.put("redis", Map.of("status", "DOWN", "error", e.getMessage()));
+    }
+
+    // 3. Disk Space
+    File root = new File("/");
+    long total = root.getTotalSpace();
+    long free = root.getUsableSpace();
+    health.put(
+        "disk",
+        Map.of(
+            "total_gb", total / BYTES_PER_GIGABYTE,
+            "free_gb", free / BYTES_PER_GIGABYTE,
+            "usage_percent", total > 0 ? (double) (total - free) / total * PERCENT_MULTIPLIER : 0));
+
+    health.put("system_time", java.time.LocalDateTime.now().toString());
+
+    return ResponseEntity.ok(health);
+  }
 }

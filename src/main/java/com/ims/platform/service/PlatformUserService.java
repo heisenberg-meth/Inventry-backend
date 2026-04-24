@@ -12,11 +12,11 @@ import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,7 +31,8 @@ public class PlatformUserService {
 
   @Transactional
   public @NonNull User createPlatformUser(@NonNull CreatePlatformUserRequest request) {
-    if (!request.getRole().equals(UserRole.PLATFORM_ADMIN.name()) && !request.getRole().equals(UserRole.SUPPORT_ADMIN.name())) {
+    if (!request.getRole().equals(UserRole.PLATFORM_ADMIN.name())
+        && !request.getRole().equals(UserRole.SUPPORT_ADMIN.name())) {
       throw new IllegalArgumentException("Invalid role. Must be PLATFORM_ADMIN or SUPPORT_ADMIN.");
     }
     if (userRepository.existsByEmail(request.getEmail())) {
@@ -50,7 +51,10 @@ public class PlatformUserService {
             .build();
 
     User saved = Objects.requireNonNull(userRepository.save(Objects.requireNonNull(user)));
-    auditLogService.log(AuditAction.CREATE_PLATFORM_ADMIN, null, saved.getId(),
+    auditLogService.log(
+        AuditAction.CREATE_PLATFORM_ADMIN,
+        null,
+        saved.getId(),
         "Created platform user: " + saved.getEmail() + " role=" + saved.getRole());
     return saved;
   }
@@ -81,7 +85,8 @@ public class PlatformUserService {
   @Transactional
   @CacheEvict(value = "permissions", key = "#id", cacheResolver = "tenantAwareCacheResolver")
   public @NonNull User updatePlatformUserRole(@NonNull Long id, @NonNull String role) {
-    if (!role.equals(UserRole.PLATFORM_ADMIN.name()) && !role.equals(UserRole.SUPPORT_ADMIN.name())) {
+    if (!role.equals(UserRole.PLATFORM_ADMIN.name())
+        && !role.equals(UserRole.SUPPORT_ADMIN.name())) {
       throw new IllegalArgumentException("Invalid role. Must be PLATFORM_ADMIN or SUPPORT_ADMIN.");
     }
     User user =
@@ -98,7 +103,8 @@ public class PlatformUserService {
   }
 
   @Transactional
-  public @NonNull User updatePlatformUser(@NonNull Long id, @NonNull CreatePlatformUserRequest request) {
+  public @NonNull User updatePlatformUser(
+      @NonNull Long id, @NonNull CreatePlatformUserRequest request) {
     User user =
         userRepository
             .findByIdAndTenantIdIsNull(id)
@@ -108,7 +114,9 @@ public class PlatformUserService {
       throw new IllegalArgumentException("Cannot modify ROOT user");
     }
 
-    if (request.getName() != null) user.setName(request.getName());
+    if (request.getName() != null) {
+      user.setName(request.getName());
+    }
     if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
       if (userRepository.existsByEmail(request.getEmail())) {
         throw new IllegalArgumentException("Email already in use");
@@ -116,8 +124,10 @@ public class PlatformUserService {
       user.setEmail(request.getEmail());
     }
     if (request.getRole() != null) {
-      if (!request.getRole().equals(UserRole.PLATFORM_ADMIN.name()) && !request.getRole().equals(UserRole.SUPPORT_ADMIN.name())) {
-          throw new IllegalArgumentException("Invalid role. Must be PLATFORM_ADMIN or SUPPORT_ADMIN.");
+      if (!request.getRole().equals(UserRole.PLATFORM_ADMIN.name())
+          && !request.getRole().equals(UserRole.SUPPORT_ADMIN.name())) {
+        throw new IllegalArgumentException(
+            "Invalid role. Must be PLATFORM_ADMIN or SUPPORT_ADMIN.");
       }
       user.setRole(UserRole.valueOf(request.getRole()));
     }
@@ -138,7 +148,10 @@ public class PlatformUserService {
 
     user.setIsActive(false);
     userRepository.save(user);
-    auditLogService.log(AuditAction.SUSPEND_PLATFORM_ADMIN, null, id,
+    auditLogService.log(
+        AuditAction.SUSPEND_PLATFORM_ADMIN,
+        null,
+        id,
         "Suspended platform user: " + user.getEmail());
     log.info("Platform user suspended: id={}", id);
   }
@@ -152,7 +165,10 @@ public class PlatformUserService {
 
     user.setIsActive(true);
     userRepository.save(user);
-    auditLogService.log(AuditAction.ACTIVATE_PLATFORM_ADMIN, null, id,
+    auditLogService.log(
+        AuditAction.ACTIVATE_PLATFORM_ADMIN,
+        null,
+        id,
         "Activated platform user: " + user.getEmail());
     log.info("Platform user activated: id={}", id);
   }
@@ -185,7 +201,10 @@ public class PlatformUserService {
     user.setResetTokenExpiry(null);
     userRepository.save(user);
 
-    auditLogService.log(AuditAction.RESET_PLATFORM_ADMIN_PASSWORD, null, id,
+    auditLogService.log(
+        AuditAction.RESET_PLATFORM_ADMIN_PASSWORD,
+        null,
+        id,
         "Reset password for platform user: " + user.getEmail());
     log.info("Password reset for platform user: id={}", id);
     return Objects.requireNonNull(Map.of("message", "Password reset successfully"));

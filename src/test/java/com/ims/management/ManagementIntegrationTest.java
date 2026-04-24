@@ -21,10 +21,11 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-@SpringBootTest(properties = {
-    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
-    "spring.cache.type=none"
-})
+@SpringBootTest(
+    properties = {
+      "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
+      "spring.cache.type=none"
+    })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 public class ManagementIntegrationTest extends BaseIntegrationTest {
@@ -45,9 +46,10 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
 
     // ROOT can list tenants
     mockMvc
-        .perform(get("/api/platform/tenants")
-            .header("Authorization", "Bearer " + rootToken)
-            .with(tenant(String.valueOf(systemTenantId))))
+        .perform(
+            get("/api/platform/tenants")
+                .header("Authorization", "Bearer " + rootToken)
+                .with(tenant(String.valueOf(systemTenantId))))
         .andExpect(status().isOk());
   }
 
@@ -58,7 +60,7 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
     com.ims.dto.response.SignupResponse response = signupService.signup(t1Signup);
     verifyUserEmail("admin-mgt1@t1.com");
     verifyUser("admin-mgt1@t1.com");
-    
+
     Long t1Id = tenantRepository.findByWorkspaceSlug("t1-mgt").orElseThrow().getId();
     String t1Token = login("admin-mgt1@t1.com", "password123", response.getCompanyCode(), t1Id);
 
@@ -83,23 +85,26 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
     verifyUserEmail("staff-mgt1@t1.com");
     String staffToken = login("staff-mgt1@t1.com", "staff123", response.getCompanyCode(), t1Id);
     mockMvc
-        .perform(get("/api/tenant/users")
-            .header("Authorization", "Bearer " + staffToken)
-            .with(tenant(t1Id.toString())))
+        .perform(
+            get("/api/tenant/users")
+                .header("Authorization", "Bearer " + staffToken)
+                .with(tenant(t1Id.toString())))
         .andExpect(status().isForbidden());
   }
 
   @Test
   void testIsolationBetweenTenants() throws Exception {
     // 1. Signup Tenant 1
-    com.ims.dto.response.SignupResponse r1 = signupService.signup(createSignupRequest("Tenant 1-Iso", "t1-iso", "admin-iso1@t1.com"));
+    com.ims.dto.response.SignupResponse r1 =
+        signupService.signup(createSignupRequest("Tenant 1-Iso", "t1-iso", "admin-iso1@t1.com"));
     verifyUserEmail("admin-iso1@t1.com");
     verifyUser("admin-iso1@t1.com");
     Long t1Id = tenantRepository.findByWorkspaceSlug("t1-iso").orElseThrow().getId();
     String t1Token = login("admin-iso1@t1.com", "password123", r1.getCompanyCode(), t1Id);
 
     // 2. Signup Tenant 2
-    com.ims.dto.response.SignupResponse r2 = signupService.signup(createSignupRequest("Tenant 2-Iso", "t2-iso", "admin-iso2@t2.com"));
+    com.ims.dto.response.SignupResponse r2 =
+        signupService.signup(createSignupRequest("Tenant 2-Iso", "t2-iso", "admin-iso2@t2.com"));
     verifyUserEmail("admin-iso2@t2.com");
     verifyUser("admin-iso2@t2.com");
     Long t2Id = tenantRepository.findByWorkspaceSlug("t2-iso").orElseThrow().getId();
@@ -107,9 +112,10 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
 
     // 3. Tenant 1 Admin cannot see Tenant 2 Admin (Users should be isolated)
     mockMvc
-        .perform(get("/api/tenant/users")
-            .header("Authorization", "Bearer " + t1Token)
-            .with(tenant(t1Id.toString())))
+        .perform(
+            get("/api/tenant/users")
+                .header("Authorization", "Bearer " + t1Token)
+                .with(tenant(t1Id.toString())))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content.length()").value(1))
         .andExpect(jsonPath("$.content[0].email").value("admin-iso1@t1.com"));
@@ -118,7 +124,8 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
   @Test
   void testRBACEnforcement() throws Exception {
     // 1. Signup Tenant 1
-    com.ims.dto.response.SignupResponse r1 = signupService.signup(createSignupRequest("Tenant 1-RBAC", "t1-rbac", "admin-rbac1@t1.com"));
+    com.ims.dto.response.SignupResponse r1 =
+        signupService.signup(createSignupRequest("Tenant 1-RBAC", "t1-rbac", "admin-rbac1@t1.com"));
     verifyUserEmail("admin-rbac1@t1.com");
     verifyUser("admin-rbac1@t1.com");
     Long t1Id = tenantRepository.findByWorkspaceSlug("t1-rbac").orElseThrow().getId();
@@ -126,9 +133,10 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
 
     // 2. Tenant ADMIN cannot access Platform APIs (ROOT only)
     mockMvc
-        .perform(get("/api/platform/tenants")
-            .header("Authorization", "Bearer " + t1Token)
-            .with(tenant(t1Id.toString())))
+        .perform(
+            get("/api/platform/tenants")
+                .header("Authorization", "Bearer " + t1Token)
+                .with(tenant(t1Id.toString())))
         .andExpect(status().isForbidden());
   }
 
@@ -143,12 +151,13 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
     return req;
   }
 
-  private String login(String email, String password, String workspace, Long tenantId) throws Exception {
+  private String login(String email, String password, String workspace, Long tenantId)
+      throws Exception {
     LoginRequest loginRequest = new LoginRequest();
     loginRequest.setEmail(email);
     loginRequest.setPassword(password);
     loginRequest.setCompanyCode(workspace);
-    
+
     String loginJson = objectMapper.writeValueAsString(loginRequest);
     MvcResult result =
         mockMvc

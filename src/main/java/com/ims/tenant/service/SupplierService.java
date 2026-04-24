@@ -1,27 +1,25 @@
 package com.ims.tenant.service;
 
+import com.ims.model.Supplier;
 import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditResource;
-
-import com.ims.model.Supplier;
+import com.ims.shared.auth.TenantContext;
 import com.ims.shared.rbac.RequiresPermission;
-import com.ims.tenant.repository.SupplierRepository;
-import com.ims.tenant.repository.OrderRepository;
 import com.ims.tenant.repository.InvoiceRepository;
+import com.ims.tenant.repository.OrderRepository;
 import com.ims.tenant.repository.PaymentRepository;
+import com.ims.tenant.repository.SupplierRepository;
 import jakarta.persistence.EntityNotFoundException;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
-import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import com.ims.shared.auth.TenantContext;
 
 @Service
 @RequiredArgsConstructor
@@ -34,7 +32,8 @@ public class SupplierService {
   private final PaymentRepository paymentRepository;
   private final com.ims.shared.audit.AuditLogService auditLogService;
 
-  public @NonNull Page<com.ims.dto.response.SupplierResponse> getSuppliers(@NonNull Pageable pageable) {
+  public @NonNull Page<com.ims.dto.response.SupplierResponse> getSuppliers(
+      @NonNull Pageable pageable) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
       log.warn("Tenant ID is missing in SupplierService.getSuppliers");
@@ -51,9 +50,10 @@ public class SupplierService {
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
-    return Objects.requireNonNull(supplierRepository
-        .findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Supplier not found")));
+    return Objects.requireNonNull(
+        supplierRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Supplier not found")));
   }
 
   public @NonNull com.ims.dto.response.SupplierResponse getSupplierResponseById(@NonNull Long id) {
@@ -61,7 +61,8 @@ public class SupplierService {
   }
 
   @Transactional
-  public @NonNull com.ims.dto.response.SupplierResponse create(@NonNull com.ims.dto.request.SupplierRequest request) {
+  public @NonNull com.ims.dto.response.SupplierResponse create(
+      @NonNull com.ims.dto.request.SupplierRequest request) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
       log.warn("Tenant ID is missing in SupplierService.create");
@@ -86,7 +87,8 @@ public class SupplierService {
   }
 
   @Transactional
-  public @NonNull com.ims.dto.response.SupplierResponse update(@NonNull Long id, @NonNull com.ims.dto.request.SupplierRequest updates) {
+  public @NonNull com.ims.dto.response.SupplierResponse update(
+      @NonNull Long id, @NonNull com.ims.dto.request.SupplierRequest updates) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
       log.warn("Tenant ID is missing in SupplierService.update");
@@ -133,10 +135,7 @@ public class SupplierService {
     supplierRepository.delete(supplier);
 
     auditLogService.logAudit(
-        AuditAction.DELETE,
-        AuditResource.SUPPLIER,
-        id,
-        "Deleted supplier: " + supplier.getName());
+        AuditAction.DELETE, AuditResource.SUPPLIER, id, "Deleted supplier: " + supplier.getName());
   }
 
   public Map<String, Object> getSupplierLedger(@NonNull Long id) {
@@ -148,7 +147,8 @@ public class SupplierService {
 
     Supplier supplier = getById(id);
 
-    List<com.ims.model.Order> orders = orderRepository.findBySupplierId(id, Pageable.unpaged()).getContent();
+    List<com.ims.model.Order> orders =
+        orderRepository.findBySupplierId(id, Pageable.unpaged()).getContent();
     List<com.ims.model.Invoice> invoices = invoiceRepository.findBySupplierId(id);
     List<com.ims.model.Payment> payments = paymentRepository.findBySupplierId(id);
 

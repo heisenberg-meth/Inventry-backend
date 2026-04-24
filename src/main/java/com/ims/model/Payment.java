@@ -1,6 +1,5 @@
 package com.ims.model;
 
-import org.hibernate.annotations.TenantId;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -13,6 +12,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.TenantId;
 
 @Entity
 @Table(name = "payments")
@@ -46,9 +46,7 @@ public class Payment {
   @Column(name = "gateway_transaction_id")
   private String gatewayTransactionId;
 
-  @Column
-  @Builder.Default
-  private String status = "PENDING";
+  @Column @Builder.Default private String status = "PENDING";
 
   @Column private String reference;
 
