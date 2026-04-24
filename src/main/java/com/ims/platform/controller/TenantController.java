@@ -83,6 +83,7 @@ public class TenantController {
   public ResponseEntity<Map<String, String>> suspendTenant(@NonNull @PathVariable Long id) {
     return ResponseEntity.ok(tenantService.suspendTenant(id));
   }
+
   @PostMapping("/{id}/activate")
   @RequiresRole({"ROOT"})
   @Operation(summary = "Activate tenant")
@@ -97,12 +98,13 @@ public class TenantController {
       @PathVariable Long id, @RequestBody Map<String, String> body) {
     String status = body.get("status");
     if (status == null) throw new IllegalArgumentException("Status is required");
-    
+
     if ("ACTIVE".equals(status)) return ResponseEntity.ok(tenantService.activateTenant(id));
     if ("SUSPENDED".equals(status)) return ResponseEntity.ok(tenantService.suspendTenant(id));
     if ("INACTIVE".equals(status)) {
-        tenantService.deactivateTenant(id);
-        return ResponseEntity.ok(Map.of("message", "Tenant deactivated successfully", "status", "INACTIVE"));
+      tenantService.deactivateTenant(id);
+      return ResponseEntity.ok(
+          Map.of("message", "Tenant deactivated successfully", "status", "INACTIVE"));
     }
     throw new IllegalArgumentException("Invalid status: " + status);
   }
@@ -117,13 +119,16 @@ public class TenantController {
   @GetMapping("/{id}/audit")
   @RequiresRole({"ROOT", "PLATFORM_ADMIN"})
   @Operation(summary = "Get audit logs for a specific tenant")
-  public ResponseEntity<Page<com.ims.dto.response.AuditLogResponse>> getTenantAuditLogs(@PathVariable Long id, @NonNull Pageable pageable) {
+  public ResponseEntity<Page<com.ims.dto.response.AuditLogResponse>> getTenantAuditLogs(
+      @PathVariable Long id, @NonNull Pageable pageable) {
     return ResponseEntity.ok(auditLogService.getTenantLogs(id, pageable));
   }
 
   @GetMapping("/{id}/users")
   @RequiresRole({"ROOT", "PLATFORM_ADMIN"})
-  @Operation(summary = "List tenant users", description = "List users of a specific tenant with optional search")
+  @Operation(
+      summary = "List tenant users",
+      description = "List users of a specific tenant with optional search")
   public ResponseEntity<Page<UserResponse>> getTenantUsers(
       @NonNull @PathVariable Long id,
       @RequestParam(required = false) String q,
@@ -134,7 +139,8 @@ public class TenantController {
   @DeleteMapping("/{id}/users/{userId}")
   @RequiresRole({"ROOT"})
   @Operation(summary = "Platform hard-delete a tenant user")
-  public ResponseEntity<Void> hardDeleteTenantUser(@PathVariable Long id, @PathVariable Long userId) {
+  public ResponseEntity<Void> hardDeleteTenantUser(
+      @PathVariable Long id, @PathVariable Long userId) {
     tenantService.hardDeleteTenantUser(id, userId);
     return ResponseEntity.noContent().build();
   }
@@ -143,8 +149,7 @@ public class TenantController {
   @RequiresRole({"ROOT", "PLATFORM_ADMIN"})
   @Operation(summary = "Reset a tenant user's password")
   public ResponseEntity<Map<String, String>> resetTenantUserPassword(
-      @NonNull @PathVariable Long userId,
-      @RequestBody(required = false) Map<String, String> body) {
+      @NonNull @PathVariable Long userId, @RequestBody(required = false) Map<String, String> body) {
     String newPassword = (body != null) ? body.get("newPassword") : null;
     return ResponseEntity.ok(tenantService.resetTenantUserPassword(userId, newPassword));
   }

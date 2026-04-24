@@ -39,6 +39,7 @@ public class TenantAuditController {
     if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
       return Objects.requireNonNull(details.getTenantId());
     }
-    throw new com.ims.shared.exception.TenantContextException("Tenant ID missing from security context");
+    throw new com.ims.shared.exception.TenantContextException(
+        "Tenant ID missing from security context");
   }
 }

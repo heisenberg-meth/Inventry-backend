@@ -3,16 +3,16 @@ package com.ims.tenant.service;
 import com.ims.dto.request.CustomerRequest;
 import com.ims.dto.response.CustomerResponse;
 import com.ims.model.Customer;
-import com.ims.model.Order;
 import com.ims.model.Invoice;
+import com.ims.model.Order;
 import com.ims.model.Payment;
 import com.ims.tenant.repository.CustomerRepository;
-import com.ims.tenant.repository.OrderRepository;
 import com.ims.tenant.repository.InvoiceRepository;
+import com.ims.tenant.repository.OrderRepository;
 import com.ims.tenant.repository.PaymentRepository;
 import jakarta.persistence.EntityNotFoundException;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -35,9 +35,10 @@ public class CustomerService {
   }
 
   public @NonNull Customer getById(@NonNull Long id) {
-    return Objects.requireNonNull(customerRepository
-        .findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Customer not found")));
+    return Objects.requireNonNull(
+        customerRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Customer not found")));
   }
 
   public @NonNull CustomerResponse getCustomerResponseById(@NonNull Long id) {

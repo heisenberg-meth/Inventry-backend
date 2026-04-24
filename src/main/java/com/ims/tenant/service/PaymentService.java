@@ -8,14 +8,14 @@ import com.ims.tenant.repository.InvoiceRepository;
 import com.ims.tenant.repository.PaymentRepository;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.lang.NonNull;
-import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -26,7 +26,12 @@ public class PaymentService {
   private final InvoiceRepository invoiceRepository;
 
   @Transactional
-  public Payment recordPayment(@NonNull Long invoiceId, BigDecimal amount, String mode, String reference, String notes,
+  public Payment recordPayment(
+      @NonNull Long invoiceId,
+      BigDecimal amount,
+      String mode,
+      String reference,
+      String notes,
       Long userId) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
@@ -34,23 +39,26 @@ public class PaymentService {
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
-    Invoice invoice = invoiceRepository.findById(invoiceId)
-        .orElseThrow(() -> new ResourceNotFoundException("Invoice not found: " + invoiceId));
+    Invoice invoice =
+        invoiceRepository
+            .findById(invoiceId)
+            .orElseThrow(() -> new ResourceNotFoundException("Invoice not found: " + invoiceId));
 
     if ("PAID".equals(invoice.getStatus())) {
       throw new IllegalArgumentException("Invoice is already fully PAID");
     }
 
-    Payment payment = Payment.builder()
-        .tenantId(TenantContext.getTenantId())
-        .invoiceId(invoiceId)
-        .amount(amount)
-        .paymentMode(mode)
-        .reference(reference)
-        .notes(notes)
-        .createdBy(userId)
-        .createdAt(LocalDateTime.now())
-        .build();
+    Payment payment =
+        Payment.builder()
+            .tenantId(TenantContext.getTenantId())
+            .invoiceId(invoiceId)
+            .amount(amount)
+            .paymentMode(mode)
+            .reference(reference)
+            .notes(notes)
+            .createdBy(userId)
+            .createdAt(LocalDateTime.now())
+            .build();
 
     payment = paymentRepository.save(Objects.requireNonNull(payment));
 
@@ -72,7 +80,11 @@ public class PaymentService {
     }
 
     invoiceRepository.save(Objects.requireNonNull(invoice));
-    log.info("Payment recorded: {} for invoice {}. New status: {}", amount, invoiceId, invoice.getStatus());
+    log.info(
+        "Payment recorded: {} for invoice {}. New status: {}",
+        amount,
+        invoiceId,
+        invoice.getStatus());
 
     return Objects.requireNonNull(payment);
   }
@@ -82,7 +94,8 @@ public class PaymentService {
   }
 
   public Payment getById(@NonNull Long id) {
-    return paymentRepository.findById(id)
+    return paymentRepository
+        .findById(id)
         .orElseThrow(() -> new ResourceNotFoundException("Payment not found: " + id));
   }
 }

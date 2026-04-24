@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import org.springframework.cache.Cache;
-import org.springframework.lang.NonNull;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.interceptor.CacheOperationInvocationContext;
@@ -25,11 +24,13 @@ import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSeriali
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.data.web.config.EnableSpringDataWebSupport;
+import org.springframework.lang.NonNull;
 
 @Configuration
 @org.springframework.context.annotation.Profile("!test")
 @EnableCaching
-@EnableSpringDataWebSupport(pageSerializationMode = EnableSpringDataWebSupport.PageSerializationMode.VIA_DTO)
+@EnableSpringDataWebSupport(
+    pageSerializationMode = EnableSpringDataWebSupport.PageSerializationMode.VIA_DTO)
 public class RedisConfig {
 
   private static final int TTL_PRODUCTS_MINUTES = 15;
@@ -56,7 +57,7 @@ public class RedisConfig {
   @Bean
   public CacheResolver tenantAwareCacheResolver(CacheManager cacheManager) {
     return new CacheResolver() {
-      
+
       @Override
       @NonNull
       public Collection<? extends Cache> resolveCaches(CacheOperationInvocationContext<?> context) {
@@ -64,15 +65,16 @@ public class RedisConfig {
         Collection<String> cacheNames = context.getOperation().getCacheNames();
         return cacheNames.stream()
             .map(name -> name + ":" + (tenantId != null ? tenantId : "default"))
-            .map(cacheName -> {
-              Cache cache = cacheManager.getCache(cacheName);
-              if (cache == null) {
-                // Try getting the base cache if tenant-specific one isn't initialized yet
-                String baseName = cacheName.split(":")[0];
-                return cacheManager.getCache(baseName);
-              }
-              return cache;
-            })
+            .map(
+                cacheName -> {
+                  Cache cache = cacheManager.getCache(cacheName);
+                  if (cache == null) {
+                    // Try getting the base cache if tenant-specific one isn't initialized yet
+                    String baseName = cacheName.split(":")[0];
+                    return cacheManager.getCache(baseName);
+                  }
+                  return cache;
+                })
             .filter(Objects::nonNull)
             .collect(Collectors.toList());
       }

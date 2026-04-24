@@ -2,8 +2,8 @@ package com.ims.shared.webhook;
 
 import com.ims.model.Webhook;
 import com.ims.shared.auth.TenantContext;
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import com.ims.shared.exception.BadRequestException;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
@@ -34,31 +34,36 @@ public class WebhookService {
   @Transactional
   public Webhook createWebhook(String url, String eventTypes, String secret) {
     URI normalizedUri = validateAndNormalize(url);
-    
-    Webhook webhook = Webhook.builder()
-        .tenantId(TenantContext.getTenantId())
-        .url(normalizedUri.toString())
-        .eventTypes(eventTypes)
-        .secret(secret)
-        .isActive(true)
-        .build();
+
+    Webhook webhook =
+        Webhook.builder()
+            .tenantId(TenantContext.getTenantId())
+            .url(normalizedUri.toString())
+            .eventTypes(eventTypes)
+            .secret(secret)
+            .isActive(true)
+            .build();
     return webhookRepository.save(webhook);
   }
 
   @Transactional
   public void deleteWebhook(Long id) {
-    webhookRepository.findById(id).ifPresent(w -> {
-      if (w.getTenantId().equals(TenantContext.getTenantId())) {
-        webhookRepository.delete(w);
-      }
-    });
+    webhookRepository
+        .findById(id)
+        .ifPresent(
+            w -> {
+              if (w.getTenantId().equals(TenantContext.getTenantId())) {
+                webhookRepository.delete(w);
+              }
+            });
   }
 
   public void dispatch(Long tenantId, String eventType, Object payload) {
     List<Webhook> webhooks = webhookRepository.findByTenantId(tenantId);
 
     for (Webhook webhook : webhooks) {
-      if (Boolean.TRUE.equals(webhook.getIsActive()) && webhook.getEventTypes().contains(eventType)) {
+      if (Boolean.TRUE.equals(webhook.getIsActive())
+          && webhook.getEventTypes().contains(eventType)) {
         this.sendWebhook(webhook, eventType, tenantId, payload);
       }
     }
@@ -89,8 +94,12 @@ public class WebhookService {
   }
 
   @Recover
-  public void recover(Exception ex, Webhook webhook, String eventType, Long tenantId, Object payload) {
-    log.error("Permanent failure delivering webhook to {} after retries: {}", webhook.getUrl(), ex.getMessage());
+  public void recover(
+      Exception ex, Webhook webhook, String eventType, Long tenantId, Object payload) {
+    log.error(
+        "Permanent failure delivering webhook to {} after retries: {}",
+        webhook.getUrl(),
+        ex.getMessage());
     // Potentially mark webhook as inactive or log to a dead-letter table
   }
 
@@ -126,7 +135,8 @@ public class WebhookService {
         || addr.isLinkLocalAddress()
         || addr.isSiteLocalAddress()
         || isPrivateIp(addr)) {
-      throw new BadRequestException("Private/internal addresses are not allowed: " + addr.getHostAddress());
+      throw new BadRequestException(
+          "Private/internal addresses are not allowed: " + addr.getHostAddress());
     }
 
     return uri;

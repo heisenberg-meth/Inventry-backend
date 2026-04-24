@@ -27,8 +27,7 @@ public class Tenant {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Version
-  private Long version;
+  @Version private Long version;
 
   @Column(nullable = false)
   private String name;
@@ -63,11 +62,9 @@ public class Tenant {
   @Builder.Default
   private Integer expiryThresholdDays = 30;
 
-  @Column
-  private String address;
+  @Column private String address;
 
-  @Column
-  private String gstin;
+  @Column private String gstin;
 
   @Column(name = "webhook_secret")
   private String webhookSecret;

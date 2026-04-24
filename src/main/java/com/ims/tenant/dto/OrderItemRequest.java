@@ -17,17 +17,17 @@ import lombok.NoArgsConstructor;
 @Builder
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class OrderItemRequest {
-    @NotNull(message = "Product ID is required")
-    private Long productId;
+  @NotNull(message = "Product ID is required")
+  private Long productId;
 
-    @NotNull(message = "Quantity is required")
-    @Min(value = 1, message = "Quantity must be at least 1")
-    private Integer quantity;
+  @NotNull(message = "Quantity is required")
+  @Min(value = 1, message = "Quantity must be at least 1")
+  private Integer quantity;
 
-    @NotNull(message = "Unit price is required")
-    @DecimalMin(value = "0.0", message = "Unit price cannot be negative")
-    private BigDecimal unitPrice;
+  @NotNull(message = "Unit price is required")
+  @DecimalMin(value = "0.0", message = "Unit price cannot be negative")
+  private BigDecimal unitPrice;
 
-    private BigDecimal discount;
-    private BigDecimal taxRate;
+  private BigDecimal discount;
+  private BigDecimal taxRate;
 }

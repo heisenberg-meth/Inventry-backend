@@ -24,7 +24,8 @@ public class PlatformInviteController {
   @RequiresRole("ROOT")
   @SecurityRequirement(name = "bearerAuth")
   @Operation(summary = "Create platform admin invite")
-  public ResponseEntity<PlatformInvite> create(@jakarta.validation.Valid @RequestBody com.ims.dto.request.CreateInviteRequest request) {
+  public ResponseEntity<PlatformInvite> create(
+      @jakarta.validation.Valid @RequestBody com.ims.dto.request.CreateInviteRequest request) {
     return ResponseEntity.ok(inviteService.createInvite(request.email(), request.role().name()));
   }
 
@@ -53,7 +54,8 @@ public class PlatformInviteController {
 
   @PostMapping("/complete")
   @Operation(summary = "Complete invite and set password")
-  public ResponseEntity<Map<String, String>> complete(@jakarta.validation.Valid @RequestBody com.ims.dto.request.CompleteInviteRequest request) {
+  public ResponseEntity<Map<String, String>> complete(
+      @jakarta.validation.Valid @RequestBody com.ims.dto.request.CompleteInviteRequest request) {
     inviteService.completeInvite(request.token(), request.password(), request.name());
     return ResponseEntity.ok(Map.of("message", "Account activated successfully"));
   }

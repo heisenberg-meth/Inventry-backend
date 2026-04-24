@@ -13,8 +13,8 @@ import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.lang.NonNull;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,10 +46,7 @@ public class RoleService {
     }
 
     Role role =
-        Role.builder()
-            .name(request.getName())
-            .description(request.getDescription())
-            .build();
+        Role.builder().name(request.getName()).description(request.getDescription()).build();
 
     Role saved = roleRepository.save(Objects.requireNonNull(role));
     auditLogService.log(
@@ -61,17 +58,14 @@ public class RoleService {
   @Transactional
   @CacheEvict(value = "permissions", allEntries = true, cacheResolver = "tenantAwareCacheResolver")
   public Role assignPermissions(
-      @NonNull Long tenantId,
-      @NonNull Long roleId,
-      @NonNull AssignPermissionsRequest request) {
+      @NonNull Long tenantId, @NonNull Long roleId, @NonNull AssignPermissionsRequest request) {
 
     Role role =
         roleRepository
             .findByIdAndTenantId(roleId, tenantId)
             .orElseThrow(() -> new EntityNotFoundException("Role not found"));
 
-    List<Permission> permissions =
-        permissionRepository.findByIdIn(request.getPermissionIds());
+    List<Permission> permissions = permissionRepository.findByIdIn(request.getPermissionIds());
 
     if (permissions.size() != request.getPermissionIds().size()) {
       throw new IllegalArgumentException("Some permission IDs are invalid");

@@ -14,38 +14,41 @@ public class ExpiryAlertService {
 
   private static final int EXPIRY_THRESHOLD_DAYS = 30;
 
-
   private final PharmacyProductRepository pharmacyProductRepository;
   private final com.ims.platform.repository.TenantRepository tenantRepository;
 
   @Scheduled(cron = "0 0 8 * * *")
   public void checkExpiryAlerts() {
-    com.ims.shared.auth.TenantContext.runWithTenant(com.ims.shared.auth.TenantContext.SYSTEM_TENANT_ID, () -> {
-      log.info("Scheduled Task: Checking pharmacy expiry alerts across all tenants");
-      List<Long> tenantIds = tenantRepository.findAllIds();
-      int totalExpiring[] = {0};
+    com.ims.shared.auth.TenantContext.runWithTenant(
+        com.ims.shared.auth.TenantContext.SYSTEM_TENANT_ID,
+        () -> {
+          log.info("Scheduled Task: Checking pharmacy expiry alerts across all tenants");
+          List<Long> tenantIds = tenantRepository.findAllIds();
+          int totalExpiring[] = {0};
 
-      for (Long tenantId : tenantIds) {
-        com.ims.shared.auth.TenantContext.runWithTenant(tenantId, () -> {
-          LocalDate threshold = LocalDate.now().plusDays(EXPIRY_THRESHOLD_DAYS);
-          List<PharmacyProduct> expiring = pharmacyProductRepository.findByExpiryDateBefore(threshold);
-
-          for (PharmacyProduct pp : expiring) {
-            log.warn(
-                "EXPIRY ALERT: tenant={} product={} expires={}",
+          for (Long tenantId : tenantIds) {
+            com.ims.shared.auth.TenantContext.runWithTenant(
                 tenantId,
-                pp.getProduct().getName(),
-                pp.getExpiryDate());
-            totalExpiring[0]++;
+                () -> {
+                  LocalDate threshold = LocalDate.now().plusDays(EXPIRY_THRESHOLD_DAYS);
+                  List<PharmacyProduct> expiring =
+                      pharmacyProductRepository.findByExpiryDateBefore(threshold);
+
+                  for (PharmacyProduct pp : expiring) {
+                    log.warn(
+                        "EXPIRY ALERT: tenant={} product={} expires={}",
+                        tenantId,
+                        pp.getProduct().getName(),
+                        pp.getExpiryDate());
+                    totalExpiring[0]++;
+                  }
+                });
           }
+
+          log.info(
+              "Expiry check complete. {} products expiring within {} days across all tenants.",
+              totalExpiring[0],
+              EXPIRY_THRESHOLD_DAYS);
         });
-      }
-
-      log.info(
-          "Expiry check complete. {} products expiring within {} days across all tenants.",
-          totalExpiring[0],
-          EXPIRY_THRESHOLD_DAYS);
-    });
   }
-
 }

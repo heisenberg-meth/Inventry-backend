@@ -1,6 +1,5 @@
 package com.ims.model;
 
-import org.hibernate.annotations.TenantId;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -12,6 +11,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.TenantId;
 
 @Entity
 @Table(name = "webhooks")
@@ -32,8 +32,7 @@ public class Webhook {
   @Column(nullable = false, columnDefinition = "TEXT")
   private String url;
 
-  @Column
-  private String secret;
+  @Column private String secret;
 
   @Column(name = "event_types", nullable = false, columnDefinition = "TEXT")
   private String eventTypes;

@@ -43,7 +43,8 @@ public class TenantSettingsController {
   public ResponseEntity<TenantResponse> updateSettings(
       @Valid @RequestBody @NonNull UpdateTenantSettingsRequest request) {
     Long tenantId = getTenantId();
-    return ResponseEntity.ok(tenantSettingsService.updateSettings(tenantId, Objects.requireNonNull(request)));
+    return ResponseEntity.ok(
+        tenantSettingsService.updateSettings(tenantId, Objects.requireNonNull(request)));
   }
 
   private @NonNull Long getTenantId() {

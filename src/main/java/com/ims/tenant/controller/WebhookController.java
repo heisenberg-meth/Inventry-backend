@@ -4,10 +4,10 @@ import com.ims.model.Webhook;
 import com.ims.shared.rbac.RequiresRole;
 import com.ims.shared.webhook.WebhookService;
 import com.ims.tenant.dto.CreateWebhookRequest;
-import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -33,8 +33,8 @@ public class WebhookController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Create new webhook")
   public ResponseEntity<Webhook> create(@RequestBody @Valid CreateWebhookRequest req) {
-    return ResponseEntity.ok(webhookService.createWebhook(
-        req.getUrl(), req.getEventTypes(), req.getSecret()));
+    return ResponseEntity.ok(
+        webhookService.createWebhook(req.getUrl(), req.getEventTypes(), req.getSecret()));
   }
 
   @DeleteMapping("/{id}")

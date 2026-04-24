@@ -54,8 +54,7 @@ public class RoleController {
   @Operation(summary = "Create a new role")
   public ResponseEntity<Role> createRole(@NonNull @Valid @RequestBody CreateRoleRequest request) {
     Long tenantId = getTenantId();
-    return ResponseEntity.status(HttpStatus.CREATED)
-        .body(roleService.create(tenantId, request));
+    return ResponseEntity.status(HttpStatus.CREATED).body(roleService.create(tenantId, request));
   }
 
   @PostMapping("/{id}/permissions")

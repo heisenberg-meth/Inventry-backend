@@ -1,10 +1,12 @@
 package com.ims.tenant.service;
+
 import com.ims.dto.TransferOrderStatusRequest;
 import com.ims.model.StockMovement;
 import com.ims.model.TransferOrder;
+import com.ims.platform.service.TenantService;
+import com.ims.product.ProductService;
 import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.domain.warehouse.WarehouseProduct;
-import com.ims.platform.service.TenantService;
 import com.ims.tenant.repository.StockMovementRepository;
 import com.ims.tenant.repository.TransferOrderRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -12,12 +14,11 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.lang.NonNull;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
-import com.ims.product.ProductService;
 
 @Service
 @RequiredArgsConstructor
@@ -42,8 +43,12 @@ public class StockService {
     }
   }
 
-  @Cacheable(value = "stock", key = "'location:' + #location", cacheResolver = "tenantAwareCacheResolver")
-  public @NonNull Page<WarehouseProduct> getProductsByLocation(@NonNull String location, @NonNull Pageable pageable) {
+  @Cacheable(
+      value = "stock",
+      key = "'location:' + #location",
+      cacheResolver = "tenantAwareCacheResolver")
+  public @NonNull Page<WarehouseProduct> getProductsByLocation(
+      @NonNull String location, @NonNull Pageable pageable) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
       log.warn("Tenant ID is missing in StockService.getProductsByLocation");
@@ -74,13 +79,14 @@ public class StockService {
     }
 
     checkWarehouseType();
-    return Objects.requireNonNull(transferOrderRepository
-        .findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Transfer Order not found")));
+    return Objects.requireNonNull(
+        transferOrderRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Transfer Order not found")));
   }
 
-  public @NonNull TransferOrder updateTransferStatus(@NonNull Long id, @NonNull TransferOrderStatusRequest request,
-      @NonNull Long userId) {
+  public @NonNull TransferOrder updateTransferStatus(
+      @NonNull Long id, @NonNull TransferOrderStatusRequest request, @NonNull Long userId) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
       log.warn("Tenant ID is missing in StockService.updateTransferStatus");
@@ -138,6 +144,7 @@ public class StockService {
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
-    return Objects.requireNonNull(stockMovementRepository.findByFilters(productId, from, to, pageable));
+    return Objects.requireNonNull(
+        stockMovementRepository.findByFilters(productId, from, to, pageable));
   }
 }
