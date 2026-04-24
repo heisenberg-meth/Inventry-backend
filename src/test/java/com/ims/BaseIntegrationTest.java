@@ -38,10 +38,11 @@ import static org.mockito.ArgumentMatchers.*;
 @SpringBootTest(properties = {
     "spring.autoconfigure.exclude=" +
     "org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration," +
-    "org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration"
+    "org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
+    "spring.task.scheduling.enabled=false",
+    "spring.testcontainers.enabled=false"
 })
 @ActiveProfiles("test")
-@Testcontainers
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public abstract class BaseIntegrationTest {
 
@@ -50,15 +51,8 @@ public abstract class BaseIntegrationTest {
     TenantContext.setTenantId(1L);
   }
 
-  @Container
-  @ServiceConnection
-  static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine");
-
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("spring.datasource.url", postgres::getJdbcUrl);
-    registry.add("spring.datasource.username", postgres::getUsername);
-    registry.add("spring.datasource.password", postgres::getPassword);
     registry.add("app.jwt.secret", () -> java.util.UUID.randomUUID().toString() + java.util.UUID.randomUUID().toString());
   }
 
@@ -146,33 +140,33 @@ public abstract class BaseIntegrationTest {
     TenantContext.setTenantId(1L);
 
     new TransactionTemplate(Objects.requireNonNull(transactionManager)).execute(status -> {
-      // PostgreSQL: Disable triggers to allow truncation of tables with FKs
-      jdbcTemplate.execute("SET session_replication_role = 'replica'");
+      // H2: Disable referential integrity to allow truncation
+      jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY FALSE");
 
-      jdbcTemplate.execute("TRUNCATE TABLE audit_logs RESTART IDENTITY CASCADE");
-      jdbcTemplate.execute("TRUNCATE TABLE payments RESTART IDENTITY CASCADE");
-      jdbcTemplate.execute("TRUNCATE TABLE invoices RESTART IDENTITY CASCADE");
-      jdbcTemplate.execute("TRUNCATE TABLE order_items RESTART IDENTITY CASCADE");
-      jdbcTemplate.execute("TRUNCATE TABLE orders RESTART IDENTITY CASCADE");
-      jdbcTemplate.execute("TRUNCATE TABLE transfer_orders RESTART IDENTITY CASCADE");
-      jdbcTemplate.execute("TRUNCATE TABLE stock_movements RESTART IDENTITY CASCADE");
-      jdbcTemplate.execute("TRUNCATE TABLE pharmacy_products RESTART IDENTITY CASCADE");
-      jdbcTemplate.execute("TRUNCATE TABLE products RESTART IDENTITY CASCADE");
-      jdbcTemplate.execute("TRUNCATE TABLE categories RESTART IDENTITY CASCADE");
-      jdbcTemplate.execute("TRUNCATE TABLE user_permissions RESTART IDENTITY CASCADE");
-      jdbcTemplate.execute("TRUNCATE TABLE users RESTART IDENTITY CASCADE");
-      jdbcTemplate.execute("TRUNCATE TABLE role_permissions RESTART IDENTITY CASCADE");
-      jdbcTemplate.execute("TRUNCATE TABLE roles RESTART IDENTITY CASCADE");
-      jdbcTemplate.execute("TRUNCATE TABLE customers RESTART IDENTITY CASCADE");
-      jdbcTemplate.execute("TRUNCATE TABLE suppliers RESTART IDENTITY CASCADE");
-      jdbcTemplate.execute("TRUNCATE TABLE support_attachments RESTART IDENTITY CASCADE");
-      jdbcTemplate.execute("TRUNCATE TABLE support_messages RESTART IDENTITY CASCADE");
-      jdbcTemplate.execute("TRUNCATE TABLE support_tickets RESTART IDENTITY CASCADE");
-      jdbcTemplate.execute("TRUNCATE TABLE subscriptions RESTART IDENTITY CASCADE");
-      jdbcTemplate.execute("TRUNCATE TABLE subscription_plans RESTART IDENTITY CASCADE");
-      jdbcTemplate.execute("TRUNCATE TABLE tenants RESTART IDENTITY CASCADE");
-
-      jdbcTemplate.execute("SET session_replication_role = 'origin'");
+      jdbcTemplate.execute("TRUNCATE TABLE audit_logs");
+      jdbcTemplate.execute("TRUNCATE TABLE payments");
+      jdbcTemplate.execute("TRUNCATE TABLE invoices");
+      jdbcTemplate.execute("TRUNCATE TABLE order_items");
+      jdbcTemplate.execute("TRUNCATE TABLE orders");
+      jdbcTemplate.execute("TRUNCATE TABLE transfer_orders");
+      jdbcTemplate.execute("TRUNCATE TABLE stock_movements");
+      jdbcTemplate.execute("TRUNCATE TABLE pharmacy_products");
+      jdbcTemplate.execute("TRUNCATE TABLE products");
+      jdbcTemplate.execute("TRUNCATE TABLE categories");
+      jdbcTemplate.execute("TRUNCATE TABLE user_permissions");
+      jdbcTemplate.execute("TRUNCATE TABLE users");
+      jdbcTemplate.execute("TRUNCATE TABLE role_permissions");
+      jdbcTemplate.execute("TRUNCATE TABLE roles");
+      jdbcTemplate.execute("TRUNCATE TABLE customers");
+      jdbcTemplate.execute("TRUNCATE TABLE suppliers");
+      jdbcTemplate.execute("TRUNCATE TABLE support_attachments");
+      jdbcTemplate.execute("TRUNCATE TABLE support_messages");
+      jdbcTemplate.execute("TRUNCATE TABLE support_tickets");
+      jdbcTemplate.execute("TRUNCATE TABLE subscriptions");
+      jdbcTemplate.execute("TRUNCATE TABLE subscription_plans");
+      jdbcTemplate.execute("TRUNCATE TABLE tenants");
+ 
+      jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY TRUE");
 
       // Seed System Tenant
       jdbcTemplate.execute(

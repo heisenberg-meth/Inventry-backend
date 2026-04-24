@@ -3,47 +3,27 @@
 -- Roles and permissions system
 -- ============================================
 
-DO $$ 
-BEGIN 
-    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'roles') THEN
-        CREATE TABLE roles (
+CREATE TABLE IF NOT EXISTS roles (
   id              BIGSERIAL PRIMARY KEY,
   name            VARCHAR(100)   NOT NULL,
   description     TEXT,
   tenant_id       BIGINT         REFERENCES tenants(id),
   created_at      TIMESTAMP      DEFAULT NOW()
 );
-    END IF;
-END $$;
 
-DO $$ 
-BEGIN 
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_roles_tenant') THEN
-        CREATE INDEX idx_roles_tenant ON roles(tenant_id);
-    END IF;
-END $$;
+CREATE INDEX IF NOT EXISTS idx_roles_tenant ON roles(tenant_id);
 
-DO $$ 
-BEGIN 
-    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'permissions') THEN
-        CREATE TABLE permissions (
+CREATE TABLE IF NOT EXISTS permissions (
   id              BIGSERIAL PRIMARY KEY,
   "key"           VARCHAR(100)   UNIQUE NOT NULL,
   description     VARCHAR(255)   NOT NULL
 );
-    END IF;
-END $$;
 
-DO $$ 
-BEGIN 
-    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'role_permissions') THEN
-        CREATE TABLE role_permissions (
+CREATE TABLE IF NOT EXISTS role_permissions (
   role_id         BIGINT NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
   permission_id   BIGINT NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
   PRIMARY KEY (role_id, permission_id)
 );
-    END IF;
-END $$;
 
 -- Seed default permissions
 INSERT INTO permissions ("key", description) VALUES
