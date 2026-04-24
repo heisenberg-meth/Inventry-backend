@@ -36,7 +36,9 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.ArgumentMatchers.*;
 
 @SpringBootTest(properties = {
-    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration"
+    "spring.autoconfigure.exclude=" +
+    "org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration," +
+    "org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration"
 })
 @ActiveProfiles("test")
 @Testcontainers
@@ -100,7 +102,6 @@ public abstract class BaseIntegrationTest {
   protected SupportTicketRepository supportTicketRepository;
   @Autowired
   protected SystemConfigRepository systemConfigRepository;
-
   @Autowired
   protected JdbcTemplate jdbcTemplate;
   @Autowired
@@ -111,7 +112,6 @@ public abstract class BaseIntegrationTest {
   protected PlatformTransactionManager transactionManager;
   @Autowired
   protected AuthService authService;
-
   @MockitoBean
   protected RedisTemplate<String, Object> redisTemplate;
   @MockitoBean
@@ -119,14 +119,11 @@ public abstract class BaseIntegrationTest {
   @MockitoBean
   protected ZSetOperations<String, Object> zSetOperations;
   @MockitoBean
-  protected org.springframework.data.redis.connection.RedisConnectionFactory redisConnectionFactory;
-  @MockitoBean
   protected org.springframework.cache.CacheManager cacheManager;
   @MockitoBean(name = "tenantAwareCacheResolver")
   protected org.springframework.cache.interceptor.CacheResolver tenantAwareCacheResolver;
   @MockitoBean
   protected org.springframework.mail.javamail.JavaMailSender javaMailSender;
-
   protected long systemTenantId;
   protected long testTenant1Id;
   protected long testTenant2Id;
@@ -145,11 +142,10 @@ public abstract class BaseIntegrationTest {
   }
 
   protected void cleanupDatabase() {
-    new TransactionTemplate(Objects.requireNonNull(transactionManager)).execute(status -> {
-      // Ensure tenant context is set during cleanup to avoid Hibernate issues
-      TenantContext.setTenantId(1L);
-      entityManager.flush();
+    // Ensure tenant context is set before transaction to avoid Hibernate issues
+    TenantContext.setTenantId(1L);
 
+    new TransactionTemplate(Objects.requireNonNull(transactionManager)).execute(status -> {
       // PostgreSQL: Disable triggers to allow truncation of tables with FKs
       jdbcTemplate.execute("SET session_replication_role = 'replica'");
 
@@ -207,10 +203,12 @@ public abstract class BaseIntegrationTest {
   }
 
   protected void verifyUser(String email) {
-    userRepository.findByEmailUnfiltered(email).ifPresent(u -> {
-      u.setIsVerified(true);
-      userRepository.save(u);
-      entityManager.flush();
+    new TransactionTemplate(transactionManager).execute(status -> {
+      userRepository.findByEmailUnfiltered(email).ifPresent(u -> {
+        u.setIsVerified(true);
+        userRepository.save(u);
+      });
+      return null;
     });
   }
 
