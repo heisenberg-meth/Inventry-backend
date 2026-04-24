@@ -3,62 +3,26 @@
 -- Enforce database-level integrity for multi-tenancy
 -- ============================================
 
-DO $$ 
-DECLARE
-    fk_name TEXT;
-BEGIN 
-    -- 1. Ensure users.tenant_id is NOT NULL
-    IF EXISTS (SELECT 1 FROM information_schema.columns 
-               WHERE table_name = 'users' AND column_name = 'tenant_id' AND is_nullable = 'YES') THEN
-        ALTER TABLE users ALTER COLUMN tenant_id SET NOT NULL;
-    END IF;
+-- 1. Ensure users.tenant_id is NOT NULL
+ALTER TABLE users ALTER COLUMN tenant_id SET NOT NULL;
 
-    -- 2. Update users -> tenants FK with ON DELETE CASCADE
-    -- Drop existing if exists (we don't know the exact name from V1, so we find it)
-    SELECT tc.constraint_name INTO fk_name
-    FROM information_schema.table_constraints AS tc 
-    JOIN information_schema.key_column_usage AS kcu
-      ON tc.constraint_name = kcu.constraint_name
-      AND tc.table_schema = kcu.table_schema
-    WHERE tc.constraint_type = 'FOREIGN KEY' 
-      AND tc.table_name = 'users' 
-      AND kcu.column_name = 'tenant_id';
+-- 2. Update users -> tenants FK with ON DELETE CASCADE
+-- We try to drop known default names and our standardized name before re-adding
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_tenant_id_fkey;
+ALTER TABLE users DROP CONSTRAINT IF EXISTS fk_users_tenant;
 
-    IF fk_name IS NOT NULL THEN
-        EXECUTE 'ALTER TABLE users DROP CONSTRAINT ' || fk_name;
-    END IF;
-    
-    -- Re-add with CASCADE
-    -- Check if it already exists before adding to prevent errors on retry
-    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_users_tenant') THEN
-        ALTER TABLE users 
-        ADD CONSTRAINT fk_users_tenant 
-        FOREIGN KEY (tenant_id) 
-        REFERENCES tenants(id) 
-        ON DELETE CASCADE;
-    END IF;
+ALTER TABLE users 
+ADD CONSTRAINT fk_users_tenant 
+FOREIGN KEY (tenant_id) 
+REFERENCES tenants(id) 
+ON DELETE CASCADE;
 
-    -- 3. Update categories -> tenants FK with ON DELETE CASCADE
-    SELECT tc.constraint_name INTO fk_name
-    FROM information_schema.table_constraints AS tc 
-    JOIN information_schema.key_column_usage AS kcu
-      ON tc.constraint_name = kcu.constraint_name
-      AND tc.table_schema = kcu.table_schema
-    WHERE tc.constraint_type = 'FOREIGN KEY' 
-      AND tc.table_name = 'categories' 
-      AND kcu.column_name = 'tenant_id';
+-- 3. Update categories -> tenants FK with ON DELETE CASCADE
+ALTER TABLE categories DROP CONSTRAINT IF EXISTS categories_tenant_id_fkey;
+ALTER TABLE categories DROP CONSTRAINT IF EXISTS fk_categories_tenant;
 
-    IF fk_name IS NOT NULL THEN
-        EXECUTE 'ALTER TABLE categories DROP CONSTRAINT ' || fk_name;
-    END IF;
-
-    -- Re-add with CASCADE
-    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_categories_tenant') THEN
-        ALTER TABLE categories 
-        ADD CONSTRAINT fk_categories_tenant 
-        FOREIGN KEY (tenant_id) 
-        REFERENCES tenants(id) 
-        ON DELETE CASCADE;
-    END IF;
-
-END $$;
+ALTER TABLE categories 
+ADD CONSTRAINT fk_categories_tenant 
+FOREIGN KEY (tenant_id) 
+REFERENCES tenants(id) 
+ON DELETE CASCADE;
