@@ -1,3 +1,4 @@
+ALTER TABLE orders DROP CONSTRAINT IF EXISTS valid_status_check;
 ALTER TABLE orders
 ADD CONSTRAINT valid_status_check
 CHECK (status IN ('PENDING', 'CONFIRMED', 'SHIPPED', 'COMPLETED', 'RECEIVED', 'CANCELLED'));

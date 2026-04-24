@@ -8,14 +8,17 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @SpringBootTest(
-    webEnvironment = SpringBootTest.WebEnvironment.NONE,
-    properties = {
-      "spring.flyway.enabled=false",
-      "spring.datasource.url=jdbc:h2:mem:testdb",
-      "spring.datasource.driver-class-name=org.h2.Driver",
-      "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
-      "spring.jpa.hibernate.ddl-auto=none"
-    })
+  webEnvironment = SpringBootTest.WebEnvironment.NONE,
+  properties = {
+    "spring.flyway.enabled=false",
+    "spring.datasource.url=jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL",
+    "spring.datasource.driver-class-name=org.h2.Driver",
+    "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
+    "spring.jpa.hibernate.ddl-auto=create-drop",
+    "spring.task.scheduling.enabled=false",
+    "spring.testcontainers.enabled=false"
+  }
+)
 @ActiveProfiles("test")
 class ImsApplicationTests {
   @MockitoBean private RedisTemplate<String, Object> redisTemplate;

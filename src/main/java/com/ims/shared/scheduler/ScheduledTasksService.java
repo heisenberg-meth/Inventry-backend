@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@org.springframework.context.annotation.Profile("!test")
 public class ScheduledTasksService {
 
   private final TenantRepository tenantRepository;
