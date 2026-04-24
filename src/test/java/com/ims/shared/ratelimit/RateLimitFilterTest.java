@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -45,7 +46,8 @@ class RateLimitFilterTest {
 
   @BeforeEach
   void setup() {
-    when(redisTemplate.opsForZSet()).thenReturn(zSet);
+    // Lenient: a few tests (excluded paths, constructor-validation) never hit the Redis path.
+    lenient().when(redisTemplate.opsForZSet()).thenReturn(zSet);
     filter =
         new RateLimitFilter(
             redisTemplate,
