@@ -1,25 +1,29 @@
 package com.ims.model;
 
-import org.hibernate.annotations.TenantId;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.TenantId;
 
 @Entity
-@Table(name = "invoices", uniqueConstraints = {
-    @UniqueConstraint(name = "unique_invoice_per_tenant", columnNames = {"tenant_id", "invoice_number"})
-})
+@Table(
+    name = "invoices",
+    uniqueConstraints = {
+      @UniqueConstraint(
+          name = "unique_invoice_per_tenant",
+          columnNames = {"tenant_id", "invoice_number"})
+    })
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

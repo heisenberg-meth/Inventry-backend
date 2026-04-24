@@ -44,6 +44,8 @@ public class SystemConfigController {
     if (value == null) {
       throw new IllegalArgumentException("Value is required");
     }
-    return ResponseEntity.ok(systemConfigService.updateConfig(Objects.requireNonNull(key), Objects.requireNonNull(value)));
+    return ResponseEntity.ok(
+        systemConfigService.updateConfig(
+            Objects.requireNonNull(key), Objects.requireNonNull(value)));
   }
 }

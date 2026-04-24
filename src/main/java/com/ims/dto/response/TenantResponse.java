@@ -14,6 +14,7 @@ import lombok.NoArgsConstructor;
 public class TenantResponse {
   private Long id;
   private String name;
+
   @JsonProperty("workspace_slug")
   private String workspaceSlug;
 

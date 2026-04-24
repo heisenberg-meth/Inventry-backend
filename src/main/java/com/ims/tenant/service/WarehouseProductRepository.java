@@ -13,6 +13,5 @@ public interface WarehouseProductRepository extends JpaRepository<WarehouseProdu
   @Query(
       "SELECT wp FROM WarehouseProduct wp JOIN wp.product p "
           + "WHERE wp.storageLocation = :location AND p.isActive = true")
-  Page<WarehouseProduct> findByLocation(
-      @Param("location") String location, Pageable pageable);
+  Page<WarehouseProduct> findByLocation(@Param("location") String location, Pageable pageable);
 }

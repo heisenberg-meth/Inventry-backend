@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class SignupResponse {
-    private String message;
-    private String companyCode;
-    private String workspaceSlug;
+  private String message;
+  private String companyCode;
+  private String workspaceSlug;
 }

@@ -1,50 +1,46 @@
 package com.ims.tenant;
 
-import java.util.Objects;
-
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.CreateProductRequest;
-import com.ims.dto.request.SignupRequest;
 import com.ims.dto.request.LoginRequest;
+import com.ims.dto.request.SignupRequest;
 import com.ims.dto.response.ProductResponse;
 import com.ims.model.Customer;
 import com.ims.shared.auth.SignupService;
 import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.service.CustomerService;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-@SpringBootTest(properties = {
-    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
-    "spring.cache.type=none"
-})
+@SpringBootTest(
+    properties = {
+      "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
+      "spring.cache.type=none"
+    })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 public class BillingIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired
-  private MockMvc mockMvc;
-  @Autowired
-  private ObjectMapper objectMapper;
-  @Autowired
-  private SignupService signupService;
-  @Autowired
-  private CustomerService customerService;
+  @Autowired private MockMvc mockMvc;
+  @Autowired private ObjectMapper objectMapper;
+  @Autowired private SignupService signupService;
+  @Autowired private CustomerService customerService;
 
   @BeforeEach
   void setup() {
@@ -78,7 +74,12 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
       custReq.setName("Billing Customer");
       custReq.setAddress("123 Street");
       com.ims.dto.response.CustomerResponse custResponse = customerService.create(custReq);
-      customer = Customer.builder().id(custResponse.getId()).name(custResponse.getName()).address(custResponse.getAddress()).build();
+      customer =
+          Customer.builder()
+              .id(custResponse.getId())
+              .name(custResponse.getName())
+              .address(custResponse.getAddress())
+              .build();
     } finally {
       TenantContext.clear();
     }
@@ -88,89 +89,113 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
     createReq.setSku("BILL-001");
     createReq.setSalePrice(new BigDecimal("150.00"));
     String createReqJson = Objects.requireNonNull(objectMapper.writeValueAsString(createReq));
-    MvcResult prodResult = mockMvc.perform(post("/api/tenant/products")
-        .header("Authorization", "Bearer " + token)
-        .with(tenant(tenantId.toString()))
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(createReqJson))
-        .andExpect(status().isCreated())
-        .andReturn();
-    ProductResponse product = objectMapper.readValue(prodResult.getResponse().getContentAsString(),
-        ProductResponse.class);
+    MvcResult prodResult =
+        mockMvc
+            .perform(
+                post("/api/tenant/products")
+                    .header("Authorization", "Bearer " + token)
+                    .with(tenant(tenantId.toString()))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(createReqJson))
+            .andExpect(status().isCreated())
+            .andReturn();
+    ProductResponse product =
+        objectMapper.readValue(
+            prodResult.getResponse().getContentAsString(), ProductResponse.class);
 
     // Add initial stock
-    String stockInJson = Objects.requireNonNull(objectMapper.writeValueAsString(Map.of(
-        "product_id", product.getId(),
-        "quantity", 100,
-        "notes", "Initial Stock")));
-    mockMvc.perform(post("/api/tenant/stock/in")
-        .header("Authorization", "Bearer " + token)
-        .with(tenant(tenantId.toString()))
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(stockInJson))
+    String stockInJson =
+        Objects.requireNonNull(
+            objectMapper.writeValueAsString(
+                Map.of("product_id", product.getId(), "quantity", 100, "notes", "Initial Stock")));
+    mockMvc
+        .perform(
+            post("/api/tenant/stock/in")
+                .header("Authorization", "Bearer " + token)
+                .with(tenant(tenantId.toString()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(stockInJson))
         .andExpect(status().isOk());
 
     // 2. Create Sales Order
-    Map<String, Object> orderReq = Map.of(
-        "customer_id", customer.getId(),
-        "items", List.of(Map.of(
-            "product_id", product.getId(),
-            "quantity", 2,
-            "unit_price", 150.00)));
+    Map<String, Object> orderReq =
+        Map.of(
+            "customer_id", customer.getId(),
+            "items",
+                List.of(
+                    Map.of("product_id", product.getId(), "quantity", 2, "unit_price", 150.00)));
 
     String orderReqJson = Objects.requireNonNull(objectMapper.writeValueAsString(orderReq));
-    MvcResult orderResult = mockMvc.perform(post("/api/tenant/orders/sale")
-        .header("Authorization", "Bearer " + token)
-        .with(tenant(tenantId.toString()))
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(orderReqJson))
-        .andExpect(status().isCreated())
-        .andReturn();
+    MvcResult orderResult =
+        mockMvc
+            .perform(
+                post("/api/tenant/orders/sale")
+                    .header("Authorization", "Bearer " + token)
+                    .with(tenant(tenantId.toString()))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(orderReqJson))
+            .andExpect(status().isCreated())
+            .andReturn();
 
-    Map<String, Object> orderResponse = objectMapper.readValue(orderResult.getResponse().getContentAsString(),
-        new TypeReference<Map<String, Object>>() {
-        });
+    Map<String, Object> orderResponse =
+        objectMapper.readValue(
+            orderResult.getResponse().getContentAsString(),
+            new TypeReference<Map<String, Object>>() {});
     Long orderId = Long.valueOf(orderResponse.get("order_id").toString());
 
     // 3. Confirm Order (Triggers Invoice Generation)
-    mockMvc.perform(post("/api/tenant/orders/" + orderId + "/confirm")
-        .header("Authorization", "Bearer " + token)
-        .with(tenant(tenantId.toString())))
+    mockMvc
+        .perform(
+            post("/api/tenant/orders/" + orderId + "/confirm")
+                .header("Authorization", "Bearer " + token)
+                .with(tenant(tenantId.toString())))
         .andExpect(status().isOk());
 
     // 4. Verify Invoice Exists
-    MvcResult invoicesResult = mockMvc.perform(get("/api/tenant/invoices")
-        .header("Authorization", "Bearer " + token)
-        .with(tenant(tenantId.toString())))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.content[0].orderId").value(orderId))
-        .andReturn();
+    MvcResult invoicesResult =
+        mockMvc
+            .perform(
+                get("/api/tenant/invoices")
+                    .header("Authorization", "Bearer " + token)
+                    .with(tenant(tenantId.toString())))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content[0].orderId").value(orderId))
+            .andReturn();
 
     String invoicesJson = invoicesResult.getResponse().getContentAsString();
     Long invoiceId = objectMapper.readTree(invoicesJson).get("content").get(0).get("id").asLong();
 
     // 5. Download PDF
-    mockMvc.perform(get("/api/tenant/invoices/" + invoiceId + "/pdf")
-        .header("Authorization", "Bearer " + token)
-        .with(tenant(tenantId.toString())))
+    mockMvc
+        .perform(
+            get("/api/tenant/invoices/" + invoiceId + "/pdf")
+                .header("Authorization", "Bearer " + token)
+                .with(tenant(tenantId.toString())))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_PDF))
-        .andExpect(header().string("Content-Disposition", "attachment; filename=invoice-" + invoiceId + ".pdf"));
+        .andExpect(
+            header()
+                .string(
+                    "Content-Disposition", "attachment; filename=invoice-" + invoiceId + ".pdf"));
   }
 
-  private String login(String email, String password, String workspace, Long tenantId) throws Exception {
+  private String login(String email, String password, String workspace, Long tenantId)
+      throws Exception {
     LoginRequest loginRequest = new LoginRequest();
     loginRequest.setEmail(email);
     loginRequest.setPassword(password);
     loginRequest.setCompanyCode(workspace);
 
     String loginJson = Objects.requireNonNull(objectMapper.writeValueAsString(loginRequest));
-    MvcResult result = mockMvc.perform(post("/api/auth/login")
-        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
-        .content(loginJson)
-        .with(tenant(tenantId.toString())))
-        .andExpect(status().isOk())
-        .andReturn();
+    MvcResult result =
+        mockMvc
+            .perform(
+                post("/api/auth/login")
+                    .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                    .content(loginJson)
+                    .with(tenant(tenantId.toString())))
+            .andExpect(status().isOk())
+            .andReturn();
     String content = result.getResponse().getContentAsString();
     return objectMapper.readTree(content).get("accessToken").asText();
   }

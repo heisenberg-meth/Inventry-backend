@@ -1,12 +1,12 @@
 package com.ims.tenant.service;
 
-import com.ims.shared.audit.AuditAction;
 import com.ims.dto.request.AddMessageRequest;
 import com.ims.dto.request.AssignTicketRequest;
 import com.ims.dto.request.CreateTicketRequest;
 import com.ims.dto.request.UpdateTicketStatusRequest;
 import com.ims.model.SupportMessage;
 import com.ims.model.SupportTicket;
+import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditLogService;
 import com.ims.tenant.repository.SupportMessageRepository;
 import com.ims.tenant.repository.SupportTicketRepository;
@@ -65,7 +65,8 @@ public class SupportService {
   }
 
   @Transactional(readOnly = true)
-  public Map<String, Object> getTenantTicketDetails(@NonNull Long tenantId, @NonNull Long ticketId) {
+  public Map<String, Object> getTenantTicketDetails(
+      @NonNull Long tenantId, @NonNull Long ticketId) {
     SupportTicket ticket =
         ticketRepository
             .findByIdAndTenantId(ticketId, tenantId)
@@ -124,8 +125,7 @@ public class SupportService {
   }
 
   @Transactional
-  public SupportTicket assignTicket(
-      @NonNull Long ticketId, @NonNull AssignTicketRequest request) {
+  public SupportTicket assignTicket(@NonNull Long ticketId, @NonNull AssignTicketRequest request) {
     SupportTicket ticket =
         ticketRepository
             .findById(ticketId)
@@ -180,7 +180,10 @@ public class SupportService {
     SupportTicket saved = ticketRepository.save(ticket);
 
     auditLogService.log(
-        AuditAction.CLOSE_TICKET, ticket.getTenantId(), null, "Platform closed ticket: #" + ticketId);
+        AuditAction.CLOSE_TICKET,
+        ticket.getTenantId(),
+        null,
+        "Platform closed ticket: #" + ticketId);
     return saved;
   }
 
@@ -188,7 +191,9 @@ public class SupportService {
 
   @Transactional
   public @NonNull SupportMessage addMessage(
-      @NonNull Long ticketId, @NonNull Long senderId, @NonNull String senderType,
+      @NonNull Long ticketId,
+      @NonNull Long senderId,
+      @NonNull String senderType,
       @NonNull AddMessageRequest request) {
 
     SupportTicket ticket =

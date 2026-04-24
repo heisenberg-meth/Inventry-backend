@@ -1,6 +1,5 @@
 package com.ims.model;
 
-import org.hibernate.annotations.TenantId;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -14,6 +13,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.TenantId;
 
 @Entity
 @Table(name = "orders")
@@ -41,7 +41,8 @@ public class Order {
 
   @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
   @Column(nullable = false)
-  @Builder.Default private OrderStatus status = OrderStatus.PENDING;
+  @Builder.Default
+  private OrderStatus status = OrderStatus.PENDING;
 
   @Column(name = "customer_id")
   private Long customerId;

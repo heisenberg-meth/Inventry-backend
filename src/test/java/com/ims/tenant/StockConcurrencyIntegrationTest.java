@@ -1,6 +1,7 @@
 package com.ims.tenant;
 
 import static org.assertj.core.api.Assertions.assertThat;
+
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.SignupRequest;
 import com.ims.product.Product;
@@ -9,6 +10,7 @@ import com.ims.shared.auth.TenantContext;
 import com.ims.shared.exception.InsufficientStockException;
 import com.ims.tenant.service.StockService;
 import java.math.BigDecimal;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -21,20 +23,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import java.util.Objects;
 
-@SpringBootTest(properties = {
-    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
-    "spring.cache.type=none"
-})
+@SpringBootTest(
+    properties = {
+      "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
+      "spring.cache.type=none"
+    })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 public class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired
-  private SignupService signupService;
-  @Autowired
-  private StockService stockService;
+  @Autowired private SignupService signupService;
+  @Autowired private StockService stockService;
 
   private long productId;
   private long userId;
@@ -55,22 +55,27 @@ public class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
     verifyUserEmail("admin@conc.com");
 
     // Query directly via JDBC to avoid transaction lag or cache issues in setup
-    tenantId = Objects.requireNonNull(
-        jdbcTemplate.queryForObject("SELECT id FROM tenants WHERE workspace_slug = 'conc-corp'", Long.class));
-    userId = Objects
-        .requireNonNull(jdbcTemplate.queryForObject("SELECT id FROM users WHERE email = 'admin@conc.com'", Long.class));
+    tenantId =
+        Objects.requireNonNull(
+            jdbcTemplate.queryForObject(
+                "SELECT id FROM tenants WHERE workspace_slug = 'conc-corp'", Long.class));
+    userId =
+        Objects.requireNonNull(
+            jdbcTemplate.queryForObject(
+                "SELECT id FROM users WHERE email = 'admin@conc.com'", Long.class));
     verifyUser("admin@conc.com");
 
     TenantContext.setTenantId(tenantId);
-    Product product = Product.builder()
-        .tenantId(tenantId)
-        .name("Concurrency Test Product")
-        .sku("CONC-001")
-        .salePrice(BigDecimal.valueOf(10.0))
-        .stock(100)
-        .reorderLevel(10)
-        .isActive(true)
-        .build();
+    Product product =
+        Product.builder()
+            .tenantId(tenantId)
+            .name("Concurrency Test Product")
+            .sku("CONC-001")
+            .salePrice(BigDecimal.valueOf(10.0))
+            .stock(100)
+            .reorderLevel(10)
+            .isActive(true)
+            .build();
     product = productRepository.save(Objects.requireNonNull(product));
     productId = product.getId();
     TenantContext.clear();
@@ -92,21 +97,22 @@ public class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
     AtomicInteger failedCalls = new AtomicInteger(0);
 
     for (int i = 0; i < numberOfThreads; i++) {
-      executor.execute(() -> {
-        try {
-          TenantContext.setTenantId(tenantId);
-          latch.await();
-          stockService.stockOut(productId, stockOutPerThread, "Concurrent test", userId);
-          successfulCalls.incrementAndGet();
-        } catch (InsufficientStockException e) {
-          failedCalls.incrementAndGet();
-        } catch (Exception e) {
-          e.printStackTrace();
-        } finally {
-          TenantContext.clear();
-          doneLatch.countDown();
-        }
-      });
+      executor.execute(
+          () -> {
+            try {
+              TenantContext.setTenantId(tenantId);
+              latch.await();
+              stockService.stockOut(productId, stockOutPerThread, "Concurrent test", userId);
+              successfulCalls.incrementAndGet();
+            } catch (InsufficientStockException e) {
+              failedCalls.incrementAndGet();
+            } catch (Exception e) {
+              e.printStackTrace();
+            } finally {
+              TenantContext.clear();
+              doneLatch.countDown();
+            }
+          });
     }
 
     latch.countDown(); // Start all threads simultaneously

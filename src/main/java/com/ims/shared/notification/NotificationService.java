@@ -25,10 +25,13 @@ public class NotificationService {
 
   @Transactional
   public void markAsRead(Long id) {
-    notificationRepository.findById(id).ifPresent(n -> {
-      n.setIsRead(true);
-      notificationRepository.save(n);
-    });
+    notificationRepository
+        .findById(id)
+        .ifPresent(
+            n -> {
+              n.setIsRead(true);
+              notificationRepository.save(n);
+            });
   }
 
   @Transactional
@@ -39,25 +42,28 @@ public class NotificationService {
   }
 
   @Transactional
-  public void createNotification(Long tenantId, Long userId, String title, String message, String type, Long resourceId) {
+  public void createNotification(
+      Long tenantId, Long userId, String title, String message, String type, Long resourceId) {
     if (tenantId == null || tenantId <= 0) {
       throw new IllegalArgumentException("tenantId is required and must be positive");
     }
 
-    var notification = Notification.builder()
-        .userId(userId)
-        .tenantId(tenantId)
-        .title(title)
-        .message(message)
-        .type(type)
-        .resourceId(resourceId)
-        .build();
+    var notification =
+        Notification.builder()
+            .userId(userId)
+            .tenantId(tenantId)
+            .title(title)
+            .message(message)
+            .type(type)
+            .resourceId(resourceId)
+            .build();
     notificationRepository.save(notification);
     log.debug("Notification created for tenant {} user {}: {}", tenantId, userId, title);
   }
 
   @Transactional
-  public void createNotificationForCurrentTenant(Long userId, String title, String message, String type, Long resourceId) {
+  public void createNotificationForCurrentTenant(
+      Long userId, String title, String message, String type, Long resourceId) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
       log.warn("Tenant context missing in createNotificationForCurrentTenant");

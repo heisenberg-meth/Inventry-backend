@@ -1,39 +1,40 @@
 package com.ims;
 
-import com.ims.tenant.repository.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.doReturn;
+
+import com.ims.category.CategoryRepository;
 import com.ims.platform.repository.*;
+import com.ims.product.ProductRepository;
+import com.ims.shared.audit.AuditLogRepository;
 import com.ims.shared.auth.AuthService;
 import com.ims.shared.auth.TenantContext;
-import com.ims.product.ProductRepository;
-import com.ims.category.CategoryRepository;
-import com.ims.shared.audit.AuditLogRepository;
-import java.util.Objects;
-import java.util.Collections;
+import com.ims.tenant.repository.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.util.Collections;
+import java.util.Objects;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.ZSetOperations;
-import org.springframework.data.redis.core.ValueOperations;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.cache.interceptor.CacheOperationInvocationContext;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.ZSetOperations;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.cache.interceptor.CacheOperationInvocationContext;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.containers.PostgreSQLContainer;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.ArgumentMatchers.*;
 
 @SpringBootTest(properties = {
     "spring.autoconfigure.exclude=" +
@@ -51,68 +52,40 @@ public abstract class BaseIntegrationTest {
     registry.add("app.jwt.secret", () -> java.util.UUID.randomUUID().toString() + java.util.UUID.randomUUID().toString());
   }
 
-  @Autowired
-  protected TenantRepository tenantRepository;
-  @Autowired
-  protected UserRepository userRepository;
-  @Autowired
-  protected RoleRepository roleRepository;
-  @Autowired
-  protected CustomerRepository customerRepository;
-  @Autowired
-  protected SupplierRepository supplierRepository;
-  @Autowired
-  protected ProductRepository productRepository;
-  @Autowired
-  protected CategoryRepository categoryRepository;
-  @Autowired
-  protected OrderRepository orderRepository;
-  @Autowired
-  protected OrderItemRepository orderItemRepository;
-  @Autowired
-  protected StockMovementRepository stockMovementRepository;
-  @Autowired
-  protected InvoiceRepository invoiceRepository;
-  @Autowired
-  protected AuditLogRepository auditLogRepository;
-  @Autowired
-  protected PaymentRepository paymentRepository;
-  @Autowired
-  protected TransferOrderRepository transferOrderRepository;
-  @Autowired
-  protected SubscriptionRepository subscriptionRepository;
-  @Autowired
-  protected SubscriptionPlanRepository subscriptionPlanRepository;
-  @Autowired
-  protected SupportAttachmentRepository supportAttachmentRepository;
-  @Autowired
-  protected SupportMessageRepository supportMessageRepository;
-  @Autowired
-  protected SupportTicketRepository supportTicketRepository;
-  @Autowired
-  protected SystemConfigRepository systemConfigRepository;
-  @Autowired
-  protected JdbcTemplate jdbcTemplate;
-  @Autowired
-  protected PasswordEncoder passwordEncoder;
-  @PersistenceContext
-  protected EntityManager entityManager;
-  @Autowired
-  protected PlatformTransactionManager transactionManager;
-  @Autowired
-  protected AuthService authService;
-  @MockitoBean
-  protected RedisTemplate<String, Object> redisTemplate;
-  @MockitoBean
-  protected ValueOperations<String, Object> valueOperations;
-  @MockitoBean
-  protected ZSetOperations<String, Object> zSetOperations;
-  @MockitoBean
-  protected org.springframework.cache.CacheManager cacheManager;
+  @Autowired protected TenantRepository tenantRepository;
+  @Autowired protected UserRepository userRepository;
+  @Autowired protected RoleRepository roleRepository;
+  @Autowired protected CustomerRepository customerRepository;
+  @Autowired protected SupplierRepository supplierRepository;
+  @Autowired protected ProductRepository productRepository;
+  @Autowired protected CategoryRepository categoryRepository;
+  @Autowired protected OrderRepository orderRepository;
+  @Autowired protected OrderItemRepository orderItemRepository;
+  @Autowired protected StockMovementRepository stockMovementRepository;
+  @Autowired protected InvoiceRepository invoiceRepository;
+  @Autowired protected AuditLogRepository auditLogRepository;
+  @Autowired protected PaymentRepository paymentRepository;
+  @Autowired protected TransferOrderRepository transferOrderRepository;
+  @Autowired protected SubscriptionRepository subscriptionRepository;
+  @Autowired protected SubscriptionPlanRepository subscriptionPlanRepository;
+  @Autowired protected SupportAttachmentRepository supportAttachmentRepository;
+  @Autowired protected SupportMessageRepository supportMessageRepository;
+  @Autowired protected SupportTicketRepository supportTicketRepository;
+  @Autowired protected SystemConfigRepository systemConfigRepository;
+  @Autowired protected JdbcTemplate jdbcTemplate;
+  @Autowired protected PasswordEncoder passwordEncoder;
+  @PersistenceContext protected EntityManager entityManager;
+  @Autowired protected PlatformTransactionManager transactionManager;
+  @Autowired protected AuthService authService;
+  @MockitoBean protected RedisTemplate<String, Object> redisTemplate;
+  @MockitoBean protected ValueOperations<String, Object> valueOperations;
+  @MockitoBean protected ZSetOperations<String, Object> zSetOperations;
+  @MockitoBean protected org.springframework.cache.CacheManager cacheManager;
+
   @MockitoBean(name = "tenantAwareCacheResolver")
   protected org.springframework.cache.interceptor.CacheResolver tenantAwareCacheResolver;
-  @MockitoBean
-  protected org.springframework.mail.javamail.JavaMailSender javaMailSender;
+
+  @MockitoBean protected org.springframework.mail.javamail.JavaMailSender javaMailSender;
   protected long systemTenantId;
   protected long testTenant1Id;
   protected long testTenant2Id;
@@ -193,13 +166,18 @@ public abstract class BaseIntegrationTest {
   }
 
   protected void verifyUser(String email) {
-    new TransactionTemplate(transactionManager).execute(status -> {
-      userRepository.findByEmailUnfiltered(email).ifPresent(u -> {
-        u.setIsVerified(true);
-        userRepository.save(u);
-      });
-      return null;
-    });
+    new TransactionTemplate(transactionManager)
+        .execute(
+            status -> {
+              userRepository
+                  .findByEmailUnfiltered(email)
+                  .ifPresent(
+                      u -> {
+                        u.setIsVerified(true);
+                        userRepository.save(u);
+                      });
+              return null;
+            });
   }
 
   protected void verifyUserEmail(String email) {
@@ -214,7 +192,8 @@ public abstract class BaseIntegrationTest {
     doReturn(0L).when(zSetOperations).zCard(any(String.class));
 
     // Cache Mocks for TenantAwareCacheResolver
-    org.springframework.cache.Cache dummyCache = new org.springframework.cache.concurrent.ConcurrentMapCache("dummy");
+    org.springframework.cache.Cache dummyCache =
+        new org.springframework.cache.concurrent.ConcurrentMapCache("dummy");
 
     doReturn(Collections.<org.springframework.cache.Cache>singletonList(dummyCache))
         .when(tenantAwareCacheResolver)
@@ -222,7 +201,8 @@ public abstract class BaseIntegrationTest {
     doReturn(dummyCache).when(cacheManager).getCache(any(String.class));
   }
 
-  protected org.springframework.test.web.servlet.request.RequestPostProcessor tenant(String tenantId) {
+  protected org.springframework.test.web.servlet.request.RequestPostProcessor tenant(
+      String tenantId) {
     return request -> {
       request.addHeader("X-Tenant-ID", tenantId);
       TenantContext.setTenantId(Long.valueOf(tenantId)); // Sync with Hibernate/Context

@@ -1,26 +1,29 @@
 package com.ims.tenant.controller;
 
-import com.ims.shared.payment.PaymentGatewayService;
-import com.ims.shared.rbac.RequiresRole;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import java.math.BigDecimal;
-import java.util.Map;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.shared.exception.UnauthorizedException;
+import com.ims.shared.payment.PaymentGatewayService;
+import com.ims.shared.rbac.RequiresRole;
 import com.ims.tenant.service.TenantSecretService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.Map;
 import java.util.stream.Collectors;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
-import org.springframework.web.bind.annotation.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/tenant/payments/gateway")
@@ -40,7 +43,7 @@ public class PaymentGatewayController {
     Long invoiceId = Long.valueOf(body.get("invoice_id").toString());
     BigDecimal amount = new BigDecimal(body.get("amount").toString());
     Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-    
+
     return ResponseEntity.ok(gatewayService.initiatePayment(invoiceId, amount, userId));
   }
 
@@ -49,8 +52,9 @@ public class PaymentGatewayController {
   public ResponseEntity<Void> handleWebhook(HttpServletRequest request) {
     try {
       // 1. Get raw body (crucial for signature verification)
-      String rawBody = request.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
-      
+      String rawBody =
+          request.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
+
       // 2. Extract signature header
       String receivedSig = request.getHeader("X-Razorpay-Signature");
       if (receivedSig == null) {
@@ -59,8 +63,6 @@ public class PaymentGatewayController {
 
       // 3. Parse payload to identify tenant and event
       JsonNode root = objectMapper.readTree(rawBody);
-      String eventType = root.path("event").asText();
-      String eventId = root.path("id").asText(); // Razorpay event ID
 
       // Extract tenant ID from notes
       Long tenantId = extractTenantId(root);
@@ -82,6 +84,9 @@ public class PaymentGatewayController {
         throw new UnauthorizedException("Invalid webhook signature");
       }
 
+      final String eventType = root.path("event").asText();
+      final String eventId = root.path("id").asText(); // Razorpay event ID
+
       // 6. Enforce idempotency
       if (gatewayService.isEventProcessed(eventId)) {
         return ResponseEntity.ok().build();
@@ -94,7 +99,7 @@ public class PaymentGatewayController {
 
       // 8. Process business logic
       gatewayService.processWebhook(tenantId, eventId, eventType, root);
-      
+
       return ResponseEntity.ok().build();
     } catch (Exception e) {
       if (e instanceof UnauthorizedException) {
@@ -117,10 +122,8 @@ public class PaymentGatewayController {
   private String hmacSha256(String data, String secret) {
     try {
       Mac mac = Mac.getInstance("HmacSHA256");
-      SecretKeySpec keySpec = new SecretKeySpec(
-          secret.getBytes(StandardCharsets.UTF_8),
-          "HmacSHA256"
-      );
+      SecretKeySpec keySpec =
+          new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
       mac.init(keySpec);
       byte[] rawHmac = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
       return bytesToHex(rawHmac);

@@ -1,5 +1,6 @@
 package com.ims.platform.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.dto.request.CreateSubscriptionPlanRequest;
 import com.ims.dto.request.UpdateSubscriptionPlanRequest;
 import com.ims.model.SubscriptionPlan;
@@ -7,7 +8,6 @@ import com.ims.platform.repository.SubscriptionPlanRepository;
 import com.ims.platform.repository.SubscriptionRepository;
 import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditLogService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -25,6 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Slf4j
 public class SubscriptionPlanService {
+
+  /** Months per year — used to derive ARR from MRR. */
+  private static final int MONTHS_PER_YEAR = 12;
 
   private final SubscriptionPlanRepository planRepository;
   private final SubscriptionRepository subscriptionRepository;
@@ -138,9 +141,7 @@ public class SubscriptionPlanService {
     return Map.of("message", "Plan deactivated", "status", "INACTIVE");
   }
 
-  /**
-   * Get usage summary with MRR/ARR metrics.
-   */
+  /** Get usage summary with MRR/ARR metrics. */
   @Transactional(readOnly = true)
   public Map<String, Object> getUsageSummary() {
     List<SubscriptionPlan> allPlans = planRepository.findAllByOrderByCreatedAtDesc();
@@ -164,11 +165,12 @@ public class SubscriptionPlanService {
 
     Map<String, Object> summary = new HashMap<>();
     summary.put("totalPlans", allPlans.size());
-    summary.put("activePlans", allPlans.stream().filter(p -> "ACTIVE".equals(p.getStatus())).count());
+    summary.put(
+        "activePlans", allPlans.stream().filter(p -> "ACTIVE".equals(p.getStatus())).count());
     summary.put("totalActiveSubscriptions", totalActive);
     summary.put("planBreakdown", planBreakdown);
     summary.put("mrr", mrr);
-    summary.put("arr", mrr.multiply(BigDecimal.valueOf(12)));
+    summary.put("arr", mrr.multiply(BigDecimal.valueOf(MONTHS_PER_YEAR)));
     return summary;
   }
 }

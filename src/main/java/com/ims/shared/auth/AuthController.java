@@ -1,12 +1,11 @@
 package com.ims.shared.auth;
 
-import com.ims.shared.exception.UnauthorizedException;
-
 import com.ims.dto.request.ChangePasswordRequest;
 import com.ims.dto.request.ForgotPasswordRequest;
 import com.ims.dto.request.LoginRequest;
 import com.ims.dto.request.ResetPasswordRequest;
 import com.ims.dto.response.LoginResponse;
+import com.ims.shared.exception.UnauthorizedException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -41,7 +40,10 @@ public class AuthController {
       summary = "Login",
       description = "Authenticate with email/password, returns JWT tokens")
   public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-    log.info("Login request received: email={}, companyCode={}", request.getEmail(), request.getCompanyCode());
+    log.info(
+        "Login request received: email={}, companyCode={}",
+        request.getEmail(),
+        request.getCompanyCode());
     LoginResponse response = authService.login(request);
     return ResponseEntity.ok(response);
   }
@@ -103,14 +105,15 @@ public class AuthController {
 
   @GetMapping("/verify-email")
   @Operation(summary = "Verify email", description = "Verify user email using verification token")
-  public ResponseEntity<Map<String, String>> verifyEmail(@RequestParam String token, @RequestParam String email) {
+  public ResponseEntity<Map<String, String>> verifyEmail(
+      @RequestParam String token, @RequestParam String email) {
     return ResponseEntity.ok(authService.verifyEmail(token, email));
   }
 
-
   @PostMapping("/resend-verification")
   @Operation(summary = "Resend verification email", description = "Resend email verification token")
-  public ResponseEntity<Map<String, String>> resendVerification(@RequestBody Map<String, String> body) {
+  public ResponseEntity<Map<String, String>> resendVerification(
+      @RequestBody Map<String, String> body) {
     String email = body.get("email");
     if (email == null || email.isBlank()) {
       return ResponseEntity.badRequest().build();

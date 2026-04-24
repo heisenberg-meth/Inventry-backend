@@ -1,12 +1,12 @@
 package com.ims.auth;
- 
-import org.springframework.transaction.annotation.Transactional;
+
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.LoginRequest;
@@ -22,12 +22,13 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.annotation.Transactional;
 
-@SpringBootTest(properties = {
-    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
-    "spring.cache.type=none"
-})
-
+@SpringBootTest(
+    properties = {
+      "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
+      "spring.cache.type=none"
+    })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
@@ -47,12 +48,16 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
   void testSecurityAndIsolationFlow() throws Exception {
     // 1. Signup Tenant 1
     String uniqueId1 = java.util.UUID.randomUUID().toString().substring(0, 8);
-    SignupRequest t1Signup = createSignupRequest("Tenant 1 " + uniqueId1, "t1-auth-" + uniqueId1, "admin1-" + uniqueId1 + "@t1.com");
+    SignupRequest t1Signup =
+        createSignupRequest(
+            "Tenant 1 " + uniqueId1, "t1-auth-" + uniqueId1, "admin1-" + uniqueId1 + "@t1.com");
     com.ims.dto.response.SignupResponse t1Response = signupService.signup(t1Signup);
 
     // 2. Signup Tenant 2
     String uniqueId2 = java.util.UUID.randomUUID().toString().substring(0, 8);
-    SignupRequest t2Signup = createSignupRequest("Tenant 2 " + uniqueId2, "t2-auth-" + uniqueId2, "admin2-" + uniqueId2 + "@t2.com");
+    SignupRequest t2Signup =
+        createSignupRequest(
+            "Tenant 2 " + uniqueId2, "t2-auth-" + uniqueId2, "admin2-" + uniqueId2 + "@t2.com");
     com.ims.dto.response.SignupResponse t2Response = signupService.signup(t2Signup);
 
     // 3. Verify users (simulating realistic email verification flow)
@@ -64,49 +69,57 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
     Long t2Id = tenantRepository.findByWorkspaceSlug("t2-auth-" + uniqueId2).orElseThrow().getId();
 
     // 4. Login Tenant 1
-    String t1Token = login("admin1-" + uniqueId1 + "@t1.com", "password123", t1Response.getCompanyCode(), t1Id);
+    String t1Token =
+        login("admin1-" + uniqueId1 + "@t1.com", "password123", t1Response.getCompanyCode(), t1Id);
 
     // 5. Verify Tenant 1 Isolation (Should only see 1 user: admin1)
     mockMvc
-        .perform(get("/api/tenant/users")
-            .header("Authorization", "Bearer " + t1Token)
-            .with(tenant(t1Id.toString())))
+        .perform(
+            get("/api/tenant/users")
+                .header("Authorization", "Bearer " + t1Token)
+                .with(tenant(t1Id.toString())))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content.length()").value(1))
         .andExpect(jsonPath("$.content[0].email").value("admin1-" + uniqueId1 + "@t1.com"));
 
     // 6. Login Tenant 2
-    String t2Token = login("admin2-" + uniqueId2 + "@t2.com", "password123", t2Response.getCompanyCode(), t2Id);
+    String t2Token =
+        login("admin2-" + uniqueId2 + "@t2.com", "password123", t2Response.getCompanyCode(), t2Id);
 
     // 7. Verify Tenant 2 Isolation (Should only see 1 user: admin2)
     mockMvc
-        .perform(get("/api/tenant/users")
-            .header("Authorization", "Bearer " + t2Token)
-            .with(tenant(t2Id.toString())))
+        .perform(
+            get("/api/tenant/users")
+                .header("Authorization", "Bearer " + t2Token)
+                .with(tenant(t2Id.toString())))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content.length()").value(1))
         .andExpect(jsonPath("$.content[0].email").value("admin2-" + uniqueId2 + "@t2.com"));
 
     // 8. Verify Logout and Blacklisting
     mockMvc
-        .perform(post("/api/auth/logout")
-            .header("Authorization", "Bearer " + t1Token)
-            .with(tenant(t1Id.toString())))
+        .perform(
+            post("/api/auth/logout")
+                .header("Authorization", "Bearer " + t1Token)
+                .with(tenant(t1Id.toString())))
         .andExpect(status().isOk());
 
     // Mock Redis blacklist check for next request
     doReturn(true).when(redisTemplate).hasKey(anyString());
 
     mockMvc
-        .perform(get("/api/tenant/users")
-            .header("Authorization", "Bearer " + t1Token)
-            .with(tenant(t1Id.toString())))
+        .perform(
+            get("/api/tenant/users")
+                .header("Authorization", "Bearer " + t1Token)
+                .with(tenant(t1Id.toString())))
         .andExpect(status().isUnauthorized());
   }
 
   @Test
   void testUnauthorizedAccess() throws Exception {
-    mockMvc.perform(get("/api/tenant/users").with(tenant("1"))).andExpect(status().isUnauthorized());
+    mockMvc
+        .perform(get("/api/tenant/users").with(tenant("1")))
+        .andExpect(status().isUnauthorized());
   }
 
   private SignupRequest createSignupRequest(String name, String workspaceSlug, String email) {
@@ -120,12 +133,13 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
     return req;
   }
 
-  private String login(String email, String password, String workspace, Long tenantId) throws Exception {
+  private String login(String email, String password, String workspace, Long tenantId)
+      throws Exception {
     LoginRequest loginRequest = new LoginRequest();
     loginRequest.setEmail(email);
     loginRequest.setPassword(password);
     loginRequest.setCompanyCode(workspace);
-    
+
     String loginJson = objectMapper.writeValueAsString(loginRequest);
     MvcResult result =
         mockMvc

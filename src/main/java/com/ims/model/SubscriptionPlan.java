@@ -21,6 +21,9 @@ import lombok.NoArgsConstructor;
 @Builder
 public class SubscriptionPlan {
 
+  /** Default billing-cycle length (days) used when a plan does not specify one. */
+  private static final int DEFAULT_DURATION_DAYS = 30;
+
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
@@ -32,16 +35,14 @@ public class SubscriptionPlan {
   @Builder.Default
   private BigDecimal price = BigDecimal.ZERO;
 
-  @Column
-  @Builder.Default
-  private String currency = "INR";
+  @Column @Builder.Default private String currency = "INR";
 
   @Column(name = "billing_cycle", nullable = false)
   private String billingCycle;
 
   @Column(name = "duration_days")
   @Builder.Default
-  private Integer durationDays = 30;
+  private Integer durationDays = DEFAULT_DURATION_DAYS;
 
   @Column(columnDefinition = "TEXT")
   private String features;
@@ -54,13 +55,9 @@ public class SubscriptionPlan {
   @Builder.Default
   private Integer maxProducts = 0;
 
-  @Column
-  @Builder.Default
-  private String status = "ACTIVE";
+  @Column @Builder.Default private String status = "ACTIVE";
 
-  @Column
-  @Builder.Default
-  private Integer version = 1;
+  @Column @Builder.Default private Integer version = 1;
 
   @Column(name = "updated_by")
   private Long updatedBy;

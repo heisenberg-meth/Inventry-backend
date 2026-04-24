@@ -1,8 +1,8 @@
 package com.ims.product;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
-import java.math.BigDecimal;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,7 +13,8 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
-  @Query("""
+  @Query(
+      """
       SELECT p.id as id, p.name as name, p.sku as sku, p.barcode as barcode,
              p.categoryId as categoryId, p.unit as unit, p.purchasePrice as purchasePrice,
              p.salePrice as salePrice, p.stock as stock, p.reorderLevel as reorderLevel,
@@ -29,7 +30,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
       """)
   Page<ProductListView> findAllWithDetails(@Param("tenantId") Long tenantId, Pageable pageable);
 
-  @Query("""
+  @Query(
+      """
       SELECT p.id as id, p.name as name, p.sku as sku, p.barcode as barcode,
              p.categoryId as categoryId, p.unit as unit, p.purchasePrice as purchasePrice,
              p.salePrice as salePrice, p.stock as stock, p.reorderLevel as reorderLevel,
@@ -45,13 +47,15 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
       """)
   Optional<ProductListView> findByIdWithDetails(@Param("id") Long id);
 
-  @Query("SELECT p.id as id, p.name as name, p.sku as sku, p.stock as stock, " +
-      "p.reorderLevel as reorderLevel, p.salePrice as salePrice, p.unit as unit " +
-      "FROM Product p WHERE p.tenantId = :tenantId AND p.isActive = true AND p.id > :lastId ORDER BY p.id")
-  List<ProductListView> findNextProducts(@Param("tenantId") Long tenantId, @Param("lastId") Long lastId,
-      Pageable pageable);
+  @Query(
+      "SELECT p.id as id, p.name as name, p.sku as sku, p.stock as stock, "
+          + "p.reorderLevel as reorderLevel, p.salePrice as salePrice, p.unit as unit "
+          + "FROM Product p WHERE p.tenantId = :tenantId AND p.isActive = true AND p.id > :lastId ORDER BY p.id")
+  List<ProductListView> findNextProducts(
+      @Param("tenantId") Long tenantId, @Param("lastId") Long lastId, Pageable pageable);
 
-  @Query("""
+  @Query(
+      """
       SELECT p.id as id, p.name as name, p.sku as sku, p.barcode as barcode,
              p.categoryId as categoryId, p.unit as unit, p.purchasePrice as purchasePrice,
              p.salePrice as salePrice, p.stock as stock, p.reorderLevel as reorderLevel,
@@ -67,7 +71,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
       """)
   List<ProductListView> findLowStockByTenant(@Param("tenantId") Long tenantId);
 
-  @Query(value = """
+  @Query(
+      value =
+          """
       SELECT p.id as id, p.name as name, p.sku as sku, p.barcode as barcode,
              p.category_id as categoryId, p.unit as unit, p.purchase_price as purchasePrice,
              p.sale_price as salePrice, p.stock as stock, p.reorder_level as reorderLevel,
@@ -82,18 +88,23 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
       WHERE p.tenant_id = :tenantId AND p.is_active = true
       AND to_tsvector('english', COALESCE(p.name, '') || ' ' || COALESCE(p.sku, '') || ' ' || COALESCE(p.barcode, ''))
       @@ plainto_tsquery(:query)
-      """, countQuery = """
+      """,
+      countQuery =
+          """
       SELECT count(*) FROM products p
       WHERE p.tenant_id = :tenantId AND p.is_active = true
       AND to_tsvector('english', COALESCE(p.name, '') || ' ' || COALESCE(p.sku, '') || ' ' || COALESCE(p.barcode, ''))
       @@ plainto_tsquery(:query)
-      """, nativeQuery = true)
-  Page<ProductListView> searchFast(@Param("tenantId") Long tenantId, @Param("query") String query, Pageable pageable);
+      """,
+      nativeQuery = true)
+  Page<ProductListView> searchFast(
+      @Param("tenantId") Long tenantId, @Param("query") String query, Pageable pageable);
 
   @Query("SELECT COUNT(p) FROM Product p WHERE p.tenantId = :tenantId AND p.isActive = true")
   long countActiveByTenant(@Param("tenantId") Long tenantId);
 
-  @Query("SELECT COUNT(p) FROM Product p WHERE p.tenantId = :tenantId AND p.stock <= p.reorderLevel AND p.isActive = true")
+  @Query(
+      "SELECT COUNT(p) FROM Product p WHERE p.tenantId = :tenantId AND p.stock <= p.reorderLevel AND p.isActive = true")
   long countLowStockByTenant(@Param("tenantId") Long tenantId);
 
   @Query("SELECT COUNT(p) FROM Product p WHERE p.stock <= p.reorderLevel AND p.isActive = true")
@@ -120,14 +131,16 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
   @Query("SELECT p FROM Product p WHERE p.id = :productId")
   Optional<Product> findByIdWithLock(@Param("productId") Long productId);
 
-  @Query("""
+  @Query(
+      """
       SELECT COALESCE(SUM(p.salePrice * p.stock), 0)
       FROM Product p
       WHERE p.tenantId = :tenantId AND p.isActive = true
       """)
   BigDecimal getTotalInventoryValue(@Param("tenantId") Long tenantId);
 
-  @Query("""
+  @Query(
+      """
       SELECT new com.ims.product.CategoryCount(c.name, COUNT(p))
       FROM Product p
       JOIN Category c ON p.categoryId = c.id
@@ -136,14 +149,16 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
       """)
   List<CategoryCount> getCategoryDistribution(@Param("tenantId") Long tenantId);
 
-  @Query("""
+  @Query(
+      """
       SELECT COALESCE(SUM(p.stock), 0)
       FROM Product p
       WHERE p.tenantId = :tenantId AND p.isActive = true
       """)
   Long getTotalStock(@Param("tenantId") Long tenantId);
 
-  @Query("""
+  @Query(
+      """
       SELECT new com.ims.product.ProductStockView(p.id, p.name, p.stock)
       FROM Product p
       WHERE p.tenantId = :tenantId AND p.isActive = true
