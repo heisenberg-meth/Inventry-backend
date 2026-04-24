@@ -23,6 +23,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Slf4j
 public class TenantInitializationService {
 
+  private static final int VERIFICATION_TOKEN_EXPIRY_MINUTES = 15;
+
   private final UserRepository userRepository;
   private final CategoryService categoryService;
   private final EmailService emailService;
@@ -36,21 +38,21 @@ public class TenantInitializationService {
     try {
       TenantContext.setTenantId(Objects.requireNonNull(tenantId));
 
-      // 1. Create the owner user
-      User savedUser = userRepository.save(Objects.requireNonNull(user));
-
-      // 2. Seed default category
+      // 1. Seed default category
       CategoryRequest catReq = new CategoryRequest();
       catReq.setName("General");
       catReq.setDescription("Default category");
       categoryService.create(catReq);
 
-      // 3. Generate and hash email verification token
+      // 2. Generate and hash email verification token
       String rawToken = java.util.UUID.randomUUID().toString();
       String hashedToken = passwordEncoder.encode(rawToken);
 
+      // 3. Create the owner user with the verification token already applied
+      User savedUser = userRepository.save(Objects.requireNonNull(user));
       savedUser.setVerificationToken(hashedToken);
-      savedUser.setVerificationTokenExpiry(java.time.LocalDateTime.now().plusMinutes(15));
+      savedUser.setVerificationTokenExpiry(
+          java.time.LocalDateTime.now().plusMinutes(VERIFICATION_TOKEN_EXPIRY_MINUTES));
       savedUser = userRepository.save(savedUser);
 
       final String finalEmail = savedUser.getEmail();

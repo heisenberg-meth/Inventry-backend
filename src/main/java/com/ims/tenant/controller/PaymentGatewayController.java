@@ -20,7 +20,10 @@ import javax.crypto.spec.SecretKeySpec;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/tenant/payments/gateway")
@@ -60,8 +63,6 @@ public class PaymentGatewayController {
 
       // 3. Parse payload to identify tenant and event
       JsonNode root = objectMapper.readTree(rawBody);
-      String eventType = root.path("event").asText();
-      String eventId = root.path("id").asText(); // Razorpay event ID
 
       // Extract tenant ID from notes
       Long tenantId = extractTenantId(root);
@@ -82,6 +83,9 @@ public class PaymentGatewayController {
           receivedSig.getBytes(StandardCharsets.UTF_8))) {
         throw new UnauthorizedException("Invalid webhook signature");
       }
+
+      final String eventType = root.path("event").asText();
+      final String eventId = root.path("id").asText(); // Razorpay event ID
 
       // 6. Enforce idempotency
       if (gatewayService.isEventProcessed(eventId)) {

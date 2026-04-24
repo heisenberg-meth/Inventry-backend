@@ -13,7 +13,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/tenant/transfers")
@@ -49,7 +55,9 @@ public class TransferOrderController {
       @RequestBody Map<String, String> body,
       @NonNull @com.ims.shared.auth.CurrentUser Long userId) {
     String status = body.get("status");
-    if (status == null) throw new IllegalArgumentException("Status is required");
+    if (status == null) {
+      throw new IllegalArgumentException("Status is required");
+    }
     return ResponseEntity.ok(transferOrderService.updateStatus(id, status, userId));
   }
 }

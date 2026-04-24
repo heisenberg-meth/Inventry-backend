@@ -21,6 +21,9 @@ import lombok.NoArgsConstructor;
 @Builder
 public class SubscriptionPlan {
 
+  /** Default billing-cycle length (days) used when a plan does not specify one. */
+  private static final int DEFAULT_DURATION_DAYS = 30;
+
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
@@ -39,7 +42,7 @@ public class SubscriptionPlan {
 
   @Column(name = "duration_days")
   @Builder.Default
-  private Integer durationDays = 30;
+  private Integer durationDays = DEFAULT_DURATION_DAYS;
 
   @Column(columnDefinition = "TEXT")
   private String features;

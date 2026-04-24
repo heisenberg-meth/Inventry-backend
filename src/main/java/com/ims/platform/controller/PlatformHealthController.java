@@ -23,6 +23,12 @@ import org.springframework.web.bind.annotation.RestController;
 @SecurityRequirement(name = "bearerAuth")
 public class PlatformHealthController {
 
+  private static final int DB_CONNECTION_VALIDATE_TIMEOUT_SECONDS = 2;
+  private static final long BYTES_PER_KILOBYTE = 1024L;
+  private static final long BYTES_PER_GIGABYTE =
+      BYTES_PER_KILOBYTE * BYTES_PER_KILOBYTE * BYTES_PER_KILOBYTE;
+  private static final double PERCENT_MULTIPLIER = 100.0;
+
   private final DataSource dataSource;
   private final RedisTemplate<String, Object> redisTemplate;
 
@@ -34,7 +40,7 @@ public class PlatformHealthController {
 
     // 1. Database Health
     try (java.sql.Connection conn = dataSource.getConnection()) {
-      boolean valid = conn.isValid(2);
+      boolean valid = conn.isValid(DB_CONNECTION_VALIDATE_TIMEOUT_SECONDS);
       health.put(
           "database",
           Map.of(
@@ -62,9 +68,9 @@ public class PlatformHealthController {
     health.put(
         "disk",
         Map.of(
-            "total_gb", total / (1024 * 1024 * 1024),
-            "free_gb", free / (1024 * 1024 * 1024),
-            "usage_percent", total > 0 ? (double) (total - free) / total * 100 : 0));
+            "total_gb", total / BYTES_PER_GIGABYTE,
+            "free_gb", free / BYTES_PER_GIGABYTE,
+            "usage_percent", total > 0 ? (double) (total - free) / total * PERCENT_MULTIPLIER : 0));
 
     health.put("system_time", java.time.LocalDateTime.now().toString());
 

@@ -26,6 +26,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+  /** HSTS max-age: 1 year in seconds (365 * 24 * 60 * 60). */
+  private static final int HSTS_MAX_AGE_SECONDS = 31_536_000;
+
   private final JwtFilter jwtFilter;
   private final RateLimitFilter rateLimitFilter;
   private final TraceFilter traceFilter;
@@ -99,7 +102,7 @@ public class SecurityConfig {
                             csp.policyDirectives(
                                 "default-src 'self'; frame-ancestors 'none'; object-src 'none';"))
                     .httpStrictTransportSecurity(
-                        hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31536000)))
+                        hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(HSTS_MAX_AGE_SECONDS)))
         .exceptionHandling(
             ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
         .addFilterBefore(traceFilter, UsernamePasswordAuthenticationFilter.class)

@@ -21,6 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class PlatformInviteService {
 
+  /** Platform invites are valid for 24 hours from creation. */
+  private static final int INVITE_TTL_HOURS = 24;
+
   private final PlatformInviteRepository inviteRepository;
   private final UserRepository userRepository;
   private final PasswordEncoder passwordEncoder;
@@ -50,7 +53,7 @@ public class PlatformInviteService {
             .email(email)
             .role(UserRole.valueOf(role))
             .token(token)
-            .expiresAt(LocalDateTime.now().plusHours(24))
+            .expiresAt(LocalDateTime.now().plusHours(INVITE_TTL_HOURS))
             .createdBy(currentUserId)
             .build();
 

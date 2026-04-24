@@ -77,21 +77,22 @@ public class JwtFilter extends OncePerRequestFilter {
         return;
       }
 
-      Long userId = jwtUtil.extractUserId(token);
-      Long tenantId = jwtUtil.extractTenantId(token);
-      String role = jwtUtil.extractRole(token);
-      String scope = jwtUtil.extractScope(token);
-      String businessType = jwtUtil.extractBusinessType(token);
-      boolean isPlatformUser = jwtUtil.extractIsPlatformUser(token);
-      java.util.Set<String> permissions = jwtUtil.extractPermissions(token);
-      boolean impersonation = jwtUtil.extractImpersonation(token);
-      Long impersonatedBy = jwtUtil.extractImpersonatedBy(token);
+      final Long userId = jwtUtil.extractUserId(token);
+      final Long tenantId = jwtUtil.extractTenantId(token);
 
       TenantContext.setTenantId(tenantId);
 
       MDC.put("tenantId", tenantId != null ? String.valueOf(tenantId) : "none");
       MDC.put("userId", userId != null ? String.valueOf(userId) : "anonymous");
       MDC.put("requestId", UUID.randomUUID().toString());
+
+      final String role = jwtUtil.extractRole(token);
+      final String scope = jwtUtil.extractScope(token);
+      final String businessType = jwtUtil.extractBusinessType(token);
+      final boolean isPlatformUser = jwtUtil.extractIsPlatformUser(token);
+      final java.util.Set<String> permissions = jwtUtil.extractPermissions(token);
+      final boolean impersonation = jwtUtil.extractImpersonation(token);
+      final Long impersonatedBy = jwtUtil.extractImpersonatedBy(token);
 
       String authority = role.startsWith("ROLE_") ? role : "ROLE_" + role;
       UsernamePasswordAuthenticationToken auth =

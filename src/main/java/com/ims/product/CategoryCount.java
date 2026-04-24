@@ -4,7 +4,9 @@ public class CategoryCount {
   private String categoryName;
   private Long productCount;
 
-  public CategoryCount() {}
+  public CategoryCount() {
+    // no-args constructor for JPA / Jackson
+  }
 
   public CategoryCount(String categoryName, Long productCount) {
     this.categoryName = categoryName;

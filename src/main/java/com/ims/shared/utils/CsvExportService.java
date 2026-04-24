@@ -21,7 +21,9 @@ public class CsvExportService {
               .map(
                   header -> {
                     Object value = row.get(header);
-                    if (value == null) return "";
+                    if (value == null) {
+                      return "";
+                    }
                     String strValue = value.toString().replace("\"", "\"\"");
                     if (strValue.contains(",")
                         || strValue.contains("\n")

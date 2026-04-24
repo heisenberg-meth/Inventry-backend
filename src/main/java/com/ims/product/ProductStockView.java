@@ -5,7 +5,9 @@ public class ProductStockView {
   private String name;
   private Integer stock;
 
-  public ProductStockView() {}
+  public ProductStockView() {
+    // no-args constructor for JPA / Jackson
+  }
 
   public ProductStockView(Long id, String name, Integer stock) {
     this.id = id;

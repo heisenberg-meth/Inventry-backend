@@ -139,7 +139,7 @@ public class ScheduledTasksService {
         () -> {
           log.info("Scheduled Task: Cleaning up expired reset tokens across all tenants");
           List<Long> tenantIds = tenantRepository.findAllIds();
-          int count[] = {0};
+          int[] count = {0};
 
           for (Long tenantId : tenantIds) {
             TenantContext.runWithTenant(

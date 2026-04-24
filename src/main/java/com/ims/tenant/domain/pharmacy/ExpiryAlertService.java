@@ -24,7 +24,7 @@ public class ExpiryAlertService {
         () -> {
           log.info("Scheduled Task: Checking pharmacy expiry alerts across all tenants");
           List<Long> tenantIds = tenantRepository.findAllIds();
-          int totalExpiring[] = {0};
+          int[] totalExpiring = {0};
 
           for (Long tenantId : tenantIds) {
             com.ims.shared.auth.TenantContext.runWithTenant(

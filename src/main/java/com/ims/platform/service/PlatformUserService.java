@@ -114,7 +114,9 @@ public class PlatformUserService {
       throw new IllegalArgumentException("Cannot modify ROOT user");
     }
 
-    if (request.getName() != null) user.setName(request.getName());
+    if (request.getName() != null) {
+      user.setName(request.getName());
+    }
     if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
       if (userRepository.existsByEmail(request.getEmail())) {
         throw new IllegalArgumentException("Email already in use");
