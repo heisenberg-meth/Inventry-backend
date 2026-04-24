@@ -46,11 +46,6 @@ import static org.mockito.ArgumentMatchers.*;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public abstract class BaseIntegrationTest {
 
-  @org.junit.jupiter.api.BeforeAll
-  static void globalSetup() {
-    TenantContext.setTenantId(1L);
-  }
-
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
     registry.add("app.jwt.secret", () -> java.util.UUID.randomUUID().toString() + java.util.UUID.randomUUID().toString());
@@ -192,6 +187,7 @@ public abstract class BaseIntegrationTest {
           jdbcTemplate.queryForObject("SELECT id FROM tenants WHERE workspace_slug = 't2'", Long.class));
 
       entityManager.clear();
+      TenantContext.clear();
       return null;
     });
   }

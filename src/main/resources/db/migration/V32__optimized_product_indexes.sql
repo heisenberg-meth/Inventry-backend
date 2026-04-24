@@ -11,4 +11,4 @@ CREATE INDEX IF NOT EXISTS idx_products_tenant_id ON products(tenant_id, id);
 
 -- 4. Stock and reorder level monitoring
 -- Note: Partial indexes (WHERE clause) are supported by both Postgres and H2 2.0+
-CREATE INDEX IF NOT EXISTS idx_products_tenant_stock_reorder ON products(tenant_id, stock, reorder_level) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_products_tenant_stock_reorder ON products(tenant_id, stock, reorder_level, is_active);
