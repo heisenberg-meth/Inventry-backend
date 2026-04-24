@@ -30,7 +30,7 @@ public class PaymentService {
       Long userId) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.error("Tenant ID is missing in PaymentService.recordPayment");
+      log.warn("Tenant ID is missing in PaymentService.recordPayment");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 

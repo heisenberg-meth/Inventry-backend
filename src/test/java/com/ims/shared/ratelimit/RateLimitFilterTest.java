@@ -13,6 +13,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import com.ims.shared.auth.JwtUtil;
 import jakarta.servlet.FilterChain;
 import java.util.List;
@@ -24,6 +27,7 @@ import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 
+@ExtendWith(MockitoExtension.class)
 class RateLimitFilterTest {
 
   private static final int AUTH_RPM = 5;
@@ -31,13 +35,14 @@ class RateLimitFilterTest {
   private static final int TENANT_RPM = 20;
   private static final int WINDOW_SECONDS = 60;
 
-  @SuppressWarnings("unchecked")
-  private final RedisTemplate<String, Object> redisTemplate = mock(RedisTemplate.class);
+  @Mock
+  private RedisTemplate<String, Object> redisTemplate;
 
-  @SuppressWarnings("unchecked")
-  private final ZSetOperations<String, Object> zSet = mock(ZSetOperations.class);
+  @Mock
+  private ZSetOperations<String, Object> zSet;
 
-  private final JwtUtil jwtUtil = mock(JwtUtil.class);
+  @Mock
+  private JwtUtil jwtUtil;
 
   private RateLimitFilter filter;
 

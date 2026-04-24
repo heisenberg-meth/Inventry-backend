@@ -46,7 +46,7 @@ public class StockService {
   public @NonNull Page<WarehouseProduct> getProductsByLocation(@NonNull String location, @NonNull Pageable pageable) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.error("Tenant ID is missing in StockService.getProductsByLocation");
+      log.warn("Tenant ID is missing in StockService.getProductsByLocation");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
@@ -57,7 +57,7 @@ public class StockService {
   public @NonNull Page<TransferOrder> getTransferOrders(@NonNull Pageable pageable) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.error("Tenant ID is missing in StockService.getTransferOrders");
+      log.warn("Tenant ID is missing in StockService.getTransferOrders");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
@@ -69,7 +69,7 @@ public class StockService {
   public @NonNull TransferOrder getTransferOrderById(@NonNull Long id) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.error("Tenant ID is missing in StockService.getTransferOrderById");
+      log.warn("Tenant ID is missing in StockService.getTransferOrderById");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
@@ -83,7 +83,7 @@ public class StockService {
       @NonNull Long userId) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.error("Tenant ID is missing in StockService.updateTransferStatus");
+      log.warn("Tenant ID is missing in StockService.updateTransferStatus");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
@@ -93,7 +93,7 @@ public class StockService {
   public void stockIn(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.error("Tenant ID is missing in StockService.stockIn");
+      log.warn("Tenant ID is missing in StockService.stockIn");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
@@ -103,7 +103,7 @@ public class StockService {
   public void stockOut(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.error("Tenant ID is missing in StockService.stockOut");
+      log.warn("Tenant ID is missing in StockService.stockOut");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
@@ -113,7 +113,7 @@ public class StockService {
   public void stockAdjust(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.error("Tenant ID is missing in StockService.stockAdjust");
+      log.warn("Tenant ID is missing in StockService.stockAdjust");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
@@ -123,7 +123,7 @@ public class StockService {
   public @NonNull Page<StockMovement> getMovements(@NonNull Pageable pageable) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.error("Tenant ID is missing in StockService.getMovements");
+      log.warn("Tenant ID is missing in StockService.getMovements");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
@@ -134,7 +134,7 @@ public class StockService {
       @NonNull Long productId, LocalDateTime from, LocalDateTime to, @NonNull Pageable pageable) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.error("Tenant ID is missing in StockService.getFilteredMovements");
+      log.warn("Tenant ID is missing in StockService.getFilteredMovements");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 

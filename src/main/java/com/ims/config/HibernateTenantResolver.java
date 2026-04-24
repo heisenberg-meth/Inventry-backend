@@ -13,7 +13,11 @@ public class HibernateTenantResolver implements CurrentTenantIdentifierResolver<
     @Override
     public Long resolveCurrentTenantIdentifier() {
         Long tenantId = TenantContext.getTenantId();
-        return tenantId != null ? tenantId : 0L;
+        if (tenantId == null) {
+            throw new IllegalStateException(
+                "No tenant context — all DB access requires a tenant ID.");
+        }
+        return tenantId;
     }
 
     @Override
