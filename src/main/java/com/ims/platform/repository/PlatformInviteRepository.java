@@ -8,5 +8,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface PlatformInviteRepository extends JpaRepository<PlatformInvite, Long> {
   Optional<PlatformInvite> findByToken(String token);
+
   Optional<PlatformInvite> findByEmail(String email);
 }

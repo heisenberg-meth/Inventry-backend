@@ -32,14 +32,16 @@ public class TenantSettingsService {
 
   @Transactional
   @CacheEvict(value = "tenant", key = "#tenantId")
-  public @NonNull TenantResponse updateSettings(@NonNull Long tenantId, @NonNull UpdateTenantSettingsRequest request) {
+  public @NonNull TenantResponse updateSettings(
+      @NonNull Long tenantId, @NonNull UpdateTenantSettingsRequest request) {
     Tenant tenant =
         Objects.requireNonNull(
             tenantRepository
                 .findById(Objects.requireNonNull(tenantId))
                 .orElseThrow(() -> new EntityNotFoundException("Tenant not found")));
 
-    if (request.getWorkspaceSlug() != null && !request.getWorkspaceSlug().equals(tenant.getWorkspaceSlug())) {
+    if (request.getWorkspaceSlug() != null
+        && !request.getWorkspaceSlug().equals(tenant.getWorkspaceSlug())) {
       if (tenantRepository.existsByWorkspaceSlug(request.getWorkspaceSlug())) {
         throw new IllegalArgumentException("Workspace slug already taken");
       }
@@ -64,17 +66,18 @@ public class TenantSettingsService {
   }
 
   private @NonNull TenantResponse toResponse(@NonNull Tenant tenant) {
-    return Objects.requireNonNull(TenantResponse.builder()
-        .id(tenant.getId())
-        .name(tenant.getName())
-        .workspaceSlug(tenant.getWorkspaceSlug())
-        .businessType(tenant.getBusinessType())
-        .plan(tenant.getPlan())
-        .status(tenant.getStatus() != null ? tenant.getStatus().name() : null)
-        .maxProducts(tenant.getMaxProducts())
-        .maxUsers(tenant.getMaxUsers())
-        .expiryThresholdDays(tenant.getExpiryThresholdDays())
-        .createdAt(tenant.getCreatedAt())
-        .build());
+    return Objects.requireNonNull(
+        TenantResponse.builder()
+            .id(tenant.getId())
+            .name(tenant.getName())
+            .workspaceSlug(tenant.getWorkspaceSlug())
+            .businessType(tenant.getBusinessType())
+            .plan(tenant.getPlan())
+            .status(tenant.getStatus() != null ? tenant.getStatus().name() : null)
+            .maxProducts(tenant.getMaxProducts())
+            .maxUsers(tenant.getMaxUsers())
+            .expiryThresholdDays(tenant.getExpiryThresholdDays())
+            .createdAt(tenant.getCreatedAt())
+            .build());
   }
 }

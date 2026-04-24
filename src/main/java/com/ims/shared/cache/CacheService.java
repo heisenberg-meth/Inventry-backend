@@ -2,8 +2,8 @@ package com.ims.shared.cache;
 
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
-import org.springframework.lang.NonNull;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 
 @Service

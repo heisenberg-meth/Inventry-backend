@@ -13,9 +13,9 @@ import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.lang.NonNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -58,8 +58,7 @@ public class OrderController {
   @PostMapping("/sale")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Create sale order")
-  public ResponseEntity<Order> createSalesOrder(
-      @Valid @RequestBody @NonNull OrderRequest request) {
+  public ResponseEntity<Order> createSalesOrder(@Valid @RequestBody @NonNull OrderRequest request) {
     Long userId = extractUserId();
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(orderService.createSalesOrder(request, userId));
@@ -68,8 +67,10 @@ public class OrderController {
   @PostMapping("/return")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Create return order")
-  public ResponseEntity<Order> createReturnOrder(@Valid @RequestBody @NonNull OrderRequest request) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(orderService.createReturnOrder(request, extractUserId()));
+  public ResponseEntity<Order> createReturnOrder(
+      @Valid @RequestBody @NonNull OrderRequest request) {
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(orderService.createReturnOrder(request, extractUserId()));
   }
 
   @PostMapping("/{id}/confirm")
@@ -105,7 +106,10 @@ public class OrderController {
   }
 
   private @NonNull Long extractUserId() {
-    return (Long) Objects.requireNonNull(Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal());
+    return (Long)
+        Objects.requireNonNull(
+            Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication())
+                .getPrincipal());
   }
 
   @GetMapping("/{id}")
@@ -121,9 +125,10 @@ public class OrderController {
   public ResponseEntity<byte[]> downloadPdf(@PathVariable @NonNull Long id) {
     byte[] pdf = orderService.generateOrderPdf(id);
     return ResponseEntity.ok()
-        .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=order-" + id + ".pdf")
+        .header(
+            org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+            "attachment; filename=order-" + id + ".pdf")
         .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "application/pdf")
         .body(pdf);
   }
-
 }

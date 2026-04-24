@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,7 +14,6 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import lombok.extern.slf4j.Slf4j;
 
 @RestControllerAdvice
 @Slf4j
@@ -26,7 +26,6 @@ public class GlobalExceptionHandler {
   private static final int STATUS_CONFLICT = 409;
   private static final int STATUS_UNAUTHORIZED = 401;
   private static final int STATUS_INTERNAL_ERROR = 500;
-
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<Map<String, Object>> handleValidation(
@@ -68,14 +67,17 @@ public class GlobalExceptionHandler {
   public ResponseEntity<Map<String, Object>> handleUnauthorized(
       UnauthorizedException ex, HttpServletRequest request) {
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-        .body(errorBody(STATUS_UNAUTHORIZED, "UNAUTHORIZED", ex.getMessage(), request.getRequestURI()));
+        .body(
+            errorBody(
+                STATUS_UNAUTHORIZED, "UNAUTHORIZED", ex.getMessage(), request.getRequestURI()));
   }
 
   @ExceptionHandler(InsufficientStockException.class)
   public ResponseEntity<Map<String, Object>> handleInsufficientStock(
       InsufficientStockException ex, HttpServletRequest request) {
     Map<String, Object> body =
-        errorBody(STATUS_UNPROCESSABLE, "INSUFFICIENT_STOCK", ex.getMessage(), request.getRequestURI());
+        errorBody(
+            STATUS_UNPROCESSABLE, "INSUFFICIENT_STOCK", ex.getMessage(), request.getRequestURI());
     body.put("available_stock", ex.getAvailableStock());
     body.put("requested_qty", ex.getRequestedQty());
     return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(body);
@@ -94,14 +96,16 @@ public class GlobalExceptionHandler {
   public ResponseEntity<Map<String, Object>> handleBadRequestException(
       BadRequestException ex, HttpServletRequest request) {
     return ResponseEntity.badRequest()
-        .body(errorBody(STATUS_BAD_REQUEST, "BAD_REQUEST", ex.getMessage(), request.getRequestURI()));
+        .body(
+            errorBody(STATUS_BAD_REQUEST, "BAD_REQUEST", ex.getMessage(), request.getRequestURI()));
   }
 
   @ExceptionHandler(IllegalArgumentException.class)
   public ResponseEntity<Map<String, Object>> handleBadRequest(
       IllegalArgumentException ex, HttpServletRequest request) {
     return ResponseEntity.badRequest()
-        .body(errorBody(STATUS_BAD_REQUEST, "BAD_REQUEST", ex.getMessage(), request.getRequestURI()));
+        .body(
+            errorBody(STATUS_BAD_REQUEST, "BAD_REQUEST", ex.getMessage(), request.getRequestURI()));
   }
 
   @ExceptionHandler(IllegalStateException.class)
@@ -109,34 +113,47 @@ public class GlobalExceptionHandler {
       IllegalStateException ex, HttpServletRequest request) {
     log.error("Illegal state encountered at {}: {}", request.getRequestURI(), ex.getMessage());
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .body(errorBody(STATUS_INTERNAL_ERROR, "INTERNAL_ERROR", ex.getMessage(), request.getRequestURI()));
+        .body(
+            errorBody(
+                STATUS_INTERNAL_ERROR, "INTERNAL_ERROR", ex.getMessage(), request.getRequestURI()));
   }
 
   @ExceptionHandler(TenantContextException.class)
   public ResponseEntity<Map<String, Object>> handleTenantContext(
       TenantContextException ex, HttpServletRequest request) {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-        .body(errorBody(STATUS_BAD_REQUEST, "TENANT_CONTEXT_MISSING", ex.getMessage(), request.getRequestURI()));
+        .body(
+            errorBody(
+                STATUS_BAD_REQUEST,
+                "TENANT_CONTEXT_MISSING",
+                ex.getMessage(),
+                request.getRequestURI()));
   }
 
   @ExceptionHandler(UnauthorizedAccessException.class)
   public ResponseEntity<Map<String, Object>> handleAuthAccess(
       UnauthorizedAccessException ex, HttpServletRequest request) {
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-        .body(errorBody(STATUS_UNAUTHORIZED, "UNAUTHORIZED", ex.getMessage(), request.getRequestURI()));
+        .body(
+            errorBody(
+                STATUS_UNAUTHORIZED, "UNAUTHORIZED", ex.getMessage(), request.getRequestURI()));
   }
 
   @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
   public ResponseEntity<Map<String, Object>> handleNoResourceFound(
-      org.springframework.web.servlet.resource.NoResourceFoundException ex, HttpServletRequest request) {
+      org.springframework.web.servlet.resource.NoResourceFoundException ex,
+      HttpServletRequest request) {
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .body(errorBody(STATUS_NOT_FOUND, "NOT_FOUND", "Resource not found", request.getRequestURI()));
+        .body(
+            errorBody(
+                STATUS_NOT_FOUND, "NOT_FOUND", "Resource not found", request.getRequestURI()));
   }
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<Map<String, Object>> handleAll(Exception ex, HttpServletRequest request) {
-    log.error("Unexpected error occurred at [{}]: {}", request.getRequestURI(), ex.getMessage(), ex);
-    
+    log.error(
+        "Unexpected error occurred at [{}]: {}", request.getRequestURI(), ex.getMessage(), ex);
+
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
         .body(
             errorBody(

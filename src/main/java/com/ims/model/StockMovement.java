@@ -1,6 +1,5 @@
 package com.ims.model;
 
-import org.hibernate.annotations.TenantId;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -12,6 +11,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.TenantId;
 
 @Entity
 @Table(name = "stock_movements")

@@ -19,20 +19,21 @@ import org.springframework.web.bind.annotation.*;
 @SecurityRequirement(name = "bearerAuth")
 public class SubscriptionController {
 
-    private final SubscriptionService subscriptionService;
+  private final SubscriptionService subscriptionService;
 
-    @GetMapping
-    @RequiresRole({"ROOT", "PLATFORM_ADMIN"})
-    @Operation(summary = "List all active subscriptions")
-    public ResponseEntity<List<Subscription>> list() {
-        return ResponseEntity.ok(subscriptionService.getActiveSubscriptions());
-    }
+  @GetMapping
+  @RequiresRole({"ROOT", "PLATFORM_ADMIN"})
+  @Operation(summary = "List all active subscriptions")
+  public ResponseEntity<List<Subscription>> list() {
+    return ResponseEntity.ok(subscriptionService.getActiveSubscriptions());
+  }
 
-    @PostMapping("/{id}/extend")
-    @RequiresRole({"ROOT"})
-    @Operation(summary = "Extend subscription duration")
-    public ResponseEntity<Subscription> extend(@PathVariable Long id, @RequestBody Map<String, Integer> body) {
-        int days = body.getOrDefault("days", 30);
-        return ResponseEntity.ok(subscriptionService.extendSubscription(id, days));
-    }
+  @PostMapping("/{id}/extend")
+  @RequiresRole({"ROOT"})
+  @Operation(summary = "Extend subscription duration")
+  public ResponseEntity<Subscription> extend(
+      @PathVariable Long id, @RequestBody Map<String, Integer> body) {
+    int days = body.getOrDefault("days", 30);
+    return ResponseEntity.ok(subscriptionService.extendSubscription(id, days));
+  }
 }

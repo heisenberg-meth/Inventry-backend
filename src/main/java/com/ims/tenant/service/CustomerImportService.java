@@ -18,93 +18,89 @@ import org.springframework.web.multipart.MultipartFile;
 @Slf4j
 public class CustomerImportService {
 
-    private final CustomerRepository customerRepository;
+  private final CustomerRepository customerRepository;
 
-    @Transactional
-    public Map<String, Object> importCustomers(MultipartFile file, boolean dryRun) {
-        List<Customer> customers = new ArrayList<>();
-        int successCount = 0;
-        int failCount = 0;
-        List<String> errors = new ArrayList<>();
+  @Transactional
+  public Map<String, Object> importCustomers(MultipartFile file, boolean dryRun) {
+    List<Customer> customers = new ArrayList<>();
+    int successCount = 0;
+    int failCount = 0;
+    List<String> errors = new ArrayList<>();
 
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
-            String line;
-            boolean firstLine = true;
-            int lineNum = 0;
+    try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
+      String line;
+      boolean firstLine = true;
+      int lineNum = 0;
 
-            while ((line = reader.readLine()) != null) {
-                lineNum++;
-                if (firstLine) {
-                    firstLine = false;
-                    continue;
-                }
-
-                String[] data = line.split(",");
-                if (data.length < 1) {
-                    errors.add("Line " + lineNum + ": Name is required");
-                    failCount++;
-                    continue;
-                }
-
-                try {
-                    String name = data[0].trim();
-                    String phone = data.length > 1 ? data[1].trim() : null;
-                    String email = data.length > 2 ? data[2].trim() : null;
-                    String address = data.length > 3 ? data[3].trim() : null;
-                    String gstin = data.length > 4 ? data[4].trim() : null;
-
-                    Customer customer = Customer.builder()
-                            .name(name)
-                            .phone(phone)
-                            .email(email)
-                            .address(address)
-                            .gstin(gstin)
-                            .build();
-
-                    customers.add(customer);
-                    successCount++;
-                } catch (Exception e) {
-                    errors.add("Line " + lineNum + ": " + e.getMessage());
-                    failCount++;
-                }
-            }
-
-            if (!errors.isEmpty()) {
-                return Map.of(
-                    "success_count", 0,
-                    "fail_count", failCount,
-                    "errors", errors,
-                    "status", "FAILED"
-                );
-            }
-
-            if (dryRun) {
-                return Map.of(
-                    "success_count", successCount,
-                    "fail_count", 0,
-                    "errors", new ArrayList<>(),
-                    "status", "DRY_RUN_SUCCESS"
-                );
-            }
-
-            if (!customers.isEmpty()) {
-                try {
-                    customerRepository.saveAll(customers);
-                } catch (org.springframework.dao.DataIntegrityViolationException e) {
-                    throw new IllegalStateException("Import failed due to DB constraint", e);
-                }
-            }
-
-        } catch (Exception e) {
-            log.error("Failed to import customers", e);
-            throw new RuntimeException("Import failed: " + e.getMessage());
+      while ((line = reader.readLine()) != null) {
+        lineNum++;
+        if (firstLine) {
+          firstLine = false;
+          continue;
         }
 
+        String[] data = line.split(",");
+        if (data.length < 1) {
+          errors.add("Line " + lineNum + ": Name is required");
+          failCount++;
+          continue;
+        }
+
+        try {
+          String name = data[0].trim();
+          String phone = data.length > 1 ? data[1].trim() : null;
+          String email = data.length > 2 ? data[2].trim() : null;
+          String address = data.length > 3 ? data[3].trim() : null;
+          String gstin = data.length > 4 ? data[4].trim() : null;
+
+          Customer customer =
+              Customer.builder()
+                  .name(name)
+                  .phone(phone)
+                  .email(email)
+                  .address(address)
+                  .gstin(gstin)
+                  .build();
+
+          customers.add(customer);
+          successCount++;
+        } catch (Exception e) {
+          errors.add("Line " + lineNum + ": " + e.getMessage());
+          failCount++;
+        }
+      }
+
+      if (!errors.isEmpty()) {
         return Map.of(
-            "success_count", successCount,
-            "fail_count", 0,
-            "errors", errors,
-            "status", "SUCCESS"
-        );
+            "success_count", 0, "fail_count", failCount, "errors", errors, "status", "FAILED");
+      }
+
+      if (dryRun) {
+        return Map.of(
+            "success_count",
+            successCount,
+            "fail_count",
+            0,
+            "errors",
+            new ArrayList<>(),
+            "status",
+            "DRY_RUN_SUCCESS");
+      }
+
+      if (!customers.isEmpty()) {
+        try {
+          customerRepository.saveAll(customers);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+          throw new IllegalStateException("Import failed due to DB constraint", e);
+        }
+      }
+
+    } catch (Exception e) {
+      log.error("Failed to import customers", e);
+      throw new RuntimeException("Import failed: " + e.getMessage());
     }
+
+    return Map.of(
+        "success_count", successCount, "fail_count", 0, "errors", errors, "status", "SUCCESS");
+  }
 }

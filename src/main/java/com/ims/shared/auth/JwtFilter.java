@@ -10,9 +10,9 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
-import org.slf4j.MDC;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -33,7 +33,9 @@ public class JwtFilter extends OncePerRequestFilter {
 
   @Override
   protected void doFilterInternal(
-      @NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain chain)
+      @NonNull HttpServletRequest request,
+      @NonNull HttpServletResponse response,
+      @NonNull FilterChain chain)
       throws ServletException, IOException {
     String authHeader = request.getHeader("Authorization");
 
@@ -64,11 +66,14 @@ public class JwtFilter extends OncePerRequestFilter {
       if (!redisAvailable || Boolean.TRUE.equals(isBlacklisted)) {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json");
-        String errorMessage = !redisAvailable ? "Service temporarily unavailable" : "Token has been revoked";
+        String errorMessage =
+            !redisAvailable ? "Service temporarily unavailable" : "Token has been revoked";
         response
             .getWriter()
             .write(
-                String.format("{\"status\":401,\"error\":\"UNAUTHORIZED\",\"message\":\"%s\"}", errorMessage));
+                String.format(
+                    "{\"status\":401,\"error\":\"UNAUTHORIZED\",\"message\":\"%s\"}",
+                    errorMessage));
         return;
       }
 
@@ -83,17 +88,28 @@ public class JwtFilter extends OncePerRequestFilter {
       Long impersonatedBy = jwtUtil.extractImpersonatedBy(token);
 
       TenantContext.setTenantId(tenantId);
-      
+
       MDC.put("tenantId", tenantId != null ? String.valueOf(tenantId) : "none");
       MDC.put("userId", userId != null ? String.valueOf(userId) : "anonymous");
       MDC.put("requestId", UUID.randomUUID().toString());
 
       String authority = role.startsWith("ROLE_") ? role : "ROLE_" + role;
-      UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-          userId, null, List.of(new SimpleGrantedAuthority(authority)));
+      UsernamePasswordAuthenticationToken auth =
+          new UsernamePasswordAuthenticationToken(
+              userId, null, List.of(new SimpleGrantedAuthority(authority)));
 
       // Store additional details for downstream use
-      auth.setDetails(new JwtAuthDetails(userId, tenantId, role, scope, businessType, isPlatformUser, permissions, impersonation, impersonatedBy));
+      auth.setDetails(
+          new JwtAuthDetails(
+              userId,
+              tenantId,
+              role,
+              scope,
+              businessType,
+              isPlatformUser,
+              permissions,
+              impersonation,
+              impersonatedBy));
       SecurityContextHolder.getContext().setAuthentication(auth);
 
       chain.doFilter(request, response);

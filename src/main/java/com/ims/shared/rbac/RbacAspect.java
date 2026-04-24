@@ -68,7 +68,8 @@ public class RbacAspect {
   }
 
   @Around("@annotation(requiresPermission)")
-  public Object checkPermission(ProceedingJoinPoint pjp, RequiresPermission requiresPermission) throws Throwable {
+  public Object checkPermission(ProceedingJoinPoint pjp, RequiresPermission requiresPermission)
+      throws Throwable {
     var auth = SecurityContextHolder.getContext().getAuthentication();
     if (auth == null || !auth.isAuthenticated()) {
       throw new AccessDeniedException("Not authenticated");
@@ -86,12 +87,15 @@ public class RbacAspect {
       boolean allowed = permissions.contains(requiredPermission);
 
       // ROOT override
-      if (!allowed && "ROOT".equals(details.getRole()) && systemConfigService.isSupportModeEnabled()) {
+      if (!allowed
+          && "ROOT".equals(details.getRole())
+          && systemConfigService.isSupportModeEnabled()) {
         allowed = true;
       }
 
       if (!allowed) {
-        throw new AccessDeniedException("Access denied: Missing required permission " + requiredPermission);
+        throw new AccessDeniedException(
+            "Access denied: Missing required permission " + requiredPermission);
       }
     } else {
       throw new AccessDeniedException("Invalid authentication details");

@@ -13,7 +13,8 @@ public class TenantPersistenceService {
 
   private final TenantRepository tenantRepository;
 
-  @org.springframework.transaction.annotation.Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+  @org.springframework.transaction.annotation.Transactional(
+      propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
   public @NonNull Tenant saveTenant(@NonNull Tenant tenant) {
     return Objects.requireNonNull(tenantRepository.save(Objects.requireNonNull(tenant)));
   }

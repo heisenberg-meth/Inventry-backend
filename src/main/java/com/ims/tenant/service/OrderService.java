@@ -1,15 +1,16 @@
 package com.ims.tenant.service;
 
-import com.ims.shared.audit.AuditAction;
-import com.ims.shared.audit.AuditResource;
-
 import com.ims.model.Order;
 import com.ims.model.OrderItem;
 import com.ims.product.Product;
+import com.ims.product.ProductRepository;
+import com.ims.shared.audit.AuditAction;
+import com.ims.shared.audit.AuditResource;
+import com.ims.tenant.dto.OrderItemRequest;
+import com.ims.tenant.dto.OrderRequest;
 import com.ims.tenant.repository.CustomerRepository;
 import com.ims.tenant.repository.OrderItemRepository;
 import com.ims.tenant.repository.OrderRepository;
-import com.ims.product.ProductRepository;
 import com.ims.tenant.repository.SupplierRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
@@ -18,13 +19,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import com.ims.tenant.dto.OrderRequest;
-import com.ims.tenant.dto.OrderItemRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.lang.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -61,13 +60,14 @@ public class OrderService {
     BigDecimal taxAmount = BigDecimal.ZERO;
 
     // Prepare order early but don't save yet to avoid flushing if we can
-    Order order = Order.builder()
-        .type("PURCHASE")
-        .status(com.ims.model.OrderStatus.PENDING)
-        .supplierId(supplierId)
-        .notes(request.getNotes())
-        .createdBy(userId)
-        .build();
+    Order order =
+        Order.builder()
+            .type("PURCHASE")
+            .status(com.ims.model.OrderStatus.PENDING)
+            .supplierId(supplierId)
+            .notes(request.getNotes())
+            .createdBy(userId)
+            .build();
 
     // Single pass for totals and item preparation
     List<OrderItem> orderItems = new ArrayList<>();
@@ -78,21 +78,23 @@ public class OrderService {
       BigDecimal taxRate = item.getTaxRate() != null ? item.getTaxRate() : BigDecimal.ZERO;
 
       BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(qty)).subtract(discount);
-      BigDecimal itemTax = itemTotal
-          .multiply(taxRate)
-          .divide(BigDecimal.valueOf(PERCENTAGE_BASE), 2, RoundingMode.HALF_UP);
+      BigDecimal itemTax =
+          itemTotal
+              .multiply(taxRate)
+              .divide(BigDecimal.valueOf(PERCENTAGE_BASE), 2, RoundingMode.HALF_UP);
 
       totalAmount = totalAmount.add(itemTotal);
       taxAmount = taxAmount.add(itemTax);
 
-      orderItems.add(OrderItem.builder()
-          .productId(item.getProductId())
-          .quantity(qty)
-          .unitPrice(unitPrice)
-          .discount(discount)
-          .taxRate(taxRate)
-          .total(itemTotal)
-          .build());
+      orderItems.add(
+          OrderItem.builder()
+              .productId(item.getProductId())
+              .quantity(qty)
+              .unitPrice(unitPrice)
+              .discount(discount)
+              .taxRate(taxRate)
+              .total(itemTotal)
+              .build());
     }
 
     order.setTotalAmount(totalAmount);
@@ -110,7 +112,9 @@ public class OrderService {
         AuditAction.CREATE_PURCHASE_ORDER,
         AuditResource.ORDER,
         orderId,
-        String.format("Created purchase order #%d, Supplier: %d, Total: %s", orderId, supplierId, totalAmount));
+        String.format(
+            "Created purchase order #%d, Supplier: %d, Total: %s",
+            orderId, supplierId, totalAmount));
 
     return order;
   }
@@ -136,17 +140,24 @@ public class OrderService {
       Long productId = item.getProductId();
       int qty = item.getQuantity();
 
-      Product product = productRepository
-          .findById(Objects.requireNonNull(productId))
-          .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
+      Product product =
+          productRepository
+              .findById(Objects.requireNonNull(productId))
+              .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
 
-      // STOCK CHECK REMOVED: Rely on StockService/StockTransactionService pessimistic lock during confirmation/deduction.
+      // STOCK CHECK REMOVED: Rely on StockService/StockTransactionService pessimistic lock during
+      // confirmation/deduction.
 
       // PHARMACY EXPIRY CHECK
-      java.util.Optional<com.ims.tenant.domain.pharmacy.PharmacyProduct> pharmacyProduct = 
+      java.util.Optional<com.ims.tenant.domain.pharmacy.PharmacyProduct> pharmacyProduct =
           pharmacyProductRepository.findById(productId);
-      if (pharmacyProduct.isPresent() && pharmacyProduct.get().getExpiryDate().isBefore(java.time.LocalDate.now())) {
-        throw new IllegalArgumentException("Product " + product.getName() + " has expired on " + pharmacyProduct.get().getExpiryDate());
+      if (pharmacyProduct.isPresent()
+          && pharmacyProduct.get().getExpiryDate().isBefore(java.time.LocalDate.now())) {
+        throw new IllegalArgumentException(
+            "Product "
+                + product.getName()
+                + " has expired on "
+                + pharmacyProduct.get().getExpiryDate());
       }
 
       BigDecimal unitPrice = item.getUnitPrice();
@@ -154,40 +165,46 @@ public class OrderService {
       BigDecimal taxRate = item.getTaxRate() != null ? item.getTaxRate() : BigDecimal.ZERO;
 
       BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(qty)).subtract(discount);
-      BigDecimal itemTax = itemTotal
-          .multiply(taxRate)
-          .divide(BigDecimal.valueOf(PERCENTAGE_BASE), 2, RoundingMode.HALF_UP);
+      BigDecimal itemTax =
+          itemTotal
+              .multiply(taxRate)
+              .divide(BigDecimal.valueOf(PERCENTAGE_BASE), 2, RoundingMode.HALF_UP);
 
       totalAmount = totalAmount.add(itemTotal);
       taxAmount = taxAmount.add(itemTax);
 
-      orderItems.add(OrderItem.builder()
-          .productId(productId)
-          .quantity(qty)
-          .unitPrice(unitPrice)
-          .discount(discount)
-          .taxRate(taxRate)
-          .total(itemTotal)
-          .build());
+      orderItems.add(
+          OrderItem.builder()
+              .productId(productId)
+              .quantity(qty)
+              .unitPrice(unitPrice)
+              .discount(discount)
+              .taxRate(taxRate)
+              .total(itemTotal)
+              .build());
     }
 
-    BigDecimal rootDiscount = request.getDiscountTotal() != null ? request.getDiscountTotal() : BigDecimal.ZERO;
+    BigDecimal rootDiscount =
+        request.getDiscountTotal() != null ? request.getDiscountTotal() : BigDecimal.ZERO;
     BigDecimal grandTotalCalculated = totalAmount.add(taxAmount).subtract(rootDiscount);
 
-    if (request.getGrandTotal() != null && grandTotalCalculated.compareTo(request.getGrandTotal()) != 0) {
-      throw new IllegalArgumentException("Grand total mismatch. Calculated: " + grandTotalCalculated);
+    if (request.getGrandTotal() != null
+        && grandTotalCalculated.compareTo(request.getGrandTotal()) != 0) {
+      throw new IllegalArgumentException(
+          "Grand total mismatch. Calculated: " + grandTotalCalculated);
     }
 
-    Order order = Order.builder()
-        .type("SALE")
-        .status(com.ims.model.OrderStatus.PENDING)
-        .customerId(customerId)
-        .totalAmount(totalAmount)
-        .taxAmount(taxAmount)
-        .discount(rootDiscount)
-        .notes(request.getNotes())
-        .createdBy(userId)
-        .build();
+    Order order =
+        Order.builder()
+            .type("SALE")
+            .status(com.ims.model.OrderStatus.PENDING)
+            .customerId(customerId)
+            .totalAmount(totalAmount)
+            .taxAmount(taxAmount)
+            .discount(rootDiscount)
+            .notes(request.getNotes())
+            .createdBy(userId)
+            .build();
     order = Objects.requireNonNull(orderRepository.save(order));
 
     final Long orderId = order.getId();
@@ -200,7 +217,8 @@ public class OrderService {
         AuditAction.CREATE_SALE_ORDER,
         AuditResource.ORDER,
         orderId,
-        String.format("Created sales order #%d, Customer: %d, Total: %s", orderId, customerId, totalAmount));
+        String.format(
+            "Created sales order #%d, Customer: %d, Total: %s", orderId, customerId, totalAmount));
 
     return order;
   }
@@ -210,8 +228,10 @@ public class OrderService {
     Long originalOrderId = request.getOriginalOrderId();
     List<OrderItemRequest> returnItems = request.getItems();
 
-    Order originalOrder = orderRepository.findById(originalOrderId)
-        .orElseThrow(() -> new EntityNotFoundException("Original order not found"));
+    Order originalOrder =
+        orderRepository
+            .findById(originalOrderId)
+            .orElseThrow(() -> new EntityNotFoundException("Original order not found"));
 
     if (!"SALE".equals(originalOrder.getType())) {
       throw new IllegalArgumentException("Returns can only be created for SALE orders");
@@ -220,14 +240,15 @@ public class OrderService {
     BigDecimal returnTotal = BigDecimal.ZERO;
     BigDecimal returnTax = BigDecimal.ZERO;
 
-    Order returnOrder = Order.builder()
-        .type("RETURN")
-        .status(com.ims.model.OrderStatus.COMPLETED)
-        .customerId(originalOrder.getCustomerId())
-        .referenceOrderId(originalOrderId)
-        .notes(request.getNotes() != null ? request.getNotes() : "Customer return")
-        .createdBy(userId)
-        .build();
+    Order returnOrder =
+        Order.builder()
+            .type("RETURN")
+            .status(com.ims.model.OrderStatus.COMPLETED)
+            .customerId(originalOrder.getCustomerId())
+            .referenceOrderId(originalOrderId)
+            .notes(request.getNotes() != null ? request.getNotes() : "Customer return")
+            .createdBy(userId)
+            .build();
 
     returnOrder = orderRepository.save(returnOrder);
 
@@ -238,45 +259,56 @@ public class OrderService {
       Long productId = item.getProductId();
       int qty = item.getQuantity();
 
-      OrderItem originalItem = originalItems.stream()
-          .filter(oi -> oi.getProductId().equals(productId))
-          .findFirst()
-          .orElseThrow(
-              () -> new IllegalArgumentException("Product " + productId + " was not part of the original order"));
+      OrderItem originalItem =
+          originalItems.stream()
+              .filter(oi -> oi.getProductId().equals(productId))
+              .findFirst()
+              .orElseThrow(
+                  () ->
+                      new IllegalArgumentException(
+                          "Product " + productId + " was not part of the original order"));
 
       // Validate partial returns
       List<Order> priorReturnOrders = orderRepository.findByReferenceOrderId(originalOrderId);
       int alreadyReturned = 0;
       if (!priorReturnOrders.isEmpty()) {
-          List<Long> priorReturnIds = priorReturnOrders.stream().map(Order::getId).collect(java.util.stream.Collectors.toList());
-          alreadyReturned = orderItemRepository.findByOrderIdIn(priorReturnIds).stream()
-              .filter(oi -> oi.getProductId().equals(productId))
-              .mapToInt(OrderItem::getQuantity)
-              .sum();
+        List<Long> priorReturnIds =
+            priorReturnOrders.stream()
+                .map(Order::getId)
+                .collect(java.util.stream.Collectors.toList());
+        alreadyReturned =
+            orderItemRepository.findByOrderIdIn(priorReturnIds).stream()
+                .filter(oi -> oi.getProductId().equals(productId))
+                .mapToInt(OrderItem::getQuantity)
+                .sum();
       }
 
       if (qty + alreadyReturned > originalItem.getQuantity()) {
-        throw new IllegalArgumentException(String.format(
-            "Cannot return %d units of product %d. Already returned: %d, Purchased: %d",
-            qty, productId, alreadyReturned, originalItem.getQuantity()));
+        throw new IllegalArgumentException(
+            String.format(
+                "Cannot return %d units of product %d. Already returned: %d, Purchased: %d",
+                qty, productId, alreadyReturned, originalItem.getQuantity()));
       }
 
       BigDecimal unitPrice = originalItem.getUnitPrice();
       BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(qty));
       BigDecimal taxRate = originalItem.getTaxRate();
-      BigDecimal itemTax = itemTotal.multiply(taxRate).divide(BigDecimal.valueOf(PERCENTAGE_BASE), 2,
-          RoundingMode.HALF_UP);
+      BigDecimal itemTax =
+          itemTotal
+              .multiply(taxRate)
+              .divide(BigDecimal.valueOf(PERCENTAGE_BASE), 2, RoundingMode.HALF_UP);
 
       returnTotal = returnTotal.add(itemTotal);
       returnTax = returnTax.add(itemTax);
 
-      returnOrderItems.add(OrderItem.builder()
-          .productId(productId)
-          .quantity(qty)
-          .unitPrice(unitPrice)
-          .taxRate(taxRate)
-          .total(itemTotal)
-          .build());
+      returnOrderItems.add(
+          OrderItem.builder()
+              .productId(productId)
+              .quantity(qty)
+              .unitPrice(unitPrice)
+              .taxRate(taxRate)
+              .total(itemTotal)
+              .build());
 
       // Restore stock
       stockService.stockIn(productId, qty, "Return for Order #" + originalOrderId, userId);
@@ -293,8 +325,12 @@ public class OrderService {
     // Create Credit Note
     invoiceService.createCreditNote(returnOrder, null);
 
-    auditLogService.logAudit(AuditAction.CREATE_RETURN_ORDER, AuditResource.ORDER, returnOrderId,
-        String.format("Processed return for order #%d, Total Credit: %s", originalOrderId, returnTotal));
+    auditLogService.logAudit(
+        AuditAction.CREATE_RETURN_ORDER,
+        AuditResource.ORDER,
+        returnOrderId,
+        String.format(
+            "Processed return for order #%d, Total Credit: %s", originalOrderId, returnTotal));
 
     return returnOrder;
   }
@@ -309,21 +345,25 @@ public class OrderService {
 
   @Transactional(readOnly = true)
   public @NonNull Map<String, Object> getOrderWithItems(@NonNull Long id) {
-    Order order = orderRepository
-        .findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+    Order order =
+        orderRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Order not found"));
     List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
     return Objects.requireNonNull(Map.of("order", order, "items", items));
   }
 
   @Transactional(readOnly = true)
   public byte[] generateOrderPdf(@NonNull Long id) {
-    Order order = orderRepository.findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+    Order order =
+        orderRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
-    com.ims.model.Tenant tenant = tenantRepository
-        .findById(Objects.requireNonNull(com.ims.shared.auth.TenantContext.getTenantId()))
-        .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+    com.ims.model.Tenant tenant =
+        tenantRepository
+            .findById(Objects.requireNonNull(com.ims.shared.auth.TenantContext.getTenantId()))
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
     String partnerName = "N/A";
     String partnerAddress = "N/A";
@@ -343,22 +383,30 @@ public class OrderService {
     }
 
     List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
-    
-    // Batch fetch products to avoid N+1
-    List<Long> productIds = orderItems.stream().map(OrderItem::getProductId).collect(java.util.stream.Collectors.toList());
-    Map<Long, String> productNames = productRepository.findAllById(productIds).stream()
-        .collect(java.util.stream.Collectors.toMap(Product::getId, Product::getName));
 
-    List<Map<String, Object>> items = orderItems.stream().map(item -> {
-      String productName = productNames.getOrDefault(item.getProductId(), "Unknown");
-      Map<String, Object> map = new java.util.HashMap<>();
-      map.put("productName", productName);
-      map.put("quantity", item.getQuantity());
-      map.put("unitPrice", item.getUnitPrice());
-      map.put("discount", item.getDiscount());
-      map.put("total", item.getTotal());
-      return map;
-    }).collect(java.util.stream.Collectors.toList());
+    // Batch fetch products to avoid N+1
+    List<Long> productIds =
+        orderItems.stream()
+            .map(OrderItem::getProductId)
+            .collect(java.util.stream.Collectors.toList());
+    Map<Long, String> productNames =
+        productRepository.findAllById(productIds).stream()
+            .collect(java.util.stream.Collectors.toMap(Product::getId, Product::getName));
+
+    List<Map<String, Object>> items =
+        orderItems.stream()
+            .map(
+                item -> {
+                  String productName = productNames.getOrDefault(item.getProductId(), "Unknown");
+                  Map<String, Object> map = new java.util.HashMap<>();
+                  map.put("productName", productName);
+                  map.put("quantity", item.getQuantity());
+                  map.put("unitPrice", item.getUnitPrice());
+                  map.put("discount", item.getDiscount());
+                  map.put("total", item.getTotal());
+                  return map;
+                })
+            .collect(java.util.stream.Collectors.toList());
 
     org.thymeleaf.context.Context context = new org.thymeleaf.context.Context();
     context.setVariable("tenantName", tenant.getName());
@@ -371,7 +419,8 @@ public class OrderService {
     context.setVariable("status", order.getStatus());
     context.setVariable("type", order.getType());
     context.setVariable("items", items);
-    context.setVariable("subtotal", order.getTotalAmount().subtract(order.getTaxAmount()).add(order.getDiscount()));
+    context.setVariable(
+        "subtotal", order.getTotalAmount().subtract(order.getTaxAmount()).add(order.getDiscount()));
     context.setVariable("taxAmount", order.getTaxAmount());
     context.setVariable("discount", order.getDiscount());
     context.setVariable("totalAmount", order.getTotalAmount());
@@ -379,27 +428,38 @@ public class OrderService {
     return pdfService.generatePdfFromHtml("order-summary", context);
   }
 
-  private static final Map<com.ims.model.OrderStatus, java.util.Set<com.ims.model.OrderStatus>> ALLOWED_TRANSITIONS = Map.of(
-      com.ims.model.OrderStatus.PENDING, java.util.Set.of(com.ims.model.OrderStatus.CONFIRMED, com.ims.model.OrderStatus.CANCELLED),
-      com.ims.model.OrderStatus.CONFIRMED, java.util.Set.of(com.ims.model.OrderStatus.SHIPPED, com.ims.model.OrderStatus.CANCELLED, com.ims.model.OrderStatus.COMPLETED, com.ims.model.OrderStatus.RECEIVED),
-      com.ims.model.OrderStatus.SHIPPED, java.util.Set.of(com.ims.model.OrderStatus.COMPLETED, com.ims.model.OrderStatus.RECEIVED),
-      com.ims.model.OrderStatus.COMPLETED, java.util.Set.of(),
-      com.ims.model.OrderStatus.RECEIVED, java.util.Set.of(),
-      com.ims.model.OrderStatus.CANCELLED, java.util.Set.of()
-  );
+  private static final Map<com.ims.model.OrderStatus, java.util.Set<com.ims.model.OrderStatus>>
+      ALLOWED_TRANSITIONS =
+          Map.of(
+              com.ims.model.OrderStatus.PENDING,
+                  java.util.Set.of(
+                      com.ims.model.OrderStatus.CONFIRMED, com.ims.model.OrderStatus.CANCELLED),
+              com.ims.model.OrderStatus.CONFIRMED,
+                  java.util.Set.of(
+                      com.ims.model.OrderStatus.SHIPPED,
+                      com.ims.model.OrderStatus.CANCELLED,
+                      com.ims.model.OrderStatus.COMPLETED,
+                      com.ims.model.OrderStatus.RECEIVED),
+              com.ims.model.OrderStatus.SHIPPED,
+                  java.util.Set.of(
+                      com.ims.model.OrderStatus.COMPLETED, com.ims.model.OrderStatus.RECEIVED),
+              com.ims.model.OrderStatus.COMPLETED, java.util.Set.of(),
+              com.ims.model.OrderStatus.RECEIVED, java.util.Set.of(),
+              com.ims.model.OrderStatus.CANCELLED, java.util.Set.of());
 
   private void validateTransition(Order order, com.ims.model.OrderStatus newStatus) {
     if (!ALLOWED_TRANSITIONS.get(order.getStatus()).contains(newStatus)) {
       throw new IllegalStateException(
-          "Invalid transition: " + order.getStatus() + " -> " + newStatus
-      );
+          "Invalid transition: " + order.getStatus() + " -> " + newStatus);
     }
   }
 
   @Transactional
   public @NonNull Order confirmOrder(@NonNull Long id, @NonNull Long userId) {
-    Order order = orderRepository.findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+    Order order =
+        orderRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
     validateTransition(order, com.ims.model.OrderStatus.CONFIRMED);
 
@@ -408,9 +468,13 @@ public class OrderService {
     if ("SALE".equals(order.getType())) {
       // Validate and reduce stock
       for (OrderItem item : items) {
-        // STOCK CHECK REMOVED: stockService.stockOut handles pessimistic lock and insufficient stock check atomically.
-        stockService.stockOut(Objects.requireNonNull(item.getProductId()), item.getQuantity(),
-            "Confirmed Sale Order #" + order.getId(), userId);
+        // STOCK CHECK REMOVED: stockService.stockOut handles pessimistic lock and insufficient
+        // stock check atomically.
+        stockService.stockOut(
+            Objects.requireNonNull(item.getProductId()),
+            item.getQuantity(),
+            "Confirmed Sale Order #" + order.getId(),
+            userId);
       }
       order.setStatus(com.ims.model.OrderStatus.CONFIRMED);
       // Auto-generate invoice for sales upon confirmation
@@ -420,37 +484,50 @@ public class OrderService {
     }
 
     order = orderRepository.save(order);
-    auditLogService.logAudit(AuditAction.CONFIRM_ORDER, AuditResource.ORDER, id,
+    auditLogService.logAudit(
+        AuditAction.CONFIRM_ORDER,
+        AuditResource.ORDER,
+        id,
         "Confirmed " + order.getType() + " order #" + id);
     return order;
   }
 
   @Transactional
   public @NonNull Order shipOrder(@NonNull Long id, @NonNull Long userId) {
-    Order order = orderRepository.findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+    Order order =
+        orderRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
     validateTransition(order, com.ims.model.OrderStatus.SHIPPED);
 
     order.setStatus(com.ims.model.OrderStatus.SHIPPED);
     order = orderRepository.save(order);
-    auditLogService.logAudit(AuditAction.SHIP_ORDER, AuditResource.ORDER, id,
+    auditLogService.logAudit(
+        AuditAction.SHIP_ORDER,
+        AuditResource.ORDER,
+        id,
         "Shipped " + order.getType() + " order #" + id);
     return order;
   }
 
   @Transactional
   public @NonNull Order completeOrder(@NonNull Long id, @NonNull Long userId) {
-    Order order = orderRepository.findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+    Order order =
+        orderRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
     if ("PURCHASE".equals(order.getType())) {
       validateTransition(order, com.ims.model.OrderStatus.RECEIVED);
       // For purchase, completion means receiving goods
       List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
       for (OrderItem item : items) {
-        stockService.stockIn(Objects.requireNonNull(item.getProductId()), item.getQuantity(),
-            "Received Purchase Order #" + order.getId(), userId);
+        stockService.stockIn(
+            Objects.requireNonNull(item.getProductId()),
+            item.getQuantity(),
+            "Received Purchase Order #" + order.getId(),
+            userId);
       }
       order.setStatus(com.ims.model.OrderStatus.RECEIVED);
     } else {
@@ -459,40 +536,54 @@ public class OrderService {
     }
 
     order = orderRepository.save(order);
-    auditLogService.logAudit(AuditAction.COMPLETE_ORDER, AuditResource.ORDER, id,
+    auditLogService.logAudit(
+        AuditAction.COMPLETE_ORDER,
+        AuditResource.ORDER,
+        id,
         "Completed " + order.getType() + " order #" + id);
     return order;
   }
 
   @Transactional
   public @NonNull Order cancelOrder(@NonNull Long id, @NonNull Long userId) {
-    Order order = orderRepository.findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+    Order order =
+        orderRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
     validateTransition(order, com.ims.model.OrderStatus.CANCELLED);
 
     // If it was CONFIRMED or SHIPPED, we might need to revert stock for SALES
     if ("SALE".equals(order.getType())
-        && (order.getStatus() == com.ims.model.OrderStatus.CONFIRMED || order.getStatus() == com.ims.model.OrderStatus.SHIPPED)) {
+        && (order.getStatus() == com.ims.model.OrderStatus.CONFIRMED
+            || order.getStatus() == com.ims.model.OrderStatus.SHIPPED)) {
       List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
       for (OrderItem item : items) {
-        stockService.stockIn(Objects.requireNonNull(item.getProductId()), item.getQuantity(),
-            "Cancelled Sale Order #" + order.getId(), userId);
+        stockService.stockIn(
+            Objects.requireNonNull(item.getProductId()),
+            item.getQuantity(),
+            "Cancelled Sale Order #" + order.getId(),
+            userId);
       }
     }
 
     order.setStatus(com.ims.model.OrderStatus.CANCELLED);
     order = orderRepository.save(order);
-    auditLogService.logAudit(AuditAction.CANCEL_ORDER, AuditResource.ORDER, id,
+    auditLogService.logAudit(
+        AuditAction.CANCEL_ORDER,
+        AuditResource.ORDER,
+        id,
         "Cancelled " + order.getType() + " order #" + id);
     return order;
   }
 
-  public @NonNull Page<Order> getOrdersBySupplier(@NonNull Long supplierId, @NonNull Pageable pageable) {
+  public @NonNull Page<Order> getOrdersBySupplier(
+      @NonNull Long supplierId, @NonNull Pageable pageable) {
     return Objects.requireNonNull(orderRepository.findBySupplierId(supplierId, pageable));
   }
 
-  public @NonNull Page<Order> getOrdersByCustomer(@NonNull Long customerId, @NonNull Pageable pageable) {
+  public @NonNull Page<Order> getOrdersByCustomer(
+      @NonNull Long customerId, @NonNull Pageable pageable) {
     return Objects.requireNonNull(orderRepository.findByCustomerId(customerId, pageable));
   }
 }

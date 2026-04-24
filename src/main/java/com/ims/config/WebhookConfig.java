@@ -14,7 +14,7 @@ public class WebhookConfig {
   public RestTemplate webhookRestTemplate() {
     var factory = new SimpleClientHttpRequestFactory();
     factory.setConnectTimeout(3000); // 3s
-    factory.setReadTimeout(5000);    // 5s
+    factory.setReadTimeout(5000); // 5s
     return new RestTemplate(factory);
   }
 
