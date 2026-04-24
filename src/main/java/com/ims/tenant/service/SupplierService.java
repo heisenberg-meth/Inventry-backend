@@ -37,7 +37,7 @@ public class SupplierService {
   public @NonNull Page<com.ims.dto.response.SupplierResponse> getSuppliers(@NonNull Pageable pageable) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.error("Tenant ID is missing in SupplierService.getSuppliers");
+      log.warn("Tenant ID is missing in SupplierService.getSuppliers");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
@@ -47,7 +47,7 @@ public class SupplierService {
   public @NonNull Supplier getById(@NonNull Long id) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.error("Tenant ID is missing in SupplierService.getById");
+      log.warn("Tenant ID is missing in SupplierService.getById");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
@@ -64,7 +64,7 @@ public class SupplierService {
   public @NonNull com.ims.dto.response.SupplierResponse create(@NonNull com.ims.dto.request.SupplierRequest request) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.error("Tenant ID is missing in SupplierService.create");
+      log.warn("Tenant ID is missing in SupplierService.create");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
@@ -89,7 +89,7 @@ public class SupplierService {
   public @NonNull com.ims.dto.response.SupplierResponse update(@NonNull Long id, @NonNull com.ims.dto.request.SupplierRequest updates) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.error("Tenant ID is missing in SupplierService.update");
+      log.warn("Tenant ID is missing in SupplierService.update");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
@@ -125,7 +125,7 @@ public class SupplierService {
   public void delete(@NonNull Long id) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.error("Tenant ID is missing in SupplierService.delete");
+      log.warn("Tenant ID is missing in SupplierService.delete");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
@@ -142,7 +142,7 @@ public class SupplierService {
   public Map<String, Object> getSupplierLedger(@NonNull Long id) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.error("Tenant ID is missing in SupplierService.getSupplierLedger");
+      log.warn("Tenant ID is missing in SupplierService.getSupplierLedger");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
