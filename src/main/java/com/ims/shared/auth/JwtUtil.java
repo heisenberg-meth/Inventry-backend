@@ -165,7 +165,9 @@ public class JwtUtil {
   }
 
   public boolean validateToken(@Nullable String token) {
-    if (token == null || token.isBlank()) return false;
+    if (token == null || token.isBlank()) {
+      return false;
+    }
     try {
       Jwts.parser().verifyWith(key).build().parseSignedClaims(token);
       return true;

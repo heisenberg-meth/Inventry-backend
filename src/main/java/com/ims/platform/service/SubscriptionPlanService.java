@@ -26,6 +26,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class SubscriptionPlanService {
 
+  /** Months per year — used to derive ARR from MRR. */
+  private static final int MONTHS_PER_YEAR = 12;
+
   private final SubscriptionPlanRepository planRepository;
   private final SubscriptionRepository subscriptionRepository;
   private final AuditLogService auditLogService;
@@ -167,7 +170,7 @@ public class SubscriptionPlanService {
     summary.put("totalActiveSubscriptions", totalActive);
     summary.put("planBreakdown", planBreakdown);
     summary.put("mrr", mrr);
-    summary.put("arr", mrr.multiply(BigDecimal.valueOf(12)));
+    summary.put("arr", mrr.multiply(BigDecimal.valueOf(MONTHS_PER_YEAR)));
     return summary;
   }
 }

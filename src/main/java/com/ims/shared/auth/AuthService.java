@@ -42,6 +42,13 @@ public class AuthService {
   private static final int LOGOUT_EXPIRY_HOURS = 24;
   private static final int HASH_LOG_LENGTH = 8;
   private static final int RESET_TOKEN_EXPIRY_MINUTES = 15;
+  private static final int VERIFICATION_TOKEN_EXPIRY_MINUTES = 15;
+
+  /** Access-token TTL (seconds) for ROOT-user tenant impersonation sessions (10 minutes). */
+  private static final long IMPERSONATION_ACCESS_TTL_SECONDS = 600L;
+
+  /** Refresh-token TTL (seconds) for ROOT-user tenant impersonation sessions (1 hour). */
+  private static final long IMPERSONATION_REFRESH_TTL_SECONDS = 3600L;
 
   private final UserRepository userRepository;
   private final TenantRepository tenantRepository;
@@ -125,7 +132,8 @@ public class AuthService {
     String hashedToken = passwordEncoder.encode(rawToken);
 
     user.setVerificationToken(hashedToken);
-    user.setVerificationTokenExpiry(LocalDateTime.now().plusMinutes(15));
+    user.setVerificationTokenExpiry(
+        LocalDateTime.now().plusMinutes(VERIFICATION_TOKEN_EXPIRY_MINUTES));
     userRepository.save(user);
 
     log.info("Verification email resent to: {}", email);
@@ -169,9 +177,9 @@ public class AuthService {
     java.util.Set<String> permissions =
         permissionService.getUserPermissions(targetUser.getId(), tenantId);
 
-    // Impersonation TTLs
-    long impersonationAccessTTL = 600; // 10 minutes
-    long impersonationRefreshTTL = 3600; // 1 hour
+    // Impersonation TTLs (see IMPERSONATION_ACCESS_TTL_SECONDS / IMPERSONATION_REFRESH_TTL_SECONDS)
+    long impersonationAccessTtl = IMPERSONATION_ACCESS_TTL_SECONDS;
+    long impersonationRefreshTtl = IMPERSONATION_REFRESH_TTL_SECONDS;
 
     String accessToken =
         jwtUtil.generateToken(
@@ -184,7 +192,7 @@ public class AuthService {
             permissions,
             true,
             rootUserId,
-            impersonationAccessTTL);
+            impersonationAccessTtl);
 
     String refreshToken =
         jwtUtil.generateRefreshToken(
@@ -197,7 +205,7 @@ public class AuthService {
             permissions,
             true,
             rootUserId,
-            impersonationRefreshTTL);
+            impersonationRefreshTtl);
 
     auditLogService.log(
         AuditAction.ROOT_IMPERSONATION_START,
@@ -218,7 +226,7 @@ public class AuthService {
     return LoginResponse.builder()
         .accessToken(accessToken)
         .refreshToken(refreshToken)
-        .expiresIn(impersonationAccessTTL)
+        .expiresIn(impersonationAccessTtl)
         .user(
             LoginResponse.UserResponse.builder()
                 .id(targetUser.getId().toString())
@@ -482,8 +490,9 @@ public class AuthService {
         permissionService.getUserPermissions(user.getId(), tenantId);
 
     // Maintain impersonation TTLs on refresh
-    long accessTTL = impersonation ? 600 : jwtUtil.getExpirySeconds();
-    long refreshTTL = impersonation ? 3600 : jwtUtil.getRefreshExpirySeconds();
+    long accessTtl = impersonation ? IMPERSONATION_ACCESS_TTL_SECONDS : jwtUtil.getExpirySeconds();
+    long refreshTtl =
+        impersonation ? IMPERSONATION_REFRESH_TTL_SECONDS : jwtUtil.getRefreshExpirySeconds();
 
     String newAccessToken =
         jwtUtil.generateToken(
@@ -496,7 +505,7 @@ public class AuthService {
             permissions,
             impersonation,
             impersonatedBy,
-            accessTTL);
+            accessTtl);
     String newRefreshToken =
         jwtUtil.generateRefreshToken(
             user.getId(),
@@ -508,7 +517,7 @@ public class AuthService {
             permissions,
             impersonation,
             impersonatedBy,
-            refreshTTL);
+            refreshTtl);
 
     // Blacklist old refresh token
     logout(refreshToken);
@@ -558,8 +567,6 @@ public class AuthService {
             .findByIdUnfiltered(userId)
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
-    Map<String, Object> result = new HashMap<>();
-
     Map<String, Object> userMap = new HashMap<>();
     userMap.put("id", user.getId());
     userMap.put("name", user.getName());
@@ -571,6 +578,7 @@ public class AuthService {
     userMap.put("isActive", user.getIsActive());
     userMap.put("lastLogin", user.getLastLogin());
 
+    Map<String, Object> result = new HashMap<>();
     result.put("user", userMap);
 
     if (user.getTenantId() != null) {

@@ -20,6 +20,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class PaymentGatewayService {
 
+  /** Length of the short hex fragment appended to generated gateway order IDs. */
+  private static final int ORDER_ID_SUFFIX_LENGTH = 8;
+
+  /** Razorpay reports payment amounts in paise; we divide by 100 to get the rupee value. */
+  private static final BigDecimal PAISE_PER_RUPEE = new BigDecimal(100);
+
   private final PaymentRepository paymentRepository;
   private final InvoiceRepository invoiceRepository;
   private final PaymentGatewayLogRepository logRepository;
@@ -30,7 +36,8 @@ public class PaymentGatewayService {
         .findById(invoiceId)
         .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
 
-    String gatewayOrderId = "order_" + UUID.randomUUID().toString().substring(0, 8);
+    String gatewayOrderId =
+        "order_" + UUID.randomUUID().toString().substring(0, ORDER_ID_SUFFIX_LENGTH);
 
     Payment payment =
         Payment.builder()
@@ -82,7 +89,7 @@ public class PaymentGatewayService {
       BigDecimal amount =
           new BigDecimal(
                   payload.path("payload").path("payment").path("entity").path("amount").asLong())
-              .divide(new BigDecimal(100)); // Razorpay amount is in paise
+              .divide(PAISE_PER_RUPEE); // Razorpay reports amount in paise
       String currency =
           payload.path("payload").path("payment").path("entity").path("currency").asText();
 

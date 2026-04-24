@@ -18,6 +18,12 @@ import org.springframework.web.multipart.MultipartFile;
 @Slf4j
 public class CustomerImportService {
 
+  // CSV column indexes: Name, Phone, Email, Address, GSTIN
+  private static final int COL_ADDRESS_INDEX = 3;
+  private static final int MIN_COLUMNS_FOR_ADDRESS = 3;
+  private static final int COL_GSTIN_INDEX = 4;
+  private static final int MIN_COLUMNS_FOR_GSTIN = 4;
+
   private final CustomerRepository customerRepository;
 
   @Transactional
@@ -50,8 +56,9 @@ public class CustomerImportService {
           String name = data[0].trim();
           String phone = data.length > 1 ? data[1].trim() : null;
           String email = data.length > 2 ? data[2].trim() : null;
-          String address = data.length > 3 ? data[3].trim() : null;
-          String gstin = data.length > 4 ? data[4].trim() : null;
+          String address =
+              data.length > MIN_COLUMNS_FOR_ADDRESS ? data[COL_ADDRESS_INDEX].trim() : null;
+          String gstin = data.length > MIN_COLUMNS_FOR_GSTIN ? data[COL_GSTIN_INDEX].trim() : null;
 
           Customer customer =
               Customer.builder()

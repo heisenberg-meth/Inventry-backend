@@ -97,10 +97,16 @@ public class TenantController {
   public ResponseEntity<Map<String, String>> updateStatus(
       @PathVariable Long id, @RequestBody Map<String, String> body) {
     String status = body.get("status");
-    if (status == null) throw new IllegalArgumentException("Status is required");
+    if (status == null) {
+      throw new IllegalArgumentException("Status is required");
+    }
 
-    if ("ACTIVE".equals(status)) return ResponseEntity.ok(tenantService.activateTenant(id));
-    if ("SUSPENDED".equals(status)) return ResponseEntity.ok(tenantService.suspendTenant(id));
+    if ("ACTIVE".equals(status)) {
+      return ResponseEntity.ok(tenantService.activateTenant(id));
+    }
+    if ("SUSPENDED".equals(status)) {
+      return ResponseEntity.ok(tenantService.suspendTenant(id));
+    }
     if ("INACTIVE".equals(status)) {
       tenantService.deactivateTenant(id);
       return ResponseEntity.ok(

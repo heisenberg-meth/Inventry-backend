@@ -17,6 +17,9 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class PlatformAnalyticsService {
 
+  /** Months per year — used to derive ARR from MRR. */
+  private static final int MONTHS_PER_YEAR = 12;
+
   private final TenantRepository tenantRepository;
   private final UserRepository userRepository;
   private final SubscriptionRepository subscriptionRepository;
@@ -39,7 +42,7 @@ public class PlatformAnalyticsService {
 
     Map<String, Object> revenue = new LinkedHashMap<>();
     revenue.put("mrr", mrr);
-    revenue.put("arr", mrr.multiply(BigDecimal.valueOf(12)));
+    revenue.put("arr", mrr.multiply(BigDecimal.valueOf(MONTHS_PER_YEAR)));
     revenue.put("active_subscriptions", activeSubscriptions.size());
 
     return revenue;

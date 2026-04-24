@@ -328,7 +328,9 @@ public class ReportService {
   }
 
   private int statusPriority(@Nullable String status) {
-    if (status == null) return STATUS_PRIORITY_OK;
+    if (status == null) {
+      return STATUS_PRIORITY_OK;
+    }
     return switch (status) {
       case "OUT_OF_STOCK" -> 0;
       case "LOW" -> 1;

@@ -37,6 +37,8 @@ public class RedisConfig {
   private static final int TTL_STOCK_MINUTES = 5;
   private static final int TTL_REPORTS_MINUTES = 30;
   private static final int TTL_TENANT_HOURS = 1;
+  private static final int TTL_PERMISSIONS_MINUTES = 5;
+  private static final int TTL_DEFAULT_MINUTES = 10;
 
   @Bean
   public RedisCacheManager cacheManager(RedisConnectionFactory factory) {
@@ -46,10 +48,10 @@ public class RedisConfig {
     configs.put("stock", ttl(Duration.ofMinutes(TTL_STOCK_MINUTES)));
     configs.put("reports", ttl(Duration.ofMinutes(TTL_REPORTS_MINUTES)));
     configs.put("tenant", ttl(Duration.ofHours(TTL_TENANT_HOURS)));
-    configs.put("permissions", ttl(Duration.ofMinutes(5)));
+    configs.put("permissions", ttl(Duration.ofMinutes(TTL_PERMISSIONS_MINUTES)));
 
     return RedisCacheManager.builder(factory)
-        .cacheDefaults(ttl(Duration.ofMinutes(10)))
+        .cacheDefaults(ttl(Duration.ofMinutes(TTL_DEFAULT_MINUTES)))
         .withInitialCacheConfigurations(configs)
         .build();
   }

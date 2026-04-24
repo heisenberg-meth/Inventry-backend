@@ -21,6 +21,14 @@ import org.springframework.web.multipart.MultipartFile;
 @Slf4j
 public class ProductImportService {
 
+  // CSV column indexes: Name, SalePrice, Stock, [SKU], [CategoryName]
+  private static final int REQUIRED_COLUMN_COUNT = 3;
+  private static final int COL_SKU_INDEX = 3;
+  private static final int MIN_COLUMNS_FOR_SKU = 3;
+  private static final int COL_CATEGORY_INDEX = 4;
+  private static final int MIN_COLUMNS_FOR_CATEGORY = 4;
+  private static final int DEFAULT_REORDER_LEVEL = 10;
+
   private final ProductRepository productRepository;
   private final CategoryRepository categoryRepository;
 
@@ -51,7 +59,7 @@ public class ProductImportService {
         }
 
         String[] data = line.split(",");
-        if (data.length < 3) {
+        if (data.length < REQUIRED_COLUMN_COUNT) {
           errors.add(
               "Line " + lineNum + ": Invalid format (at least Name, SalePrice, Stock required)");
           failCount++;
@@ -66,8 +74,9 @@ public class ProductImportService {
           BigDecimal salePrice = new BigDecimal(data[1].trim());
           int stock = Integer.parseInt(data[2].trim());
 
-          String sku = data.length > 3 ? data[3].trim() : null;
-          String categoryName = data.length > 4 ? data[4].trim() : "General";
+          String sku = data.length > MIN_COLUMNS_FOR_SKU ? data[COL_SKU_INDEX].trim() : null;
+          String categoryName =
+              data.length > MIN_COLUMNS_FOR_CATEGORY ? data[COL_CATEGORY_INDEX].trim() : "General";
 
           if (categoryName.isBlank()) {
             categoryName = "General";
@@ -106,7 +115,7 @@ public class ProductImportService {
                   .categoryId(category.getId())
                   .unit("Unit")
                   .isActive(true)
-                  .reorderLevel(10)
+                  .reorderLevel(DEFAULT_REORDER_LEVEL)
                   .build();
 
           products.add(product);

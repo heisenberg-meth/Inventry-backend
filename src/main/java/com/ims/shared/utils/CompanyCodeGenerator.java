@@ -6,18 +6,22 @@ import org.springframework.stereotype.Component;
 @Component
 public class CompanyCodeGenerator {
 
+  private static final int PREFIX_LENGTH = 4;
+  private static final int RANDOM_SUFFIX_MIN = 1000;
+  private static final int RANDOM_SUFFIX_RANGE = 9000;
+
   private final SecureRandom random = new SecureRandom();
 
   public String generateCode(String businessName) {
     String prefix = businessName.replaceAll("[^A-Za-z]", "").toUpperCase();
 
-    if (prefix.length() >= 4) {
-      prefix = prefix.substring(0, 4);
+    if (prefix.length() >= PREFIX_LENGTH) {
+      prefix = prefix.substring(0, PREFIX_LENGTH);
     } else {
-      prefix = String.format("%-4s", prefix).replace(' ', 'X');
+      prefix = String.format("%-" + PREFIX_LENGTH + "s", prefix).replace(' ', 'X');
     }
 
-    int number = 1000 + random.nextInt(9000);
+    int number = RANDOM_SUFFIX_MIN + random.nextInt(RANDOM_SUFFIX_RANGE);
 
     return prefix + number;
   }

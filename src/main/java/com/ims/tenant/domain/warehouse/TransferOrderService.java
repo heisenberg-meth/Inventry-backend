@@ -70,7 +70,9 @@ public class TransferOrderService {
                 () -> new jakarta.persistence.EntityNotFoundException("Transfer order not found"));
 
     String oldStatus = transfer.getStatus();
-    if (oldStatus.equals(status)) return transfer;
+    if (oldStatus.equals(status)) {
+      return transfer;
+    }
 
     // Basic State Machine
     if ("PENDING".equals(oldStatus)) {

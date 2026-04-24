@@ -50,6 +50,9 @@ public class InvoiceService {
 
   private static final int DEFAULT_DUE_DAYS = 30;
 
+  /** Length of the "INV-" prefix that we strip when deriving credit-note numbers. */
+  private static final int INVOICE_PREFIX_LENGTH = 4;
+
   @Transactional
   public @NonNull Invoice createManual(@NonNull CreateInvoiceRequest request) {
     Order order =
@@ -133,7 +136,8 @@ public class InvoiceService {
 
   @Transactional
   public @NonNull Invoice createCreditNote(@NonNull Order returnOrder, Long parentInvoiceId) {
-    String invoiceNumber = "CN-" + incrementAndGetInvoiceNumber().substring(4); // Use CN prefix
+    // Use CN prefix in place of the invoice's "INV-" prefix.
+    String invoiceNumber = "CN-" + incrementAndGetInvoiceNumber().substring(INVOICE_PREFIX_LENGTH);
 
     Invoice creditNote =
         Invoice.builder()

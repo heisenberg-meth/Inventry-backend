@@ -24,6 +24,25 @@ import org.springframework.web.client.RestTemplate;
 @Slf4j
 public class WebhookService {
 
+  // RFC 1918 / RFC 3927 / RFC 4193 / RFC 4291 address-range constants used by isPrivateIp()
+  private static final int IPV4_OCTETS = 4;
+  private static final int IPV6_OCTETS = 16;
+  private static final int UNSIGNED_BYTE_MASK = 0xFF;
+  private static final int IPV4_LOOPBACK_FIRST_OCTET = 127;
+  private static final int IPV4_PRIVATE_10_FIRST_OCTET = 10;
+  private static final int IPV4_PRIVATE_172_FIRST_OCTET = 172;
+  private static final int IPV4_PRIVATE_172_SECOND_OCTET_MIN = 16;
+  private static final int IPV4_PRIVATE_172_SECOND_OCTET_MAX = 31;
+  private static final int IPV4_PRIVATE_192_FIRST_OCTET = 192;
+  private static final int IPV4_PRIVATE_192_SECOND_OCTET = 168;
+  private static final int IPV4_LINK_LOCAL_FIRST_OCTET = 169;
+  private static final int IPV4_LINK_LOCAL_SECOND_OCTET = 254;
+  private static final int IPV6_UNIQUE_LOCAL_PREFIX_MASK = 0xFE;
+  private static final int IPV6_UNIQUE_LOCAL_PREFIX = 0xFC;
+  private static final byte IPV6_LINK_LOCAL_FIRST_BYTE = (byte) 0xFE;
+  private static final int IPV6_LINK_LOCAL_SECOND_BYTE_MASK = 0xC0;
+  private static final int IPV6_LINK_LOCAL_SECOND_BYTE_VALUE = 0x80;
+
   private final WebhookRepository webhookRepository;
   private final RestTemplate webhookRestTemplate;
 
@@ -144,19 +163,50 @@ public class WebhookService {
 
   private boolean isPrivateIp(InetAddress addr) {
     byte[] ip = addr.getAddress();
-    if (ip.length == 4) { // IPv4
-      int first = ip[0] & 0xFF;
-      int second = ip[1] & 0xFF;
-      if (first == 127) return true; // 127.0.0.0/8
-      if (first == 10) return true; // 10.0.0.0/8
-      if (first == 172 && (second >= 16 && second <= 31)) return true; // 172.16.0.0/12
-      if (first == 192 && second == 168) return true; // 192.168.0.0/16
-      if (first == 169 && second == 254) return true; // 169.254.0.0/16
-    } else if (ip.length == 16) { // IPv6
-      if (addr.isLoopbackAddress()) return true;
-      if ((ip[0] & 0xFE) == 0xFC) return true; // fc00::/7
-      if (ip[0] == (byte) 0xFE && (ip[1] & 0xC0) == (byte) 0x80) return true; // fe80::/10
+    if (ip.length == IPV4_OCTETS) {
+      return isPrivateIpv4(ip);
+    }
+    if (ip.length == IPV6_OCTETS) {
+      return isPrivateIpv6(addr, ip);
     }
     return false;
+  }
+
+  private boolean isPrivateIpv4(byte[] ip) {
+    int first = ip[0] & UNSIGNED_BYTE_MASK;
+    int second = ip[1] & UNSIGNED_BYTE_MASK;
+    // 127.0.0.0/8 loopback
+    if (first == IPV4_LOOPBACK_FIRST_OCTET) {
+      return true;
+    }
+    // 10.0.0.0/8 private
+    if (first == IPV4_PRIVATE_10_FIRST_OCTET) {
+      return true;
+    }
+    // 172.16.0.0/12 private
+    if (first == IPV4_PRIVATE_172_FIRST_OCTET
+        && second >= IPV4_PRIVATE_172_SECOND_OCTET_MIN
+        && second <= IPV4_PRIVATE_172_SECOND_OCTET_MAX) {
+      return true;
+    }
+    // 192.168.0.0/16 private
+    if (first == IPV4_PRIVATE_192_FIRST_OCTET && second == IPV4_PRIVATE_192_SECOND_OCTET) {
+      return true;
+    }
+    // 169.254.0.0/16 link-local
+    return first == IPV4_LINK_LOCAL_FIRST_OCTET && second == IPV4_LINK_LOCAL_SECOND_OCTET;
+  }
+
+  private boolean isPrivateIpv6(InetAddress addr, byte[] ip) {
+    if (addr.isLoopbackAddress()) {
+      return true;
+    }
+    // fc00::/7 unique local
+    if ((ip[0] & IPV6_UNIQUE_LOCAL_PREFIX_MASK) == IPV6_UNIQUE_LOCAL_PREFIX) {
+      return true;
+    }
+    // fe80::/10 link-local
+    return ip[0] == IPV6_LINK_LOCAL_FIRST_BYTE
+        && (ip[1] & IPV6_LINK_LOCAL_SECOND_BYTE_MASK) == IPV6_LINK_LOCAL_SECOND_BYTE_VALUE;
   }
 }

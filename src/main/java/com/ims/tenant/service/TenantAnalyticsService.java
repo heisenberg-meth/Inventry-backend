@@ -7,7 +7,12 @@ import com.ims.tenant.repository.OrderRepository;
 import java.time.LocalDateTime;
 import java.time.Month;
 import java.time.format.TextStyle;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,6 +21,22 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class TenantAnalyticsService {
 
+  private static final int REVENUE_TREND_WINDOW_MONTHS = 12;
+  private static final int ORDER_STATUS_WINDOW_MONTHS = 6;
+  private static final int TOP_PRODUCTS_LIMIT = 5;
+  private static final int PERCENT_MULTIPLIER = 100;
+
+  /** Placeholder weight applied to current stock to produce a "top product" score. */
+  private static final int PLACEHOLDER_TOP_PRODUCT_VALUE_MULTIPLIER = 100;
+
+  /** Mock AI dashboard values — replaced when the ML pipeline lands. */
+  private static final int MOCK_INVENTORY_ACCURACY_PCT = 98;
+
+  private static final int MOCK_ORDER_FULFILLMENT_PCT = 95;
+  private static final int MOCK_REALTIME_COUNT = 12;
+  private static final int MOCK_PREDICTIVE_COUNT = 5;
+  private static final int MOCK_PRICING_COUNT = 3;
+
   private final OrderRepository orderRepository;
   private final ProductRepository productRepository;
   private final ReportService reportService;
@@ -23,7 +44,11 @@ public class TenantAnalyticsService {
   public List<Map<String, Object>> getRevenueTrend() {
     Long tenantId = TenantContext.getTenantId();
     LocalDateTime from =
-        LocalDateTime.now().minusMonths(12).withDayOfMonth(1).withHour(0).withMinute(0);
+        LocalDateTime.now()
+            .minusMonths(REVENUE_TREND_WINDOW_MONTHS)
+            .withDayOfMonth(1)
+            .withHour(0)
+            .withMinute(0);
 
     return orderRepository.getMonthlyRevenue("SALE", tenantId, from).stream()
         .map(
@@ -41,7 +66,7 @@ public class TenantAnalyticsService {
   public List<Map<String, Object>> getTopProducts() {
     // Mocking for now based on total products or simplified logic
     return productRepository
-        .findByIsActiveTrue(org.springframework.data.domain.PageRequest.of(0, 5))
+        .findByIsActiveTrue(org.springframework.data.domain.PageRequest.of(0, TOP_PRODUCTS_LIMIT))
         .getContent()
         .stream()
         .map(
@@ -50,19 +75,21 @@ public class TenantAnalyticsService {
                     "name",
                     p.getName(),
                     "value",
-                    p.getStock() * 100)) // Replace with real sales data if available
+                    // Replace with real sales data if available.
+                    p.getStock() * PLACEHOLDER_TOP_PRODUCT_VALUE_MULTIPLIER))
         .collect(Collectors.toList());
   }
 
   public List<Map<String, Object>> getOrderStatusStats() {
     Long tenantId = TenantContext.getTenantId();
-    // Last 6 months for status distribution
-    LocalDateTime from = LocalDateTime.now().minusMonths(6);
+    LocalDateTime from = LocalDateTime.now().minusMonths(ORDER_STATUS_WINDOW_MONTHS);
 
     var stats = orderRepository.getOrderStatusStats(tenantId, from);
     long total = stats.stream().mapToLong(com.ims.tenant.dto.OrderStatusStat::getCount).sum();
 
-    if (total == 0) return Collections.emptyList();
+    if (total == 0) {
+      return Collections.emptyList();
+    }
 
     return stats.stream()
         .map(
@@ -70,7 +97,7 @@ public class TenantAnalyticsService {
               Map<String, Object> map = new LinkedHashMap<>();
               map.put("label", s.getStatus());
               map.put("count", s.getCount());
-              map.put("pct", (double) s.getCount() / total * 100);
+              map.put("pct", (double) s.getCount() / total * PERCENT_MULTIPLIER);
               return map;
             })
         .collect(Collectors.toList());
@@ -106,19 +133,24 @@ public class TenantAnalyticsService {
     Long tenantId = TenantContext.getTenantId();
     long total = productRepository.countActiveByTenant(tenantId);
     long lowStock = productRepository.countLowStockByTenant(tenantId);
-    double score = total == 0 ? 100 : Math.max(0, 100 - ((double) lowStock / total * 100));
+    double score =
+        total == 0
+            ? PERCENT_MULTIPLIER
+            : Math.max(0, PERCENT_MULTIPLIER - ((double) lowStock / total * PERCENT_MULTIPLIER));
 
     Map<String, Object> health = new HashMap<>();
     health.put("score", score);
     health.put(
         "metrics",
         List.of(
-            Map.<String, Object>of("label", "Inventory Accuracy", "pct", 98),
-            Map.<String, Object>of("label", "Order Fulfillment", "pct", 95)));
-    health.put("realtimeCount", 12);
-    health.put("predictiveCount", 5);
+            Map.<String, Object>of(
+                "label", "Inventory Accuracy", "pct", MOCK_INVENTORY_ACCURACY_PCT),
+            Map.<String, Object>of(
+                "label", "Order Fulfillment", "pct", MOCK_ORDER_FULFILLMENT_PCT)));
+    health.put("realtimeCount", MOCK_REALTIME_COUNT);
+    health.put("predictiveCount", MOCK_PREDICTIVE_COUNT);
     health.put("errorCount", 0);
-    health.put("pricingCount", 3);
+    health.put("pricingCount", MOCK_PRICING_COUNT);
     health.put("predictedRestocks", (int) lowStock);
     health.put("demandSurgeItems", 2);
     health.put("accuracyScore", "94%");

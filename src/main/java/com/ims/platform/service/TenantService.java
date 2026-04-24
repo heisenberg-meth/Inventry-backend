@@ -39,6 +39,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class TenantService {
 
+  /** Fallback subscription duration when a plan does not specify one. */
+  private static final int DEFAULT_SUBSCRIPTION_DURATION_DAYS = 30;
+
+  /** Length of the auto-generated tenant-admin password. */
+  private static final int GENERATED_PASSWORD_LENGTH = 12;
+
   private final TenantRepository tenantRepository;
   private final UserRepository userRepository;
   private final PasswordEncoder passwordEncoder;
@@ -274,7 +280,10 @@ public class TenantService {
     tenantRepository.save(tenant);
 
     // Create new subscription
-    int durationDays = plan.getDurationDays() != null ? plan.getDurationDays() : 30;
+    int durationDays =
+        plan.getDurationDays() != null
+            ? plan.getDurationDays()
+            : DEFAULT_SUBSCRIPTION_DURATION_DAYS;
     LocalDateTime startDate = LocalDateTime.now();
     LocalDateTime endDate = startDate.plusDays(durationDays);
 
@@ -425,7 +434,7 @@ public class TenantService {
     String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$";
     StringBuilder sb = new StringBuilder();
     java.security.SecureRandom random = new java.security.SecureRandom();
-    for (int i = 0; i < 12; i++) {
+    for (int i = 0; i < GENERATED_PASSWORD_LENGTH; i++) {
       sb.append(chars.charAt(random.nextInt(chars.length())));
     }
     return sb.toString();

@@ -49,6 +49,9 @@ public class ProductService {
   private static final int DEFAULT_REORDER_LEVEL = 10;
   private static final int MAX_PAGE_SIZE = 100;
 
+  /** Fallback expiry-alert threshold (days) when the tenant has not configured one. */
+  private static final int DEFAULT_EXPIRY_THRESHOLD_DAYS = 30;
+
   @Cacheable(value = "products", key = "'list'", cacheResolver = "tenantAwareCacheResolver")
   public @NonNull PagedResponse<ProductResponse> getProducts(@NonNull Pageable pageable) {
     Long tenantId = getRequiredTenantId();
@@ -269,11 +272,21 @@ public class ProductService {
               .findById(Objects.requireNonNull(product.getId()))
               .orElse(PharmacyProduct.builder().product(product).build());
 
-      if (pd.getBatchNumber() != null) pp.setBatchNumber(pd.getBatchNumber());
-      if (pd.getExpiryDate() != null) pp.setExpiryDate(LocalDate.parse(pd.getExpiryDate()));
-      if (pd.getManufacturer() != null) pp.setManufacturer(pd.getManufacturer());
-      if (pd.getHsnCode() != null) pp.setHsnCode(pd.getHsnCode());
-      if (pd.getSchedule() != null) pp.setSchedule(pd.getSchedule());
+      if (pd.getBatchNumber() != null) {
+        pp.setBatchNumber(pd.getBatchNumber());
+      }
+      if (pd.getExpiryDate() != null) {
+        pp.setExpiryDate(LocalDate.parse(pd.getExpiryDate()));
+      }
+      if (pd.getManufacturer() != null) {
+        pp.setManufacturer(pd.getManufacturer());
+      }
+      if (pd.getHsnCode() != null) {
+        pp.setHsnCode(pd.getHsnCode());
+      }
+      if (pd.getSchedule() != null) {
+        pp.setSchedule(pd.getSchedule());
+      }
 
       pp = Objects.requireNonNull(pharmacyProductRepository.save(pp));
     }
@@ -286,10 +299,18 @@ public class ProductService {
               .findById(Objects.requireNonNull(product.getId()))
               .orElse(WarehouseProduct.builder().product(product).build());
 
-      if (wd.getStorageLocation() != null) wp.setStorageLocation(wd.getStorageLocation());
-      if (wd.getZone() != null) wp.setZone(wd.getZone());
-      if (wd.getRack() != null) wp.setRack(wd.getRack());
-      if (wd.getBin() != null) wp.setBin(wd.getBin());
+      if (wd.getStorageLocation() != null) {
+        wp.setStorageLocation(wd.getStorageLocation());
+      }
+      if (wd.getZone() != null) {
+        wp.setZone(wd.getZone());
+      }
+      if (wd.getRack() != null) {
+        wp.setRack(wd.getRack());
+      }
+      if (wd.getBin() != null) {
+        wp.setBin(wd.getBin());
+      }
 
       wp = Objects.requireNonNull(warehouseProductRepository.save(wp));
     }
@@ -371,7 +392,9 @@ public class ProductService {
   }
 
   private @Nullable String generateUniqueSku(@Nullable String originalSku, @NonNull Long tenantId) {
-    if (originalSku == null) return null;
+    if (originalSku == null) {
+      return null;
+    }
     // Remove existing -COPY or -COPY-N suffix to get base
     String baseSku = originalSku.replaceAll("-COPY(-\\d+)?$", "");
     String newSku = baseSku + "-COPY";
@@ -406,7 +429,10 @@ public class ProductService {
     } else {
 
       thresholdDays =
-          tenantRepository.findById(tenantId).map(Tenant::getExpiryThresholdDays).orElse(30);
+          tenantRepository
+              .findById(tenantId)
+              .map(Tenant::getExpiryThresholdDays)
+              .orElse(DEFAULT_EXPIRY_THRESHOLD_DAYS);
     }
 
     LocalDate threshold = LocalDate.now().plusDays(thresholdDays);
