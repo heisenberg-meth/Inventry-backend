@@ -295,7 +295,16 @@ public class AuthService {
         .build();
   }
 
-  @Transactional
+  /**
+   * Authenticate a user and issue access/refresh tokens.
+   *
+   * <p>Intentionally NOT annotated {@code @Transactional} at this level: a single outer transaction
+   * would pin the Hibernate session to the caller's {@link TenantContext} (set by {@link
+   * com.ims.shared.auth.TenantFilter}), but login identifies the user first and only then knows
+   * which tenant to switch to. Each downstream repository call (including {@link
+   * PermissionService#getUserPermissions} and {@code userRepository.updateLastLogin}) has its own
+   * transactional boundary and is invoked under the correct tenant below.
+   */
   public @NonNull LoginResponse login(@NonNull LoginRequest request) {
     User user =
         userRepository
@@ -348,8 +357,25 @@ public class AuthService {
       }
     }
 
-    java.util.Set<String> permissions =
-        permissionService.getUserPermissions(user.getId(), tenantId);
+    // Tenant-filtered lookups below (permissionService, lastLogin) must run in the user's
+    // tenant context. Incoming /api/auth/login requests have no tenant set because the tenant
+    // is only known after identifying the user, so we set it explicitly here.
+    Long previousTenant = TenantContext.getTenantId();
+    java.util.Set<String> permissions;
+    try {
+      if (tenantId != null) {
+        TenantContext.setTenantId(tenantId);
+      }
+      permissions = permissionService.getUserPermissions(user.getId(), tenantId);
+      // Update last login (atomic update, no version increment)
+      userRepository.updateLastLogin(user.getId(), LocalDateTime.now());
+    } finally {
+      if (previousTenant == null) {
+        TenantContext.clear();
+      } else {
+        TenantContext.setTenantId(previousTenant);
+      }
+    }
 
     String accessToken =
         jwtUtil.generateToken(
@@ -369,9 +395,6 @@ public class AuthService {
             businessType,
             Boolean.TRUE.equals(user.getIsPlatformUser()),
             permissions);
-
-    // Update last login (atomic update, no version increment)
-    userRepository.updateLastLogin(user.getId(), LocalDateTime.now());
 
     LoginResponse.LoginResponseBuilder responseBuilder =
         LoginResponse.builder()
