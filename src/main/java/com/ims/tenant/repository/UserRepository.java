@@ -32,7 +32,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
   @Query("SELECT COUNT(u) FROM User u WHERE u.isActive = true")
   long countActive();
 
-  @Query(value = "SELECT COUNT(*) FROM users WHERE tenant_id = :tenantId AND is_active = true", nativeQuery = true)
+  @Query(
+      value = "SELECT COUNT(*) FROM users WHERE tenant_id = :tenantId AND is_active = true",
+      nativeQuery = true)
   long countActiveByTenantId(@Param("tenantId") Long tenantId);
 
   boolean existsByEmail(String email);
@@ -40,18 +42,20 @@ public interface UserRepository extends JpaRepository<User, Long> {
   @Query(value = "SELECT * FROM users WHERE reset_token = :token", nativeQuery = true)
   Optional<User> findByResetToken(@Param("token") String token);
 
-  @Query(value = "SELECT * FROM users WHERE tenant_id = :tenantId AND role = :role LIMIT 1", nativeQuery = true)
-  Optional<User> findFirstByTenantIdAndRole(@Param("tenantId") Long tenantId, @Param("role") String role);
-  
+  @Query(
+      value = "SELECT * FROM users WHERE tenant_id = :tenantId AND role = :role LIMIT 1",
+      nativeQuery = true)
+  Optional<User> findFirstByTenantIdAndRole(
+      @Param("tenantId") Long tenantId, @Param("role") String role);
+
   default Optional<User> findFirstByTenantIdAndAdminRole(Long tenantId) {
-      return findFirstByTenantIdAndRole(tenantId, UserRole.ADMIN.name());
+    return findFirstByTenantIdAndRole(tenantId, UserRole.ADMIN.name());
   }
 
   @Query(
       value = "SELECT * FROM users WHERE tenant_id = :tenantId AND scope = 'TENANT'",
       nativeQuery = true)
-  Page<User> findByTenantIdAndScope(
-      @Param("tenantId") Long tenantId, Pageable pageable);
+  Page<User> findByTenantIdAndScope(@Param("tenantId") Long tenantId, Pageable pageable);
 
   @Query(
       value =
@@ -59,23 +63,29 @@ public interface UserRepository extends JpaRepository<User, Long> {
               + " AND (name ILIKE '%' || :search || '%' OR email ILIKE '%' || :search || '%')",
       nativeQuery = true)
   Page<User> findByTenantIdAndSearch(
-      @Param("tenantId") Long tenantId,
-      @Param("search") String search,
-      Pageable pageable);
+      @Param("tenantId") Long tenantId, @Param("search") String search, Pageable pageable);
+
+  @org.springframework.transaction.annotation.Transactional
   @org.springframework.data.jpa.repository.Modifying
   @Query("UPDATE User u SET u.lastLogin = :lastLogin WHERE u.id = :id")
   void updateLastLogin(@Param("id") Long id, @Param("lastLogin") java.time.LocalDateTime lastLogin);
-  @Query(value = "SELECT EXISTS(SELECT 1 FROM users WHERE tenant_id = :tenantId)", nativeQuery = true)
+
+  @Query(
+      value = "SELECT EXISTS(SELECT 1 FROM users WHERE tenant_id = :tenantId)",
+      nativeQuery = true)
   boolean existsByTenantId(@Param("tenantId") Long tenantId);
 
-  java.util.List<User> findByResetTokenIsNotNullAndResetTokenExpiryBefore(java.time.LocalDateTime now);
+  java.util.List<User> findByResetTokenIsNotNullAndResetTokenExpiryBefore(
+      java.time.LocalDateTime now);
 
   @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
-  @Query("""
+  @Query(
+      """
       UPDATE User u
       SET u.resetToken = null,
           u.resetTokenExpiry = null
       WHERE u.tenantId = :tenantId AND u.resetTokenExpiry < :now
       """)
-  int clearExpiredResetTokens(@Param("tenantId") Long tenantId, @Param("now") java.time.LocalDateTime now);
+  int clearExpiredResetTokens(
+      @Param("tenantId") Long tenantId, @Param("now") java.time.LocalDateTime now);
 }

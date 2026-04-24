@@ -1,5 +1,3 @@
 package com.ims.tenant;
 
-public class MultiTenantHardeningTest {
-    
-}
+public class MultiTenantHardeningTest {}

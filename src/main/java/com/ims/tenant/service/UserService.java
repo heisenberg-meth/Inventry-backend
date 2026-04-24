@@ -1,8 +1,5 @@
 package com.ims.tenant.service;
 
-import com.ims.shared.audit.AuditAction;
-import com.ims.shared.audit.AuditResource;
-
 import com.ims.dto.request.AssignPermissionsRequest;
 import com.ims.dto.request.CreateUserRequest;
 import com.ims.dto.response.UserResponse;
@@ -11,11 +8,13 @@ import com.ims.model.Role;
 import com.ims.model.User;
 import com.ims.model.UserRole;
 import com.ims.platform.repository.TenantRepository;
+import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditLogService;
+import com.ims.shared.audit.AuditResource;
+import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.repository.PermissionRepository;
 import com.ims.tenant.repository.RoleRepository;
 import com.ims.tenant.repository.UserRepository;
-import com.ims.shared.auth.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.HashSet;
 import java.util.List;
@@ -25,12 +24,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.lang.NonNull;
-import org.springframework.lang.Nullable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,13 +48,16 @@ public class UserService {
   private static final List<String> VALID_TENANT_ROLES = List.of("ADMIN", "MANAGER", "STAFF");
 
   public @NonNull Page<UserResponse> getUsers(@NonNull Pageable pageable) {
-    return userRepository.findAll(Objects.requireNonNull(pageable)).map(user -> toResponse(user, false));
+    return userRepository
+        .findAll(Objects.requireNonNull(pageable))
+        .map(user -> toResponse(user, false));
   }
 
   public @NonNull UserResponse getUserById(@NonNull Long id) {
-    User user = userRepository
-        .findByIdWithPermissions(Objects.requireNonNull(id))
-        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User user =
+        userRepository
+            .findByIdWithPermissions(Objects.requireNonNull(id))
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
     return toResponse(user, true);
   }
 
@@ -79,7 +81,7 @@ public class UserService {
         tenantRepository
             .lockById(tenantId)
             .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
-            
+
     if (tenant.getMaxUsers() != null) {
       long currentCount = userRepository.countActiveByTenantId(tenantId);
       if (currentCount >= tenant.getMaxUsers()) {
@@ -99,9 +101,13 @@ public class UserService {
             .build();
 
     user = Objects.requireNonNull(userRepository.save(Objects.requireNonNull(user)));
-    
-    auditLogService.logAudit(AuditAction.CREATE, AuditResource.USER, user.getId(), "Created user: " + user.getEmail() + " with role: " + user.getRole());
-    
+
+    auditLogService.logAudit(
+        AuditAction.CREATE,
+        AuditResource.USER,
+        user.getId(),
+        "Created user: " + user.getEmail() + " with role: " + user.getRole());
+
     log.info("User created: id={} email={} role={}", user.getId(), user.getEmail(), user.getRole());
     return toResponse(user, true);
   }
@@ -121,27 +127,38 @@ public class UserService {
 
     user.setRole(UserRole.valueOf(newRole));
     user = Objects.requireNonNull(userRepository.save(Objects.requireNonNull(user)));
-    
-    auditLogService.logAudit(AuditAction.UPDATE_ROLE, AuditResource.USER, id, "Updated role for user " + user.getEmail() + " to " + newRole);
-    
+
+    auditLogService.logAudit(
+        AuditAction.UPDATE_ROLE,
+        AuditResource.USER,
+        id,
+        "Updated role for user " + user.getEmail() + " to " + newRole);
+
     log.info("User role updated: id={} newRole={}", id, newRole);
     return toResponse(user, true);
   }
 
   @Transactional
   @CacheEvict(value = "permissions", key = "#id", cacheResolver = "tenantAwareCacheResolver")
-  public @NonNull UserResponse assignPermissions(@NonNull Long id, @NonNull AssignPermissionsRequest request) {
+  public @NonNull UserResponse assignPermissions(
+      @NonNull Long id, @NonNull AssignPermissionsRequest request) {
     Objects.requireNonNull(id, "user id required");
     Objects.requireNonNull(request, "request body required");
-    User user = userRepository.findByIdWithPermissions(id)
-        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User user =
+        userRepository
+            .findByIdWithPermissions(id)
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     var perms = permissionRepository.findByIdIn(request.getPermissionIds());
     user.setCustomPermissions(new HashSet<>(perms));
     userRepository.save(user);
 
-    auditLogService.logAudit(AuditAction.ASSIGN_PERMISSIONS, AuditResource.USER, id, "Assigned " + perms.size() + " custom permissions to user: " + user.getEmail());
-    
+    auditLogService.logAudit(
+        AuditAction.ASSIGN_PERMISSIONS,
+        AuditResource.USER,
+        id,
+        "Assigned " + perms.size() + " custom permissions to user: " + user.getEmail());
+
     return toResponse(user, true);
   }
 
@@ -155,7 +172,11 @@ public class UserService {
     user.setIsActive(false);
     userRepository.save(Objects.requireNonNull(user));
 
-    auditLogService.logAudit(AuditAction.DEACTIVATE, AuditResource.USER, id, "Deactivated user account: " + user.getEmail());
+    auditLogService.logAudit(
+        AuditAction.DEACTIVATE,
+        AuditResource.USER,
+        id,
+        "Deactivated user account: " + user.getEmail());
     log.info("User deactivated: id={}", id);
   }
 
@@ -169,41 +190,44 @@ public class UserService {
 
   private @NonNull UserResponse toResponse(@NonNull User user, boolean includePermissions) {
     List<String> permissions = null;
-    
+
     if (includePermissions) {
       Set<String> allPermissions = new HashSet<>();
-      
+
       // 1. Role permissions
       if (user.getRole() != null) {
         Long tenantId = getTenantId();
-        Optional<Role> roleOpt = tenantId != null 
-            ? roleRepository.findByNameAndTenantIdWithPermissions(user.getRole().name(), tenantId)
-            : roleRepository.findByNameAndTenantIdIsNullWithPermissions(user.getRole().name());
-        
-        roleOpt.ifPresent(role -> 
-            allPermissions.addAll(role.getPermissions().stream()
-                .map(Permission::getKey)
-                .collect(Collectors.toSet()))
-        );
+        Optional<Role> roleOpt =
+            tenantId != null
+                ? roleRepository.findByNameAndTenantIdWithPermissions(
+                    user.getRole().name(), tenantId)
+                : roleRepository.findByNameAndTenantIdIsNullWithPermissions(user.getRole().name());
+
+        roleOpt.ifPresent(
+            role ->
+                allPermissions.addAll(
+                    role.getPermissions().stream()
+                        .map(Permission::getKey)
+                        .collect(Collectors.toSet())));
       }
 
       // 2. Custom permissions
-      allPermissions.addAll(user.getCustomPermissions().stream()
-          .map(Permission::getKey)
-          .collect(Collectors.toSet()));
-      
+      allPermissions.addAll(
+          user.getCustomPermissions().stream().map(Permission::getKey).collect(Collectors.toSet()));
+
       permissions = new java.util.ArrayList<>(allPermissions);
     }
 
-    return Objects.requireNonNull(UserResponse.builder()
-        .id(user.getId())
-        .name(user.getName())
-        .email(user.getEmail())
-        .role(user.getRole() != null ? user.getRole().name() : null)
-        .scope(user.getScope())
-        .isActive(user.getIsActive())
-        .permissions(permissions)
-        .createdAt(user.getCreatedAt())
-        .build());
+    return Objects.requireNonNull(
+        UserResponse.builder()
+            .id(user.getId())
+            .name(user.getName())
+            .email(user.getEmail())
+            .role(user.getRole() != null ? user.getRole().name() : null)
+            .scope(user.getScope())
+            .isActive(user.getIsActive())
+            .permissions(permissions)
+            .createdAt(user.getCreatedAt())
+            .build());
   }
 }
