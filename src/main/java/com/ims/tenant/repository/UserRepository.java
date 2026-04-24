@@ -65,6 +65,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
   Page<User> findByTenantIdAndSearch(
       @Param("tenantId") Long tenantId, @Param("search") String search, Pageable pageable);
 
+  @org.springframework.transaction.annotation.Transactional
   @org.springframework.data.jpa.repository.Modifying
   @Query("UPDATE User u SET u.lastLogin = :lastLogin WHERE u.id = :id")
   void updateLastLogin(@Param("id") Long id, @Param("lastLogin") java.time.LocalDateTime lastLogin);

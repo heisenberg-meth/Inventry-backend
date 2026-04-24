@@ -60,7 +60,9 @@ public class SignupService {
     tenant = tenantPersistenceService.saveTenant(tenant); // commits immediately
     log.info("Signup: Created tenant id={} name={}", tenant.getId(), tenant.getName());
 
-    // 2. Now user and data initialization in its own transaction (correctly bound to new tenant)
+    // 2. Now user and data initialization in its own transaction (correctly bound to new tenant).
+    // The CurrentTenantIdentifierResolver is consulted when the transactional session opens, so
+    // we must switch TenantContext BEFORE invoking the @Transactional initializeTenant proxy.
     User user =
         User.builder()
             .name(request.getOwnerName())
@@ -72,7 +74,17 @@ public class SignupService {
             .isActive(true)
             .build();
 
-    tenantInitializationService.initializeTenant(user, tenant.getId(), tenant.getName());
+    Long previousTenant = TenantContext.getTenantId();
+    try {
+      TenantContext.setTenantId(tenant.getId());
+      tenantInitializationService.initializeTenant(user, tenant.getId(), tenant.getName());
+    } finally {
+      if (previousTenant == null) {
+        TenantContext.clear();
+      } else {
+        TenantContext.setTenantId(previousTenant);
+      }
+    }
 
     log.info("Signup: Created owner user and seeded data for tenant={}", tenant.getId());
     return new SignupResponse(
