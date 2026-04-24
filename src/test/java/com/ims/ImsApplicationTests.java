@@ -5,6 +5,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.mail.javamail.JavaMailSender;
 
 @SpringBootTest(
   webEnvironment = SpringBootTest.WebEnvironment.NONE,
@@ -20,6 +21,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 class ImsApplicationTests {
   @MockitoBean
   private RedisTemplate<String, Object> redisTemplate;
+
+  @MockitoBean
+  private JavaMailSender javaMailSender;
   @Test
   void contextLoads() {}
 }

@@ -60,7 +60,7 @@ public class NotificationService {
   public void createNotificationForCurrentTenant(Long userId, String title, String message, String type, Long resourceId) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.error("Tenant context missing in createNotificationForCurrentTenant");
+      log.warn("Tenant context missing in createNotificationForCurrentTenant");
       throw new com.ims.shared.exception.TenantContextException("Tenant context missing");
     }
     createNotification(tenantId, userId, title, message, type, resourceId);
