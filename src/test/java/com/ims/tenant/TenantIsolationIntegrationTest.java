@@ -3,17 +3,14 @@ package com.ims.tenant;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.CategoryRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest(
     properties = {
@@ -38,23 +35,25 @@ public class TenantIsolationIntegrationTest extends BaseIntegrationTest {
   @Test
   void testRequestSucceedsWithTenantHeader() throws Exception {
     // We still need a valid JWT token because of SecurityConfig
-    String token = login("root@ims.com", "root123", "SYS001", systemTenantId);
+    String token = login("root@ims.com", TEST_ROOT_PASSWORD, "SYS001", systemTenantId);
 
     CategoryRequest request1 = new CategoryRequest();
     request1.setName("Test Category");
 
-    mockMvc.perform(
-    post("/api/v1/tenant/categories")
-        .header("Authorization", "Bearer " + token)
-        .with(java.util.Objects.requireNonNull(tenant(String.valueOf(testTenant1Id))))
-        .contentType(java.util.Objects.requireNonNull(MediaType.APPLICATION_JSON))
-        .content(java.util.Objects.requireNonNull(objectMapper.writeValueAsString(request1))))
+    mockMvc
+        .perform(
+            post("/api/v1/tenant/categories")
+                .header("Authorization", "Bearer " + token)
+                .with(java.util.Objects.requireNonNull(tenant(String.valueOf(testTenant1Id))))
+                .contentType(java.util.Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                .content(
+                    java.util.Objects.requireNonNull(objectMapper.writeValueAsString(request1))))
         .andExpect(status().isCreated());
   }
 
   @Test
   void testDataIsolationBetweenTenants() throws Exception {
-    String token = login("root@ims.com", "root123", "SYS001", systemTenantId);
+    String token = login("root@ims.com", TEST_ROOT_PASSWORD, "SYS001", systemTenantId);
 
     // Create category for Tenant 1
     CategoryRequest request1 = new CategoryRequest();
@@ -66,7 +65,8 @@ public class TenantIsolationIntegrationTest extends BaseIntegrationTest {
                 .header("Authorization", "Bearer " + token)
                 .with(tenant(String.valueOf(testTenant1Id)))
                 .contentType(java.util.Objects.requireNonNull(MediaType.APPLICATION_JSON))
-                .content(java.util.Objects.requireNonNull(objectMapper.writeValueAsString(request1))))
+                .content(
+                    java.util.Objects.requireNonNull(objectMapper.writeValueAsString(request1))))
         .andExpect(status().isCreated());
 
     // Verify Tenant 1 can see it
@@ -88,5 +88,4 @@ public class TenantIsolationIntegrationTest extends BaseIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.totalElements").value(0));
   }
-
 }

@@ -42,14 +42,23 @@ public class RedisConfig {
 
   @Bean
   public RedisCacheManager cacheManager(RedisConnectionFactory factory) {
-    RedisConnectionFactory f = java.util.Objects.requireNonNull(factory);
+    final RedisConnectionFactory f = java.util.Objects.requireNonNull(factory);
     Map<String, RedisCacheConfiguration> configs = new HashMap<>();
-    configs.put("products", ttl(java.util.Objects.requireNonNull(Duration.ofMinutes(TTL_PRODUCTS_MINUTES))));
-    configs.put("categories", ttl(java.util.Objects.requireNonNull(Duration.ofMinutes(TTL_PRODUCTS_MINUTES))));
-    configs.put("stock", ttl(java.util.Objects.requireNonNull(Duration.ofMinutes(TTL_STOCK_MINUTES))));
-    configs.put("reports", ttl(java.util.Objects.requireNonNull(Duration.ofMinutes(TTL_REPORTS_MINUTES))));
-    configs.put("tenant", ttl(java.util.Objects.requireNonNull(Duration.ofHours(TTL_TENANT_HOURS))));
-    configs.put("permissions", ttl(java.util.Objects.requireNonNull(Duration.ofMinutes(TTL_PERMISSIONS_MINUTES))));
+    configs.put(
+        "products",
+        ttl(java.util.Objects.requireNonNull(Duration.ofMinutes(TTL_PRODUCTS_MINUTES))));
+    configs.put(
+        "categories",
+        ttl(java.util.Objects.requireNonNull(Duration.ofMinutes(TTL_PRODUCTS_MINUTES))));
+    configs.put(
+        "stock", ttl(java.util.Objects.requireNonNull(Duration.ofMinutes(TTL_STOCK_MINUTES))));
+    configs.put(
+        "reports", ttl(java.util.Objects.requireNonNull(Duration.ofMinutes(TTL_REPORTS_MINUTES))));
+    configs.put(
+        "tenant", ttl(java.util.Objects.requireNonNull(Duration.ofHours(TTL_TENANT_HOURS))));
+    configs.put(
+        "permissions",
+        ttl(java.util.Objects.requireNonNull(Duration.ofMinutes(TTL_PERMISSIONS_MINUTES))));
 
     RedisCacheConfiguration tmp =
         ttl(java.util.Objects.requireNonNull(Duration.ofMinutes(TTL_DEFAULT_MINUTES)));
@@ -68,25 +77,24 @@ public class RedisConfig {
 
       @Override
       @NonNull
-      public Collection<? extends Cache> resolveCaches(@NonNull CacheOperationInvocationContext<?> context) {
+      public Collection<? extends Cache> resolveCaches(
+          @NonNull CacheOperationInvocationContext<?> context) {
         Long tenantId = TenantContext.getTenantId();
         Collection<String> cacheNames = context.getOperation().getCacheNames();
 
         String tenantSuffix =
-            java.util.Objects.requireNonNull(
-                tenantId != null ? tenantId.toString() : "default");
+            java.util.Objects.requireNonNull(tenantId != null ? tenantId.toString() : "default");
 
         Collection<? extends Cache> result =
             cacheNames.stream()
                 .map(name -> java.util.Objects.requireNonNull(name) + ":" + tenantSuffix)
                 .map(
                     cacheName -> {
-                      Cache cache = cacheManager.getCache(java.util.Objects.requireNonNull(cacheName));
+                      Cache cache =
+                          cacheManager.getCache(java.util.Objects.requireNonNull(cacheName));
                       if (cache == null) {
-                        String[] parts =
-                            java.util.Objects.requireNonNull(cacheName.split(":"));
-                        String baseName =
-                            java.util.Objects.requireNonNull(parts[0]);
+                        String[] parts = java.util.Objects.requireNonNull(cacheName.split(":"));
+                        String baseName = java.util.Objects.requireNonNull(parts[0]);
                         return cacheManager.getCache(baseName);
                       }
                       return cache;
@@ -117,8 +125,7 @@ public class RedisConfig {
     // Polymorphic typing is removed for security (RCE risk).
     // DTOs should be plain Pojos with Jackson annotations if needed.
 
-    return java.util.Objects.requireNonNull(
-        new GenericJackson2JsonRedisSerializer(mapper));
+    return java.util.Objects.requireNonNull(new GenericJackson2JsonRedisSerializer(mapper));
   }
 
   private RedisCacheConfiguration ttl(Duration duration) {

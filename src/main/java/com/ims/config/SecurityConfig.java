@@ -38,20 +38,20 @@ public class SecurityConfig {
   private String allowedOrigins;
 
   private static final String[] AUTH_WHITELIST = {
-    "/api/auth/login",
-    "/api/auth/signup",
-    "/api/auth/refresh",
-    "/api/auth/forgot-password",
-    "/api/auth/reset-password",
-    "/api/auth/verify-email",
-    "/api/auth/resend-verification",
-    "/api/auth/check-email",
-    "/api/auth/check-slug",
-    "/api/auth/check-company-code",
-    "/api/platform/auth/login",
-    "/api/platform/invites/accept",
-    "/api/platform/invites/complete",
-    "/api/tenant/payments/gateway/webhook"
+    "/api/v1/auth/login",
+    "/api/v1/auth/signup",
+    "/api/v1/auth/refresh",
+    "/api/v1/auth/forgot-password",
+    "/api/v1/auth/reset-password",
+    "/api/v1/auth/verify-email",
+    "/api/v1/auth/resend-verification",
+    "/api/v1/auth/check-email",
+    "/api/v1/auth/check-slug",
+    "/api/v1/auth/check-company-code",
+    "/api/v1/platform/auth/login",
+    "/api/v1/platform/invites/accept",
+    "/api/v1/platform/invites/complete",
+    "/api/v1/tenant/payments/gateway/webhook"
   };
 
   private static final String[] SWAGGER_WHITELIST = {
@@ -66,10 +66,11 @@ public class SecurityConfig {
     return configureCommon(http)
         .authorizeHttpRequests(
             auth -> {
-              auth.requestMatchers("/api/auth/**", "/api/v1/auth/**", "/api/platform/auth/**").permitAll();
-              auth.requestMatchers("/api/platform/invites/**").permitAll();
-              auth.requestMatchers("/api/tenant/payments/gateway/webhook").permitAll();
-              auth.requestMatchers("/actuator/health", "/api/v1/actuator/health").permitAll();
+              auth.requestMatchers(AUTH_WHITELIST).permitAll();
+              auth.requestMatchers("/api/v1/auth/**", "/api/v1/platform/auth/**").permitAll();
+              auth.requestMatchers("/api/v1/platform/invites/**").permitAll();
+              auth.requestMatchers("/api/v1/tenant/payments/gateway/webhook").permitAll();
+              auth.requestMatchers("/actuator/health").permitAll();
 
               if (isDev) {
                 auth.requestMatchers("/actuator/**").permitAll();

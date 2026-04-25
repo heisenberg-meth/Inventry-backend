@@ -35,7 +35,7 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
 
   @Test
   void testPlatformAdminFlow() throws Exception {
-    String rootToken = login("root@ims.com", "root123", "SYS001", systemTenantId);
+    String rootToken = login("root@ims.com", TEST_ROOT_PASSWORD, "SYS001", systemTenantId);
 
     // ROOT can list tenants
     mockMvc
@@ -67,7 +67,7 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
     String createUserJson = objectMapper.writeValueAsString(createUser);
     mockMvc
         .perform(
-            post("/api/tenant/users")
+            post("/api/v1/tenant/users")
                 .header("Authorization", "Bearer " + t1Token)
                 .with(tenant(t1Id.toString()))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -79,7 +79,7 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
     String staffToken = login("staff-mgt1@t1.com", "staff123", response.getCompanyCode(), t1Id);
     mockMvc
         .perform(
-            get("/api/tenant/users")
+            get("/api/v1/tenant/users")
                 .header("Authorization", "Bearer " + staffToken)
                 .with(tenant(t1Id.toString())))
         .andExpect(status().isForbidden());
@@ -106,7 +106,7 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
     // 3. Tenant 1 Admin cannot see Tenant 2 Admin (Users should be isolated)
     mockMvc
         .perform(
-            get("/api/tenant/users")
+            get("/api/v1/tenant/users")
                 .header("Authorization", "Bearer " + t1Token)
                 .with(tenant(t1Id.toString())))
         .andExpect(status().isOk())
@@ -127,7 +127,7 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
     // 2. Tenant ADMIN cannot access Platform APIs (ROOT only)
     mockMvc
         .perform(
-            get("/api/platform/tenants")
+            get("/api/v1/platform/tenants")
                 .header("Authorization", "Bearer " + t1Token)
                 .with(tenant(t1Id.toString())))
         .andExpect(status().isForbidden());
