@@ -67,7 +67,7 @@ public class StockController {
   @GetMapping("/transfers/{id}")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Get transfer order detail")
-  public @NonNull ResponseEntity<TransferOrder> getTransferById(@PathVariable @NonNull Long id) {
+  public @NonNull ResponseEntity<TransferOrder> getTransferById(@PathVariable long id) {
     return ResponseEntity.ok(Objects.requireNonNull(stockService.getTransferOrderById(id)));
   }
 
@@ -75,7 +75,7 @@ public class StockController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Update transfer order status")
   public @NonNull ResponseEntity<TransferOrder> updateTransferStatus(
-      @PathVariable @NonNull Long id, @RequestBody @NonNull TransferOrderStatusRequest request) {
+      @PathVariable long id, @RequestBody @NonNull TransferOrderStatusRequest request) {
     Long userId = extractUserId();
     return ResponseEntity.ok(
         Objects.requireNonNull(stockService.updateTransferStatus(id, request, userId)));
@@ -136,7 +136,7 @@ public class StockController {
     return ResponseEntity.ok(Objects.requireNonNull(stockService.getMovements(pageable)));
   }
 
-  private @NonNull Long extractUserId() {
+  private long extractUserId() {
     return (Long)
         Objects.requireNonNull(
             Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication())

@@ -53,7 +53,7 @@ public class AuthController {
   public ResponseEntity<Map<String, String>> logout(HttpServletRequest request) {
     String authHeader = request.getHeader("Authorization");
     if (authHeader != null && authHeader.startsWith("Bearer ")) {
-      String token = authHeader.substring(BEARER_PREFIX_LENGTH);
+      String token = java.util.Objects.requireNonNull(authHeader.substring(BEARER_PREFIX_LENGTH));
       authService.logout(token);
     }
     return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
@@ -66,7 +66,8 @@ public class AuthController {
     if (refreshToken == null || refreshToken.isBlank()) {
       return ResponseEntity.badRequest().build();
     }
-    LoginResponse response = authService.refresh(refreshToken);
+    String safeToken = java.util.Objects.requireNonNull(refreshToken);
+    LoginResponse response = authService.refresh(safeToken);
     return ResponseEntity.ok(response);
   }
 
@@ -74,7 +75,7 @@ public class AuthController {
   @SecurityRequirement(name = "bearerAuth")
   @Operation(summary = "Get current user profile")
   public ResponseEntity<Map<String, Object>> getProfile() {
-    Long userId = extractUserId();
+    Long userId = java.util.Objects.requireNonNull(extractUserId());
     return ResponseEntity.ok(authService.getProfile(userId));
   }
 
@@ -83,8 +84,8 @@ public class AuthController {
   @Operation(summary = "Change password", description = "Requires current password")
   public ResponseEntity<Map<String, String>> changePassword(
       @Valid @RequestBody ChangePasswordRequest request) {
-    Long userId = extractUserId();
-    return ResponseEntity.ok(authService.changePassword(userId, request));
+    Long userId = java.util.Objects.requireNonNull(extractUserId());
+    return ResponseEntity.ok(authService.changePassword(userId, java.util.Objects.requireNonNull(request)));
   }
 
   @PostMapping("/forgot-password")
@@ -93,21 +94,21 @@ public class AuthController {
       description = "Request password reset token (sent via email)")
   public ResponseEntity<Map<String, String>> forgotPassword(
       @Valid @RequestBody ForgotPasswordRequest request) {
-    return ResponseEntity.ok(authService.forgotPassword(request));
+    return ResponseEntity.ok(authService.forgotPassword(java.util.Objects.requireNonNull(request)));
   }
 
   @PostMapping("/reset-password")
   @Operation(summary = "Reset password", description = "Reset password using reset token")
   public ResponseEntity<Map<String, String>> resetPassword(
       @Valid @RequestBody ResetPasswordRequest request) {
-    return ResponseEntity.ok(authService.resetPassword(request));
+    return ResponseEntity.ok(authService.resetPassword(java.util.Objects.requireNonNull(request)));
   }
 
   @GetMapping("/verify-email")
   @Operation(summary = "Verify email", description = "Verify user email using verification token")
   public ResponseEntity<Map<String, String>> verifyEmail(
       @RequestParam String token, @RequestParam String email) {
-    return ResponseEntity.ok(authService.verifyEmail(token, email));
+    return ResponseEntity.ok(authService.verifyEmail(java.util.Objects.requireNonNull(token), java.util.Objects.requireNonNull(email)));
   }
 
   @PostMapping("/resend-verification")
@@ -118,32 +119,32 @@ public class AuthController {
     if (email == null || email.isBlank()) {
       return ResponseEntity.badRequest().build();
     }
-    return ResponseEntity.ok(authService.resendVerification(email));
+    return ResponseEntity.ok(authService.resendVerification(java.util.Objects.requireNonNull(email)));
   }
 
   @GetMapping("/check-email")
   @Operation(summary = "Check email availability")
   public ResponseEntity<Map<String, Boolean>> checkEmail(@RequestParam String email) {
-    return ResponseEntity.ok(authService.checkEmail(email));
+    return ResponseEntity.ok(authService.checkEmail(java.util.Objects.requireNonNull(email)));
   }
 
   @GetMapping("/check-slug")
   @Operation(summary = "Check workspace slug availability")
   public ResponseEntity<Map<String, Boolean>> checkSlug(@RequestParam String slug) {
-    return ResponseEntity.ok(authService.checkSlug(slug));
+    return ResponseEntity.ok(authService.checkSlug(java.util.Objects.requireNonNull(slug)));
   }
 
   @GetMapping("/check-company-code")
   @Operation(summary = "Check if company code exists")
   public ResponseEntity<Map<String, Boolean>> checkCompanyCode(@RequestParam String code) {
-    return ResponseEntity.ok(authService.checkCompanyCode(code));
+    return ResponseEntity.ok(authService.checkCompanyCode(java.util.Objects.requireNonNull(code)));
   }
 
   @GetMapping("/permissions")
   @SecurityRequirement(name = "bearerAuth")
   @Operation(summary = "Get current user permissions")
   public ResponseEntity<Map<String, Object>> getMyPermissions() {
-    Long userId = extractUserId();
+    Long userId = java.util.Objects.requireNonNull(extractUserId());
     return ResponseEntity.ok(authService.getMyPermissions(userId));
   }
 
@@ -157,7 +158,7 @@ public class AuthController {
   private Long extractUserId() {
     var auth = SecurityContextHolder.getContext().getAuthentication();
     if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
-      return details.getUserId();
+      return java.util.Objects.requireNonNull(details.getUserId());
     }
     throw new UnauthorizedException("User not authenticated");
   }
