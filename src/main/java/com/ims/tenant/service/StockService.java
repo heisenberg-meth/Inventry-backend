@@ -4,7 +4,6 @@ import com.ims.dto.TransferOrderStatusRequest;
 import com.ims.model.StockMovement;
 import com.ims.model.TransferOrder;
 import com.ims.platform.service.TenantService;
-import com.ims.product.ProductService;
 import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.domain.warehouse.WarehouseProduct;
 import com.ims.tenant.repository.StockMovementRepository;
@@ -29,8 +28,6 @@ public class StockService {
   private final TenantService tenantService;
   private final WarehouseProductRepository warehouseProductRepository;
   private final TransferOrderRepository transferOrderRepository;
-  private final com.ims.product.ProductRepository productRepository;
-  private final ProductService productService;
   private final StockTransactionService stockTransactionService;
 
   private void checkWarehouseType() {

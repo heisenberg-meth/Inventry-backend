@@ -8,6 +8,7 @@ import com.ims.model.User;
 import com.ims.model.UserRole;
 import com.ims.platform.repository.TenantRepository;
 import com.ims.tenant.repository.UserRepository;
+import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.lang.NonNull;
@@ -41,15 +42,14 @@ public class SignupService {
 
   public SignupResponse signup(@NonNull SignupRequest request) {
     TenantContext.clear();
-    java.util.Objects.requireNonNull(request, "request cannot be null");
-    String rawEmail = java.util.Objects.requireNonNull(request.getOwnerEmail());
+    Objects.requireNonNull(request, "request cannot be null");
+    String rawEmail = Objects.requireNonNull(request.getOwnerEmail());
     String normalizedEmail = rawEmail.trim().toLowerCase();
 
-    String businessName = java.util.Objects.requireNonNull(request.getBusinessName());
-    String workspaceSlug =
-        (request.getWorkspaceSlug() != null && !request.getWorkspaceSlug().isBlank())
-            ? java.util.Objects.requireNonNull(request.getWorkspaceSlug())
-            : generateWorkspaceSlug(businessName);
+    String businessName = Objects.requireNonNull(request.getBusinessName());
+    String workspaceSlug = (request.getWorkspaceSlug() != null && !request.getWorkspaceSlug().isBlank())
+        ? Objects.requireNonNull(request.getWorkspaceSlug())
+        : generateWorkspaceSlug(businessName);
     workspaceSlug = ensureUniqueWorkspaceSlug(workspaceSlug);
 
     if (userRepository.findByEmail(normalizedEmail).isPresent()) {
@@ -64,39 +64,39 @@ public class SignupService {
 
     // 1. Save tenant in its own committed transaction
     Tenant newTenant =
-        Tenant.builder()
-            .name(businessName)
-            .businessType(request.getBusinessType())
-            .workspaceSlug(workspaceSlug)
-            .companyCode(companyCode)
-            .status(TenantStatus.ACTIVE)
-            .plan("FREE")
-            .address(request.getAddress())
-            .gstin(request.getGstin())
-            .build();
-
-    Tenant tmpTenant = tenantPersistenceService.saveTenant(newTenant);
-    Tenant tenant = java.util.Objects.requireNonNull(tmpTenant);
+        Objects.requireNonNull(
+            Tenant.builder()
+                .name(businessName)
+                .businessType(request.getBusinessType())
+                .workspaceSlug(workspaceSlug)
+                .companyCode(companyCode)
+                .status(TenantStatus.ACTIVE)
+                .plan("FREE")
+                .address(request.getAddress())
+                .gstin(request.getGstin())
+                .build());
+ 
+    Tenant tenant = Objects.requireNonNull(tenantPersistenceService.saveTenant(newTenant));
     log.info(
         "Signup: Created tenant id={} name={}",
-        java.util.Objects.requireNonNull(tenant.getId()),
+        Objects.requireNonNull(tenant.getId()),
         tenant.getName());
 
     User user =
-        User.builder()
-            .name(java.util.Objects.requireNonNull(request.getOwnerName()))
-            .email(normalizedEmail)
-            .phone(request.getOwnerPhone())
-            .passwordHash(
-                passwordEncoder.encode(java.util.Objects.requireNonNull(request.getPassword())))
-            .role(UserRole.ADMIN)
-            .scope("TENANT")
-            .isActive(true)
-            .build();
+        Objects.requireNonNull(
+            User.builder()
+                .name(Objects.requireNonNull(request.getOwnerName()))
+                .email(normalizedEmail)
+                .phone(request.getOwnerPhone())
+                .passwordHash(passwordEncoder.encode(Objects.requireNonNull(request.getPassword())))
+                .role(UserRole.ADMIN)
+                .scope("TENANT")
+                .isActive(true)
+                .build());
 
     Long previousTenant = TenantContext.getTenantId();
-    Long tenantId = java.util.Objects.requireNonNull(tenant.getId());
-    String tenantName = java.util.Objects.requireNonNull(tenant.getName());
+    Long tenantId = Objects.requireNonNull(tenant.getId());
+    String tenantName = Objects.requireNonNull(tenant.getName());
     try {
       TenantContext.setTenantId(tenantId);
       tenantInitializationService.initializeTenant(user, tenantId, tenantName);
@@ -111,8 +111,8 @@ public class SignupService {
     log.info("Signup: Created owner user and seeded data for tenant={}", tenantId);
     return new SignupResponse(
         "Signup successful",
-        java.util.Objects.requireNonNull(tenant.getCompanyCode()),
-        java.util.Objects.requireNonNull(tenant.getWorkspaceSlug()));
+        Objects.requireNonNull(tenant.getCompanyCode()),
+        Objects.requireNonNull(tenant.getWorkspaceSlug()));
   }
 
   private String generateUniqueCompanyCode(String businessName) {

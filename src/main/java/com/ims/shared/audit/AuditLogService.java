@@ -2,11 +2,15 @@ package com.ims.shared.audit;
 
 import com.ims.platform.service.SystemConfigService;
 import com.ims.shared.auth.JwtAuthDetails;
+import com.ims.model.AuditLog;
+import com.ims.shared.auth.TenantContext;
+import com.ims.dto.response.AuditLogResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import java.util.Objects;
 
 @Service
 @Slf4j
@@ -19,13 +23,14 @@ public class AuditLogService {
   public void log(AuditAction action, Long tenantId, Long userId, String details) {
     log.info("AUDIT: action={} details={}", action, details);
 
-    com.ims.model.AuditLog auditEntry =
-        com.ims.model.AuditLog.builder()
-            .tenantId(tenantId)
-            .userId(userId)
-            .action(action.name())
-            .details(details)
-            .build();
+    AuditLog auditEntry =
+        Objects.requireNonNull(
+            AuditLog.builder()
+                .tenantId(tenantId)
+                .userId(userId)
+                .action(action.name())
+                .details(details)
+                .build());
 
     auditLogRepository.save(auditEntry);
   }
@@ -40,13 +45,14 @@ public class AuditLogService {
       log(a, tenantId, userId, details);
     } catch (IllegalArgumentException e) {
       log.warn("Legacy log called with non-enum value: {}. Logging as string.", action);
-      com.ims.model.AuditLog auditEntry =
-          com.ims.model.AuditLog.builder()
-              .tenantId(tenantId)
-              .userId(userId)
-              .action(action)
-              .details(details)
-              .build();
+      AuditLog auditEntry =
+          Objects.requireNonNull(
+              AuditLog.builder()
+                  .tenantId(tenantId)
+                  .userId(userId)
+                  .action(action)
+                  .details(details)
+                  .build());
       auditLogRepository.save(auditEntry);
     }
   }
@@ -64,7 +70,7 @@ public class AuditLogService {
 
     // Fallback for tenantId if not in auth (e.g., during creation flows)
     if (tenantId == null) {
-      tenantId = com.ims.shared.auth.TenantContext.getTenantId();
+      tenantId = TenantContext.getTenantId();
     }
 
     String fullDetails =
@@ -88,12 +94,12 @@ public class AuditLogService {
           action,
           resource);
       // Fallback if enums don't match yet
-      Long tenantId = com.ims.shared.auth.TenantContext.getTenantId();
-      log.info("LEGACY-AUDIT: action={} details={}", action, details);
+      Long tenantId = TenantContext.getTenantId();
+      log.info("LEGACY-AUDIT: tenantId={} action={} details={}", tenantId, action, details);
     }
   }
 
-  public org.springframework.data.domain.Page<com.ims.dto.response.AuditLogResponse> getAllLogs(
+  public org.springframework.data.domain.Page<AuditLogResponse> getAllLogs(
       @NonNull org.springframework.data.domain.Pageable pageable) {
     var logs = auditLogRepository.findAll(pageable);
 
@@ -104,7 +110,7 @@ public class AuditLogService {
     return logs.map(this::toMaskedDto); // everyone else gets masked
   }
 
-  public org.springframework.data.domain.Page<com.ims.dto.response.AuditLogResponse> getTenantLogs(
+  public org.springframework.data.domain.Page<AuditLogResponse> getTenantLogs(
       Long tenantId, @NonNull org.springframework.data.domain.Pageable pageable) {
     var logs = auditLogRepository.findByTenantId(tenantId, pageable);
 
@@ -115,7 +121,7 @@ public class AuditLogService {
     return logs.map(this::toMaskedDto);
   }
 
-  public org.springframework.data.domain.Page<com.ims.dto.response.AuditLogResponse>
+  public org.springframework.data.domain.Page<AuditLogResponse>
       getTenantLogsAsDto(
           Long tenantId, @NonNull org.springframework.data.domain.Pageable pageable) {
     var logs = auditLogRepository.findByTenantId(tenantId, pageable);

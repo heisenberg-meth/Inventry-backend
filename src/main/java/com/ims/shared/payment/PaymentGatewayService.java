@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,7 +32,8 @@ public class PaymentGatewayService {
   private final PaymentGatewayLogRepository logRepository;
 
   @Transactional
-  public Map<String, Object> initiatePayment(Long invoiceId, BigDecimal amount, Long userId) {
+  public Map<String, Object> initiatePayment(
+      @NonNull Long invoiceId, @NonNull BigDecimal amount, @NonNull Long userId) {
     invoiceRepository
         .findById(invoiceId)
         .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
@@ -40,15 +42,16 @@ public class PaymentGatewayService {
         "order_" + UUID.randomUUID().toString().substring(0, ORDER_ID_SUFFIX_LENGTH);
 
     Payment payment =
-        Payment.builder()
-            .tenantId(TenantContext.getTenantId())
-            .invoiceId(invoiceId)
-            .amount(amount)
-            .paymentMode("GATEWAY")
-            .gatewayTransactionId(gatewayOrderId)
-            .status("PENDING")
-            .createdBy(userId)
-            .build();
+        java.util.Objects.requireNonNull(
+            Payment.builder()
+                .tenantId(TenantContext.getTenantId())
+                .invoiceId(invoiceId)
+                .amount(amount)
+                .paymentMode("GATEWAY")
+                .gatewayTransactionId(gatewayOrderId)
+                .status("PENDING")
+                .createdBy(userId)
+                .build());
 
     paymentRepository.save(payment);
 
@@ -75,12 +78,13 @@ public class PaymentGatewayService {
     log.info("Processing validated payment gateway webhook: {} for tenant {}", eventType, tenantId);
 
     PaymentGatewayLog pgLog =
-        PaymentGatewayLog.builder()
-            .tenantId(tenantId)
-            .eventId(eventId)
-            .eventType(eventType)
-            .rawPayload(payload.toString())
-            .build();
+        java.util.Objects.requireNonNull(
+            PaymentGatewayLog.builder()
+                .tenantId(tenantId)
+                .eventId(eventId)
+                .eventType(eventType)
+                .rawPayload(payload.toString())
+                .build());
     logRepository.save(pgLog);
 
     if ("payment.captured".equals(eventType)) {

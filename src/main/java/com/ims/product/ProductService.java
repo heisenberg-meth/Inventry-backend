@@ -19,6 +19,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -67,7 +68,7 @@ public class ProductService {
     Page<ProductResponse> page =
         productRepository
             .findAllWithDetails(tenantId, pageable)
-            .map(view -> toResponse(java.util.Objects.requireNonNull(view)));
+            .map(view -> toResponse(Objects.requireNonNull(view)));
     return new PagedResponse<>(
         page.getContent(),
         page.getTotalElements(),
@@ -78,13 +79,12 @@ public class ProductService {
 
   public @NonNull List<ProductResponse> getNextProducts(
       @NonNull Long tenantId, @Nullable Long lastId, int limit) {
-    getRequiredTenantId(); // Just to ensure context is present if required, though we use parameter
-    // tenantId
+    getRequiredTenantId();
     Pageable pageable = PageRequest.of(0, Math.min(limit, MAX_PAGE_SIZE));
     List<ProductResponse> list =
         Objects.requireNonNull(productRepository.findNextProducts(tenantId, lastId, pageable))
             .stream()
-            .map(view -> toResponse(java.util.Objects.requireNonNull(view)))
+            .map(view -> toResponse(Objects.requireNonNull(view)))
             .collect(Collectors.toList());
 
     return Objects.requireNonNull(list);
@@ -96,13 +96,13 @@ public class ProductService {
     ProductResponse response =
         productRepository
             .findByIdWithDetails(id)
-            .map(view -> toResponse(java.util.Objects.requireNonNull(view)))
+            .map(view -> toResponse(Objects.requireNonNull(view)))
             .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
     return Objects.requireNonNull(response);
   }
 
-  public @NonNull java.util.Optional<Product> findByIdWithLock(@NonNull Long id) {
+  public @NonNull Optional<Product> findByIdWithLock(@NonNull Long id) {
     return Objects.requireNonNull(productRepository.findByIdWithLock(id));
   }
 
@@ -150,7 +150,8 @@ public class ProductService {
     }
 
     Product product =
-        Product.builder()
+        Objects.requireNonNull(
+            Product.builder()
             .name(request.getName())
             .sku(request.getSku())
             .barcode(request.getBarcode())
@@ -164,20 +165,18 @@ public class ProductService {
                     : DEFAULT_REORDER_LEVEL)
             .stock(0)
             .isActive(true)
-            .build();
+            .build());
 
-    Product tmpProduct = productRepository.save(product);
-    Product safeProduct = Objects.requireNonNull(tmpProduct);
-    product = safeProduct;
+    product = Objects.requireNonNull(productRepository.save(product));
 
     auditLogService.logAudit(
         AuditAction.CREATE,
         AuditResource.PRODUCT,
-        java.util.Objects.requireNonNull(product.getId()),
+        Objects.requireNonNull(product.getId()),
         "Created product: "
-            + java.util.Objects.requireNonNull(product.getName())
+            + Objects.requireNonNull(product.getName())
             + " (SKU: "
-            + java.util.Objects.requireNonNull(product.getSku())
+            + Objects.requireNonNull(product.getSku())
             + ")");
 
     PharmacyProduct pp = null;
@@ -186,38 +185,36 @@ public class ProductService {
     if ("PHARMACY".equals(businessType) && request.getPharmacyDetails() != null) {
       var pd = request.getPharmacyDetails();
       pp =
-          PharmacyProduct.builder()
-              .product(product)
-              .batchNumber(pd.getBatchNumber())
-              .expiryDate(LocalDate.parse(pd.getExpiryDate()))
-              .manufacturer(pd.getManufacturer())
-              .hsnCode(pd.getHsnCode())
-              .schedule(pd.getSchedule())
-              .build();
-      PharmacyProduct tmpPp = pharmacyProductRepository.save(pp);
-      PharmacyProduct safePp = Objects.requireNonNull(tmpPp);
-      pp = safePp;
+          Objects.requireNonNull(
+              PharmacyProduct.builder()
+                  .product(product)
+                  .batchNumber(pd.getBatchNumber())
+                  .expiryDate(LocalDate.parse(pd.getExpiryDate()))
+                  .manufacturer(pd.getManufacturer())
+                  .hsnCode(pd.getHsnCode())
+                  .schedule(pd.getSchedule())
+                  .build());
+      pp = Objects.requireNonNull(pharmacyProductRepository.save(pp));
     }
 
     if ("WAREHOUSE".equals(businessType) && request.getWarehouseDetails() != null) {
       var wd = request.getWarehouseDetails();
       wp =
-          WarehouseProduct.builder()
-              .product(product)
-              .storageLocation(wd.getStorageLocation())
-              .zone(wd.getZone())
-              .rack(wd.getRack())
-              .bin(wd.getBin())
-              .build();
-      WarehouseProduct tmpWp = warehouseProductRepository.save(wp);
-      WarehouseProduct safeWp = Objects.requireNonNull(tmpWp);
-      wp = safeWp;
+          Objects.requireNonNull(
+              WarehouseProduct.builder()
+                  .product(product)
+                  .storageLocation(wd.getStorageLocation())
+                  .zone(wd.getZone())
+                  .rack(wd.getRack())
+                  .bin(wd.getBin())
+                  .build());
+      wp = Objects.requireNonNull(warehouseProductRepository.save(wp));
     }
 
     log.info(
         "Product created: id={} name={}",
-        java.util.Objects.requireNonNull(product.getId()),
-        java.util.Objects.requireNonNull(product.getName()));
+        Objects.requireNonNull(product.getId()),
+        Objects.requireNonNull(product.getName()));
     return Objects.requireNonNull(toResponse(product, pp, wp));
   }
 
@@ -281,8 +278,8 @@ public class ProductService {
     auditLogService.logAudit(
         AuditAction.UPDATE,
         AuditResource.PRODUCT,
-        java.util.Objects.requireNonNull(product.getId()),
-        "Updated product: " + java.util.Objects.requireNonNull(product.getName()));
+        Objects.requireNonNull(product.getId()),
+        "Updated product: " + Objects.requireNonNull(product.getName()));
 
     String businessType = getBusinessType();
     PharmacyProduct pp = null;
@@ -384,7 +381,7 @@ public class ProductService {
         AuditAction.DELETE,
         AuditResource.PRODUCT,
         id,
-        "Soft deleted product: " + java.util.Objects.requireNonNull(product.getName()));
+        "Soft deleted product: " + Objects.requireNonNull(product.getName()));
 
     log.info("Product soft deleted: id={}", id);
   }
@@ -400,21 +397,21 @@ public class ProductService {
 
     Long tenantId = Objects.requireNonNull(original.getTenantId());
     Product clone =
-        Product.builder()
-            .name(java.util.Objects.requireNonNull(original.getName()) + " (Copy)")
-            .sku(generateUniqueSku(original.getSku(), tenantId))
-            .barcode(null) // Barcode should be unique
-            .categoryId(original.getCategoryId())
-            .unit(original.getUnit())
-            .purchasePrice(original.getPurchasePrice())
-            .salePrice(original.getSalePrice())
-            .stock(0) // Reset stock
-            .reorderLevel(original.getReorderLevel())
-            .isActive(true)
-            .build();
+        Objects.requireNonNull(
+            Product.builder()
+                .name(Objects.requireNonNull(original.getName()) + " (Copy)")
+                .sku(generateUniqueSku(original.getSku(), tenantId))
+                .barcode(null) // Barcode should be unique
+                .categoryId(original.getCategoryId())
+                .unit(original.getUnit())
+                .purchasePrice(original.getPurchasePrice())
+                .salePrice(original.getSalePrice())
+                .stock(0) // Reset stock
+                .reorderLevel(original.getReorderLevel())
+                .isActive(true)
+                .build());
 
-    Product tmpSaved = productRepository.save(clone);
-    Product savedProduct = Objects.requireNonNull(tmpSaved);
+    Product savedProduct = Objects.requireNonNull(productRepository.save(clone));
     log.info("Product duplicated: original_id={} new_id={}", id, savedProduct.getId());
 
     auditLogService.logAudit(
@@ -499,7 +496,7 @@ public class ProductService {
     Page<ProductResponse> page =
         productRepository
             .searchFast(tenantId, query, pageable)
-            .map(view -> toResponse(java.util.Objects.requireNonNull(view)));
+            .map(view -> toResponse(Objects.requireNonNull(view)));
     return new PagedResponse<>(
         page.getContent(),
         page.getTotalElements(),

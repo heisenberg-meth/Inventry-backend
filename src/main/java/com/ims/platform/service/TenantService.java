@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.security.SecureRandom;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -55,8 +56,8 @@ public class TenantService {
   private final com.ims.shared.utils.CompanyCodeGenerator companyCodeGenerator;
 
   public Page<TenantResponse> getAllTenants(@NonNull Pageable pageable) {
-    Page<Tenant> tenants = tenantRepository.findAll(java.util.Objects.requireNonNull(pageable));
-    return tenants.map(t -> toResponse(java.util.Objects.requireNonNull(t)));
+    Page<Tenant> tenants = tenantRepository.findAll(Objects.requireNonNull(pageable));
+    return tenants.map(t -> toResponse(Objects.requireNonNull(t)));
   }
 
   @Cacheable(value = "tenant", key = "#id")
@@ -69,9 +70,10 @@ public class TenantService {
   }
 
   public boolean isWarehouse(Long tenantId) {
-    if (tenantId == null) return false;
+    if (tenantId == null)
+      return false;
     return tenantRepository
-        .findById(java.util.Objects.requireNonNull(tenantId))
+        .findById(Objects.requireNonNull(tenantId))
         .map(t -> "WAREHOUSE".equals(t.getBusinessType()))
         .orElse(false);
   }
@@ -88,7 +90,7 @@ public class TenantService {
       companyCode = companyCodeGenerator.generateCode(request.getName());
     } while (tenantRepository.existsByCompanyCode(companyCode));
 
-    Tenant tenant =
+    Tenant tenant = Objects.requireNonNull(
         Tenant.builder()
             .name(request.getName())
             .workspaceSlug(request.getWorkspaceSlug())
@@ -98,10 +100,9 @@ public class TenantService {
             .status(TenantStatus.ACTIVE)
             .maxProducts(request.getMaxProducts())
             .maxUsers(request.getMaxUsers())
-            .build();
+            .build());
 
-    Tenant tmpTenant = tenantRepository.save(tenant);
-    Tenant savedTenant = Objects.requireNonNull(tmpTenant);
+    Tenant savedTenant = Objects.requireNonNull(tenantRepository.save(tenant));
 
     log.info(
         "Tenant created: id={} name={} type={}",
@@ -213,23 +214,20 @@ public class TenantService {
   /** Reset a tenant user's password (by platform admin). */
   @Transactional
   public Map<String, String> resetTenantUserPassword(@NonNull Long userId, String newPassword) {
-    User user =
-        userRepository
-            .findByIdUnfiltered(userId)
-            .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User user = userRepository
+        .findByIdUnfiltered(userId)
+        .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     if (!"TENANT".equals(user.getScope())) {
       throw new IllegalArgumentException("User is not a tenant user");
     }
 
-    String password =
-        (newPassword != null && !newPassword.isBlank()) ? newPassword : generateRandomPassword();
+    String password = (newPassword != null && !newPassword.isBlank()) ? newPassword : generateRandomPassword();
 
     user.setPasswordHash(passwordEncoder.encode(password));
     user.setResetToken(null);
     user.setResetTokenExpiry(null);
-    User tmpSaved = userRepository.save(user);
-    User savedUser = java.util.Objects.requireNonNull(tmpSaved);
+    userRepository.save(user);
 
     Long tenantIdForAudit = user.getTenantId();
     if (tenantIdForAudit != null) {
@@ -259,7 +257,7 @@ public class TenantService {
     Tenant tenant = Objects.requireNonNull(tmpTenant);
 
     SubscriptionPlan tmpPlan = subscriptionPlanRepository
-        .findById(request.getPlanId())
+        .findById(Objects.requireNonNull(request.getPlanId()))
         .orElseThrow(() -> new EntityNotFoundException("Subscription plan not found"));
     SubscriptionPlan plan = Objects.requireNonNull(tmpPlan);
 
@@ -287,23 +285,22 @@ public class TenantService {
     tenantRepository.save(tenant);
 
     // Create new subscription
-    int durationDays =
-        plan.getDurationDays() != null
-            ? plan.getDurationDays()
-            : DEFAULT_SUBSCRIPTION_DURATION_DAYS;
+    int durationDays = plan.getDurationDays() != null
+        ? plan.getDurationDays()
+        : DEFAULT_SUBSCRIPTION_DURATION_DAYS;
     LocalDateTime startDate = LocalDateTime.now();
     LocalDateTime endDate = startDate.plusDays(durationDays);
 
-    Subscription subscription =
+    Subscription subscription = Objects.requireNonNull(
         Subscription.builder()
             .tenantId(tenantId)
             .plan(plan.getName())
             .status("ACTIVE")
             .startDate(startDate)
             .endDate(endDate)
-            .build();
-    Subscription tmpSub = subscriptionRepository.save(subscription);
-    Subscription savedSub = Objects.requireNonNull(tmpSub);
+            .build());
+
+    Subscription savedSub = Objects.requireNonNull(subscriptionRepository.save(subscription));
 
     auditLogService.log(
         AuditAction.ASSIGN_PLAN,
@@ -324,9 +321,9 @@ public class TenantService {
   /** Get tenant subscription info. */
   public Map<String, Object> getSubscription(@NonNull Long tenantId) {
     Tenant tmpTenant = tenantRepository
-        .findById(java.util.Objects.requireNonNull(tenantId))
+        .findById(Objects.requireNonNull(tenantId))
         .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
-    Tenant tenant = java.util.Objects.requireNonNull(tmpTenant);
+    Tenant tenant = Objects.requireNonNull(tmpTenant);
 
     Map<String, Object> response = new HashMap<>();
     response.put("plan", tenant.getPlan());
@@ -357,14 +354,15 @@ public class TenantService {
     }
 
     User user =
-        User.builder()
-            .name(request.getUsername())
-            .email(email)
-            .passwordHash(passwordEncoder.encode(request.getPassword()))
-            .role(UserRole.valueOf(request.getRole()))
-            .scope(request.getScope())
-            .isActive(true)
-            .build();
+        Objects.requireNonNull(
+            User.builder()
+                .name(request.getUsername())
+                .email(email)
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .role(UserRole.valueOf(request.getRole()))
+                .scope(request.getScope())
+                .isActive(true)
+                .build());
 
     Tenant tmpTenant = tenantRepository
         .findById(tenantId)
@@ -378,16 +376,16 @@ public class TenantService {
       }
     }
 
-    tenantInitializationService.createUserForTenant(user, java.util.Objects.requireNonNull(tenantId));
+    tenantInitializationService.createUserForTenant(user, Objects.requireNonNull(tenantId));
 
     return UserResponse.builder()
-        .id(java.util.Objects.requireNonNull(user.getId()))
+        .id(Objects.requireNonNull(user.getId()))
         .name(user.getName())
         .email(user.getEmail())
         .role(user.getRole() != null ? user.getRole().name() : null)
         .scope(user.getScope())
         .isActive(user.getIsActive())
-        .createdAt(java.util.Objects.requireNonNull(user.getCreatedAt()))
+        .createdAt(Objects.requireNonNull(user.getCreatedAt()))
         .build();
   }
 
@@ -441,7 +439,7 @@ public class TenantService {
   private String generateRandomPassword() {
     String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$";
     StringBuilder sb = new StringBuilder();
-    java.security.SecureRandom random = new java.security.SecureRandom();
+    SecureRandom random = new SecureRandom();
     for (int i = 0; i < GENERATED_PASSWORD_LENGTH; i++) {
       sb.append(chars.charAt(random.nextInt(chars.length())));
     }

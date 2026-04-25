@@ -42,19 +42,19 @@ public class RedisConfig {
 
   @Bean
   public RedisCacheManager cacheManager(RedisConnectionFactory factory) {
-    RedisConnectionFactory f = java.util.Objects.requireNonNull(factory);
+    RedisConnectionFactory f = Objects.requireNonNull(factory);
     Map<String, RedisCacheConfiguration> configs = new HashMap<>();
-    configs.put("products", ttl(java.util.Objects.requireNonNull(Duration.ofMinutes(TTL_PRODUCTS_MINUTES))));
-    configs.put("categories", ttl(java.util.Objects.requireNonNull(Duration.ofMinutes(TTL_PRODUCTS_MINUTES))));
-    configs.put("stock", ttl(java.util.Objects.requireNonNull(Duration.ofMinutes(TTL_STOCK_MINUTES))));
-    configs.put("reports", ttl(java.util.Objects.requireNonNull(Duration.ofMinutes(TTL_REPORTS_MINUTES))));
-    configs.put("tenant", ttl(java.util.Objects.requireNonNull(Duration.ofHours(TTL_TENANT_HOURS))));
-    configs.put("permissions", ttl(java.util.Objects.requireNonNull(Duration.ofMinutes(TTL_PERMISSIONS_MINUTES))));
+    configs.put("products", ttl(Objects.requireNonNull(Duration.ofMinutes(TTL_PRODUCTS_MINUTES))));
+    configs.put("categories", ttl(Objects.requireNonNull(Duration.ofMinutes(TTL_PRODUCTS_MINUTES))));
+    configs.put("stock", ttl(Objects.requireNonNull(Duration.ofMinutes(TTL_STOCK_MINUTES))));
+    configs.put("reports", ttl(Objects.requireNonNull(Duration.ofMinutes(TTL_REPORTS_MINUTES))));
+    configs.put("tenant", ttl(Objects.requireNonNull(Duration.ofHours(TTL_TENANT_HOURS))));
+    configs.put("permissions", ttl(Objects.requireNonNull(Duration.ofMinutes(TTL_PERMISSIONS_MINUTES))));
 
     RedisCacheConfiguration tmp =
-        ttl(java.util.Objects.requireNonNull(Duration.ofMinutes(TTL_DEFAULT_MINUTES)));
+        ttl(Objects.requireNonNull(Duration.ofMinutes(TTL_DEFAULT_MINUTES)));
 
-    RedisCacheConfiguration defaultConfig = java.util.Objects.requireNonNull(tmp);
+    RedisCacheConfiguration defaultConfig = Objects.requireNonNull(tmp);
 
     return RedisCacheManager.builder(f)
         .cacheDefaults(defaultConfig)
@@ -73,20 +73,20 @@ public class RedisConfig {
         Collection<String> cacheNames = context.getOperation().getCacheNames();
 
         String tenantSuffix =
-            java.util.Objects.requireNonNull(
+            Objects.requireNonNull(
                 tenantId != null ? tenantId.toString() : "default");
 
         Collection<? extends Cache> result =
             cacheNames.stream()
-                .map(name -> java.util.Objects.requireNonNull(name) + ":" + tenantSuffix)
+                .map(name -> Objects.requireNonNull(name) + ":" + tenantSuffix)
                 .map(
                     cacheName -> {
-                      Cache cache = cacheManager.getCache(java.util.Objects.requireNonNull(cacheName));
+                      Cache cache = cacheManager.getCache(Objects.requireNonNull(cacheName));
                       if (cache == null) {
                         String[] parts =
-                            java.util.Objects.requireNonNull(cacheName.split(":"));
+                            Objects.requireNonNull(cacheName.split(":"));
                         String baseName =
-                            java.util.Objects.requireNonNull(parts[0]);
+                            Objects.requireNonNull(parts[0]);
                         return cacheManager.getCache(baseName);
                       }
                       return cache;
@@ -94,7 +94,7 @@ public class RedisConfig {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
-        return java.util.Objects.requireNonNull(result);
+        return Objects.requireNonNull(result);
       }
     };
   }
@@ -104,9 +104,9 @@ public class RedisConfig {
     RedisTemplate<String, Object> template = new RedisTemplate<>();
     template.setConnectionFactory(factory);
     template.setKeySerializer(new StringRedisSerializer());
-    template.setValueSerializer(java.util.Objects.requireNonNull(jsonSerializer()));
+    template.setValueSerializer(Objects.requireNonNull(jsonSerializer()));
     template.setHashKeySerializer(new StringRedisSerializer());
-    template.setHashValueSerializer(java.util.Objects.requireNonNull(jsonSerializer()));
+    template.setHashValueSerializer(Objects.requireNonNull(jsonSerializer()));
     return template;
   }
 
@@ -117,17 +117,17 @@ public class RedisConfig {
     // Polymorphic typing is removed for security (RCE risk).
     // DTOs should be plain Pojos with Jackson annotations if needed.
 
-    return java.util.Objects.requireNonNull(
+    return Objects.requireNonNull(
         new GenericJackson2JsonRedisSerializer(mapper));
   }
 
   private RedisCacheConfiguration ttl(Duration duration) {
-    Duration d = java.util.Objects.requireNonNull(duration);
+    Duration d = Objects.requireNonNull(duration);
 
     org.springframework.data.redis.serializer.RedisSerializer<Object> serializer =
-        java.util.Objects.requireNonNull(jsonSerializer());
+        Objects.requireNonNull(jsonSerializer());
 
-    return java.util.Objects.requireNonNull(
+    return Objects.requireNonNull(
         RedisCacheConfiguration.defaultCacheConfig()
             .entryTtl(d)
             .serializeValuesWith(
