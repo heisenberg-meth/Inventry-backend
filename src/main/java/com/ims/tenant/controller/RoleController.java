@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/tenant/roles")
+@RequestMapping("/api/v1/tenant/roles")
 @RequiredArgsConstructor
 @Tag(name = "Tenant - Roles", description = "Tenant-scoped role management")
 @SecurityRequirement(name = "bearerAuth")
@@ -61,8 +61,7 @@ public class RoleController {
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Assign permissions to role")
   public ResponseEntity<Role> assignPermissions(
-      @PathVariable long id,
-      @NonNull @Valid @RequestBody AssignPermissionsRequest request) {
+      @PathVariable long id, @NonNull @Valid @RequestBody AssignPermissionsRequest request) {
     Long tenantId = getTenantId();
     return ResponseEntity.ok(roleService.assignPermissions(tenantId, id, request));
   }

@@ -98,7 +98,7 @@ class RateLimitFilterTest {
   void enforcesStricterLimitOnAuthEndpoints() throws Exception {
     when(zSet.zCard(anyString())).thenReturn((long) (AUTH_RPM + 1));
 
-    MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/auth/login");
+    MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/v1/auth/login");
     req.setRemoteAddr("10.0.0.3");
     MockHttpServletResponse res = new MockHttpServletResponse();
     FilterChain chain = mock(FilterChain.class);
@@ -128,9 +128,7 @@ class RateLimitFilterTest {
     verify(zSet).add(eq("rate:tenant:42:10.0.0.4"), any(), anyDouble());
     verify(redisTemplate)
         .expire(
-            eq("rate:tenant:42:10.0.0.4"),
-            eq(Long.valueOf(WINDOW_SECONDS)),
-            eq(TimeUnit.SECONDS));
+            eq("rate:tenant:42:10.0.0.4"), eq(Long.valueOf(WINDOW_SECONDS)), eq(TimeUnit.SECONDS));
     verify(chain).doFilter(req, res);
   }
 
@@ -360,5 +358,4 @@ class RateLimitFilterTest {
                     redisTemplate, jwtUtil, AUTH_RPM, PUBLIC_RPM, TENANT_RPM, 0, List.of()));
     assertEquals("app.rate-limit.window-seconds must be >= 1 (got 0)", windowEx.getMessage());
   }
-
 }

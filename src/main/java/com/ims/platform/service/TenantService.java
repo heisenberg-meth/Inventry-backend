@@ -61,15 +61,18 @@ public class TenantService {
 
   @Cacheable(value = "tenant", key = "#id")
   public TenantResponse getTenantById(@NonNull Long id) {
-    Tenant tmpTenant = tenantRepository
-        .findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
+    Tenant tmpTenant =
+        tenantRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
     Tenant tenant = Objects.requireNonNull(tmpTenant);
     return toResponse(tenant);
   }
 
   public boolean isWarehouse(Long tenantId) {
-    if (tenantId == null) return false;
+    if (tenantId == null) {
+      return false;
+    }
     return tenantRepository
         .findById(java.util.Objects.requireNonNull(tenantId))
         .map(t -> "WAREHOUSE".equals(t.getBusinessType()))
@@ -122,9 +125,10 @@ public class TenantService {
   @Transactional
   @CacheEvict(value = "tenant", key = "#id")
   public TenantResponse updateTenant(@NonNull Long id, @NonNull CreateTenantRequest request) {
-    Tenant tmpTenant = tenantRepository
-        .findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
+    Tenant tmpTenant =
+        tenantRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
     Tenant tenant = Objects.requireNonNull(tmpTenant);
 
     if (request.getName() != null) {
@@ -151,9 +155,10 @@ public class TenantService {
   @Transactional
   @CacheEvict(value = "tenant", key = "#id")
   public void deactivateTenant(@NonNull Long id) {
-    Tenant tmpTenant = tenantRepository
-        .findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
+    Tenant tmpTenant =
+        tenantRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
     Tenant tenant = Objects.requireNonNull(tmpTenant);
     tenant.setStatus(TenantStatus.INACTIVE);
     tenantRepository.save(tenant);
@@ -163,9 +168,10 @@ public class TenantService {
   @Transactional
   @CacheEvict(value = "tenant", key = "#id")
   public Map<String, String> suspendTenant(@NonNull Long id) {
-    Tenant tmpTenant = tenantRepository
-        .findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
+    Tenant tmpTenant =
+        tenantRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
     Tenant tenant = Objects.requireNonNull(tmpTenant);
     tenant.setStatus(TenantStatus.SUSPENDED);
     tenantRepository.save(tenant);
@@ -179,9 +185,10 @@ public class TenantService {
   @Transactional
   @CacheEvict(value = "tenant", key = "#id")
   public Map<String, String> activateTenant(@NonNull Long id) {
-    Tenant tmpTenant = tenantRepository
-        .findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
+    Tenant tmpTenant =
+        tenantRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
     Tenant tenant = Objects.requireNonNull(tmpTenant);
     tenant.setStatus(TenantStatus.ACTIVE);
     tenantRepository.save(tenant);
@@ -253,14 +260,16 @@ public class TenantService {
   @CacheEvict(value = "tenant", key = "#tenantId")
   public Map<String, Object> assignPlan(
       @NonNull Long tenantId, @NonNull AssignPlanRequest request) {
-    Tenant tmpTenant = tenantRepository
-        .findById(tenantId)
-        .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+    Tenant tmpTenant =
+        tenantRepository
+            .findById(tenantId)
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
     Tenant tenant = Objects.requireNonNull(tmpTenant);
 
-    SubscriptionPlan tmpPlan = subscriptionPlanRepository
-        .findById(request.getPlanId())
-        .orElseThrow(() -> new EntityNotFoundException("Subscription plan not found"));
+    SubscriptionPlan tmpPlan =
+        subscriptionPlanRepository
+            .findById(request.getPlanId())
+            .orElseThrow(() -> new EntityNotFoundException("Subscription plan not found"));
     SubscriptionPlan plan = Objects.requireNonNull(tmpPlan);
 
     if (!"ACTIVE".equals(plan.getStatus())) {
@@ -323,9 +332,10 @@ public class TenantService {
 
   /** Get tenant subscription info. */
   public Map<String, Object> getSubscription(@NonNull Long tenantId) {
-    Tenant tmpTenant = tenantRepository
-        .findById(java.util.Objects.requireNonNull(tenantId))
-        .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+    Tenant tmpTenant =
+        tenantRepository
+            .findById(java.util.Objects.requireNonNull(tenantId))
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
     Tenant tenant = java.util.Objects.requireNonNull(tmpTenant);
 
     Map<String, Object> response = new HashMap<>();
@@ -366,9 +376,10 @@ public class TenantService {
             .isActive(true)
             .build();
 
-    Tenant tmpTenant = tenantRepository
-        .findById(tenantId)
-        .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+    Tenant tmpTenant =
+        tenantRepository
+            .findById(tenantId)
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
     Tenant tenant = Objects.requireNonNull(tmpTenant);
 
     if (tenant.getMaxUsers() != null) {
@@ -378,7 +389,8 @@ public class TenantService {
       }
     }
 
-    tenantInitializationService.createUserForTenant(user, java.util.Objects.requireNonNull(tenantId));
+    tenantInitializationService.createUserForTenant(
+        user, java.util.Objects.requireNonNull(tenantId));
 
     return UserResponse.builder()
         .id(java.util.Objects.requireNonNull(user.getId()))
@@ -393,9 +405,10 @@ public class TenantService {
 
   @Transactional
   public void hardDeleteTenantUser(@NonNull Long tenantId, @NonNull Long userId) {
-    User tmpUser = userRepository
-        .findByIdUnfiltered(userId)
-        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User tmpUser =
+        userRepository
+            .findByIdUnfiltered(userId)
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
     User user = Objects.requireNonNull(tmpUser);
 
     if (!Objects.equals(user.getTenantId(), tenantId)) {

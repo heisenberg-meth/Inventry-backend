@@ -75,7 +75,7 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
     // 2. Verify Audit Log for creation
     mockMvc
         .perform(
-            get("/api/tenant/audits")
+            get("/api/v1/tenant/audits")
                 .header("Authorization", "Bearer " + token)
                 .with(tenant(String.valueOf(tenantId))))
         .andExpect(status().isOk())
@@ -96,7 +96,7 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
     // 4. Verify Audit Log for update
     mockMvc
         .perform(
-            get("/api/tenant/audits")
+            get("/api/v1/tenant/audits")
                 .header("Authorization", "Bearer " + token)
                 .with(tenant(String.valueOf(tenantId))))
         .andExpect(status().isOk())
@@ -139,7 +139,7 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
     // T1 should see 4 logs (Signup + Login + Create + Category Create)
     mockMvc
         .perform(
-            get("/api/tenant/audits")
+            get("/api/v1/tenant/audits")
                 .header("Authorization", "Bearer " + t1Token)
                 .with(tenant(String.valueOf(t1Id))))
         .andExpect(status().isOk())
@@ -148,7 +148,7 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
     // T2 should see 2 logs (Signup + Login)
     mockMvc
         .perform(
-            get("/api/tenant/audits")
+            get("/api/v1/tenant/audits")
                 .header("Authorization", "Bearer " + t2Token)
                 .with(tenant(String.valueOf(t2Id))))
         .andExpect(status().isOk())

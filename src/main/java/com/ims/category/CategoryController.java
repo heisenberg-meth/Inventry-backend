@@ -47,7 +47,9 @@ public class CategoryController {
       @Valid @RequestBody @NonNull CategoryRequest request) {
     TenantContext.assertTenantPresent();
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(categoryService.toResponse(categoryService.create(java.util.Objects.requireNonNull(request))));
+        .body(
+            categoryService.toResponse(
+                categoryService.create(java.util.Objects.requireNonNull(request))));
   }
 
   @GetMapping("/{id}")
@@ -62,7 +64,9 @@ public class CategoryController {
   @Operation(summary = "Update category")
   public ResponseEntity<CategoryResponse> update(
       @PathVariable long id, @Valid @RequestBody @NonNull CategoryRequest request) {
-    return ResponseEntity.ok(categoryService.toResponse(categoryService.update(id, java.util.Objects.requireNonNull(request))));
+    return ResponseEntity.ok(
+        categoryService.toResponse(
+            categoryService.update(id, java.util.Objects.requireNonNull(request))));
   }
 
   @DeleteMapping("/{id}")

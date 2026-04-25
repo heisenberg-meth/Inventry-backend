@@ -452,8 +452,7 @@ public class ProductService {
     Long tenantId = getRequiredTenantId();
 
     List<ProductResponse> list =
-        Objects.requireNonNull(productRepository.findLowStockByTenant(tenantId))
-            .stream()
+        Objects.requireNonNull(productRepository.findLowStockByTenant(tenantId)).stream()
             .map(this::toResponse)
             .collect(Collectors.toList());
 
@@ -484,8 +483,7 @@ public class ProductService {
 
     LocalDate threshold = LocalDate.now().plusDays(thresholdDays);
     List<ProductResponse> list =
-        Objects.requireNonNull(pharmacyProductRepository.findExpiring(threshold))
-            .stream()
+        Objects.requireNonNull(pharmacyProductRepository.findExpiring(threshold)).stream()
             .map(pp -> toResponseWithPharmacy(Objects.requireNonNull(pp.getProduct()), pp))
             .collect(Collectors.toList());
 

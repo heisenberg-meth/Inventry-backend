@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.SignupRequest;
 import com.ims.shared.auth.SignupService;
@@ -64,7 +65,7 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
     // 5. Verify Tenant 1 Isolation (Should only see 1 user: admin1)
     mockMvc
         .perform(
-            get("/api/tenant/users")
+            get("/api/v1/tenant/users")
                 .header("Authorization", "Bearer " + t1Token)
                 .with(tenant(t1Id.toString())))
         .andExpect(status().isOk())
@@ -78,7 +79,7 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
     // 7. Verify Tenant 2 Isolation (Should only see 1 user: admin2)
     mockMvc
         .perform(
-            get("/api/tenant/users")
+            get("/api/v1/tenant/users")
                 .header("Authorization", "Bearer " + t2Token)
                 .with(tenant(t2Id.toString())))
         .andExpect(status().isOk())
@@ -88,7 +89,7 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
     // 8. Verify Logout and Blacklisting
     mockMvc
         .perform(
-            post("/api/auth/logout")
+            post("/api/v1/auth/logout")
                 .header("Authorization", "Bearer " + t1Token)
                 .with(tenant(t1Id.toString())))
         .andExpect(status().isOk());
@@ -98,7 +99,7 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
 
     mockMvc
         .perform(
-            get("/api/tenant/users")
+            get("/api/v1/tenant/users")
                 .header("Authorization", "Bearer " + t1Token)
                 .with(tenant(t1Id.toString())))
         .andExpect(status().isUnauthorized());
@@ -107,7 +108,7 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
   @Test
   void testUnauthorizedAccess() throws Exception {
     mockMvc
-        .perform(get("/api/tenant/users").with(tenant("1")))
+        .perform(get("/api/v1/tenant/users").with(tenant("1")))
         .andExpect(status().isUnauthorized());
   }
 

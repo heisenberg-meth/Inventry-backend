@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/tenant/support/tickets")
+@RequestMapping("/api/v1/tenant/support/tickets")
 @RequiredArgsConstructor
 @Tag(name = "Tenant - Support", description = "Tenant-side support ticket management")
 @SecurityRequirement(name = "bearerAuth")
