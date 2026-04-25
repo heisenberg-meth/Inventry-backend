@@ -54,7 +54,7 @@ public class SupplierController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Get supplier")
   public @NonNull ResponseEntity<com.ims.dto.response.SupplierResponse> get(
-      @PathVariable @NonNull Long id) {
+      @PathVariable long id) {
     return ResponseEntity.ok(Objects.requireNonNull(supplierService.getSupplierResponseById(id)));
   }
 
@@ -62,7 +62,7 @@ public class SupplierController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Update supplier")
   public @NonNull ResponseEntity<com.ims.dto.response.SupplierResponse> update(
-      @PathVariable @NonNull Long id,
+      @PathVariable long id,
       @jakarta.validation.Valid @RequestBody @NonNull com.ims.dto.request.SupplierRequest request) {
     return ResponseEntity.ok(Objects.requireNonNull(supplierService.update(id, request)));
   }
@@ -70,7 +70,7 @@ public class SupplierController {
   @DeleteMapping("/{id}")
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Delete supplier")
-  public @NonNull ResponseEntity<Void> delete(@PathVariable @NonNull Long id) {
+  public @NonNull ResponseEntity<Void> delete(@PathVariable long id) {
     supplierService.delete(id);
     return ResponseEntity.noContent().build();
   }
@@ -79,7 +79,7 @@ public class SupplierController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Get full ledger for supplier")
   public ResponseEntity<java.util.Map<String, Object>> getSupplierLedger(
-      @PathVariable @NonNull Long id) {
+      @PathVariable long id) {
     return ResponseEntity.ok(supplierService.getSupplierLedger(id));
   }
 

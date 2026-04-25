@@ -67,17 +67,18 @@ public class StockTransactionService {
       })
   public void stockInInternal(
       @NonNull Long productId, int qty, String notes, @NonNull Long userId) {
-    Product product =
+    Product tmpProduct =
         productService
             .findByIdWithLock(productId)
             .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+    Product product = Objects.requireNonNull(tmpProduct);
 
     int previousStock = product.getStock();
     product.setStock(previousStock + qty);
     product.setUpdatedAt(LocalDateTime.now());
     productRepository.save(product);
 
-    stockMovementRepository.save(
+    StockMovement tmpMovement =
         StockMovement.builder()
             .productId(productId)
             .movementType("IN")
@@ -86,7 +87,8 @@ public class StockTransactionService {
             .newStock(product.getStock())
             .notes(notes)
             .createdBy(userId)
-            .build());
+            .build();
+    stockMovementRepository.save(Objects.requireNonNull(tmpMovement));
 
     log.info(
         "Stock IN Attempt: product={} qty={} {}→{}",
@@ -119,10 +121,11 @@ public class StockTransactionService {
       })
   public void stockOutInternal(
       @NonNull Long productId, int qty, String notes, @NonNull Long userId) {
-    Product product =
+    Product tmpProduct =
         productService
             .findByIdWithLock(productId)
             .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+    Product product = Objects.requireNonNull(tmpProduct);
 
     if (product.getStock() < qty) {
       throw new InsufficientStockException(
@@ -136,7 +139,7 @@ public class StockTransactionService {
     product.setUpdatedAt(LocalDateTime.now());
     productRepository.save(product);
 
-    stockMovementRepository.save(
+    StockMovement tmpMovement =
         StockMovement.builder()
             .productId(productId)
             .movementType("OUT")
@@ -145,7 +148,8 @@ public class StockTransactionService {
             .newStock(product.getStock())
             .notes(notes)
             .createdBy(userId)
-            .build());
+            .build();
+    stockMovementRepository.save(Objects.requireNonNull(tmpMovement));
 
     log.info(
         "Stock OUT Attempt: product={} qty={} {}→{}",
@@ -178,10 +182,11 @@ public class StockTransactionService {
       })
   public void stockAdjustInternal(
       @NonNull Long productId, int qty, String notes, @NonNull Long userId) {
-    Product product =
+    Product tmpProduct =
         productRepository
             .findById(productId)
             .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+    Product product = Objects.requireNonNull(tmpProduct);
 
     int previousStock = product.getStock();
     int newStock = previousStock + qty;
@@ -200,7 +205,7 @@ public class StockTransactionService {
     product.setUpdatedAt(LocalDateTime.now());
     productRepository.save(product);
 
-    stockMovementRepository.save(
+    StockMovement tmpMovement =
         StockMovement.builder()
             .productId(productId)
             .movementType("ADJUSTMENT")
@@ -209,7 +214,8 @@ public class StockTransactionService {
             .newStock(product.getStock())
             .notes(notes)
             .createdBy(userId)
-            .build());
+            .build();
+    stockMovementRepository.save(Objects.requireNonNull(tmpMovement));
 
     log.info(
         "Stock ADJUST: product={} qty={} {}→{}", productId, qty, previousStock, product.getStock());
@@ -260,17 +266,19 @@ public class StockTransactionService {
     }
 
     order.setStatus(newStatus);
-    order = transferOrderRepository.save(order);
+    TransferOrder savedOrder = transferOrderRepository.save(order);
+    order = Objects.requireNonNull(savedOrder);
 
     if ("COMPLETED".equals(newStatus)) {
-      WarehouseProduct wp =
+      WarehouseProduct tmpWp =
           warehouseProductRepository
               .findById(Objects.requireNonNull(order.getProductId()))
               .orElseThrow(() -> new EntityNotFoundException("Warehouse product not found"));
+      WarehouseProduct wp = Objects.requireNonNull(tmpWp);
       wp.setStorageLocation(order.getToLocation());
       warehouseProductRepository.save(wp);
 
-      stockMovementRepository.save(
+      StockMovement tmpMovement =
           StockMovement.builder()
               .productId(order.getProductId())
               .movementType("TRANSFER")
@@ -279,7 +287,8 @@ public class StockTransactionService {
               .createdBy(userId)
               .referenceId(order.getId())
               .referenceType("TRANSFER_ORDER")
-              .build());
+              .build();
+      stockMovementRepository.save(Objects.requireNonNull(tmpMovement));
 
       log.info(
           "Transfer order COMPLETED: id={} product={} quantity={} {} -> {}",

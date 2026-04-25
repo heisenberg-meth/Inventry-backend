@@ -36,7 +36,7 @@ public class CategoryController {
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "List categories")
   public ResponseEntity<PagedResponse<CategoryResponse>> list(@NonNull Pageable pageable) {
-    Long tenantId = TenantContext.getTenantId();
+    long tenantId = TenantContext.getTenantId();
     return ResponseEntity.ok(categoryService.getCategories(tenantId, pageable));
   }
 
@@ -47,13 +47,13 @@ public class CategoryController {
       @Valid @RequestBody @NonNull CategoryRequest request) {
     TenantContext.assertTenantPresent();
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(categoryService.toResponse(categoryService.create(request)));
+        .body(categoryService.toResponse(categoryService.create(java.util.Objects.requireNonNull(request))));
   }
 
   @GetMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Get category details")
-  public ResponseEntity<CategoryResponse> get(@NonNull @PathVariable Long id) {
+  public ResponseEntity<CategoryResponse> get(@PathVariable long id) {
     return ResponseEntity.ok(categoryService.toResponse(categoryService.getById(id)));
   }
 
@@ -61,14 +61,14 @@ public class CategoryController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Update category")
   public ResponseEntity<CategoryResponse> update(
-      @NonNull @PathVariable Long id, @Valid @RequestBody CategoryRequest request) {
-    return ResponseEntity.ok(categoryService.toResponse(categoryService.update(id, request)));
+      @PathVariable long id, @Valid @RequestBody @NonNull CategoryRequest request) {
+    return ResponseEntity.ok(categoryService.toResponse(categoryService.update(id, java.util.Objects.requireNonNull(request))));
   }
 
   @DeleteMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Delete category")
-  public ResponseEntity<Void> delete(@NonNull @PathVariable Long id) {
+  public ResponseEntity<Void> delete(@PathVariable long id) {
     categoryService.delete(id);
     return ResponseEntity.noContent().build();
   }

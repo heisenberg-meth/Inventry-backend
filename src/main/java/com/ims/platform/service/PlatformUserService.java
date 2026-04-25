@@ -50,7 +50,8 @@ public class PlatformUserService {
             .isActive(true)
             .build();
 
-    User saved = Objects.requireNonNull(userRepository.save(Objects.requireNonNull(user)));
+    User savedEntity = userRepository.save(Objects.requireNonNull(user));
+    User saved = Objects.requireNonNull(savedEntity);
     auditLogService.log(
         AuditAction.CREATE_PLATFORM_ADMIN,
         null,
@@ -99,7 +100,8 @@ public class PlatformUserService {
     }
 
     user.setRole(UserRole.valueOf(role));
-    return Objects.requireNonNull(userRepository.save(user));
+    User saved = userRepository.save(user);
+    return Objects.requireNonNull(saved);
   }
 
   @Transactional
@@ -132,7 +134,8 @@ public class PlatformUserService {
       user.setRole(UserRole.valueOf(request.getRole()));
     }
 
-    return Objects.requireNonNull(userRepository.save(user));
+    User saved = userRepository.save(user);
+    return Objects.requireNonNull(saved);
   }
 
   @Transactional

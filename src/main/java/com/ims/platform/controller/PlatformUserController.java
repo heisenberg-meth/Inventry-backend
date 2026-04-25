@@ -56,7 +56,7 @@ public class PlatformUserController {
   @GetMapping("/{id}")
   @Operation(summary = "Get platform user details")
   @PreAuthorize("hasAnyAuthority('ROLE_ROOT', 'ROLE_PLATFORM_ADMIN')")
-  public Map<String, Object> getPlatformUser(@NonNull @PathVariable Long id) {
+  public Map<String, Object> getPlatformUser(@PathVariable long id) {
     return platformUserService.getPlatformUser(id);
   }
 
@@ -64,7 +64,7 @@ public class PlatformUserController {
   @org.springframework.web.bind.annotation.PutMapping("/{id}")
   @PreAuthorize("hasAuthority('ROLE_ROOT')")
   public @NonNull User updatePlatformUser(
-      @NonNull @PathVariable Long id,
+      @PathVariable long id,
       @Valid @NonNull @RequestBody CreatePlatformUserRequest request) {
     return Objects.requireNonNull(platformUserService.updatePlatformUser(id, request));
   }
@@ -73,7 +73,7 @@ public class PlatformUserController {
   @PatchMapping("/{id}/role")
   @PreAuthorize("hasAuthority('ROLE_ROOT')")
   public @NonNull User updateRole(
-      @NonNull @PathVariable Long id, @NonNull @RequestBody Map<String, String> body) {
+      @PathVariable long id, @NonNull @RequestBody Map<String, String> body) {
     String role = body.get("role");
     if (role == null) {
       throw new IllegalArgumentException("Role is required");
@@ -84,7 +84,7 @@ public class PlatformUserController {
   @PostMapping("/{id}/suspend")
   @Operation(summary = "Suspend platform user (ROOT only)")
   @PreAuthorize("hasAuthority('ROLE_ROOT')")
-  public Map<String, String> suspendPlatformUser(@NonNull @PathVariable Long id) {
+  public Map<String, String> suspendPlatformUser(@PathVariable long id) {
     platformUserService.suspendPlatformUser(id);
     return Map.of("message", "Platform user suspended successfully", "status", "SUSPENDED");
   }
@@ -92,7 +92,7 @@ public class PlatformUserController {
   @PostMapping("/{id}/activate")
   @Operation(summary = "Activate platform user (ROOT only)")
   @PreAuthorize("hasAuthority('ROLE_ROOT')")
-  public Map<String, String> activatePlatformUser(@NonNull @PathVariable Long id) {
+  public Map<String, String> activatePlatformUser(@PathVariable long id) {
     platformUserService.activatePlatformUser(id);
     return Map.of("message", "Platform user activated successfully", "status", "ACTIVE");
   }
@@ -101,7 +101,7 @@ public class PlatformUserController {
   @Operation(summary = "Reset platform user password (ROOT only)")
   @PreAuthorize("hasAuthority('ROLE_ROOT')")
   public Map<String, String> resetPassword(
-      @NonNull @PathVariable Long id, @NonNull @RequestBody Map<String, String> body) {
+      @PathVariable long id, @NonNull @RequestBody Map<String, String> body) {
     String newPassword = body.get("newPassword");
     if (newPassword == null || newPassword.length() < MIN_PASSWORD_LENGTH) {
       throw new IllegalArgumentException(
@@ -114,7 +114,7 @@ public class PlatformUserController {
   @Operation(summary = "Deactivate platform user (ROOT only)")
   @PreAuthorize("hasAuthority('ROLE_ROOT')")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  public void deactivatePlatformUser(@NonNull @PathVariable Long id) {
+  public void deactivatePlatformUser(@PathVariable long id) {
     platformUserService.deactivatePlatformUser(id);
   }
 }

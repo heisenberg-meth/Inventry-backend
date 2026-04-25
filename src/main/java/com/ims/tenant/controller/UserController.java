@@ -54,38 +54,38 @@ public class UserController {
   @GetMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Get user details")
-  public ResponseEntity<UserResponse> getUser(@PathVariable @NonNull Long id) {
-    return ResponseEntity.ok(userService.getUserById(Objects.requireNonNull(id)));
+  public ResponseEntity<UserResponse> getUser(@PathVariable long id) {
+    return ResponseEntity.ok(userService.getUserById(id));
   }
 
   @PatchMapping("/{id}/role")
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Update user role")
   public ResponseEntity<UserResponse> updateRole(
-      @PathVariable Long id, @RequestBody Map<String, String> body) {
+      @PathVariable long id, @RequestBody Map<String, String> body) {
     String role = body.get("role");
     if (role == null || role.isBlank()) {
       throw new IllegalArgumentException("Role is required");
     }
     return ResponseEntity.ok(
-        userService.updateRole(Objects.requireNonNull(id), Objects.requireNonNull(role)));
+        userService.updateRole(id, Objects.requireNonNull(role)));
   }
 
   @PostMapping("/{id}/permissions")
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Assign custom permissions to user")
   public ResponseEntity<UserResponse> assignPermissions(
-      @PathVariable @NonNull Long id,
+      @PathVariable long id,
       @Valid @RequestBody @NonNull AssignPermissionsRequest request) {
     return ResponseEntity.ok(
-        userService.assignPermissions(Objects.requireNonNull(id), Objects.requireNonNull(request)));
+        userService.assignPermissions(id, Objects.requireNonNull(request)));
   }
 
   @DeleteMapping("/{id}")
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Deactivate user (soft delete)")
-  public ResponseEntity<Void> deactivateUser(@PathVariable @NonNull Long id) {
-    userService.deactivateUser(Objects.requireNonNull(id));
+  public ResponseEntity<Void> deactivateUser(@PathVariable long id) {
+    userService.deactivateUser(id);
     return ResponseEntity.noContent().build();
   }
 }

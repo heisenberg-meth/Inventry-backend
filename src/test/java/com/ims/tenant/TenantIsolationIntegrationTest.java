@@ -44,12 +44,16 @@ public class TenantIsolationIntegrationTest extends BaseIntegrationTest {
     // We still need a valid JWT token because of SecurityConfig
     String token = login("root@ims.com", "root123", "SYS001", systemTenantId);
 
-    mockMvc
-        .perform(
-            get("/api/tenant/categories")
-                .header("Authorization", "Bearer " + token)
-                .with(tenant(String.valueOf(systemTenantId))))
-        .andExpect(status().isOk());
+    CategoryRequest request1 = new CategoryRequest();
+    request1.setName("Test Category");
+
+    mockMvc.perform(
+    post("/api/tenant/categories")
+        .header("Authorization", "Bearer " + token)
+        .with(java.util.Objects.requireNonNull(tenant(String.valueOf(testTenant1Id))))
+        .contentType(java.util.Objects.requireNonNull(MediaType.APPLICATION_JSON))
+        .content(java.util.Objects.requireNonNull(objectMapper.writeValueAsString(request1))))
+        .andExpect(status().isCreated());
   }
 
   @Test
@@ -65,8 +69,8 @@ public class TenantIsolationIntegrationTest extends BaseIntegrationTest {
             post("/api/tenant/categories")
                 .header("Authorization", "Bearer " + token)
                 .with(tenant(String.valueOf(testTenant1Id)))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request1)))
+                .contentType(java.util.Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                .content(java.util.Objects.requireNonNull(objectMapper.writeValueAsString(request1))))
         .andExpect(status().isCreated());
 
     // Verify Tenant 1 can see it
@@ -101,7 +105,7 @@ public class TenantIsolationIntegrationTest extends BaseIntegrationTest {
         mockMvc
             .perform(
                 post("/api/auth/login")
-                    .contentType(MediaType.APPLICATION_JSON)
+                    .contentType(java.util.Objects.requireNonNull(MediaType.APPLICATION_JSON))
                     .content(loginJson)
                     .with(tenant(String.valueOf(tenantId))))
             .andExpect(status().isOk())

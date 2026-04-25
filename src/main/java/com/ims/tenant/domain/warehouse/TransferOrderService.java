@@ -42,8 +42,8 @@ public class TransferOrderService {
             .notes(notes)
             .createdBy(userId)
             .build();
-    transfer =
-        Objects.requireNonNull(transferOrderRepository.save(Objects.requireNonNull(transfer)));
+    TransferOrder saved = transferOrderRepository.save(Objects.requireNonNull(transfer));
+    transfer = Objects.requireNonNull(saved);
 
     log.info(
         "Transfer order created (PENDING): id={} product={} quantity={} {} -> {}",

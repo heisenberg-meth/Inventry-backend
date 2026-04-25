@@ -54,7 +54,7 @@ public class CustomerController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Get customer")
   public @NonNull ResponseEntity<com.ims.dto.response.CustomerResponse> get(
-      @PathVariable @NonNull Long id) {
+      @PathVariable long id) {
     return ResponseEntity.ok(Objects.requireNonNull(customerService.getCustomerResponseById(id)));
   }
 
@@ -62,7 +62,7 @@ public class CustomerController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Update customer")
   public @NonNull ResponseEntity<com.ims.dto.response.CustomerResponse> update(
-      @PathVariable @NonNull Long id,
+      @PathVariable long id,
       @jakarta.validation.Valid @RequestBody @NonNull com.ims.dto.request.CustomerRequest request) {
     return ResponseEntity.ok(Objects.requireNonNull(customerService.update(id, request)));
   }
@@ -70,7 +70,7 @@ public class CustomerController {
   @DeleteMapping("/{id}")
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Delete customer")
-  public @NonNull ResponseEntity<Void> delete(@PathVariable @NonNull Long id) {
+  public @NonNull ResponseEntity<Void> delete(@PathVariable long id) {
     customerService.delete(id);
     return ResponseEntity.noContent().build();
   }
@@ -79,7 +79,7 @@ public class CustomerController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Get full ledger for customer")
   public ResponseEntity<java.util.Map<String, Object>> getCustomerLedger(
-      @PathVariable @NonNull Long id) {
+      @PathVariable long id) {
     return ResponseEntity.ok(customerService.getCustomerLedger(id));
   }
 

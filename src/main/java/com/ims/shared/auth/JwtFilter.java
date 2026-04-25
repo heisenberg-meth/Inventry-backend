@@ -44,7 +44,7 @@ public class JwtFilter extends OncePerRequestFilter {
       return;
     }
 
-    String token = authHeader.substring(BEARER_PREFIX_LENGTH);
+    String token = java.util.Objects.requireNonNull(authHeader.substring(BEARER_PREFIX_LENGTH));
 
     try {
       if (!jwtUtil.validateToken(token)) {
@@ -57,7 +57,8 @@ public class JwtFilter extends OncePerRequestFilter {
       boolean redisAvailable = true;
       Boolean isBlacklisted = false;
       try {
-        isBlacklisted = redisTemplate.hasKey("jwt:blacklist:" + tokenHash);
+        String safeTokenHash = java.util.Objects.requireNonNull(tokenHash);
+        isBlacklisted = redisTemplate.hasKey("jwt:blacklist:" + safeTokenHash);
       } catch (Exception e) {
         log.warn("Redis unavailable for JWT blacklist check — rejecting request to prevent bypass");
         redisAvailable = false;
@@ -77,8 +78,9 @@ public class JwtFilter extends OncePerRequestFilter {
         return;
       }
 
-      final Long userId = jwtUtil.extractUserId(token);
-      final Long tenantId = jwtUtil.extractTenantId(token);
+      String safeToken = java.util.Objects.requireNonNull(token);
+      final Long userId = jwtUtil.extractUserId(safeToken);
+      final Long tenantId = jwtUtil.extractTenantId(safeToken);
 
       TenantContext.setTenantId(tenantId);
 
@@ -86,18 +88,21 @@ public class JwtFilter extends OncePerRequestFilter {
       MDC.put("userId", userId != null ? String.valueOf(userId) : "anonymous");
       MDC.put("requestId", UUID.randomUUID().toString());
 
-      final String role = jwtUtil.extractRole(token);
-      final String scope = jwtUtil.extractScope(token);
-      final String businessType = jwtUtil.extractBusinessType(token);
-      final boolean isPlatformUser = jwtUtil.extractIsPlatformUser(token);
-      final java.util.Set<String> permissions = jwtUtil.extractPermissions(token);
-      final boolean impersonation = jwtUtil.extractImpersonation(token);
-      final Long impersonatedBy = jwtUtil.extractImpersonatedBy(token);
+      final String role = java.util.Objects.requireNonNull(jwtUtil.extractRole(safeToken));
+      final String scope = java.util.Objects.requireNonNull(jwtUtil.extractScope(safeToken));
+      final String businessType = jwtUtil.extractBusinessType(safeToken);
+      final boolean isPlatformUser = jwtUtil.extractIsPlatformUser(safeToken);
+      final java.util.Set<String> permissions =
+          java.util.Objects.requireNonNull(jwtUtil.extractPermissions(safeToken));
+      final boolean impersonation = jwtUtil.extractImpersonation(safeToken);
+      final Long impersonatedBy = jwtUtil.extractImpersonatedBy(safeToken);
 
       String authority = role.startsWith("ROLE_") ? role : "ROLE_" + role;
       UsernamePasswordAuthenticationToken auth =
           new UsernamePasswordAuthenticationToken(
-              userId, null, List.of(new SimpleGrantedAuthority(authority)));
+              java.util.Objects.requireNonNull(userId),
+              null,
+              List.of(new SimpleGrantedAuthority(authority)));
 
       // Store additional details for downstream use
       auth.setDetails(

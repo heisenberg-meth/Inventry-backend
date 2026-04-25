@@ -44,7 +44,7 @@ public class RoleController {
   @GetMapping("/{id}")
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Get role details with permissions")
-  public ResponseEntity<Role> getRole(@NonNull @PathVariable Long id) {
+  public ResponseEntity<Role> getRole(@PathVariable long id) {
     Long tenantId = getTenantId();
     return ResponseEntity.ok(roleService.findOne(tenantId, id));
   }
@@ -61,13 +61,13 @@ public class RoleController {
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Assign permissions to role")
   public ResponseEntity<Role> assignPermissions(
-      @NonNull @PathVariable Long id,
+      @PathVariable long id,
       @NonNull @Valid @RequestBody AssignPermissionsRequest request) {
     Long tenantId = getTenantId();
     return ResponseEntity.ok(roleService.assignPermissions(tenantId, id, request));
   }
 
-  private @NonNull Long getTenantId() {
+  private long getTenantId() {
     var auth = SecurityContextHolder.getContext().getAuthentication();
     if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
       return Objects.requireNonNull(details.getTenantId(), "Tenant ID must not be null");
