@@ -53,7 +53,7 @@ public abstract class BaseIntegrationTest {
    * constant so secret scanners stop flagging the literal as a hardcoded password.
    */
   protected static final String TEST_ROOT_PASSWORD =
-      System.getProperty("ims.test.root.password", "root123");
+      System.getProperty("ims.test.root.password", java.util.UUID.randomUUID().toString());
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
