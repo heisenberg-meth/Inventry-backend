@@ -1,6 +1,8 @@
 package com.ims.product;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /** Optimized projection for product listing to reduce DB load and serialization cost. */
 public interface ProductListView {
@@ -26,12 +28,12 @@ public interface ProductListView {
 
   Boolean getIsActive();
 
-  java.time.LocalDateTime getCreatedAt();
+  LocalDateTime getCreatedAt();
 
   // Pharmacy fields
   String getBatchNumber();
 
-  java.time.LocalDate getExpiryDate();
+  LocalDate getExpiryDate();
 
   String getManufacturer();
 

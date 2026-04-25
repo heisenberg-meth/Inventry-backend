@@ -224,8 +224,8 @@ public class ReportController {
   @org.springframework.web.bind.annotation.PatchMapping("/reports/alerts/{id}/dismiss")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Dismiss an alert")
-  public ResponseEntity<Void> dismissAlert(@PathVariable Long id) {
-    reportService.dismissAlert(id);
+  public ResponseEntity<Void> dismissAlert(@PathVariable @NonNull Long id) {
+    reportService.dismissAlert(Objects.requireNonNull(id));
     return ResponseEntity.noContent().build();
   }
 

@@ -3,6 +3,7 @@ package com.ims.config;
 import com.ims.model.User;
 import com.ims.model.UserRole;
 import com.ims.tenant.repository.UserRepository;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,15 +37,16 @@ public class DataSeeder implements CommandLineRunner {
     String adminEmail = "admin@platform.com";
     if (userRepository.findByEmailUnfiltered(adminEmail).isEmpty()) {
       User admin =
-          User.builder()
-              .name("Platform Admin")
-              .email(adminEmail)
-              .passwordHash(passwordEncoder.encode(seedAdminPassword))
-              .role(UserRole.PLATFORM_ADMIN)
-              .scope("PLATFORM")
-              .isPlatformUser(true)
-              .isActive(true)
-              .build();
+          Objects.requireNonNull(
+              User.builder()
+                  .name("Platform Admin")
+                  .email(adminEmail)
+                  .passwordHash(passwordEncoder.encode(seedAdminPassword))
+                  .role(UserRole.PLATFORM_ADMIN)
+                  .scope("PLATFORM")
+                  .isPlatformUser(true)
+                  .isActive(true)
+                  .build());
       userRepository.save(admin);
       log.info("Platform Admin seeded: {}", adminEmail);
     }

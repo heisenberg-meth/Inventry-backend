@@ -8,6 +8,8 @@ import java.io.File;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.sql.DataSource;
+import java.sql.Connection;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -39,7 +41,7 @@ public class PlatformHealthController {
     Map<String, Object> health = new LinkedHashMap<>();
 
     // 1. Database Health
-    try (java.sql.Connection conn = dataSource.getConnection()) {
+    try (Connection conn = dataSource.getConnection()) {
       boolean valid = conn.isValid(DB_CONNECTION_VALIDATE_TIMEOUT_SECONDS);
       health.put(
           "database",
@@ -72,7 +74,7 @@ public class PlatformHealthController {
             "free_gb", free / BYTES_PER_GIGABYTE,
             "usage_percent", total > 0 ? (double) (total - free) / total * PERCENT_MULTIPLIER : 0));
 
-    health.put("system_time", java.time.LocalDateTime.now().toString());
+    health.put("system_time", LocalDateTime.now().toString());
 
     return ResponseEntity.ok(health);
   }

@@ -9,8 +9,10 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -46,8 +48,8 @@ public class WebhookController {
   @DeleteMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Remove webhook")
-  public ResponseEntity<Void> delete(@PathVariable Long id) {
-    webhookService.deleteWebhook(id);
+  public ResponseEntity<Void> delete(@PathVariable @NonNull Long id) {
+    webhookService.deleteWebhook(Objects.requireNonNull(id));
     return ResponseEntity.noContent().build();
   }
 }

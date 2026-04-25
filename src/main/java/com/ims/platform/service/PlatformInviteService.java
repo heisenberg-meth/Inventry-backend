@@ -52,18 +52,17 @@ public class PlatformInviteService {
     String token = UUID.randomUUID().toString();
 
     PlatformInvite invite =
-        PlatformInvite.builder()
+        Objects.requireNonNull(
+            PlatformInvite.builder()
             .email(email)
             .role(UserRole.valueOf(role))
             .token(token)
             .expiresAt(LocalDateTime.now().plusHours(INVITE_TTL_HOURS))
             .createdBy(currentUserId)
-            .build();
+            .build());
 
     log.info("Platform invite created for {} by {}", email, currentUserId);
-    PlatformInvite tmpSaved = inviteRepository.save(invite);
-    PlatformInvite safeSaved = Objects.requireNonNull(tmpSaved);
-    return safeSaved;
+    return Objects.requireNonNull(inviteRepository.save(invite));
   }
 
   public @NonNull PlatformInvite validateToken(@NonNull String token) {
@@ -93,19 +92,19 @@ public class PlatformInviteService {
     PlatformInvite invite = validateToken(token);
 
     User user =
-        User.builder()
-            .name(name)
-            .email(invite.getEmail())
-            .passwordHash(passwordEncoder.encode(password))
-            .role(invite.getRole())
-            .scope("PLATFORM")
-            .isPlatformUser(true)
-            .isActive(true)
-            .isVerified(true)
-            .build();
-
-    User tmpUser = userRepository.save(user);
-    User safeUser = Objects.requireNonNull(tmpUser);
+        Objects.requireNonNull(
+            User.builder()
+                .name(name)
+                .email(invite.getEmail())
+                .passwordHash(passwordEncoder.encode(password))
+                .role(invite.getRole())
+                .scope("PLATFORM")
+                .isPlatformUser(true)
+                .isActive(true)
+                .isVerified(true)
+                .build());
+ 
+    userRepository.save(user);
 
     invite.setUsedAt(LocalDateTime.now());
     inviteRepository.save(invite);

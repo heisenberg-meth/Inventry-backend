@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -97,26 +98,28 @@ public class ProductImportService {
                                     finalCategoryName,
                                     tenantId);
                                 Category newCat =
-                                    Category.builder()
-                                        .name(finalCategoryName)
-                                        .tenantId(tenantId)
-                                        .description("Auto-created during import")
-                                        .build();
-                                return categoryRepository.save(newCat);
+                                    Objects.requireNonNull(
+                                        Category.builder()
+                                            .name(finalCategoryName)
+                                            .tenantId(tenantId)
+                                            .description("Auto-created during import")
+                                            .build());
+                                return Objects.requireNonNull(categoryRepository.save(newCat));
                               }));
 
           Product product =
-              Product.builder()
-                  .name(name)
-                  .tenantId(tenantId)
-                  .salePrice(salePrice)
-                  .stock(stock)
-                  .sku(sku)
-                  .categoryId(category.getId())
-                  .unit("Unit")
-                  .isActive(true)
-                  .reorderLevel(DEFAULT_REORDER_LEVEL)
-                  .build();
+              Objects.requireNonNull(
+                  Product.builder()
+                      .name(name)
+                      .tenantId(tenantId)
+                      .salePrice(salePrice)
+                      .stock(stock)
+                      .sku(sku)
+                      .categoryId(category.getId())
+                      .unit("Unit")
+                      .isActive(true)
+                      .reorderLevel(DEFAULT_REORDER_LEVEL)
+                      .build());
 
           products.add(product);
           successCount++;

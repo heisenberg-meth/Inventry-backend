@@ -1,5 +1,5 @@
 package com.ims.dto;
-
+import java.math.BigDecimal;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
@@ -11,5 +11,5 @@ public class CategoryRequest {
 
   private String description;
 
-  private java.math.BigDecimal taxRate;
+  private BigDecimal taxRate;
 }

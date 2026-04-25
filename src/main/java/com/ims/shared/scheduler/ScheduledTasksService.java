@@ -14,6 +14,7 @@ import com.ims.tenant.repository.UserRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -54,18 +55,19 @@ public class ScheduledTasksService {
                         .findByTypeAndResourceIdAndIsDismissedFalse("LOW_STOCK", p.getId())
                         .isEmpty()) {
                       Alert alert =
-                          Alert.builder()
-                              .tenantId(tenantId)
-                              .type("LOW_STOCK")
-                              .severity("HIGH")
-                              .message(
-                                  "Low stock for "
-                                      + p.getName()
-                                      + " ("
-                                      + p.getStock()
-                                      + " remaining)")
-                              .resourceId(p.getId())
-                              .build();
+                          Objects.requireNonNull(
+                              Alert.builder()
+                                  .tenantId(tenantId)
+                                  .type("LOW_STOCK")
+                                  .severity("HIGH")
+                                  .message(
+                                      "Low stock for "
+                                          + p.getName()
+                                          + " ("
+                                          + p.getStock()
+                                          + " remaining)")
+                                  .resourceId(p.getId())
+                                  .build());
                       alertRepository.save(alert);
 
                       userRepository
@@ -112,17 +114,18 @@ public class ScheduledTasksService {
                         .findByTypeAndResourceIdAndIsDismissedFalse("OVERDUE_INVOICE", inv.getId())
                         .isEmpty()) {
                       Alert alert =
-                          Alert.builder()
-                              .tenantId(tenantId)
-                              .type("OVERDUE_INVOICE")
-                              .severity("MEDIUM")
-                              .message(
-                                  "Invoice "
-                                      + inv.getInvoiceNumber()
-                                      + " is overdue since "
-                                      + inv.getDueDate())
-                              .resourceId(inv.getId())
-                              .build();
+                          Objects.requireNonNull(
+                              Alert.builder()
+                                  .tenantId(tenantId)
+                                  .type("OVERDUE_INVOICE")
+                                  .severity("MEDIUM")
+                                  .message(
+                                      "Invoice "
+                                          + inv.getInvoiceNumber()
+                                          + " is overdue since "
+                                          + inv.getDueDate())
+                                  .resourceId(inv.getId())
+                                  .build());
                       alertRepository.save(alert);
                     }
                   }

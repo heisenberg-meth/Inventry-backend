@@ -3,8 +3,10 @@ package com.ims.shared.notification;
 import com.ims.model.Notification;
 import com.ims.shared.auth.TenantContext;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,16 +17,16 @@ public class NotificationService {
 
   private final NotificationRepository notificationRepository;
 
-  public List<Notification> getMyNotifications(Long userId) {
+  public List<Notification> getMyNotifications(@NonNull Long userId) {
     return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
   }
 
-  public List<Notification> getUnreadNotifications(Long userId) {
+  public List<Notification> getUnreadNotifications(@NonNull Long userId) {
     return notificationRepository.findByUserIdAndIsReadFalse(userId);
   }
 
   @Transactional
-  public void markAsRead(Long id) {
+  public void markAsRead(@NonNull Long id) {
     notificationRepository
         .findById(id)
         .ifPresent(
@@ -35,7 +37,7 @@ public class NotificationService {
   }
 
   @Transactional
-  public void markAllAsRead(Long userId) {
+  public void markAllAsRead(@NonNull Long userId) {
     var unread = notificationRepository.findByUserIdAndIsReadFalse(userId);
     unread.forEach(n -> n.setIsRead(true));
     notificationRepository.saveAll(unread);
@@ -48,15 +50,16 @@ public class NotificationService {
       throw new IllegalArgumentException("tenantId is required and must be positive");
     }
 
-    var notification =
-        Notification.builder()
-            .userId(userId)
-            .tenantId(tenantId)
-            .title(title)
-            .message(message)
-            .type(type)
-            .resourceId(resourceId)
-            .build();
+    Notification notification =
+        Objects.requireNonNull(
+            Notification.builder()
+                .userId(userId)
+                .tenantId(tenantId)
+                .title(title)
+                .message(message)
+                .type(type)
+                .resourceId(resourceId)
+                .build());
     notificationRepository.save(notification);
     log.debug("Notification created for tenant {} user {}: {}", tenantId, userId, title);
   }

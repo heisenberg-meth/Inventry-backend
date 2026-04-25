@@ -5,6 +5,7 @@ import com.ims.dto.response.CategoryResponse;
 import com.ims.dto.response.PagedResponse;
 import com.ims.shared.auth.TenantContext;
 import com.ims.shared.rbac.RequiresRole;
+import java.util.Objects;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -47,7 +48,7 @@ public class CategoryController {
       @Valid @RequestBody @NonNull CategoryRequest request) {
     TenantContext.assertTenantPresent();
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(categoryService.toResponse(categoryService.create(java.util.Objects.requireNonNull(request))));
+        .body(categoryService.toResponse(categoryService.create(Objects.requireNonNull(request))));
   }
 
   @GetMapping("/{id}")
@@ -62,7 +63,7 @@ public class CategoryController {
   @Operation(summary = "Update category")
   public ResponseEntity<CategoryResponse> update(
       @PathVariable long id, @Valid @RequestBody @NonNull CategoryRequest request) {
-    return ResponseEntity.ok(categoryService.toResponse(categoryService.update(id, java.util.Objects.requireNonNull(request))));
+    return ResponseEntity.ok(categoryService.toResponse(categoryService.update(id, Objects.requireNonNull(request))));
   }
 
   @DeleteMapping("/{id}")

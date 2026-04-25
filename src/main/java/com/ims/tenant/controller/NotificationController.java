@@ -7,8 +7,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -29,21 +31,21 @@ public class NotificationController {
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "List my notifications")
   public ResponseEntity<List<Notification>> list() {
-    return ResponseEntity.ok(notificationService.getMyNotifications(extractUserId()));
+    return ResponseEntity.ok(notificationService.getMyNotifications(Objects.requireNonNull(extractUserId())));
   }
 
   @GetMapping("/unread")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "List my unread notifications")
   public ResponseEntity<List<Notification>> listUnread() {
-    return ResponseEntity.ok(notificationService.getUnreadNotifications(extractUserId()));
+    return ResponseEntity.ok(notificationService.getUnreadNotifications(Objects.requireNonNull(extractUserId())));
   }
 
   @PatchMapping("/{id}/read")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Mark notification as read")
-  public ResponseEntity<Void> markAsRead(@PathVariable Long id) {
-    notificationService.markAsRead(id);
+  public ResponseEntity<Void> markAsRead(@PathVariable @NonNull Long id) {
+    notificationService.markAsRead(Objects.requireNonNull(id));
     return ResponseEntity.noContent().build();
   }
 
@@ -51,7 +53,7 @@ public class NotificationController {
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Mark all notifications as read")
   public ResponseEntity<Void> markAllRead() {
-    notificationService.markAllAsRead(extractUserId());
+    notificationService.markAllAsRead(Objects.requireNonNull(extractUserId()));
     return ResponseEntity.noContent().build();
   }
 

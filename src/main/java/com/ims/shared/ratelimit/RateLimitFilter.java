@@ -264,7 +264,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
     String token = authHeader.substring("Bearer ".length());
     try {
-      Long id = jwtUtil.extractTenantId(token);
+      Long id = jwtUtil.extractTenantId(Objects.requireNonNull(token));
       return id == null ? null : id.toString();
     } catch (Exception e) {
       return null;

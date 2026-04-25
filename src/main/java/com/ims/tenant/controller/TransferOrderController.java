@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.Map;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -51,13 +52,15 @@ public class TransferOrderController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Update transfer status (SHIPPED/RECEIVED/CANCELLED)")
   public ResponseEntity<TransferOrder> updateStatus(
-      @PathVariable Long id,
+      @PathVariable @NonNull Long id,
       @RequestBody Map<String, String> body,
       @NonNull @com.ims.shared.auth.CurrentUser Long userId) {
     String status = body.get("status");
     if (status == null) {
       throw new IllegalArgumentException("Status is required");
     }
-    return ResponseEntity.ok(transferOrderService.updateStatus(id, status, userId));
+    return ResponseEntity.ok(
+        transferOrderService.updateStatus(
+            Objects.requireNonNull(id), Objects.requireNonNull(status), Objects.requireNonNull(userId)));
   }
 }

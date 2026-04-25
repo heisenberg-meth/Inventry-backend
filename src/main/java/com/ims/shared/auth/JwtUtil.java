@@ -159,13 +159,14 @@ public class JwtUtil {
       claims.put("business_type", businessType);
     }
 
-    return Jwts.builder()
-        .claims(claims)
-        .subject(userId.toString())
-        .issuedAt(new Date())
-        .expiration(new Date(System.currentTimeMillis() + customExpirySeconds * MILLIS_IN_SECOND))
-        .signWith(key)
-        .compact();
+    return java.util.Objects.requireNonNull(
+        Jwts.builder()
+            .claims(claims)
+            .subject(userId.toString())
+            .issuedAt(new Date())
+            .expiration(new Date(System.currentTimeMillis() + customExpirySeconds * MILLIS_IN_SECOND))
+            .signWith(key)
+            .compact());
   }
 
   public boolean validateToken(@Nullable String token) {

@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -38,7 +39,7 @@ public class Category {
 
   @Column(name = "tax_rate")
   @Builder.Default
-  private java.math.BigDecimal taxRate = java.math.BigDecimal.ZERO;
+  private BigDecimal taxRate = BigDecimal.ZERO;
 
   @Column(name = "created_at")
   @Builder.Default

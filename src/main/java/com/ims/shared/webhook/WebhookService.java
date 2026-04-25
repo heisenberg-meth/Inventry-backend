@@ -9,8 +9,11 @@ import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.lang.NonNull;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
@@ -55,18 +58,19 @@ public class WebhookService {
     URI normalizedUri = validateAndNormalize(url);
 
     Webhook webhook =
-        Webhook.builder()
-            .tenantId(TenantContext.getTenantId())
-            .url(normalizedUri.toString())
-            .eventTypes(eventTypes)
-            .secret(secret)
-            .isActive(true)
-            .build();
+        Objects.requireNonNull(
+            Webhook.builder()
+                .tenantId(TenantContext.getTenantId())
+                .url(normalizedUri.toString())
+                .eventTypes(eventTypes)
+                .secret(secret)
+                .isActive(true)
+                .build());
     return webhookRepository.save(webhook);
   }
 
   @Transactional
-  public void deleteWebhook(Long id) {
+  public void deleteWebhook(@NonNull Long id) {
     webhookRepository
         .findById(id)
         .ifPresent(
@@ -77,7 +81,7 @@ public class WebhookService {
             });
   }
 
-  public void dispatch(Long tenantId, String eventType, Object payload) {
+  public void dispatch(@NonNull Long tenantId, String eventType, Object payload) {
     List<Webhook> webhooks = webhookRepository.findByTenantId(tenantId);
 
     for (Webhook webhook : webhooks) {
@@ -102,9 +106,10 @@ public class WebhookService {
               "version", "v1",
               "event", eventType,
               "tenant_id", tenantId,
-              "timestamp", java.time.LocalDateTime.now().toString(),
+              "timestamp", LocalDateTime.now().toString(),
               "data", payload);
-      webhookRestTemplate.postForEntity(webhook.getUrl(), body, String.class);
+      webhookRestTemplate.postForEntity(
+          Objects.requireNonNull(webhook.getUrl()), body, String.class);
       log.debug("Webhook dispatched to {} for event {}", webhook.getUrl(), eventType);
     } catch (Exception e) {
       log.error("Failed to dispatch webhook to {}: {}", webhook.getUrl(), e.getMessage());

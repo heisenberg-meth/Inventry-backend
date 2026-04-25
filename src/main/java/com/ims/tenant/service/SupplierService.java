@@ -57,7 +57,7 @@ public class SupplierService {
   }
 
   public @NonNull com.ims.dto.response.SupplierResponse getSupplierResponseById(@NonNull Long id) {
-    return toResponse(getById(id));
+    return Objects.requireNonNull(toResponse(getById(id)));
   }
 
   @Transactional
@@ -83,7 +83,7 @@ public class SupplierService {
         savedSupplier.getId(),
         "Created supplier: " + savedSupplier.getName());
 
-    return toResponse(savedSupplier);
+    return Objects.requireNonNull(toResponse(savedSupplier));
   }
 
   @Transactional
@@ -119,7 +119,7 @@ public class SupplierService {
         updatedSupplier.getId(),
         "Updated supplier: " + updatedSupplier.getName());
 
-    return toResponse(updatedSupplier);
+    return Objects.requireNonNull(toResponse(updatedSupplier));
   }
 
   @Transactional

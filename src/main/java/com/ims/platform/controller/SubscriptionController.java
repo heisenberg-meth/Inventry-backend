@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -40,7 +41,7 @@ public class SubscriptionController {
   @RequiresRole({"ROOT"})
   @Operation(summary = "Extend subscription duration")
   public ResponseEntity<Subscription> extend(
-      @PathVariable Long id, @RequestBody Map<String, Integer> body) {
+      @PathVariable @NonNull Long id, @RequestBody Map<String, Integer> body) {
     int days = body.getOrDefault("days", DEFAULT_EXTENSION_DAYS);
     return ResponseEntity.ok(subscriptionService.extendSubscription(id, days));
   }

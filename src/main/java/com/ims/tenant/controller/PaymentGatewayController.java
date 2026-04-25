@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -44,7 +45,11 @@ public class PaymentGatewayController {
     BigDecimal amount = new BigDecimal(body.get("amount").toString());
     Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
-    return ResponseEntity.ok(gatewayService.initiatePayment(invoiceId, amount, userId));
+    return ResponseEntity.ok(
+        gatewayService.initiatePayment(
+            Objects.requireNonNull(invoiceId),
+            Objects.requireNonNull(amount),
+            Objects.requireNonNull(userId)));
   }
 
   @PostMapping("/webhook")

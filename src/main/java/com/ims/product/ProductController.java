@@ -11,10 +11,16 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Objects;
+import java.util.Map;
+import java.util.LinkedHashMap;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -42,7 +48,7 @@ public class ProductController {
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "List products", description = "Paginated")
   public ResponseEntity<PagedResponse<ProductResponse>> getProducts(Pageable pageable) {
-    Pageable safePageable = java.util.Objects.requireNonNull(pageable);
+    Pageable safePageable = Objects.requireNonNull(pageable);
     return ResponseEntity.ok(productService.getProducts(safePageable));
   }
 
@@ -53,8 +59,8 @@ public class ProductController {
       description = "High performance, no offset")
   public ResponseEntity<List<ProductResponse>> getNextProducts(
       @RequestParam Long lastId, @RequestParam(defaultValue = "20") int limit) {
-    Long safeLastId = java.util.Objects.requireNonNull(lastId);
-    Long tenantId = java.util.Objects.requireNonNull(TenantContext.getTenantId());
+    Long safeLastId = Objects.requireNonNull(lastId);
+    Long tenantId = Objects.requireNonNull(TenantContext.getTenantId());
     return ResponseEntity.ok(productService.getNextProducts(tenantId, safeLastId, limit));
   }
 
@@ -63,7 +69,7 @@ public class ProductController {
   @Operation(summary = "Create product")
   public ResponseEntity<ProductResponse> createProduct(
       @Valid @RequestBody CreateProductRequest request) {
-    CreateProductRequest safeRequest = java.util.Objects.requireNonNull(request);
+    CreateProductRequest safeRequest = Objects.requireNonNull(request);
     return ResponseEntity.status(HttpStatus.CREATED).body(productService.createProduct(safeRequest));
   }
 
@@ -79,7 +85,7 @@ public class ProductController {
   @Operation(summary = "Update product")
   public ResponseEntity<ProductResponse> updateProduct(
       @PathVariable long id, @Valid @RequestBody CreateProductRequest request) {
-    CreateProductRequest safeRequest = java.util.Objects.requireNonNull(request);
+    CreateProductRequest safeRequest = Objects.requireNonNull(request);
     return ResponseEntity.ok(productService.updateProduct(id, safeRequest));
   }
 
@@ -118,18 +124,18 @@ public class ProductController {
   @Operation(summary = "Search by name/SKU/barcode")
   public ResponseEntity<PagedResponse<ProductResponse>> search(
       @RequestParam String q, Pageable pageable) {
-    String safeQ = java.util.Objects.requireNonNull(q);
-    Pageable safePageable = java.util.Objects.requireNonNull(pageable);
+    String safeQ = Objects.requireNonNull(q);
+    Pageable safePageable = Objects.requireNonNull(pageable);
     return ResponseEntity.ok(productService.searchProducts(safeQ, safePageable));
   }
 
   @PostMapping("/bulk-import")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Bulk import products via CSV")
-  public ResponseEntity<java.util.Map<String, Object>> bulkImport(
-      @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+  public ResponseEntity<Map<String, Object>> bulkImport(
+      @RequestParam("file") MultipartFile file,
       @RequestParam(value = "dryRun", defaultValue = "false") boolean dryRun) {
-    org.springframework.web.multipart.MultipartFile safeFile = java.util.Objects.requireNonNull(file);
+    MultipartFile safeFile = Objects.requireNonNull(file);
     return ResponseEntity.ok(importService.importProducts(safeFile, dryRun));
   }
 
@@ -139,14 +145,14 @@ public class ProductController {
   public ResponseEntity<String> exportProducts() {
     var products =
         productRepository
-            .findByIsActiveTrue(org.springframework.data.domain.Pageable.unpaged())
+            .findByIsActiveTrue(Pageable.unpaged())
             .getContent();
 
     var data =
         products.stream()
             .map(
                 p -> {
-                  java.util.Map<String, Object> map = new java.util.LinkedHashMap<>();
+                  Map<String, Object> map = new LinkedHashMap<>();
                   map.put("ID", p.getId());
                   map.put("Name", p.getName());
                   map.put("SKU", p.getSku());
@@ -155,18 +161,18 @@ public class ProductController {
                   map.put("CategoryID", p.getCategoryId());
                   return map;
                 })
-            .collect(java.util.stream.Collectors.toList());
+            .collect(Collectors.toList());
 
     String csv =
-        java.util.Objects.requireNonNull(
+        Objects.requireNonNull(
             csvExportService.exportToCsv(
-                java.util.List.of("ID", "Name", "SKU", "Stock", "Price", "CategoryID"), data));
+                List.of("ID", "Name", "SKU", "Stock", "Price", "CategoryID"), data));
 
     return ResponseEntity.ok()
         .header(
-            org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+            HttpHeaders.CONTENT_DISPOSITION,
             "attachment; filename=products.csv")
-        .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "text/csv")
+        .header(HttpHeaders.CONTENT_TYPE, "text/csv")
         .body(csv);
   }
 
@@ -177,10 +183,10 @@ public class ProductController {
     ProductResponse p = productService.getProductById(id);
     String barcodeData = p.getBarcode() != null ? p.getBarcode() : p.getSku();
     byte[] image =
-        java.util.Objects.requireNonNull(
-            barcodeService.generateBarcodeImage(java.util.Objects.requireNonNull(barcodeData)));
+        Objects.requireNonNull(
+            barcodeService.generateBarcodeImage(Objects.requireNonNull(barcodeData)));
     return ResponseEntity.ok()
-        .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "image/png")
+        .header(HttpHeaders.CONTENT_TYPE, "image/png")
         .body(image);
   }
 }
