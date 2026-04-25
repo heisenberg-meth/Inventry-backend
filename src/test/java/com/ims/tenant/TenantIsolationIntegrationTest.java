@@ -24,9 +24,6 @@ import org.springframework.test.web.servlet.MockMvc;
 @ActiveProfiles("test")
 public class TenantIsolationIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired private MockMvc mockMvc;
-  @Autowired private ObjectMapper objectMapper;
-
   @BeforeEach
   void setup() {
     cleanupDatabase();
@@ -35,8 +32,7 @@ public class TenantIsolationIntegrationTest extends BaseIntegrationTest {
 
   @Test
   void testRequestFailsWithoutTenantHeader() throws Exception {
-    mockMvc.perform(get("/tenant/categories")).andExpect(status().isInternalServerError());
-    // It throws IllegalStateException which results in 500 by default unless handled
+    mockMvc.perform(get("/api/v1/tenant/categories")).andExpect(status().isUnauthorized());
   }
 
   @Test
@@ -48,7 +44,7 @@ public class TenantIsolationIntegrationTest extends BaseIntegrationTest {
     request1.setName("Test Category");
 
     mockMvc.perform(
-    post("/api/tenant/categories")
+    post("/api/v1/tenant/categories")
         .header("Authorization", "Bearer " + token)
         .with(java.util.Objects.requireNonNull(tenant(String.valueOf(testTenant1Id))))
         .contentType(java.util.Objects.requireNonNull(MediaType.APPLICATION_JSON))
@@ -66,7 +62,7 @@ public class TenantIsolationIntegrationTest extends BaseIntegrationTest {
 
     mockMvc
         .perform(
-            post("/api/tenant/categories")
+            post("/api/v1/tenant/categories")
                 .header("Authorization", "Bearer " + token)
                 .with(tenant(String.valueOf(testTenant1Id)))
                 .contentType(java.util.Objects.requireNonNull(MediaType.APPLICATION_JSON))
@@ -76,7 +72,7 @@ public class TenantIsolationIntegrationTest extends BaseIntegrationTest {
     // Verify Tenant 1 can see it
     mockMvc
         .perform(
-            get("/api/tenant/categories")
+            get("/api/v1/tenant/categories")
                 .header("Authorization", "Bearer " + token)
                 .with(tenant(String.valueOf(testTenant1Id))))
         .andExpect(status().isOk())
@@ -86,34 +82,11 @@ public class TenantIsolationIntegrationTest extends BaseIntegrationTest {
     // Verify Tenant 2 cannot see it
     mockMvc
         .perform(
-            get("/api/tenant/categories")
+            get("/api/v1/tenant/categories")
                 .header("Authorization", "Bearer " + token)
                 .with(tenant(String.valueOf(testTenant2Id))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.totalElements").value(0));
   }
 
-  private String login(String email, String password, String workspace, Long tenantId)
-      throws Exception {
-    com.ims.dto.request.LoginRequest loginRequest = new com.ims.dto.request.LoginRequest();
-    loginRequest.setEmail(email);
-    loginRequest.setPassword(password);
-    loginRequest.setCompanyCode(workspace);
-
-    String loginJson = objectMapper.writeValueAsString(loginRequest);
-    var result =
-        mockMvc
-            .perform(
-                post("/api/auth/login")
-                    .contentType(java.util.Objects.requireNonNull(MediaType.APPLICATION_JSON))
-                    .content(loginJson)
-                    .with(tenant(String.valueOf(tenantId))))
-            .andExpect(status().isOk())
-            .andReturn();
-
-    String responseJson = result.getResponse().getContentAsString();
-    com.ims.dto.response.LoginResponse response =
-        objectMapper.readValue(responseJson, com.ims.dto.response.LoginResponse.class);
-    return response.getAccessToken();
-  }
 }

@@ -48,10 +48,7 @@ public class TenantInitializationService {
       String rawToken = java.util.UUID.randomUUID().toString();
       String hashedToken = passwordEncoder.encode(rawToken);
 
-      // 3. Create the owner user with the verification token already applied.
-      // Explicitly set tenantId so the User is bound to the new tenant even if Hibernate's
-      // @TenantId auto-population is disabled (e.g. under the test profile).
-      Objects.requireNonNull(user).setTenantId(tenantId);
+      // Create the owner user with the verification token already applied.
       User savedUser = userRepository.save(user);
       savedUser.setVerificationToken(hashedToken);
       savedUser.setVerificationTokenExpiry(
@@ -92,7 +89,6 @@ public class TenantInitializationService {
     Long oldTenantId = TenantContext.getTenantId();
     try {
       TenantContext.setTenantId(Objects.requireNonNull(tenantId));
-      Objects.requireNonNull(user).setTenantId(tenantId);
       return userRepository.save(user);
     } finally {
       if (oldTenantId == null) {

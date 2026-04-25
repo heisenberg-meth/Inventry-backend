@@ -5,12 +5,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.CreateUserRequest;
-import com.ims.dto.request.LoginRequest;
 import com.ims.dto.request.SignupRequest;
-import com.ims.dto.response.LoginResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,8 +15,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest(
     properties = {
@@ -30,8 +25,6 @@ import org.springframework.test.web.servlet.MvcResult;
 @ActiveProfiles("test")
 public class ManagementIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired private MockMvc mockMvc;
-  @Autowired private ObjectMapper objectMapper;
   @Autowired private com.ims.shared.auth.SignupService signupService;
 
   @BeforeEach
@@ -47,7 +40,7 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
     // ROOT can list tenants
     mockMvc
         .perform(
-            get("/api/platform/tenants")
+            get("/api/v1/platform/tenants")
                 .header("Authorization", "Bearer " + rootToken)
                 .with(tenant(String.valueOf(systemTenantId))))
         .andExpect(status().isOk());
@@ -149,28 +142,5 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
     req.setOwnerEmail(email);
     req.setPassword("password123");
     return req;
-  }
-
-  private String login(String email, String password, String workspace, Long tenantId)
-      throws Exception {
-    LoginRequest loginRequest = new LoginRequest();
-    loginRequest.setEmail(email);
-    loginRequest.setPassword(password);
-    loginRequest.setCompanyCode(workspace);
-
-    String loginJson = objectMapper.writeValueAsString(loginRequest);
-    MvcResult result =
-        mockMvc
-            .perform(
-                post("/api/auth/login")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(loginJson)
-                    .with(tenant(String.valueOf(tenantId))))
-            .andExpect(status().isOk())
-            .andReturn();
-
-    String responseJson = result.getResponse().getContentAsString();
-    LoginResponse response = objectMapper.readValue(responseJson, LoginResponse.class);
-    return response.getAccessToken();
   }
 }

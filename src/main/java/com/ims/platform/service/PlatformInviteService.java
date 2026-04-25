@@ -62,7 +62,8 @@ public class PlatformInviteService {
 
     log.info("Platform invite created for {} by {}", email, currentUserId);
     PlatformInvite tmpSaved = inviteRepository.save(invite);
-    return Objects.requireNonNull(tmpSaved);
+    PlatformInvite safeSaved = Objects.requireNonNull(tmpSaved);
+    return safeSaved;
   }
 
   public @NonNull PlatformInvite validateToken(@NonNull String token) {
@@ -104,7 +105,7 @@ public class PlatformInviteService {
             .build();
 
     User tmpUser = userRepository.save(user);
-    Objects.requireNonNull(tmpUser);
+    User safeUser = Objects.requireNonNull(tmpUser);
 
     invite.setUsedAt(LocalDateTime.now());
     inviteRepository.save(invite);

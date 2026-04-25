@@ -82,7 +82,9 @@ public class JwtFilter extends OncePerRequestFilter {
       final Long userId = jwtUtil.extractUserId(safeToken);
       final Long tenantId = jwtUtil.extractTenantId(safeToken);
 
-      TenantContext.setTenantId(tenantId);
+      if (TenantContext.getTenantId() == null) {
+        TenantContext.setTenantId(tenantId);
+      }
 
       MDC.put("tenantId", tenantId != null ? String.valueOf(tenantId) : "none");
       MDC.put("userId", userId != null ? String.valueOf(userId) : "anonymous");
@@ -103,6 +105,7 @@ public class JwtFilter extends OncePerRequestFilter {
               java.util.Objects.requireNonNull(userId),
               null,
               List.of(new SimpleGrantedAuthority(authority)));
+      log.info("JWT Auth: userId={} role={} authorities={}", userId, role, auth.getAuthorities());
 
       // Store additional details for downstream use
       auth.setDetails(
@@ -141,7 +144,7 @@ public class JwtFilter extends OncePerRequestFilter {
     // Only bypass for health check. Other actuator/swagger paths need auth in prod.
     return "/actuator/health".equals(path)
         || path.equals("/api/v1/actuator/health")
-        || path.startsWith("/auth/")
-        || path.startsWith("/platform/auth/");
+        || path.contains("/auth/")
+        || path.contains("/platform/auth/");
   }
 }
