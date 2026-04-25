@@ -320,6 +320,7 @@ public class AuthService {
    * transactional boundary and is invoked under the correct tenant below.
    */
   public @NonNull LoginResponse login(@NonNull LoginRequest request) {
+    System.out.println("DEBUG: Auth login attempt - TenantContext: " + TenantContext.getTenantId());
     User user = userRepository
         .findByEmailUnfiltered(request.getEmail())
         .orElseThrow(() -> new EntityNotFoundException("Invalid email or password"));

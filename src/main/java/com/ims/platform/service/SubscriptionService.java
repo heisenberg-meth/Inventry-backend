@@ -7,8 +7,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -22,16 +24,19 @@ public class SubscriptionService {
   }
 
   @Transactional
-  public Subscription extendSubscription(Long id, int days) {
-    Subscription subscription =
+  public @NonNull Subscription extendSubscription(@NonNull Long id, int days) {
+    Objects.requireNonNull(id, "subscription id required");
+    Subscription tmpSubscription =
         subscriptionRepository
             .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Subscription not found"));
+    Subscription subscription = Objects.requireNonNull(tmpSubscription);
 
-    subscription.setEndDate(subscription.getEndDate().plusDays(days));
+    subscription.setEndDate(Objects.requireNonNull(subscription.getEndDate()).plusDays(days));
     subscription.setUpdatedAt(LocalDateTime.now());
 
     log.info("Subscription {} extended by {} days", id, days);
-    return subscriptionRepository.save(subscription);
+    Subscription tmpSaved = subscriptionRepository.save(subscription);
+    return Objects.requireNonNull(tmpSaved);
   }
 }

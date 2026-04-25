@@ -4,10 +4,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.CreateProductRequest;
-import com.ims.dto.request.LoginRequest;
 import com.ims.dto.request.SignupRequest;
 import com.ims.dto.response.ProductResponse;
 import com.ims.dto.response.SignupResponse;
@@ -26,7 +24,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest(
@@ -38,8 +35,6 @@ import org.springframework.test.web.servlet.MvcResult;
 @ActiveProfiles("test")
 public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired private MockMvc mockMvc;
-  @Autowired private ObjectMapper objectMapper;
   @Autowired private SignupService signupService;
   @Autowired private CustomerService customerService;
 
@@ -64,7 +59,7 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
 
     Long tenantId =
         tenantRepository.findByWorkspaceSlug(response.getWorkspaceSlug()).orElseThrow().getId();
-    String token = login("admin@order.com", "password123", response.getCompanyCode());
+    String token = login("admin@order.com", "password123", response.getCompanyCode(), tenantId);
 
     Customer customer;
     try {
@@ -84,8 +79,9 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
     MvcResult prodResult =
         mockMvc
             .perform(
-                post("/api/tenant/products")
+                post("/api/v1/tenant/products")
                     .header("Authorization", "Bearer " + token)
+                    .with(tenant(String.valueOf(tenantId)))
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(Objects.requireNonNull(objectMapper.writeValueAsString(createReq))))
             .andExpect(status().isCreated())
@@ -97,8 +93,9 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
     // 2. Stock In (100 units)
     mockMvc
         .perform(
-            post("/api/tenant/stock/in")
+            post("/api/v1/tenant/stock/in")
                 .header("Authorization", "Bearer " + token)
+                .with(tenant(String.valueOf(tenantId)))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     Objects.requireNonNull(
@@ -112,7 +109,7 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
                                 "Initial Stock")))))
         .andExpect(status().isOk());
 
-    verifyStock(token, product.getId(), 100);
+    verifyStock(token, product.getId(), 100, tenantId);
 
     // 3. Create Sales Order (Status -> PENDING)
     Map<String, Object> orderReq =
@@ -125,8 +122,9 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
     MvcResult orderResult =
         mockMvc
             .perform(
-                post("/api/tenant/orders/sale")
+                post("/api/v1/tenant/orders/sale")
                     .header("Authorization", "Bearer " + token)
+                    .with(tenant(String.valueOf(tenantId)))
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(Objects.requireNonNull(objectMapper.writeValueAsString(orderReq))))
             .andExpect(status().isCreated())
@@ -141,47 +139,33 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
     // 4. Confirm Order (Status -> CONFIRMED, stock 100 -> 90)
     mockMvc
         .perform(
-            post("/api/tenant/orders/" + orderId + "/confirm")
-                .header("Authorization", "Bearer " + token))
+            post("/api/v1/tenant/orders/" + orderId + "/confirm")
+                .header("Authorization", "Bearer " + token)
+                .with(tenant(String.valueOf(tenantId))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value("CONFIRMED"));
 
-    verifyStock(token, product.getId(), 90);
+    verifyStock(token, product.getId(), 90, tenantId);
 
     // 5. Cancel Order (Status -> CANCELLED, stock 90 -> 100)
     mockMvc
         .perform(
-            post("/api/tenant/orders/" + orderId + "/cancel")
-                .header("Authorization", "Bearer " + token))
+            post("/api/v1/tenant/orders/" + orderId + "/cancel")
+                .header("Authorization", "Bearer " + token)
+                .with(tenant(String.valueOf(tenantId))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value("CANCELLED"));
 
-    verifyStock(token, product.getId(), 100);
+    verifyStock(token, product.getId(), 100, tenantId);
   }
 
-  private void verifyStock(String token, Long productId, int expected) throws Exception {
+  private void verifyStock(String token, Long productId, int expected, Long tenantId) throws Exception {
     mockMvc
         .perform(
-            get("/api/tenant/products/" + productId).header("Authorization", "Bearer " + token))
+            get("/api/v1/tenant/products/" + productId)
+                .header("Authorization", "Bearer " + token)
+                .with(tenant(String.valueOf(tenantId))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.stock").value(expected));
-  }
-
-  private String login(String email, String password, String workspace) throws Exception {
-    LoginRequest loginRequest = new LoginRequest();
-    loginRequest.setEmail(email);
-    loginRequest.setPassword(password);
-    loginRequest.setCompanyCode(workspace);
-
-    MvcResult result =
-        mockMvc
-            .perform(
-                post("/api/auth/login")
-                    .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
-                    .content(Objects.requireNonNull(objectMapper.writeValueAsString(loginRequest))))
-            .andExpect(status().isOk())
-            .andReturn();
-    String content = result.getResponse().getContentAsString();
-    return Objects.requireNonNull(objectMapper.readTree(content).get("accessToken")).asText();
   }
 }

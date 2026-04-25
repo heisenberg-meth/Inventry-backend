@@ -6,23 +6,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.BaseIntegrationTest;
-import com.ims.dto.request.LoginRequest;
 import com.ims.dto.request.SignupRequest;
-import com.ims.dto.response.LoginResponse;
 import com.ims.shared.auth.SignupService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest(
     properties = {
@@ -31,11 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
     })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Transactional
 public class AuthIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired private MockMvc mockMvc;
-  @Autowired private ObjectMapper objectMapper;
   @Autowired private SignupService signupService;
 
   @BeforeEach
@@ -131,28 +120,5 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
     req.setOwnerEmail(email);
     req.setPassword("password123");
     return req;
-  }
-
-  private String login(String email, String password, String workspace, Long tenantId)
-      throws Exception {
-    LoginRequest loginRequest = new LoginRequest();
-    loginRequest.setEmail(email);
-    loginRequest.setPassword(password);
-    loginRequest.setCompanyCode(workspace);
-
-    String loginJson = objectMapper.writeValueAsString(loginRequest);
-    MvcResult result =
-        mockMvc
-            .perform(
-                post("/api/auth/login")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(loginJson)
-                    .with(tenant(tenantId.toString())))
-            .andExpect(status().isOk())
-            .andReturn();
-
-    String responseJson = result.getResponse().getContentAsString();
-    LoginResponse response = objectMapper.readValue(responseJson, LoginResponse.class);
-    return response.getAccessToken();
   }
 }

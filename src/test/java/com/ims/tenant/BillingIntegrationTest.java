@@ -37,8 +37,6 @@ import org.springframework.test.web.servlet.MvcResult;
 @ActiveProfiles("test")
 public class BillingIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired private MockMvc mockMvc;
-  @Autowired private ObjectMapper objectMapper;
   @Autowired private SignupService signupService;
   @Autowired private CustomerService customerService;
 
@@ -92,7 +90,7 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
     MvcResult prodResult =
         mockMvc
             .perform(
-                post("/api/tenant/products")
+                post("/api/v1/tenant/products")
                     .header("Authorization", "Bearer " + token)
                     .with(tenant(tenantId.toString()))
                     .contentType(MediaType.APPLICATION_JSON)
@@ -110,7 +108,7 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
                 Map.of("product_id", product.getId(), "quantity", 100, "notes", "Initial Stock")));
     mockMvc
         .perform(
-            post("/api/tenant/stock/in")
+            post("/api/v1/tenant/stock/in")
                 .header("Authorization", "Bearer " + token)
                 .with(tenant(tenantId.toString()))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -129,7 +127,7 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
     MvcResult orderResult =
         mockMvc
             .perform(
-                post("/api/tenant/orders/sale")
+                post("/api/v1/tenant/orders/sale")
                     .header("Authorization", "Bearer " + token)
                     .with(tenant(tenantId.toString()))
                     .contentType(MediaType.APPLICATION_JSON)
@@ -146,7 +144,7 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
     // 3. Confirm Order (Triggers Invoice Generation)
     mockMvc
         .perform(
-            post("/api/tenant/orders/" + orderId + "/confirm")
+            post("/api/v1/tenant/orders/" + orderId + "/confirm")
                 .header("Authorization", "Bearer " + token)
                 .with(tenant(tenantId.toString())))
         .andExpect(status().isOk());
@@ -155,7 +153,7 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
     MvcResult invoicesResult =
         mockMvc
             .perform(
-                get("/api/tenant/invoices")
+                get("/api/v1/tenant/invoices")
                     .header("Authorization", "Bearer " + token)
                     .with(tenant(tenantId.toString())))
             .andExpect(status().isOk())
@@ -168,7 +166,7 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
     // 5. Download PDF
     mockMvc
         .perform(
-            get("/api/tenant/invoices/" + invoiceId + "/pdf")
+            get("/api/v1/tenant/invoices/" + invoiceId + "/pdf")
                 .header("Authorization", "Bearer " + token)
                 .with(tenant(tenantId.toString())))
         .andExpect(status().isOk())
@@ -179,24 +177,4 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
                     "Content-Disposition", "attachment; filename=invoice-" + invoiceId + ".pdf"));
   }
 
-  private String login(String email, String password, String workspace, Long tenantId)
-      throws Exception {
-    LoginRequest loginRequest = new LoginRequest();
-    loginRequest.setEmail(email);
-    loginRequest.setPassword(password);
-    loginRequest.setCompanyCode(workspace);
-
-    String loginJson = Objects.requireNonNull(objectMapper.writeValueAsString(loginRequest));
-    MvcResult result =
-        mockMvc
-            .perform(
-                post("/api/auth/login")
-                    .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
-                    .content(loginJson)
-                    .with(tenant(tenantId.toString())))
-            .andExpect(status().isOk())
-            .andReturn();
-    String content = result.getResponse().getContentAsString();
-    return objectMapper.readTree(content).get("accessToken").asText();
-  }
 }
