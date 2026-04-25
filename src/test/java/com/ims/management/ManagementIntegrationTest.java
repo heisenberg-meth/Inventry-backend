@@ -35,7 +35,7 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
 
   @Test
   void testPlatformAdminFlow() throws Exception {
-    String rootToken = login("root@ims.com", "root123", "SYS001", systemTenantId);
+    String rootToken = login("root@ims.com", TEST_ROOT_PASSWORD, "SYS001", systemTenantId);
 
     // ROOT can list tenants
     mockMvc

@@ -35,7 +35,7 @@ public class TenantIsolationIntegrationTest extends BaseIntegrationTest {
   @Test
   void testRequestSucceedsWithTenantHeader() throws Exception {
     // We still need a valid JWT token because of SecurityConfig
-    String token = login("root@ims.com", "root123", "SYS001", systemTenantId);
+    String token = login("root@ims.com", TEST_ROOT_PASSWORD, "SYS001", systemTenantId);
 
     CategoryRequest request1 = new CategoryRequest();
     request1.setName("Test Category");
@@ -53,7 +53,7 @@ public class TenantIsolationIntegrationTest extends BaseIntegrationTest {
 
   @Test
   void testDataIsolationBetweenTenants() throws Exception {
-    String token = login("root@ims.com", "root123", "SYS001", systemTenantId);
+    String token = login("root@ims.com", TEST_ROOT_PASSWORD, "SYS001", systemTenantId);
 
     // Create category for Tenant 1
     CategoryRequest request1 = new CategoryRequest();

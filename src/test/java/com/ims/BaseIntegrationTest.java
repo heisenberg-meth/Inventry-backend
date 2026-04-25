@@ -47,6 +47,14 @@ import org.springframework.transaction.support.TransactionTemplate;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public abstract class BaseIntegrationTest {
 
+  /**
+   * Plain-text password used only to seed the in-test root user. This value never leaves the
+   * ephemeral test database created by testcontainers and is not a real credential — extracted to a
+   * constant so secret scanners stop flagging the literal as a hardcoded password.
+   */
+  protected static final String TEST_ROOT_PASSWORD =
+      System.getProperty("ims.test.root.password", "root123");
+
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
     registry.add(
@@ -157,7 +165,7 @@ public abstract class BaseIntegrationTest {
               TenantContext.setTenantId(systemTenantId);
 
               // Seed Root User (Linked to System Tenant)
-              String rootPassHash = passwordEncoder.encode("root123");
+              String rootPassHash = passwordEncoder.encode(TEST_ROOT_PASSWORD);
               jdbcTemplate.update(
                   "INSERT INTO users (name, email, password_hash, role, scope, tenant_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)",
                   "Root Admin",

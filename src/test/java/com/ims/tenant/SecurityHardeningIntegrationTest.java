@@ -65,7 +65,8 @@ public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
     doReturn(25L).when(zSetOperations).zCard(any(String.class));
 
     String authLoginJson =
-        objectMapper.writeValueAsString(Map.of("email", "root@ims.com", "password", "root123"));
+        objectMapper.writeValueAsString(
+            Map.of("email", "root@ims.com", "password", TEST_ROOT_PASSWORD));
     mockMvc
         .perform(
             post("/api/v1/auth/login")
