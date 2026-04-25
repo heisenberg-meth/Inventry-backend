@@ -4,12 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.CreateProductRequest;
-import com.ims.dto.request.LoginRequest;
 import com.ims.dto.request.SignupRequest;
-import com.ims.dto.response.LoginResponse;
 import com.ims.dto.response.ProductResponse;
 import com.ims.shared.auth.SignupService;
 import java.math.BigDecimal;
@@ -21,7 +18,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest(
@@ -33,8 +29,6 @@ import org.springframework.test.web.servlet.MvcResult;
 @ActiveProfiles("test")
 public class PharmacyIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired private MockMvc mockMvc;
-  @Autowired private ObjectMapper objectMapper;
   @Autowired private SignupService signupService;
 
   @BeforeEach
@@ -55,7 +49,8 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
     com.ims.dto.response.SignupResponse response = signupService.signup(signup);
     verifyUserEmail("admin@pharmacy.com");
     verifyUser("admin@pharmacy.com");
-    String token = login("admin@pharmacy.com", "password123", response.getCompanyCode());
+    Long tId = tenantRepository.findByWorkspaceSlug("pharmacy-corp").orElseThrow().getId();
+    String token = login("admin@pharmacy.com", "password123", response.getCompanyCode(), tId);
 
     // 1. Create Pharmacy Product
     CreateProductRequest createReq = new CreateProductRequest();
@@ -74,8 +69,9 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
     MvcResult result =
         mockMvc
             .perform(
-                post("/api/tenant/products")
+                post("/api/v1/tenant/products")
                     .header("Authorization", "Bearer " + token)
+                    .with(tenant(String.valueOf(tId)))
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(createReqJson))
             .andExpect(status().isCreated())
@@ -88,8 +84,9 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
     // 2. Fetch expiring products
     mockMvc
         .perform(
-            get("/api/tenant/products/expiring?days=200")
-                .header("Authorization", "Bearer " + token))
+            get("/api/v1/tenant/products/expiring?days=200")
+                .header("Authorization", "Bearer " + token)
+                .with(tenant(String.valueOf(tId))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.length()", org.hamcrest.Matchers.<Integer>greaterThanOrEqualTo(1)));
   }
@@ -107,7 +104,8 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
     verifyUserEmail("admin@expired.com");
     verifyUser("admin@expired.com");
 
-    String token = login("admin@expired.com", "password123", response.getCompanyCode());
+    Long tId = tenantRepository.findByWorkspaceSlug("expired-corp").orElseThrow().getId();
+    String token = login("admin@expired.com", "password123", response.getCompanyCode(), tId);
 
     // 1. Create ALREADY EXPIRED product
     CreateProductRequest expiredReq = new CreateProductRequest();
@@ -124,8 +122,9 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
 
     mockMvc
         .perform(
-            post("/api/tenant/products")
+            post("/api/v1/tenant/products")
                 .header("Authorization", "Bearer " + token)
+                .with(tenant(String.valueOf(tId)))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(expiredReq)))
         .andExpect(status().isCreated());
@@ -136,8 +135,9 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
     MvcResult result =
         mockMvc
             .perform(
-                get("/api/tenant/products/expiring?days=30")
-                    .header("Authorization", "Bearer " + token))
+                get("/api/v1/tenant/products/expiring?days=30")
+                    .header("Authorization", "Bearer " + token)
+                    .with(tenant(String.valueOf(tId))))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.length()").value(1))
             .andReturn();
@@ -160,7 +160,8 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
     verifyUserEmail("admin@missing.com");
     verifyUser("admin@missing.com");
 
-    String token = login("admin@missing.com", "password123", response.getCompanyCode());
+    Long tId = tenantRepository.findByWorkspaceSlug("missing-corp").orElseThrow().getId();
+    String token = login("admin@missing.com", "password123", response.getCompanyCode(), tId);
 
     // Create Pharmacy Product with missing pharmacy_details
     CreateProductRequest invalidReq = new CreateProductRequest();
@@ -172,29 +173,12 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
     // Should fail with 400 or 500 depending on service validation
     mockMvc
         .perform(
-            post("/api/tenant/products")
+            post("/api/v1/tenant/products")
                 .header("Authorization", "Bearer " + token)
+                .with(tenant(String.valueOf(tId)))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(invalidReq)))
         .andExpect(status().isBadRequest());
   }
 
-  private String login(String email, String password, String workspace) throws Exception {
-    LoginRequest loginRequest = new LoginRequest();
-    loginRequest.setEmail(email);
-    loginRequest.setPassword(password);
-    loginRequest.setCompanyCode(workspace);
-
-    String loginJson = objectMapper.writeValueAsString(loginRequest);
-    MvcResult result =
-        mockMvc
-            .perform(
-                post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(loginJson))
-            .andExpect(status().isOk())
-            .andReturn();
-
-    LoginResponse response =
-        objectMapper.readValue(result.getResponse().getContentAsString(), LoginResponse.class);
-    return response.getAccessToken();
-  }
 }

@@ -66,18 +66,20 @@ public class SecurityConfig {
     return configureCommon(http)
         .authorizeHttpRequests(
             auth -> {
-              auth.requestMatchers(AUTH_WHITELIST).permitAll();
-              auth.requestMatchers("/actuator/health").permitAll();
+              auth.requestMatchers("/api/auth/**", "/api/v1/auth/**", "/api/platform/auth/**").permitAll();
+              auth.requestMatchers("/api/platform/invites/**").permitAll();
+              auth.requestMatchers("/api/tenant/payments/gateway/webhook").permitAll();
+              auth.requestMatchers("/actuator/health", "/api/v1/actuator/health").permitAll();
 
               if (isDev) {
                 auth.requestMatchers("/actuator/**").permitAll();
                 auth.requestMatchers(SWAGGER_WHITELIST).permitAll();
               } else {
-                auth.requestMatchers("/actuator/**").hasRole("ROOT");
-                auth.requestMatchers(SWAGGER_WHITELIST).hasRole("ROOT");
+                auth.requestMatchers("/actuator/**").hasAuthority("ROLE_ROOT");
+                auth.requestMatchers(SWAGGER_WHITELIST).hasAuthority("ROLE_ROOT");
               }
 
-              auth.requestMatchers("/internal/**").hasRole("ROOT");
+              auth.requestMatchers("/internal/**").hasAuthority("ROLE_ROOT");
               auth.anyRequest().authenticated();
             })
         .build();
@@ -106,9 +108,9 @@ public class SecurityConfig {
         .exceptionHandling(
             ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
         .addFilterBefore(traceFilter, UsernamePasswordAuthenticationFilter.class)
-        .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-        .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
-        .addFilterBefore(tenantFilter, UsernamePasswordAuthenticationFilter.class);
+        .addFilterAfter(rateLimitFilter, TraceFilter.class)
+        .addFilterAfter(jwtFilter, RateLimitFilter.class)
+        .addFilterAfter(tenantFilter, JwtFilter.class);
   }
 
   @Bean

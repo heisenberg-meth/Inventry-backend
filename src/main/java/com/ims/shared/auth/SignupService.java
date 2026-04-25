@@ -40,6 +40,7 @@ public class SignupService {
   }
 
   public SignupResponse signup(@NonNull SignupRequest request) {
+    TenantContext.clear();
     java.util.Objects.requireNonNull(request, "request cannot be null");
     String rawEmail = java.util.Objects.requireNonNull(request.getOwnerEmail());
     String normalizedEmail = rawEmail.trim().toLowerCase();

@@ -31,8 +31,6 @@ import org.springframework.test.web.servlet.MvcResult;
 @ActiveProfiles("test")
 public class RbacIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired private MockMvc mockMvc;
-  @Autowired private ObjectMapper objectMapper;
   @Autowired private SignupService signupService;
 
   @BeforeEach
@@ -46,7 +44,8 @@ public class RbacIntegrationTest extends BaseIntegrationTest {
         signupService.signup(createSignupRequest("RBAC Corp", "rbac-corp", "admin@rbac.com"));
     verifyUserEmail("admin@rbac.com");
     verifyUser("admin@rbac.com");
-    String token = login("admin@rbac.com", "password123", response.getCompanyCode());
+    Long tenantId = tenantRepository.findByWorkspaceSlug("rbac-corp").orElseThrow().getId();
+    String token = login("admin@rbac.com", "password123", response.getCompanyCode(), tenantId);
 
     // 1. Create a product first (with all mandatory fields)
     CreateProductRequest createReq = new CreateProductRequest();
@@ -56,15 +55,19 @@ public class RbacIntegrationTest extends BaseIntegrationTest {
 
     mockMvc
         .perform(
-            post("/api/tenant/products")
+            post("/api/v1/tenant/products")
                 .header("Authorization", "Bearer " + token)
+                .with(tenant(String.valueOf(tenantId)))
                 .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
                 .content(Objects.requireNonNull(objectMapper.writeValueAsString(createReq))))
         .andExpect(status().isCreated());
 
     // 2. ADMIN can access products
     mockMvc
-        .perform(get("/api/tenant/products").header("Authorization", "Bearer " + token))
+        .perform(
+            get("/api/v1/tenant/products")
+                .header("Authorization", "Bearer " + token)
+                .with(tenant(String.valueOf(tenantId))))
         .andExpect(status().isOk());
   }
 
@@ -77,25 +80,5 @@ public class RbacIntegrationTest extends BaseIntegrationTest {
     signup.setOwnerEmail(email);
     signup.setPassword("password123");
     return signup;
-  }
-
-  private String login(String email, String password, String workspace) throws Exception {
-    LoginRequest loginRequest = new LoginRequest();
-    loginRequest.setEmail(email);
-    loginRequest.setPassword(password);
-    loginRequest.setCompanyCode(workspace);
-
-    MvcResult result =
-        mockMvc
-            .perform(
-                post("/api/auth/login")
-                    .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
-                    .content(Objects.requireNonNull(objectMapper.writeValueAsString(loginRequest))))
-            .andExpect(status().isOk())
-            .andReturn();
-
-    LoginResponse response =
-        objectMapper.readValue(result.getResponse().getContentAsString(), LoginResponse.class);
-    return response.getAccessToken();
   }
 }

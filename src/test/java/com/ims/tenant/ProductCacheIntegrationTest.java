@@ -34,8 +34,6 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
 
   private org.springframework.cache.Cache spyCache;
 
-  @Autowired private MockMvc mockMvc;
-  @Autowired private ObjectMapper objectMapper;
   @Autowired private SignupService signupService;
 
   @BeforeEach
@@ -63,8 +61,8 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
     com.ims.dto.response.SignupResponse response = signupService.signup(signup);
     verifyUserEmail("admin@cache.com");
     verifyUser("admin@cache.com");
-
-    String token = login("admin@cache.com", "password123", response.getCompanyCode());
+    Long tenantId = tenantRepository.findByWorkspaceSlug("cache-corp").orElseThrow().getId();
+    String token = login("admin@cache.com", "password123", response.getCompanyCode(), tenantId);
 
     // 1. Create Product
     CreateProductRequest createReq = new CreateProductRequest();
@@ -74,8 +72,9 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
     MvcResult result =
         mockMvc
             .perform(
-                post("/api/tenant/products")
+                post("/api/v1/tenant/products")
                     .header("Authorization", "Bearer " + token)
+                    .with(tenant(String.valueOf(tenantId)))
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(objectMapper.writeValueAsString(createReq)))
             .andExpect(status().isCreated())
@@ -92,7 +91,9 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
     // 2. First fetch (Cache miss -> Should call cache.get then cache.put)
     mockMvc
         .perform(
-            get("/api/tenant/products/" + productId).header("Authorization", "Bearer " + token))
+            get("/api/v1/tenant/products/" + productId)
+                .header("Authorization", "Bearer " + token)
+                .with(tenant(String.valueOf(tenantId))))
         .andExpect(status().isOk());
 
     // verify(spyCache, atLeastOnce()).get(any());
@@ -100,21 +101,26 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
     // Performance redundant call to ensure it still works
     mockMvc
         .perform(
-            get("/api/tenant/products/" + productId).header("Authorization", "Bearer " + token))
+            get("/api/v1/tenant/products/" + productId)
+                .header("Authorization", "Bearer " + token)
+                .with(tenant(String.valueOf(tenantId))))
         .andExpect(status().isOk());
 
     // 3. Second fetch (Should be a cache hit)
     mockMvc
         .perform(
-            get("/api/tenant/products/" + productId).header("Authorization", "Bearer " + token))
+            get("/api/v1/tenant/products/" + productId)
+                .header("Authorization", "Bearer " + token)
+                .with(tenant(String.valueOf(tenantId))))
         .andExpect(status().isOk());
 
     // 4. Update product (Should trigger eviction)
     createReq.setName("Updated Product Name");
     mockMvc
         .perform(
-            put("/api/tenant/products/" + productId)
+            put("/api/v1/tenant/products/" + productId)
                 .header("Authorization", "Bearer " + token)
+                .with(tenant(String.valueOf(tenantId)))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(createReq)))
         .andExpect(status().isOk());
@@ -124,33 +130,18 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
     // Performance redundant call to ensure it still works after update
     mockMvc
         .perform(
-            get("/api/tenant/products/" + productId).header("Authorization", "Bearer " + token))
+            get("/api/v1/tenant/products/" + productId)
+                .header("Authorization", "Bearer " + token)
+                .with(tenant(String.valueOf(tenantId))))
         .andExpect(status().isOk());
 
     // 5. Fetch again (Cache miss again)
     mockMvc
         .perform(
-            get("/api/tenant/products/" + productId).header("Authorization", "Bearer " + token))
+            get("/api/v1/tenant/products/" + productId)
+                .header("Authorization", "Bearer " + token)
+                .with(tenant(String.valueOf(tenantId))))
         .andExpect(status().isOk());
   }
 
-  private String login(String email, String password, String workspace) throws Exception {
-    LoginRequest loginRequest = new LoginRequest();
-    loginRequest.setEmail(email);
-    loginRequest.setPassword(password);
-    loginRequest.setCompanyCode(workspace);
-
-    MvcResult result =
-        mockMvc
-            .perform(
-                post("/api/auth/login")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(loginRequest)))
-            .andExpect(status().isOk())
-            .andReturn();
-
-    LoginResponse response =
-        objectMapper.readValue(result.getResponse().getContentAsString(), LoginResponse.class);
-    return response.getAccessToken();
-  }
 }
