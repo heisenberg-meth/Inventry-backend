@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/platform/subscription-plans")
+@RequestMapping("/api/v1/platform/subscription-plans")
 @RequiredArgsConstructor
 @Tag(name = "Platform - Subscription Plans", description = "Manage subscription plans")
 @SecurityRequirement(name = "bearerAuth")

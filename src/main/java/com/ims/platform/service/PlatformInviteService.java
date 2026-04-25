@@ -6,15 +6,15 @@ import com.ims.model.UserRole;
 import com.ims.platform.repository.PlatformInviteRepository;
 import com.ims.shared.auth.JwtAuthDetails;
 import com.ims.tenant.repository.UserRepository;
-import java.util.List;
-import java.util.UUID;
-import java.util.Objects;
 import java.time.LocalDateTime;
-import lombok.extern.slf4j.Slf4j;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.lang.NonNull;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -86,7 +86,8 @@ public class PlatformInviteService {
   }
 
   @Transactional
-  public void completeInvite(@NonNull String token, @NonNull String password, @NonNull String name) {
+  public void completeInvite(
+      @NonNull String token, @NonNull String password, @NonNull String name) {
     Objects.requireNonNull(token, "token required");
     Objects.requireNonNull(password, "password required");
     Objects.requireNonNull(name, "name required");

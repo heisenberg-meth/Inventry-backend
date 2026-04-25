@@ -47,18 +47,16 @@ public class CategoryService {
     TenantContext.assertTenantPresent();
     Long tenantId = TenantContext.getTenantId();
     return java.util.Objects.requireNonNull(
-    categoryRepository
-        .findByIdAndTenantId(id, tenantId)
-        .orElseThrow(() -> new EntityNotFoundException("Category not found"))
-    );
+        categoryRepository
+            .findByIdAndTenantId(id, tenantId)
+            .orElseThrow(() -> new EntityNotFoundException("Category not found")));
   }
 
   @Transactional
   public @NonNull Category create(@NonNull CategoryRequest request) {
     String name = java.util.Objects.requireNonNull(request.getName());
 
-    if (categoryRepository.existsByNameIgnoreCaseAndTenantId(
-        name, TenantContext.getTenantId())) {
+    if (categoryRepository.existsByNameIgnoreCaseAndTenantId(name, TenantContext.getTenantId())) {
       throw new IllegalArgumentException("Category with this name already exists");
     }
 
@@ -112,6 +110,7 @@ public class CategoryService {
 
     return updatedCategory;
   }
+
   @Transactional
   @RequiresPermission("delete_category")
   public void delete(@NonNull Long id) {
@@ -131,13 +130,12 @@ public class CategoryService {
 
   public @NonNull CategoryResponse toResponse(@NonNull Category category) {
     return java.util.Objects.requireNonNull(
-    CategoryResponse.builder()
-        .id(category.getId())
-        .name(category.getName())
-        .description(category.getDescription())
-        .taxRate(category.getTaxRate())
-        .createdAt(category.getCreatedAt())
-        .build()
-    );
+        CategoryResponse.builder()
+            .id(category.getId())
+            .name(category.getName())
+            .description(category.getDescription())
+            .taxRate(category.getTaxRate())
+            .createdAt(category.getCreatedAt())
+            .build());
   }
 }

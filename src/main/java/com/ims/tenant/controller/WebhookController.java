@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/tenant/settings/webhooks")
+@RequestMapping("/api/v1/tenant/settings/webhooks")
 @RequiredArgsConstructor
 @Tag(name = "Tenant - Webhooks", description = "Configure external webhook alerts")
 @SecurityRequirement(name = "bearerAuth")

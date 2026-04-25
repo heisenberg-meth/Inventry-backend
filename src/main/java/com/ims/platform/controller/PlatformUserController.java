@@ -64,8 +64,7 @@ public class PlatformUserController {
   @org.springframework.web.bind.annotation.PutMapping("/{id}")
   @PreAuthorize("hasAuthority('ROLE_ROOT')")
   public @NonNull User updatePlatformUser(
-      @PathVariable long id,
-      @Valid @NonNull @RequestBody CreatePlatformUserRequest request) {
+      @PathVariable long id, @Valid @NonNull @RequestBody CreatePlatformUserRequest request) {
     return Objects.requireNonNull(platformUserService.updatePlatformUser(id, request));
   }
 

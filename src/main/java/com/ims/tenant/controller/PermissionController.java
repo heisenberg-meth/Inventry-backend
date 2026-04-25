@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/tenant/permissions")
+@RequestMapping("/api/v1/tenant/permissions")
 @RequiredArgsConstructor
 @Tag(name = "Tenant - Permissions", description = "View available permissions")
 @SecurityRequirement(name = "bearerAuth")

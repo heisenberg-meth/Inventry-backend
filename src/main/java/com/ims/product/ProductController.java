@@ -64,7 +64,8 @@ public class ProductController {
   public ResponseEntity<ProductResponse> createProduct(
       @Valid @RequestBody CreateProductRequest request) {
     CreateProductRequest safeRequest = java.util.Objects.requireNonNull(request);
-    return ResponseEntity.status(HttpStatus.CREATED).body(productService.createProduct(safeRequest));
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(productService.createProduct(safeRequest));
   }
 
   @GetMapping("/{id}")
@@ -129,7 +130,8 @@ public class ProductController {
   public ResponseEntity<java.util.Map<String, Object>> bulkImport(
       @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
       @RequestParam(value = "dryRun", defaultValue = "false") boolean dryRun) {
-    org.springframework.web.multipart.MultipartFile safeFile = java.util.Objects.requireNonNull(file);
+    org.springframework.web.multipart.MultipartFile safeFile =
+        java.util.Objects.requireNonNull(file);
     return ResponseEntity.ok(importService.importProducts(safeFile, dryRun));
   }
 
