@@ -6,11 +6,12 @@ import com.ims.model.UserRole;
 import com.ims.platform.repository.PlatformInviteRepository;
 import com.ims.shared.auth.JwtAuthDetails;
 import com.ims.tenant.repository.UserRepository;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
+import java.util.Objects;
+import java.time.LocalDateTime;
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.lang.NonNull;
@@ -22,7 +23,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class PlatformInviteService {
 
-  /** Platform invites are valid for 24 hours from creation. */
   private static final int INVITE_TTL_HOURS = 24;
 
   private final PlatformInviteRepository inviteRepository;
@@ -31,8 +31,8 @@ public class PlatformInviteService {
 
   @Transactional
   public @NonNull PlatformInvite createInvite(@NonNull String email, @NonNull String role) {
-    java.util.Objects.requireNonNull(email, "email required");
-    java.util.Objects.requireNonNull(role, "role required");
+    Objects.requireNonNull(email, "email required");
+    Objects.requireNonNull(role, "role required");
     if (userRepository.findByEmailUnfiltered(email).isPresent()) {
       throw new IllegalArgumentException("User with this email already exists");
     }
@@ -48,7 +48,7 @@ public class PlatformInviteService {
               inviteRepository.delete(invite);
             });
 
-    Long currentUserId = java.util.Objects.requireNonNull(extractUserId());
+    Long currentUserId = Objects.requireNonNull(extractUserId());
     String token = UUID.randomUUID().toString();
 
     PlatformInvite invite =
@@ -62,16 +62,16 @@ public class PlatformInviteService {
 
     log.info("Platform invite created for {} by {}", email, currentUserId);
     PlatformInvite tmpSaved = inviteRepository.save(invite);
-    return java.util.Objects.requireNonNull(tmpSaved);
+    return Objects.requireNonNull(tmpSaved);
   }
 
   public @NonNull PlatformInvite validateToken(@NonNull String token) {
-    java.util.Objects.requireNonNull(token, "token required");
+    Objects.requireNonNull(token, "token required");
     PlatformInvite tmpInvite =
         inviteRepository
             .findByToken(token)
             .orElseThrow(() -> new IllegalArgumentException("Invalid invite token"));
-    PlatformInvite invite = java.util.Objects.requireNonNull(tmpInvite);
+    PlatformInvite invite = Objects.requireNonNull(tmpInvite);
 
     if (invite.isExpired()) {
       throw new IllegalArgumentException("Invite token has expired");
@@ -86,9 +86,9 @@ public class PlatformInviteService {
 
   @Transactional
   public void completeInvite(@NonNull String token, @NonNull String password, @NonNull String name) {
-    java.util.Objects.requireNonNull(token, "token required");
-    java.util.Objects.requireNonNull(password, "password required");
-    java.util.Objects.requireNonNull(name, "name required");
+    Objects.requireNonNull(token, "token required");
+    Objects.requireNonNull(password, "password required");
+    Objects.requireNonNull(name, "name required");
     PlatformInvite invite = validateToken(token);
 
     User user =
@@ -104,7 +104,7 @@ public class PlatformInviteService {
             .build();
 
     User tmpUser = userRepository.save(user);
-    java.util.Objects.requireNonNull(tmpUser);
+    Objects.requireNonNull(tmpUser);
 
     invite.setUsedAt(LocalDateTime.now());
     inviteRepository.save(invite);
@@ -118,7 +118,7 @@ public class PlatformInviteService {
 
   @Transactional
   public void revokeInvite(@NonNull Long id) {
-    java.util.Objects.requireNonNull(id, "invite id required");
+    Objects.requireNonNull(id, "invite id required");
     inviteRepository.deleteById(id);
     log.info("Platform invite revoked: {}", id);
   }
@@ -126,8 +126,8 @@ public class PlatformInviteService {
   private @NonNull Long extractUserId() {
     var auth = SecurityContextHolder.getContext().getAuthentication();
     if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
-      return java.util.Objects.requireNonNull(details.getUserId());
+      return Objects.requireNonNull(details.getUserId());
     }
-    return java.util.Objects.requireNonNull(0L); // Fallback for system operations
+    return Objects.requireNonNull(0L);
   }
 }
