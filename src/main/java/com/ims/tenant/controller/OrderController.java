@@ -76,7 +76,7 @@ public class OrderController {
   @PostMapping("/{id}/confirm")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Confirm order and deduct stock (for sales)")
-  public ResponseEntity<Order> confirmOrder(@NonNull @PathVariable Long id) {
+  public ResponseEntity<Order> confirmOrder(@PathVariable long id) {
     Long userId = extractUserId();
     return ResponseEntity.ok(orderService.confirmOrder(id, userId));
   }
@@ -84,7 +84,7 @@ public class OrderController {
   @PostMapping("/{id}/ship")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Mark order as shipped")
-  public ResponseEntity<Order> shipOrder(@NonNull @PathVariable Long id) {
+  public ResponseEntity<Order> shipOrder(@PathVariable long id) {
     Long userId = extractUserId();
     return ResponseEntity.ok(orderService.shipOrder(id, userId));
   }
@@ -92,7 +92,7 @@ public class OrderController {
   @PostMapping("/{id}/complete")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Complete order and add stock (for purchases)")
-  public ResponseEntity<Order> completeOrder(@NonNull @PathVariable Long id) {
+  public ResponseEntity<Order> completeOrder(@PathVariable long id) {
     Long userId = extractUserId();
     return ResponseEntity.ok(orderService.completeOrder(id, userId));
   }
@@ -100,12 +100,12 @@ public class OrderController {
   @PostMapping("/{id}/cancel")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Cancel order and revert stock if confirmed")
-  public ResponseEntity<Order> cancelOrder(@NonNull @PathVariable Long id) {
+  public ResponseEntity<Order> cancelOrder(@PathVariable long id) {
     Long userId = extractUserId();
     return ResponseEntity.ok(orderService.cancelOrder(id, userId));
   }
 
-  private @NonNull Long extractUserId() {
+  private long extractUserId() {
     return (Long)
         Objects.requireNonNull(
             Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication())
@@ -115,14 +115,14 @@ public class OrderController {
   @GetMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Get order detail with items")
-  public ResponseEntity<Map<String, Object>> getOrder(@PathVariable @NonNull Long id) {
+  public ResponseEntity<Map<String, Object>> getOrder(@PathVariable long id) {
     return ResponseEntity.ok(orderService.getOrderWithItems(id));
   }
 
   @GetMapping("/{id}/pdf")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Download order summary as PDF")
-  public ResponseEntity<byte[]> downloadPdf(@PathVariable @NonNull Long id) {
+  public ResponseEntity<byte[]> downloadPdf(@PathVariable long id) {
     byte[] pdf = orderService.generateOrderPdf(id);
     return ResponseEntity.ok()
         .header(

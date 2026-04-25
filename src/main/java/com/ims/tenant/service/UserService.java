@@ -50,14 +50,14 @@ public class UserService {
   public @NonNull Page<UserResponse> getUsers(@NonNull Pageable pageable) {
     return userRepository
         .findAll(Objects.requireNonNull(pageable))
-        .map(user -> toResponse(user, false));
+        .map(user -> toResponse(Objects.requireNonNull(user), false));
   }
 
   public @NonNull UserResponse getUserById(@NonNull Long id) {
-    User user =
-        userRepository
-            .findByIdWithPermissions(Objects.requireNonNull(id))
-            .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User tmpUser = userRepository
+        .findByIdWithPermissions(Objects.requireNonNull(id))
+        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User user = Objects.requireNonNull(tmpUser);
     return toResponse(user, true);
   }
 
@@ -77,10 +77,10 @@ public class UserService {
     TenantContext.assertTenantPresent();
     Long tenantId = TenantContext.getTenantId();
 
-    var tenant =
-        tenantRepository
-            .lockById(tenantId)
-            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+    var tmpTenant = tenantRepository
+        .lockById(tenantId)
+        .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+    var tenant = Objects.requireNonNull(tmpTenant);
 
     if (tenant.getMaxUsers() != null) {
       long currentCount = userRepository.countActiveByTenantId(tenantId);
@@ -90,7 +90,7 @@ public class UserService {
       }
     }
 
-    User user =
+    User tmpUser =
         User.builder()
             .name(request.getName())
             .email(request.getEmail())
@@ -99,13 +99,15 @@ public class UserService {
             .scope("TENANT")
             .isActive(true)
             .build();
+    User user = Objects.requireNonNull(tmpUser);
 
-    user = Objects.requireNonNull(userRepository.save(Objects.requireNonNull(user)));
+    User saved = userRepository.save(Objects.requireNonNull(user));
+    user = Objects.requireNonNull(saved);
 
     auditLogService.logAudit(
         AuditAction.CREATE,
         AuditResource.USER,
-        user.getId(),
+        Objects.requireNonNull(user.getId()),
         "Created user: " + user.getEmail() + " with role: " + user.getRole());
 
     log.info("User created: id={} email={} role={}", user.getId(), user.getEmail(), user.getRole());
@@ -126,7 +128,8 @@ public class UserService {
                 .orElseThrow(() -> new EntityNotFoundException("User not found")));
 
     user.setRole(UserRole.valueOf(newRole));
-    user = Objects.requireNonNull(userRepository.save(Objects.requireNonNull(user)));
+    User saved = userRepository.save(Objects.requireNonNull(user));
+    user = Objects.requireNonNull(saved);
 
     auditLogService.logAudit(
         AuditAction.UPDATE_ROLE,
@@ -144,10 +147,10 @@ public class UserService {
       @NonNull Long id, @NonNull AssignPermissionsRequest request) {
     Objects.requireNonNull(id, "user id required");
     Objects.requireNonNull(request, "request body required");
-    User user =
-        userRepository
-            .findByIdWithPermissions(id)
-            .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User tmpUser = userRepository
+        .findByIdWithPermissions(id)
+        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User user = Objects.requireNonNull(tmpUser);
 
     var perms = permissionRepository.findByIdIn(request.getPermissionIds());
     user.setCustomPermissions(new HashSet<>(perms));
@@ -175,7 +178,7 @@ public class UserService {
     auditLogService.logAudit(
         AuditAction.DEACTIVATE,
         AuditResource.USER,
-        id,
+        Objects.requireNonNull(id),
         "Deactivated user account: " + user.getEmail());
     log.info("User deactivated: id={}", id);
   }
@@ -184,9 +187,6 @@ public class UserService {
     return TenantContext.getTenantId();
   }
 
-  private @NonNull UserResponse toResponse(@NonNull User user) {
-    return toResponse(user, false);
-  }
 
   private @NonNull UserResponse toResponse(@NonNull User user, boolean includePermissions) {
     List<String> permissions = null;

@@ -60,7 +60,8 @@ public class TenantSettingsService {
       tenant.setExpiryThresholdDays(request.getExpiryThresholdDays());
     }
 
-    tenant = Objects.requireNonNull(tenantRepository.save(Objects.requireNonNull(tenant)));
+    Tenant saved = tenantRepository.save(Objects.requireNonNull(tenant));
+    tenant = Objects.requireNonNull(saved);
     log.info("Tenant settings updated: workspaceSlug={}", tenant.getWorkspaceSlug());
     return toResponse(tenant);
   }

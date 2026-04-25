@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,7 +30,9 @@ public class PlatformInviteService {
   private final PasswordEncoder passwordEncoder;
 
   @Transactional
-  public PlatformInvite createInvite(String email, String role) {
+  public @NonNull PlatformInvite createInvite(@NonNull String email, @NonNull String role) {
+    java.util.Objects.requireNonNull(email, "email required");
+    java.util.Objects.requireNonNull(role, "role required");
     if (userRepository.findByEmailUnfiltered(email).isPresent()) {
       throw new IllegalArgumentException("User with this email already exists");
     }
@@ -45,7 +48,7 @@ public class PlatformInviteService {
               inviteRepository.delete(invite);
             });
 
-    Long currentUserId = extractUserId();
+    Long currentUserId = java.util.Objects.requireNonNull(extractUserId());
     String token = UUID.randomUUID().toString();
 
     PlatformInvite invite =
@@ -58,14 +61,17 @@ public class PlatformInviteService {
             .build();
 
     log.info("Platform invite created for {} by {}", email, currentUserId);
-    return java.util.Objects.requireNonNull(inviteRepository.save(invite));
+    PlatformInvite tmpSaved = inviteRepository.save(invite);
+    return java.util.Objects.requireNonNull(tmpSaved);
   }
 
-  public PlatformInvite validateToken(String token) {
-    PlatformInvite invite =
+  public @NonNull PlatformInvite validateToken(@NonNull String token) {
+    java.util.Objects.requireNonNull(token, "token required");
+    PlatformInvite tmpInvite =
         inviteRepository
             .findByToken(token)
             .orElseThrow(() -> new IllegalArgumentException("Invalid invite token"));
+    PlatformInvite invite = java.util.Objects.requireNonNull(tmpInvite);
 
     if (invite.isExpired()) {
       throw new IllegalArgumentException("Invite token has expired");
@@ -79,7 +85,10 @@ public class PlatformInviteService {
   }
 
   @Transactional
-  public void completeInvite(String token, String password, String name) {
+  public void completeInvite(@NonNull String token, @NonNull String password, @NonNull String name) {
+    java.util.Objects.requireNonNull(token, "token required");
+    java.util.Objects.requireNonNull(password, "password required");
+    java.util.Objects.requireNonNull(name, "name required");
     PlatformInvite invite = validateToken(token);
 
     User user =
@@ -94,7 +103,8 @@ public class PlatformInviteService {
             .isVerified(true)
             .build();
 
-    userRepository.save(user);
+    User tmpUser = userRepository.save(user);
+    java.util.Objects.requireNonNull(tmpUser);
 
     invite.setUsedAt(LocalDateTime.now());
     inviteRepository.save(invite);
@@ -107,16 +117,17 @@ public class PlatformInviteService {
   }
 
   @Transactional
-  public void revokeInvite(Long id) {
+  public void revokeInvite(@NonNull Long id) {
+    java.util.Objects.requireNonNull(id, "invite id required");
     inviteRepository.deleteById(id);
     log.info("Platform invite revoked: {}", id);
   }
 
-  private Long extractUserId() {
+  private @NonNull Long extractUserId() {
     var auth = SecurityContextHolder.getContext().getAuthentication();
     if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
-      return details.getUserId();
+      return java.util.Objects.requireNonNull(details.getUserId());
     }
-    return 0L; // Fallback for system operations
+    return java.util.Objects.requireNonNull(0L); // Fallback for system operations
   }
 }

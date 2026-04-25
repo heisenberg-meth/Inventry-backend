@@ -15,7 +15,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -43,7 +42,8 @@ public class ProductController {
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "List products", description = "Paginated")
   public ResponseEntity<PagedResponse<ProductResponse>> getProducts(Pageable pageable) {
-    return ResponseEntity.ok(productService.getProducts(pageable));
+    Pageable safePageable = java.util.Objects.requireNonNull(pageable);
+    return ResponseEntity.ok(productService.getProducts(safePageable));
   }
 
   @GetMapping("/next")
@@ -53,8 +53,9 @@ public class ProductController {
       description = "High performance, no offset")
   public ResponseEntity<List<ProductResponse>> getNextProducts(
       @RequestParam Long lastId, @RequestParam(defaultValue = "20") int limit) {
-    Long tenantId = TenantContext.getTenantId();
-    return ResponseEntity.ok(productService.getNextProducts(tenantId, lastId, limit));
+    Long safeLastId = java.util.Objects.requireNonNull(lastId);
+    Long tenantId = java.util.Objects.requireNonNull(TenantContext.getTenantId());
+    return ResponseEntity.ok(productService.getNextProducts(tenantId, safeLastId, limit));
   }
 
   @PostMapping
@@ -62,13 +63,14 @@ public class ProductController {
   @Operation(summary = "Create product")
   public ResponseEntity<ProductResponse> createProduct(
       @Valid @RequestBody CreateProductRequest request) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(productService.createProduct(request));
+    CreateProductRequest safeRequest = java.util.Objects.requireNonNull(request);
+    return ResponseEntity.status(HttpStatus.CREATED).body(productService.createProduct(safeRequest));
   }
 
   @GetMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Get product detail")
-  public ResponseEntity<ProductResponse> getProduct(@NonNull @PathVariable Long id) {
+  public ResponseEntity<ProductResponse> getProduct(@PathVariable long id) {
     return ResponseEntity.ok(productService.getProductById(id));
   }
 
@@ -76,21 +78,22 @@ public class ProductController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Update product")
   public ResponseEntity<ProductResponse> updateProduct(
-      @NonNull @PathVariable Long id, @Valid @RequestBody CreateProductRequest request) {
-    return ResponseEntity.ok(productService.updateProduct(id, request));
+      @PathVariable long id, @Valid @RequestBody CreateProductRequest request) {
+    CreateProductRequest safeRequest = java.util.Objects.requireNonNull(request);
+    return ResponseEntity.ok(productService.updateProduct(id, safeRequest));
   }
 
   @PostMapping("/{id}/duplicate")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Clone a product")
-  public ResponseEntity<ProductResponse> duplicateProduct(@NonNull @PathVariable Long id) {
+  public ResponseEntity<ProductResponse> duplicateProduct(@PathVariable long id) {
     return ResponseEntity.status(HttpStatus.CREATED).body(productService.duplicateProduct(id));
   }
 
   @DeleteMapping("/{id}")
   @RequiresPermission("delete_product")
   @Operation(summary = "Soft delete product")
-  public ResponseEntity<Void> deleteProduct(@NonNull @PathVariable Long id) {
+  public ResponseEntity<Void> deleteProduct(@PathVariable long id) {
     productService.deleteProduct(id);
     return ResponseEntity.noContent().build();
   }
@@ -115,7 +118,9 @@ public class ProductController {
   @Operation(summary = "Search by name/SKU/barcode")
   public ResponseEntity<PagedResponse<ProductResponse>> search(
       @RequestParam String q, Pageable pageable) {
-    return ResponseEntity.ok(productService.searchProducts(q, pageable));
+    String safeQ = java.util.Objects.requireNonNull(q);
+    Pageable safePageable = java.util.Objects.requireNonNull(pageable);
+    return ResponseEntity.ok(productService.searchProducts(safeQ, safePageable));
   }
 
   @PostMapping("/bulk-import")
@@ -124,7 +129,8 @@ public class ProductController {
   public ResponseEntity<java.util.Map<String, Object>> bulkImport(
       @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
       @RequestParam(value = "dryRun", defaultValue = "false") boolean dryRun) {
-    return ResponseEntity.ok(importService.importProducts(file, dryRun));
+    org.springframework.web.multipart.MultipartFile safeFile = java.util.Objects.requireNonNull(file);
+    return ResponseEntity.ok(importService.importProducts(safeFile, dryRun));
   }
 
   @GetMapping("/export")
@@ -152,8 +158,9 @@ public class ProductController {
             .collect(java.util.stream.Collectors.toList());
 
     String csv =
-        csvExportService.exportToCsv(
-            java.util.List.of("ID", "Name", "SKU", "Stock", "Price", "CategoryID"), data);
+        java.util.Objects.requireNonNull(
+            csvExportService.exportToCsv(
+                java.util.List.of("ID", "Name", "SKU", "Stock", "Price", "CategoryID"), data));
 
     return ResponseEntity.ok()
         .header(
@@ -166,10 +173,12 @@ public class ProductController {
   @GetMapping("/{id}/barcode")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Generate barcode for product")
-  public ResponseEntity<byte[]> getBarcode(@PathVariable Long id) {
+  public ResponseEntity<byte[]> getBarcode(@PathVariable long id) {
     ProductResponse p = productService.getProductById(id);
+    String barcodeData = p.getBarcode() != null ? p.getBarcode() : p.getSku();
     byte[] image =
-        barcodeService.generateBarcodeImage(p.getBarcode() != null ? p.getBarcode() : p.getSku());
+        java.util.Objects.requireNonNull(
+            barcodeService.generateBarcodeImage(java.util.Objects.requireNonNull(barcodeData)));
     return ResponseEntity.ok()
         .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "image/png")
         .body(image);

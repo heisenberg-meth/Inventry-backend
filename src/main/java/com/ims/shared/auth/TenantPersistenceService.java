@@ -16,6 +16,7 @@ public class TenantPersistenceService {
   @org.springframework.transaction.annotation.Transactional(
       propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
   public @NonNull Tenant saveTenant(@NonNull Tenant tenant) {
-    return Objects.requireNonNull(tenantRepository.save(Objects.requireNonNull(tenant)));
+    Tenant saved = tenantRepository.save(Objects.requireNonNull(tenant));
+    return Objects.requireNonNull(saved);
   }
 }
