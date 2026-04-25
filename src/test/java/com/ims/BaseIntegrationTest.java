@@ -9,6 +9,7 @@ import com.ims.product.ProductRepository;
 import com.ims.shared.audit.AuditLogRepository;
 import com.ims.shared.auth.AuthService;
 import com.ims.shared.auth.TenantContext;
+import com.ims.model.User;
 import com.ims.tenant.repository.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -17,8 +18,8 @@ import java.util.Objects;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.cache.interceptor.CacheOperationInvocationContext;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
@@ -30,20 +31,18 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest(properties = {
     "spring.autoconfigure.exclude=" +
     "org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration," +
     "org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
     "spring.task.scheduling.enabled=false",
-    "spring.testcontainers.enabled=false"
+    "spring.testcontainers.enabled=false",
+    "spring.cache.type=none"
 })
 @ActiveProfiles("test")
+@AutoConfigureMockMvc
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public abstract class BaseIntegrationTest {
 
@@ -75,7 +74,9 @@ public abstract class BaseIntegrationTest {
   @Autowired protected JdbcTemplate jdbcTemplate;
   @Autowired protected PasswordEncoder passwordEncoder;
   @PersistenceContext protected EntityManager entityManager;
-  @Autowired protected PlatformTransactionManager transactionManager;
+  @Autowired protected org.springframework.test.web.servlet.MockMvc mockMvc;
+  @Autowired protected com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+  @Autowired protected org.springframework.transaction.PlatformTransactionManager transactionManager;
   @Autowired protected AuthService authService;
   @MockitoBean protected RedisTemplate<String, Object> redisTemplate;
   @MockitoBean protected ValueOperations<String, Object> valueOperations;
@@ -104,8 +105,8 @@ public abstract class BaseIntegrationTest {
   }
 
   protected void cleanupDatabase() {
-    // Ensure tenant context is set before transaction to avoid Hibernate issues
-    TenantContext.setTenantId(1L);
+    // Clear context before truncation to avoid Hibernate issues with stale IDs
+    TenantContext.clear();
 
     new TransactionTemplate(Objects.requireNonNull(transactionManager)).execute(status -> {
       // H2: Disable referential integrity to allow truncation
@@ -141,6 +142,9 @@ public abstract class BaseIntegrationTest {
           "INSERT INTO tenants (name, workspace_slug, business_type, status, plan, company_code) VALUES ('System', 'system', 'SYSTEM', 'ACTIVE', 'PLATFORM', 'SYS001')");
       systemTenantId = Objects.requireNonNull(
           jdbcTemplate.queryForObject("SELECT id FROM tenants WHERE workspace_slug = 'system'", Long.class));
+      
+      // Set the correct tenant context for subsequent user/test data seeding
+      TenantContext.setTenantId(systemTenantId);
 
       // Seed Root User (Linked to System Tenant)
       String rootPassHash = passwordEncoder.encode("root123");
@@ -169,13 +173,29 @@ public abstract class BaseIntegrationTest {
     new TransactionTemplate(transactionManager)
         .execute(
             status -> {
-              userRepository
-                  .findByEmailUnfiltered(email)
-                  .ifPresent(
-                      u -> {
-                        u.setIsVerified(true);
-                        userRepository.save(u);
-                      });
+              // 1. Fetch user neutrally to get tenant information
+              var userOpt = userRepository.findByEmailUnfiltered(email);
+              if (userOpt.isPresent()) {
+                var u = userOpt.get();
+                Long tenantId = u.getTenantId();
+
+                // 2. Set the correct tenant context BEFORE any entity operations
+                TenantContext.setTenantId(tenantId);
+
+                // 3. Re-fetch the entity under the active tenant context to ensure Hibernate
+                // management
+                User managedUser =
+                    userRepository
+                        .findById(java.util.Objects.requireNonNull(u.getId()))
+                        .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("User refetch failed"));
+
+                // 4. Update and save within the correct context
+                managedUser.setIsVerified(true);
+                userRepository.save(managedUser);
+
+                // 5. Cleanup
+                TenantContext.clear();
+              }
               return null;
             });
   }
@@ -201,11 +221,50 @@ public abstract class BaseIntegrationTest {
     doReturn(dummyCache).when(cacheManager).getCache(any(String.class));
   }
 
+  protected String login(String email, String password, String workspace, Long tenantId)
+      throws Exception {
+    com.ims.dto.request.LoginRequest loginRequest = new com.ims.dto.request.LoginRequest();
+    loginRequest.setEmail(email);
+    loginRequest.setPassword(password);
+    
+    // Platform users (ROOT) must login WITHOUT a company code per AuthService.java:351
+    if ("SYS001".equals(workspace) || "PLATFORM".equalsIgnoreCase(workspace)) {
+      loginRequest.setCompanyCode(null);
+    } else {
+      loginRequest.setCompanyCode(workspace);
+    }
+
+    String loginUrl = ("SYS001".equals(workspace) || "PLATFORM".equalsIgnoreCase(workspace))
+        ? "/api/platform/auth/login"
+        : "/api/auth/login";
+
+    String loginJson = objectMapper.writeValueAsString(loginRequest);
+    org.springframework.test.web.servlet.MvcResult result =
+        mockMvc
+            .perform(
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(loginUrl)
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content(loginJson)
+                    .with(tenant(String.valueOf(tenantId))))
+            .andDo(mvcResult -> {
+              if (mvcResult.getResponse().getStatus() != 200) {
+                System.out.println("Login Failed! Status: " + mvcResult.getResponse().getStatus());
+                System.out.println("Response: " + mvcResult.getResponse().getContentAsString());
+              }
+            })
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+            .andReturn();
+
+    String responseJson = result.getResponse().getContentAsString();
+    com.ims.dto.response.LoginResponse response =
+        objectMapper.readValue(responseJson, com.ims.dto.response.LoginResponse.class);
+    return java.util.Objects.requireNonNull(response.getAccessToken());
+  }
+
   protected org.springframework.test.web.servlet.request.RequestPostProcessor tenant(
       String tenantId) {
     return request -> {
       request.addHeader("X-Tenant-ID", tenantId);
-      TenantContext.setTenantId(Long.valueOf(tenantId)); // Sync with Hibernate/Context
       return request;
     };
   }
