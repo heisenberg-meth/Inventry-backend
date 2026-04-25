@@ -61,14 +61,14 @@ public class InvoiceController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Update invoice status")
   public ResponseEntity<Invoice> updateStatus(
-      @NonNull @PathVariable Long id, @NonNull @Valid @RequestBody InvoiceStatusRequest request) {
+      @PathVariable long id, @NonNull @Valid @RequestBody InvoiceStatusRequest request) {
     return ResponseEntity.ok(invoiceService.updateStatus(id, request));
   }
 
   @GetMapping("/{id}/pdf")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Download invoice PDF")
-  public ResponseEntity<byte[]> downloadPdf(@NonNull @PathVariable Long id) {
+  public ResponseEntity<byte[]> downloadPdf(@PathVariable long id) {
     byte[] pdf = invoiceService.generatePdf(id);
     return ResponseEntity.ok()
         .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=invoice-" + id + ".pdf")

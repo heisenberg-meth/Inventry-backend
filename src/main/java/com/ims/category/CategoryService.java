@@ -17,7 +17,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
-import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,64 +46,72 @@ public class CategoryService {
   public @NonNull Category getById(@NonNull Long id) {
     TenantContext.assertTenantPresent();
     Long tenantId = TenantContext.getTenantId();
-    return categoryRepository
+    return java.util.Objects.requireNonNull(
+    categoryRepository
         .findByIdAndTenantId(id, tenantId)
-        .orElseThrow(() -> new EntityNotFoundException("Category not found"));
+        .orElseThrow(() -> new EntityNotFoundException("Category not found"))
+    );
   }
 
   @Transactional
   public @NonNull Category create(@NonNull CategoryRequest request) {
+    String name = java.util.Objects.requireNonNull(request.getName());
+
     if (categoryRepository.existsByNameIgnoreCaseAndTenantId(
-        request.getName(), TenantContext.getTenantId())) {
+        name, TenantContext.getTenantId())) {
       throw new IllegalArgumentException("Category with this name already exists");
     }
 
     Category category =
         Category.builder()
-            .name(request.getName())
+            .name(name)
             .description(request.getDescription())
             .taxRate(request.getTaxRate() != null ? request.getTaxRate() : BigDecimal.ZERO)
             .build();
 
-    Category savedCategory = categoryRepository.save(category);
+    Category tmpCategory = categoryRepository.save(category);
+    Category savedCategory = java.util.Objects.requireNonNull(tmpCategory);
 
     auditLogService.logAudit(
         AuditAction.CREATE,
         AuditResource.CATEGORY,
-        savedCategory.getId(),
+        java.util.Objects.requireNonNull(savedCategory.getId()),
         "Created category: " + savedCategory.getName());
 
     return savedCategory;
   }
 
   @Transactional
-  public @NonNull Category update(@NonNull Long id, @Nullable CategoryRequest request) {
+  public @NonNull Category update(@NonNull Long id, @NonNull CategoryRequest request) {
+
     Category category = getById(id);
     TenantContext.assertTenantPresent();
     Long tenantId = TenantContext.getTenantId();
 
-    if (!category.getName().equalsIgnoreCase(request.getName())
-        && categoryRepository.existsByNameIgnoreCaseAndTenantId(request.getName(), tenantId)) {
+    String name = java.util.Objects.requireNonNull(request.getName());
+
+    if (!category.getName().equalsIgnoreCase(name)
+        && categoryRepository.existsByNameIgnoreCaseAndTenantId(name, tenantId)) {
       throw new IllegalArgumentException("Category with this name already exists");
     }
 
-    category.setName(request.getName());
+    category.setName(name);
     category.setDescription(request.getDescription());
+
     if (request.getTaxRate() != null) {
       category.setTaxRate(request.getTaxRate());
     }
 
-    Category updatedCategory = categoryRepository.save(category);
+    Category updatedCategory = java.util.Objects.requireNonNull(categoryRepository.save(category));
 
     auditLogService.logAudit(
         AuditAction.UPDATE,
         AuditResource.CATEGORY,
-        updatedCategory.getId(),
+        java.util.Objects.requireNonNull(updatedCategory.getId()),
         "Updated category: " + updatedCategory.getName());
 
     return updatedCategory;
   }
-
   @Transactional
   @RequiresPermission("delete_category")
   public void delete(@NonNull Long id) {
@@ -123,12 +130,14 @@ public class CategoryService {
   }
 
   public @NonNull CategoryResponse toResponse(@NonNull Category category) {
-    return CategoryResponse.builder()
+    return java.util.Objects.requireNonNull(
+    CategoryResponse.builder()
         .id(category.getId())
         .name(category.getName())
         .description(category.getDescription())
         .taxRate(category.getTaxRate())
         .createdAt(category.getCreatedAt())
-        .build();
+        .build()
+    );
   }
 }
