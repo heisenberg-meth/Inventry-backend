@@ -44,16 +44,10 @@ public class AuthService {
   private static final int RESET_TOKEN_EXPIRY_MINUTES = 15;
   private static final int VERIFICATION_TOKEN_EXPIRY_MINUTES = 15;
 
-  /**
-   * Access-token TTL (seconds) for ROOT-user tenant impersonation sessions (10
-   * minutes).
-   */
+  /** Access-token TTL (seconds) for ROOT-user tenant impersonation sessions (10 minutes). */
   private static final long IMPERSONATION_ACCESS_TTL_SECONDS = 600L;
 
-  /**
-   * Refresh-token TTL (seconds) for ROOT-user tenant impersonation sessions (1
-   * hour).
-   */
+  /** Refresh-token TTL (seconds) for ROOT-user tenant impersonation sessions (1 hour). */
   private static final long IMPERSONATION_REFRESH_TTL_SECONDS = 3600L;
 
   private final UserRepository userRepository;
@@ -67,32 +61,36 @@ public class AuthService {
 
   @Transactional(readOnly = true)
   public @NonNull Map<String, Boolean> checkEmail(@NonNull String email) {
-    boolean exists = userRepository
-        .findByEmailUnfiltered(Objects.requireNonNull(email).trim().toLowerCase())
-        .isPresent();
+    boolean exists =
+        userRepository
+            .findByEmailUnfiltered(Objects.requireNonNull(email).trim().toLowerCase())
+            .isPresent();
     Map<String, Boolean> result = Map.of("available", !exists);
     return Objects.requireNonNull(result);
   }
 
   @Transactional(readOnly = true)
   public @NonNull Map<String, Boolean> checkSlug(@NonNull String slug) {
-    boolean exists = tenantRepository.existsByWorkspaceSlug(Objects.requireNonNull(slug).trim().toLowerCase());
+    boolean exists =
+        tenantRepository.existsByWorkspaceSlug(Objects.requireNonNull(slug).trim().toLowerCase());
     Map<String, Boolean> result = Map.of("available", !exists);
     return Objects.requireNonNull(result);
   }
 
   @Transactional(readOnly = true)
   public @NonNull Map<String, Boolean> checkCompanyCode(@NonNull String code) {
-    boolean exists = tenantRepository.existsByCompanyCode(Objects.requireNonNull(code).trim().toUpperCase());
+    boolean exists =
+        tenantRepository.existsByCompanyCode(Objects.requireNonNull(code).trim().toUpperCase());
     Map<String, Boolean> result = Map.of("exists", exists);
     return Objects.requireNonNull(result);
   }
 
   @Transactional
   public @NonNull Map<String, String> verifyEmail(@NonNull String token, @NonNull String email) {
-    User user = userRepository
-        .findByEmailUnfiltered(Objects.requireNonNull(email).trim().toLowerCase())
-        .orElseThrow(() -> new IllegalArgumentException("Invalid verification token"));
+    User user =
+        userRepository
+            .findByEmailUnfiltered(Objects.requireNonNull(email).trim().toLowerCase())
+            .orElseThrow(() -> new IllegalArgumentException("Invalid verification token"));
 
     if (user.getVerificationToken() == null
         || !passwordEncoder.matches(token, user.getVerificationToken())) {
@@ -117,9 +115,10 @@ public class AuthService {
   @Transactional
   @RateLimiter(name = "resendVerification")
   public @NonNull Map<String, String> resendVerification(@NonNull String email) {
-    User user = userRepository
-        .findByEmailUnfiltered(Objects.requireNonNull(email).trim().toLowerCase())
-        .orElse(null);
+    User user =
+        userRepository
+            .findByEmailUnfiltered(Objects.requireNonNull(email).trim().toLowerCase())
+            .orElse(null);
 
     // Always return generic success message to prevent email enumeration
     String responseMessage = "Verification email sent if account exists";
@@ -164,55 +163,60 @@ public class AuthService {
     }
 
     Long safeTenantId = Objects.requireNonNull(tenantId);
-    Tenant tenant = tenantRepository
-        .findById(safeTenantId)
-        .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+    Tenant tenant =
+        tenantRepository
+            .findById(safeTenantId)
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
     if (com.ims.model.TenantStatus.SUSPENDED.equals(tenant.getStatus())
         || com.ims.model.TenantStatus.INACTIVE.equals(tenant.getStatus())) {
       throw new IllegalStateException("Cannot impersonate a " + tenant.getStatus() + " tenant");
     }
 
-    User targetUser = userRepository
-        .findFirstByTenantIdAndAdminRole(safeTenantId)
-        .orElseThrow(() -> new EntityNotFoundException("No admin user found for this tenant"));
+    User targetUser =
+        userRepository
+            .findFirstByTenantIdAndAdminRole(safeTenantId)
+            .orElseThrow(() -> new EntityNotFoundException("No admin user found for this tenant"));
 
     String scope = "TENANT"; // Always enforce TENANT scope
     UserRole role = UserRole.ADMIN; // Always enforce ADMIN role inside tenant
     String businessType = tenant.getBusinessType();
 
-    java.util.Set<String> permissions = permissionService.getUserPermissions(targetUser.getId(), safeTenantId);
+    java.util.Set<String> permissions =
+        permissionService.getUserPermissions(targetUser.getId(), safeTenantId);
 
     // Impersonation TTLs (see IMPERSONATION_ACCESS_TTL_SECONDS /
     // IMPERSONATION_REFRESH_TTL_SECONDS)
     long impersonationAccessTtl = IMPERSONATION_ACCESS_TTL_SECONDS;
     long impersonationRefreshTtl = IMPERSONATION_REFRESH_TTL_SECONDS;
 
-    String accessToken = Objects.requireNonNull(
-        jwtUtil.generateToken(
-            Objects.requireNonNull(targetUser.getId()),
-            safeTenantId,
-            role,
-            scope,
-            businessType,
-            false,
-            permissions,
-            true,
-            rootUserId,
-            impersonationAccessTtl));
+    String accessToken =
+        Objects.requireNonNull(
+            jwtUtil.generateToken(
+                Objects.requireNonNull(targetUser.getId()),
+                safeTenantId,
+                role,
+                scope,
+                businessType,
+                false,
+                permissions,
+                true,
+                rootUserId,
+                impersonationAccessTtl));
 
-    String refreshToken = Objects.requireNonNull(
-        jwtUtil.generateRefreshToken(
-            Objects.requireNonNull(targetUser.getId()),
-            safeTenantId,
-            role,
-            scope,
-            businessType,
-            false,
-            permissions,
-            true,
-            rootUserId,
-            impersonationRefreshTtl));
+    String refreshToken =
+        Objects.requireNonNull(
+            jwtUtil.generateRefreshToken(
+                Objects.requireNonNull(targetUser.getId()),
+                safeTenantId,
+                role,
+                scope,
+                businessType,
+                false,
+                permissions,
+                true,
+                rootUserId,
+                impersonationRefreshTtl));
 
     auditLogService.log(
         AuditAction.ROOT_IMPERSONATION_START,
@@ -230,36 +234,38 @@ public class AuthService {
         targetUser.getEmail(),
         safeTenantId);
 
-    LoginResponse response = LoginResponse.builder()
-        .accessToken(accessToken)
-        .refreshToken(refreshToken)
-        .expiresIn(impersonationAccessTtl)
-        .user(
-            LoginResponse.UserResponse.builder()
-                .id(targetUser.getId().toString())
-                .name(targetUser.getName())
-                .email(targetUser.getEmail())
-                .role(role.name())
-                .scope(scope)
-                .isPlatformUser(false)
-                .build())
-        .tenant(
-            LoginResponse.TenantResponse.builder()
-                .id(tenant.getId())
-                .name(tenant.getName())
-                .type(tenant.getBusinessType())
-                .companyCode(tenant.getCompanyCode())
-                .workspaceSlug(tenant.getWorkspaceSlug())
-                .build())
-        .build();
+    LoginResponse response =
+        LoginResponse.builder()
+            .accessToken(accessToken)
+            .refreshToken(refreshToken)
+            .expiresIn(impersonationAccessTtl)
+            .user(
+                LoginResponse.UserResponse.builder()
+                    .id(targetUser.getId().toString())
+                    .name(targetUser.getName())
+                    .email(targetUser.getEmail())
+                    .role(role.name())
+                    .scope(scope)
+                    .isPlatformUser(false)
+                    .build())
+            .tenant(
+                LoginResponse.TenantResponse.builder()
+                    .id(tenant.getId())
+                    .name(tenant.getName())
+                    .type(tenant.getBusinessType())
+                    .companyCode(tenant.getCompanyCode())
+                    .workspaceSlug(tenant.getWorkspaceSlug())
+                    .build())
+            .build();
     return Objects.requireNonNull(response);
   }
 
   @Transactional
   public @NonNull LoginResponse platformLogin(@NonNull LoginRequest request) {
-    User user = userRepository
-        .findByEmailUnfiltered(request.getEmail())
-        .orElseThrow(() -> new EntityNotFoundException("Invalid email or password"));
+    User user =
+        userRepository
+            .findByEmailUnfiltered(request.getEmail())
+            .orElseThrow(() -> new EntityNotFoundException("Invalid email or password"));
 
     if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
       throw new IllegalArgumentException("Invalid email or password");
@@ -276,54 +282,65 @@ public class AuthService {
     java.util.Set<String> permissions = permissionService.getUserPermissions(user.getId(), null);
 
     String scope = Objects.requireNonNull(user.getScope());
-    String accessToken = Objects.requireNonNull(
-        jwtUtil.generateToken(
-            Objects.requireNonNull(user.getId()), null, user.getRole(), scope, null, true, permissions));
-    String refreshToken = Objects.requireNonNull(
-        jwtUtil.generateRefreshToken(
-            Objects.requireNonNull(user.getId()), null, user.getRole(), scope, null, true, permissions));
+    String accessToken =
+        Objects.requireNonNull(
+            jwtUtil.generateToken(
+                Objects.requireNonNull(user.getId()),
+                null,
+                user.getRole(),
+                scope,
+                null,
+                true,
+                permissions));
+    String refreshToken =
+        Objects.requireNonNull(
+            jwtUtil.generateRefreshToken(
+                Objects.requireNonNull(user.getId()),
+                null,
+                user.getRole(),
+                scope,
+                null,
+                true,
+                permissions));
 
     // Update last login (atomic update, no version increment)
     userRepository.updateLastLogin(user.getId(), LocalDateTime.now());
 
-    LoginResponse response = LoginResponse.builder()
-        .accessToken(accessToken)
-        .refreshToken(refreshToken)
-        .expiresIn(jwtUtil.getExpirySeconds())
-        .user(
-            LoginResponse.UserResponse.builder()
-                .id(user.getId().toString())
-                .name(user.getName())
-                .email(user.getEmail())
-                .phone(user.getPhone())
-                .role(user.getRole().name())
-                .scope(user.getScope())
-                .isPlatformUser(true)
-                .build())
-        .build();
+    LoginResponse response =
+        LoginResponse.builder()
+            .accessToken(accessToken)
+            .refreshToken(refreshToken)
+            .expiresIn(jwtUtil.getExpirySeconds())
+            .user(
+                LoginResponse.UserResponse.builder()
+                    .id(user.getId().toString())
+                    .name(user.getName())
+                    .email(user.getEmail())
+                    .phone(user.getPhone())
+                    .role(user.getRole().name())
+                    .scope(user.getScope())
+                    .isPlatformUser(true)
+                    .build())
+            .build();
     return Objects.requireNonNull(response);
   }
 
   /**
    * Authenticate a user and issue access/refresh tokens.
    *
-   * <p>
-   * Intentionally NOT annotated {@code @Transactional} at this level: a single
-   * outer transaction
-   * would pin the Hibernate session to the caller's {@link TenantContext} (set by
-   * {@link
-   * com.ims.shared.auth.TenantFilter}), but login identifies the user first and
-   * only then knows
+   * <p>Intentionally NOT annotated {@code @Transactional} at this level: a single outer transaction
+   * would pin the Hibernate session to the caller's {@link TenantContext} (set by {@link
+   * com.ims.shared.auth.TenantFilter}), but login identifies the user first and only then knows
    * which tenant to switch to. Each downstream repository call (including {@link
-   * PermissionService#getUserPermissions} and
-   * {@code userRepository.updateLastLogin}) has its own
+   * PermissionService#getUserPermissions} and {@code userRepository.updateLastLogin}) has its own
    * transactional boundary and is invoked under the correct tenant below.
    */
   public @NonNull LoginResponse login(@NonNull LoginRequest request) {
     System.out.println("DEBUG: Auth login attempt - TenantContext: " + TenantContext.getTenantId());
-    User user = userRepository
-        .findByEmailUnfiltered(request.getEmail())
-        .orElseThrow(() -> new EntityNotFoundException("Invalid email or password"));
+    User user =
+        userRepository
+            .findByEmailUnfiltered(request.getEmail())
+            .orElseThrow(() -> new EntityNotFoundException("Invalid email or password"));
 
     if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
       throw new IllegalArgumentException("Invalid email or password");
@@ -341,9 +358,10 @@ public class AuthService {
 
     // Validate companyCode
     if (request.getCompanyCode() != null && !request.getCompanyCode().isBlank()) {
-      Tenant tenant = tenantRepository
-          .findByCompanyCode(request.getCompanyCode())
-          .orElseThrow(() -> new EntityNotFoundException("Invalid company code"));
+      Tenant tenant =
+          tenantRepository
+              .findByCompanyCode(request.getCompanyCode())
+              .orElseThrow(() -> new EntityNotFoundException("Invalid company code"));
       if (!Objects.equals(user.getTenantId(), tenant.getId())) {
         throw new IllegalArgumentException("User does not belong to this company");
       }
@@ -390,39 +408,42 @@ public class AuthService {
       }
     }
 
-    String accessToken = Objects.requireNonNull(
-        jwtUtil.generateToken(
-            Objects.requireNonNull(user.getId()),
-            safeTenantId,
-            user.getRole(),
-            scope,
-            businessType,
-            Boolean.TRUE.equals(user.getIsPlatformUser()),
-            permissions));
-    String refreshToken = Objects.requireNonNull(
-        jwtUtil.generateRefreshToken(
-            Objects.requireNonNull(user.getId()),
-            safeTenantId,
-            user.getRole(),
-            scope,
-            businessType,
-            Boolean.TRUE.equals(user.getIsPlatformUser()),
-            permissions));
+    String accessToken =
+        Objects.requireNonNull(
+            jwtUtil.generateToken(
+                Objects.requireNonNull(user.getId()),
+                safeTenantId,
+                user.getRole(),
+                scope,
+                businessType,
+                Boolean.TRUE.equals(user.getIsPlatformUser()),
+                permissions));
+    String refreshToken =
+        Objects.requireNonNull(
+            jwtUtil.generateRefreshToken(
+                Objects.requireNonNull(user.getId()),
+                safeTenantId,
+                user.getRole(),
+                scope,
+                businessType,
+                Boolean.TRUE.equals(user.getIsPlatformUser()),
+                permissions));
 
-    LoginResponse.LoginResponseBuilder responseBuilder = LoginResponse.builder()
-        .accessToken(accessToken)
-        .refreshToken(refreshToken)
-        .expiresIn(jwtUtil.getExpirySeconds())
-        .user(
-            LoginResponse.UserResponse.builder()
-                .id(user.getId().toString())
-                .name(user.getName())
-                .email(user.getEmail())
-                .phone(user.getPhone())
-                .role(user.getRole().name())
-                .scope(user.getScope())
-                .isPlatformUser(Boolean.TRUE.equals(user.getIsPlatformUser()))
-                .build());
+    LoginResponse.LoginResponseBuilder responseBuilder =
+        LoginResponse.builder()
+            .accessToken(accessToken)
+            .refreshToken(refreshToken)
+            .expiresIn(jwtUtil.getExpirySeconds())
+            .user(
+                LoginResponse.UserResponse.builder()
+                    .id(user.getId().toString())
+                    .name(user.getName())
+                    .email(user.getEmail())
+                    .phone(user.getPhone())
+                    .role(user.getRole().name())
+                    .scope(user.getScope())
+                    .isPlatformUser(Boolean.TRUE.equals(user.getIsPlatformUser()))
+                    .build());
 
     if (safeTenantId != null) {
       tenantRepository
@@ -452,7 +473,10 @@ public class AuthService {
     }
 
     log.info(
-        "Login successful: user={} role={} tenant={}", user.getEmail(), user.getRole(), safeTenantId);
+        "Login successful: user={} role={} tenant={}",
+        user.getEmail(),
+        user.getRole(),
+        safeTenantId);
 
     LoginResponse response = responseBuilder.build();
     return Objects.requireNonNull(response);
@@ -485,8 +509,9 @@ public class AuthService {
       throw new IllegalArgumentException("Invalid refresh token");
     }
 
-    String tokenType = Objects.requireNonNull(
-        jwtUtil.extractAllClaims(refreshToken).get("token_type", String.class));
+    String tokenType =
+        Objects.requireNonNull(
+            jwtUtil.extractAllClaims(refreshToken).get("token_type", String.class));
     if (!"refresh".equals(tokenType)) {
       throw new IllegalArgumentException("Not a refresh token");
     }
@@ -498,18 +523,20 @@ public class AuthService {
       if (impersonatedBy == null) {
         throw new IllegalArgumentException("Invalid impersonation token");
       }
-      User rootUser = userRepository
-          .findByIdUnfiltered(impersonatedBy)
-          .orElseThrow(() -> new IllegalArgumentException("Root user no longer exists"));
+      User rootUser =
+          userRepository
+              .findByIdUnfiltered(impersonatedBy)
+              .orElseThrow(() -> new IllegalArgumentException("Root user no longer exists"));
       if (rootUser.getRole() != UserRole.ROOT || !Boolean.TRUE.equals(rootUser.getIsActive())) {
         throw new IllegalArgumentException("Root user no longer authorized for impersonation");
       }
     }
 
     Long userId = Objects.requireNonNull(jwtUtil.extractUserId(refreshToken));
-    User user = userRepository
-        .findByIdUnfiltered(userId)
-        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User user =
+        userRepository
+            .findByIdUnfiltered(userId)
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     String scope = Objects.requireNonNull(impersonation ? "TENANT" : user.getScope());
     UserRole role = impersonation ? UserRole.ADMIN : user.getRole();
@@ -526,54 +553,59 @@ public class AuthService {
       }
     }
 
-    java.util.Set<String> permissions = permissionService.getUserPermissions(user.getId(), safeTenantId);
+    java.util.Set<String> permissions =
+        permissionService.getUserPermissions(user.getId(), safeTenantId);
 
     // Maintain impersonation TTLs on refresh
     long accessTtl = impersonation ? IMPERSONATION_ACCESS_TTL_SECONDS : jwtUtil.getExpirySeconds();
-    long refreshTtl = impersonation ? IMPERSONATION_REFRESH_TTL_SECONDS : jwtUtil.getRefreshExpirySeconds();
+    long refreshTtl =
+        impersonation ? IMPERSONATION_REFRESH_TTL_SECONDS : jwtUtil.getRefreshExpirySeconds();
 
-    String newAccessToken = Objects.requireNonNull(
-        jwtUtil.generateToken(
-            Objects.requireNonNull(user.getId()),
-            safeTenantId,
-            role,
-            scope,
-            businessType,
-            Boolean.TRUE.equals(user.getIsPlatformUser()),
-            permissions,
-            impersonation,
-            impersonatedBy,
-            accessTtl));
-    String newRefreshToken = Objects.requireNonNull(
-        jwtUtil.generateRefreshToken(
-            Objects.requireNonNull(user.getId()),
-            safeTenantId,
-            role,
-            scope,
-            businessType,
-            Boolean.TRUE.equals(user.getIsPlatformUser()),
-            permissions,
-            impersonation,
-            impersonatedBy,
-            refreshTtl));
+    String newAccessToken =
+        Objects.requireNonNull(
+            jwtUtil.generateToken(
+                Objects.requireNonNull(user.getId()),
+                safeTenantId,
+                role,
+                scope,
+                businessType,
+                Boolean.TRUE.equals(user.getIsPlatformUser()),
+                permissions,
+                impersonation,
+                impersonatedBy,
+                accessTtl));
+    String newRefreshToken =
+        Objects.requireNonNull(
+            jwtUtil.generateRefreshToken(
+                Objects.requireNonNull(user.getId()),
+                safeTenantId,
+                role,
+                scope,
+                businessType,
+                Boolean.TRUE.equals(user.getIsPlatformUser()),
+                permissions,
+                impersonation,
+                impersonatedBy,
+                refreshTtl));
 
     // Blacklist old refresh token
     logout(refreshToken);
 
-    LoginResponse.LoginResponseBuilder responseBuilder = LoginResponse.builder()
-        .accessToken(newAccessToken)
-        .refreshToken(newRefreshToken)
-        .expiresIn(jwtUtil.getExpirySeconds())
-        .user(
-            LoginResponse.UserResponse.builder()
-                .id(user.getId().toString())
-                .name(user.getName())
-                .email(user.getEmail())
-                .phone(user.getPhone())
-                .role(user.getRole().name())
-                .scope(user.getScope())
-                .isPlatformUser(Boolean.TRUE.equals(user.getIsPlatformUser()))
-                .build());
+    LoginResponse.LoginResponseBuilder responseBuilder =
+        LoginResponse.builder()
+            .accessToken(newAccessToken)
+            .refreshToken(newRefreshToken)
+            .expiresIn(jwtUtil.getExpirySeconds())
+            .user(
+                LoginResponse.UserResponse.builder()
+                    .id(user.getId().toString())
+                    .name(user.getName())
+                    .email(user.getEmail())
+                    .phone(user.getPhone())
+                    .role(user.getRole().name())
+                    .scope(user.getScope())
+                    .isPlatformUser(Boolean.TRUE.equals(user.getIsPlatformUser()))
+                    .build());
 
     if (safeTenantId != null) {
       tenantRepository
@@ -600,9 +632,10 @@ public class AuthService {
 
   public @NonNull Map<String, Object> getProfile(@NonNull Long userId) {
     Long safeUserId = Objects.requireNonNull(userId);
-    User user = userRepository
-        .findByIdUnfiltered(safeUserId)
-        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User user =
+        userRepository
+            .findByIdUnfiltered(safeUserId)
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     Map<String, Object> userMap = new HashMap<>();
     userMap.put("id", safeUserId);
@@ -646,9 +679,10 @@ public class AuthService {
   public @NonNull Map<String, String> changePassword(
       @NonNull Long userId, @NonNull ChangePasswordRequest request) {
     Long safeUserId = Objects.requireNonNull(userId);
-    User user = userRepository
-        .findByIdUnfiltered(safeUserId)
-        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User user =
+        userRepository
+            .findByIdUnfiltered(safeUserId)
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
       throw new IllegalArgumentException("Current password is incorrect");
@@ -669,13 +703,13 @@ public class AuthService {
   }
 
   /**
-   * Generate a password reset token and store it on the user. In production, this
-   * token would be
+   * Generate a password reset token and store it on the user. In production, this token would be
    * emailed. For dev, it's returned directly.
    */
   @Transactional
   public @NonNull Map<String, String> forgotPassword(@NonNull ForgotPasswordRequest request) {
-    User user = userRepository.findByEmailUnfiltered(request.getEmail().trim().toLowerCase()).orElse(null);
+    User user =
+        userRepository.findByEmailUnfiltered(request.getEmail().trim().toLowerCase()).orElse(null);
 
     // Always return generic success message to prevent email enumeration
     String responseMessage = "If the email exists, a password reset link has been sent";
@@ -703,17 +737,20 @@ public class AuthService {
   /** Reset password using a previously issued reset token. */
   @Transactional
   public @NonNull Map<String, String> resetPassword(@NonNull ResetPasswordRequest request) {
-    User user = userRepository
-        .findByEmailUnfiltered(request.getEmail().trim().toLowerCase())
-        .orElseThrow(() -> new IllegalArgumentException("Invalid or expired reset token"));
+    User user =
+        userRepository
+            .findByEmailUnfiltered(request.getEmail().trim().toLowerCase())
+            .orElseThrow(() -> new IllegalArgumentException("Invalid or expired reset token"));
 
     // timing attack protection: always run passwordEncoder.matches
-    String storedToken = user.getResetToken() != null
-        ? user.getResetToken()
-        : "$2a$10$invalid-placeholder-hash-prevents-timing";
+    String storedToken =
+        user.getResetToken() != null
+            ? user.getResetToken()
+            : "$2a$10$invalid-placeholder-hash-prevents-timing";
     boolean tokenMatches = passwordEncoder.matches(request.getResetToken(), storedToken);
-    boolean notExpired = user.getResetTokenExpiry() != null
-        && !LocalDateTime.now().isAfter(user.getResetTokenExpiry());
+    boolean notExpired =
+        user.getResetTokenExpiry() != null
+            && !LocalDateTime.now().isAfter(user.getResetTokenExpiry());
 
     if (!tokenMatches || !notExpired) {
       throw new IllegalArgumentException("Invalid or expired reset token");
@@ -738,9 +775,10 @@ public class AuthService {
   /** Get current user's role and permissions summary. */
   public @NonNull Map<String, Object> getMyPermissions(@NonNull Long userId) {
     Long safeUserId = Objects.requireNonNull(userId);
-    User user = userRepository
-        .findByIdUnfiltered(safeUserId)
-        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User user =
+        userRepository
+            .findByIdUnfiltered(safeUserId)
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     Map<String, Object> result = new HashMap<>();
     result.put("role", user.getRole());

@@ -136,9 +136,7 @@ public class TenantController {
       summary = "List tenant users",
       description = "List users of a specific tenant with optional search")
   public ResponseEntity<Page<UserResponse>> getTenantUsers(
-      @PathVariable long id,
-      @RequestParam(required = false) String q,
-      @NonNull Pageable pageable) {
+      @PathVariable long id, @RequestParam(required = false) String q, @NonNull Pageable pageable) {
     return ResponseEntity.ok(tenantService.getTenantUsers(id, q, pageable));
   }
 
@@ -179,8 +177,7 @@ public class TenantController {
   @RequiresRole({"ROOT", "PLATFORM_ADMIN"})
   @Operation(summary = "Create tenant admin user")
   public ResponseEntity<UserResponse> createTenantAdmin(
-      @PathVariable long tenantId,
-      @NonNull @Valid @RequestBody CreateTenantUserRequest request) {
+      @PathVariable long tenantId, @NonNull @Valid @RequestBody CreateTenantUserRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(tenantService.createTenantUser(tenantId, request));
   }

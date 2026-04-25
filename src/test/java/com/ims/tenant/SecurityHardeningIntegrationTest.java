@@ -41,7 +41,7 @@ public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
   @Test
   void testCorrelationIdInHeadersAndError() throws Exception {
     mockMvc
-        .perform(get("/api/auth/invalid-path"))
+        .perform(get("/api/v1/auth/invalid-path"))
         .andExpect(status().isNotFound())
         .andExpect(header().exists("X-Correlation-ID"))
         .andExpect(jsonPath("$.correlation_id").exists());
@@ -68,7 +68,9 @@ public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
         objectMapper.writeValueAsString(Map.of("email", "root@ims.com", "password", "root123"));
     mockMvc
         .perform(
-            post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(authLoginJson))
+            post("/api/v1/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(authLoginJson))
         .andExpect(status().isTooManyRequests())
         .andExpect(header().string("X-RateLimit-Limit", "20"));
   }
@@ -83,7 +85,9 @@ public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
     MvcResult result =
         mockMvc
             .perform(
-                post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(loginJson))
+                post("/api/v1/auth/login")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(loginJson))
             .andExpect(status().isOk())
             .andReturn();
 
