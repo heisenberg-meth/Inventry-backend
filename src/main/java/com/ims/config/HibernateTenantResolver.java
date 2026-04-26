@@ -23,13 +23,12 @@ import org.springframework.stereotype.Component;
 @Profile("!test")
 public class HibernateTenantResolver implements CurrentTenantIdentifierResolver<Long> {
 
-  /** Sentinel returned when no tenant context is set. Will not match any real tenant row. */
-  private static final Long NO_TENANT_SENTINEL = 0L;
-
   @Override
   public Long resolveCurrentTenantIdentifier() {
     Long tenantId = TenantContext.getTenantId();
-    return tenantId != null ? tenantId : NO_TENANT_SENTINEL;
+    // Use the explicit platform identifier if no tenant is set.
+    // This allows startup probes and platform operations to proceed safely.
+    return tenantId != null ? tenantId : TenantContext.PLATFORM_TENANT_ID;
   }
 
   @Override

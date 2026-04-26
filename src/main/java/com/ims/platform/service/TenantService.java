@@ -71,8 +71,6 @@ public class TenantService {
   }
 
   public boolean isWarehouse(Long tenantId) {
-    if (tenantId == null)
-      return false;
     if (tenantId == null) {
       return false;
     }
@@ -268,10 +266,6 @@ public class TenantService {
     SubscriptionPlan tmpPlan = subscriptionPlanRepository
         .findById(Objects.requireNonNull(request.getPlanId()))
         .orElseThrow(() -> new EntityNotFoundException("Subscription plan not found"));
-    SubscriptionPlan tmpPlan =
-        subscriptionPlanRepository
-            .findById(request.getPlanId())
-            .orElseThrow(() -> new EntityNotFoundException("Subscription plan not found"));
     SubscriptionPlan plan = Objects.requireNonNull(tmpPlan);
 
     if (!"ACTIVE".equals(plan.getStatus())) {
@@ -337,11 +331,6 @@ public class TenantService {
         .findById(Objects.requireNonNull(tenantId))
         .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
     Tenant tenant = Objects.requireNonNull(tmpTenant);
-    Tenant tmpTenant =
-        tenantRepository
-            .findById(java.util.Objects.requireNonNull(tenantId))
-            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
-    Tenant tenant = java.util.Objects.requireNonNull(tmpTenant);
 
     Map<String, Object> response = new HashMap<>();
     response.put("plan", tenant.getPlan());
@@ -397,7 +386,7 @@ public class TenantService {
 
     tenantInitializationService.createUserForTenant(user, Objects.requireNonNull(tenantId));
     tenantInitializationService.createUserForTenant(
-        user, java.util.Objects.requireNonNull(tenantId));
+        user, Objects.requireNonNull(tenantId));
 
     return UserResponse.builder()
         .id(Objects.requireNonNull(user.getId()))

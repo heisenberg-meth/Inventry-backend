@@ -29,4 +29,9 @@ public interface TenantRepository extends JpaRepository<Tenant, Long> {
 
   @Query("SELECT t.id FROM Tenant t")
   List<Long> findAllIds();
+  @Query(
+      value =
+          "UPDATE tenants SET invoice_sequence = invoice_sequence + 1 WHERE id = :id RETURNING invoice_sequence",
+      nativeQuery = true)
+  Long incrementAndGetInvoiceSequence(@Param("id") Long id);
 }

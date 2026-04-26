@@ -1,6 +1,8 @@
 package com.ims.tenant.repository;
 
 import com.ims.model.Invoice;
+import java.time.LocalDate;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -18,14 +20,14 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
 
   @Query(
       "SELECT i FROM Invoice i JOIN Order o ON i.orderId = o.id WHERE o.customerId = :customerId")
-  java.util.List<Invoice> findByCustomerId(
+  List<Invoice> findByCustomerId(
       @org.springframework.data.repository.query.Param("customerId") Long customerId);
 
   @Query(
       "SELECT i FROM Invoice i JOIN Order o ON i.orderId = o.id WHERE o.supplierId = :supplierId")
-  java.util.List<Invoice> findBySupplierId(
+  List<Invoice> findBySupplierId(
       @org.springframework.data.repository.query.Param("supplierId") Long supplierId);
 
   org.springframework.data.domain.Page<Invoice> findByStatusNotAndDueDateBefore(
-      String status, java.time.LocalDate date, org.springframework.data.domain.Pageable pageable);
+      String status, LocalDate date, org.springframework.data.domain.Pageable pageable);
 }

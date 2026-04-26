@@ -8,6 +8,8 @@ import com.ims.shared.audit.AuditLogService;
 import com.ims.shared.email.EmailService;
 import com.ims.tenant.repository.UserRepository;
 import java.util.Objects;
+import java.util.UUID;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
@@ -45,14 +47,14 @@ public class TenantInitializationService {
       categoryService.create(catReq);
 
       // 2. Generate and hash email verification token
-      String rawToken = java.util.UUID.randomUUID().toString();
+      String rawToken = UUID.randomUUID().toString();
       String hashedToken = passwordEncoder.encode(rawToken);
 
       // Create the owner user with the verification token already applied.
       User savedUser = userRepository.save(user);
       savedUser.setVerificationToken(hashedToken);
       savedUser.setVerificationTokenExpiry(
-          java.time.LocalDateTime.now().plusMinutes(VERIFICATION_TOKEN_EXPIRY_MINUTES));
+          LocalDateTime.now().plusMinutes(VERIFICATION_TOKEN_EXPIRY_MINUTES));
       savedUser = userRepository.save(savedUser);
 
       final String finalEmail = savedUser.getEmail();

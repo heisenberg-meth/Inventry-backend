@@ -10,6 +10,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
+import java.util.Objects;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -44,7 +46,7 @@ public class JwtFilter extends OncePerRequestFilter {
       return;
     }
 
-    String token = java.util.Objects.requireNonNull(authHeader.substring(BEARER_PREFIX_LENGTH));
+    String token = Objects.requireNonNull(authHeader.substring(BEARER_PREFIX_LENGTH));
 
     try {
       if (!jwtUtil.validateToken(token)) {
@@ -57,7 +59,7 @@ public class JwtFilter extends OncePerRequestFilter {
       boolean redisAvailable = true;
       Boolean isBlacklisted = false;
       try {
-        String safeTokenHash = java.util.Objects.requireNonNull(tokenHash);
+        String safeTokenHash = Objects.requireNonNull(tokenHash);
         isBlacklisted = redisTemplate.hasKey("jwt:blacklist:" + safeTokenHash);
       } catch (Exception e) {
         log.warn("Redis unavailable for JWT blacklist check — rejecting request to prevent bypass");
@@ -78,31 +80,56 @@ public class JwtFilter extends OncePerRequestFilter {
         return;
       }
 
-      String safeToken = java.util.Objects.requireNonNull(token);
+      String safeToken = Objects.requireNonNull(token);
       final Long userId = jwtUtil.extractUserId(safeToken);
       final Long tenantId = jwtUtil.extractTenantId(safeToken);
+      final boolean isPlatformUser = jwtUtil.extractIsPlatformUser(safeToken);
 
       if (TenantContext.getTenantId() == null) {
-        TenantContext.setTenantId(tenantId);
+        if (tenantId != null) {
+          TenantContext.setTenantId(tenantId);
+        } else if (!isPlatformUser) {
+          log.error("Rejecting request: No tenantId in JWT for non-platform user");
+          response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+          response.setContentType("application/json");
+          response
+              .getWriter()
+              .write("{\"status\":400,\"error\":\"BAD_REQUEST\",\"message\":\"Tenant ID required\"}");
+          return;
+        } else {
+          log.info("Setting PLATFORM_TENANT_ID for platform user");
+          TenantContext.setTenantId(TenantContext.PLATFORM_TENANT_ID);
+        }
       }
 
       MDC.put("tenantId", tenantId != null ? String.valueOf(tenantId) : "none");
       MDC.put("userId", userId != null ? String.valueOf(userId) : "anonymous");
       MDC.put("requestId", UUID.randomUUID().toString());
 
-      final String role = java.util.Objects.requireNonNull(jwtUtil.extractRole(safeToken));
-      final String scope = java.util.Objects.requireNonNull(jwtUtil.extractScope(safeToken));
+      final String role = Objects.requireNonNull(jwtUtil.extractRole(safeToken));
+      final String scope = Objects.requireNonNull(jwtUtil.extractScope(safeToken));
       final String businessType = jwtUtil.extractBusinessType(safeToken);
-      final boolean isPlatformUser = jwtUtil.extractIsPlatformUser(safeToken);
-      final java.util.Set<String> permissions =
-          java.util.Objects.requireNonNull(jwtUtil.extractPermissions(safeToken));
+      final Set<String> permissions =
+          Objects.requireNonNull(jwtUtil.extractPermissions(safeToken));
       final boolean impersonation = jwtUtil.extractImpersonation(safeToken);
       final Long impersonatedBy = jwtUtil.extractImpersonatedBy(safeToken);
+
+      // Enforce impersonation session validity
+      if (impersonation) {
+        String sessionId = jwtUtil.extractSessionId(safeToken);
+        if (sessionId == null || !redisTemplate.hasKey("impersonation:session:" + sessionId)) {
+          log.warn("Impersonation session {} is invalid or revoked", sessionId);
+          response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+          response.setContentType("application/json");
+          response.getWriter().write("{\"error\":\"Impersonation session expired or revoked\"}");
+          return;
+        }
+      }
 
       String authority = role.startsWith("ROLE_") ? role : "ROLE_" + role;
       UsernamePasswordAuthenticationToken auth =
           new UsernamePasswordAuthenticationToken(
-              java.util.Objects.requireNonNull(userId),
+              Objects.requireNonNull(userId),
               null,
               List.of(new SimpleGrantedAuthority(authority)));
       log.info("JWT Auth: userId={} role={} authorities={}", userId, role, auth.getAuthorities());

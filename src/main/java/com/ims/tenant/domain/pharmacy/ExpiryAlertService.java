@@ -21,7 +21,7 @@ public class ExpiryAlertService {
   @Scheduled(cron = "0 0 8 * * *")
   public void checkExpiryAlerts() {
     com.ims.shared.auth.TenantContext.runWithTenant(
-        com.ims.shared.auth.TenantContext.SYSTEM_TENANT_ID,
+        com.ims.shared.auth.TenantContext.PLATFORM_TENANT_ID,
         () -> {
           log.info("Scheduled Task: Checking pharmacy expiry alerts across all tenants");
           List<Long> tenantIds = tenantRepository.findAllIds();

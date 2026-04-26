@@ -38,6 +38,9 @@ public class AuditLog {
   @Column(columnDefinition = "TEXT")
   private String details;
 
+  @Column(name = "impersonated_by")
+  private Long impersonatedBy;
+
   @Column(name = "created_at")
   @Builder.Default
   private LocalDateTime createdAt = LocalDateTime.now();

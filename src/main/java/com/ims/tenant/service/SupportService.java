@@ -15,12 +15,10 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,8 +34,8 @@ public class SupportService {
   // ==================== TENANT-SIDE ====================
 
   @Transactional
-  public @NonNull SupportTicket createTicket(
-      @NonNull Long tenantId, @NonNull Long userId, @NonNull CreateTicketRequest request) {
+  public SupportTicket createTicket(
+      Long tenantId, Long userId, CreateTicketRequest request) {
 
     SupportTicket initialTicket =
         SupportTicket.builder()
@@ -50,7 +48,7 @@ public class SupportService {
             .status("OPEN")
             .build();
 
-    var savedTicket = Objects.requireNonNull(ticketRepository.save(initialTicket));
+    var savedTicket = ticketRepository.save(initialTicket);
   
     auditLogService.log(
         AuditAction.CREATE_TICKET, tenantId, userId, "Created ticket: " + savedTicket.getTitle());
@@ -59,13 +57,13 @@ public class SupportService {
   }
 
   @Transactional(readOnly = true)
-  public Page<SupportTicket> listTenantTickets(@NonNull Long tenantId, @NonNull Pageable pageable) {
+  public Page<SupportTicket> listTenantTickets(Long tenantId, Pageable pageable) {
     return ticketRepository.findByTenantId(tenantId, pageable);
   }
 
   @Transactional(readOnly = true)
   public Map<String, Object> getTenantTicketDetails(
-      @NonNull Long tenantId, @NonNull Long ticketId) {
+      Long tenantId, Long ticketId) {
     SupportTicket ticket =
         ticketRepository
             .findByIdAndTenantId(ticketId, tenantId)
@@ -80,7 +78,7 @@ public class SupportService {
   }
 
   @Transactional
-  public SupportTicket closeTicketByTenant(@NonNull Long tenantId, @NonNull Long ticketId) {
+  public SupportTicket closeTicketByTenant(Long tenantId, Long ticketId) {
     SupportTicket ticket =
         ticketRepository
             .findByIdAndTenantId(ticketId, tenantId)
@@ -98,18 +96,18 @@ public class SupportService {
   // ==================== PLATFORM-SIDE ====================
 
   @Transactional(readOnly = true)
-  public Page<SupportTicket> listAllTickets(@NonNull Pageable pageable) {
+  public Page<SupportTicket> listAllTickets(Pageable pageable) {
     return ticketRepository.findAll(pageable);
   }
 
   @Transactional(readOnly = true)
   public Page<SupportTicket> listMyAssignedTickets(
-      @NonNull Long userId, @NonNull Pageable pageable) {
+      Long userId, Pageable pageable) {
     return ticketRepository.findByAssignedTo(userId, pageable);
   }
 
   @Transactional(readOnly = true)
-  public Map<String, Object> getPlatformTicketDetails(@NonNull Long ticketId) {
+  public Map<String, Object> getPlatformTicketDetails(Long ticketId) {
     SupportTicket ticket =
         ticketRepository
             .findById(ticketId)
@@ -124,7 +122,7 @@ public class SupportService {
   }
 
   @Transactional
-  public SupportTicket assignTicket(@NonNull Long ticketId, @NonNull AssignTicketRequest request) {
+  public SupportTicket assignTicket(Long ticketId, AssignTicketRequest request) {
     SupportTicket ticket =
         ticketRepository
             .findById(ticketId)
@@ -148,7 +146,7 @@ public class SupportService {
 
   @Transactional
   public SupportTicket updateStatus(
-      @NonNull Long ticketId, @NonNull UpdateTicketStatusRequest request) {
+      Long ticketId, UpdateTicketStatusRequest request) {
     SupportTicket ticket =
         ticketRepository
             .findById(ticketId)
@@ -168,7 +166,7 @@ public class SupportService {
   }
 
   @Transactional
-  public SupportTicket closeTicketByPlatform(@NonNull Long ticketId) {
+  public SupportTicket closeTicketByPlatform(Long ticketId) {
     SupportTicket ticket =
         ticketRepository
             .findById(ticketId)
@@ -189,11 +187,11 @@ public class SupportService {
   // ==================== SHARED ====================
 
   @Transactional
-  public @NonNull SupportMessage addMessage(
-      @NonNull Long ticketId,
-      @NonNull Long senderId,
-      @NonNull String senderType,
-      @NonNull AddMessageRequest request) {
+  public SupportMessage addMessage(
+      Long ticketId,
+      Long senderId,
+      String senderType,
+      AddMessageRequest request) {
 
     SupportTicket ticket =
         ticketRepository
@@ -208,7 +206,7 @@ public class SupportService {
             .message(request.getMessage())
             .build();
 
-    SupportMessage saved = Objects.requireNonNull(messageRepository.save(message));
+    SupportMessage saved = messageRepository.save(message);
 
     // Reopen if CLOSED and tenant messages
     if ("CLOSED".equals(ticket.getStatus()) && "TENANT".equals(senderType)) {
@@ -217,7 +215,7 @@ public class SupportService {
       ticketRepository.save(ticket);
     }
 
-    return Objects.requireNonNull(saved);
+    return saved;
   }
 
   @Transactional(readOnly = true)

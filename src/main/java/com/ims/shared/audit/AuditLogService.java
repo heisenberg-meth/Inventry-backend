@@ -7,10 +7,12 @@ import com.ims.shared.auth.TenantContext;
 import com.ims.dto.response.AuditLogResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import java.util.Objects;
+import java.util.Map;
 
 @Service
 @Slf4j
@@ -23,6 +25,12 @@ public class AuditLogService {
   public void log(AuditAction action, Long tenantId, Long userId, String details) {
     log.info("AUDIT: action={} details={}", action, details);
 
+    Long impersonatedBy = null;
+    var auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth != null && auth.getDetails() instanceof JwtAuthDetails detailsObj) {
+      impersonatedBy = detailsObj.getImpersonatedBy();
+    }
+
     AuditLog auditEntry =
         Objects.requireNonNull(
             AuditLog.builder()
@@ -30,9 +38,21 @@ public class AuditLogService {
                 .userId(userId)
                 .action(action.name())
                 .details(details)
+                .impersonatedBy(impersonatedBy)
                 .build());
 
     auditLogRepository.save(auditEntry);
+  }
+
+  public void log(
+      AuditAction action, Long tenantId, Long userId, Map<String, Object> metadata) {
+    try {
+      String details = new ObjectMapper().writeValueAsString(metadata);
+      log(action, tenantId, userId, details);
+    } catch (Exception e) {
+      log.error("Failed to serialize audit metadata", e);
+      log(action, tenantId, userId, metadata.toString());
+    }
   }
 
   /**

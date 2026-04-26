@@ -3,27 +3,20 @@ package com.ims;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.doReturn;
 import com.ims.model.User;
-
 import com.ims.category.CategoryRepository;
-import com.ims.model.User;
 import com.ims.platform.repository.*;
 import com.ims.product.ProductRepository;
 import com.ims.shared.audit.AuditLogRepository;
 import com.ims.shared.auth.AuthService;
 import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.repository.*;
-import com.ims.platform.repository.*;
-import com.ims.shared.auth.AuthService;
-import com.ims.product.ProductRepository;
 import jakarta.persistence.EntityManager;
-import com.ims.shared.auth.TenantContext;
 import com.ims.dto.response.LoginResponse;
-import com.ims.category.CategoryRepository;
 import com.ims.dto.request.LoginRequest;
 import jakarta.persistence.PersistenceContext;
-import com.ims.shared.audit.AuditLogRepository;
 import java.util.Objects;
 import java.util.Collections;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -69,13 +62,13 @@ public abstract class BaseIntegrationTest {
    * constant so secret scanners stop flagging the literal as a hardcoded password.
    */
   protected static final String TEST_ROOT_PASSWORD =
-      System.getProperty("ims.test.root.password", java.util.UUID.randomUUID().toString());
+      System.getProperty("ims.test.root.password", UUID.randomUUID().toString());
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
     registry.add(
         "app.jwt.secret",
-        () -> java.util.UUID.randomUUID().toString() + java.util.UUID.randomUUID().toString());
+        () -> UUID.randomUUID().toString() + UUID.randomUUID().toString());
   }
 
   @Autowired protected TenantRepository tenantRepository;
@@ -230,7 +223,7 @@ public abstract class BaseIntegrationTest {
                 // management
                 User managedUser =
                     userRepository
-                        .findById(java.util.Objects.requireNonNull(u.getId()))
+                        .findById(Objects.requireNonNull(u.getId()))
                         .orElseThrow(
                             () ->
                                 new jakarta.persistence.EntityNotFoundException(
