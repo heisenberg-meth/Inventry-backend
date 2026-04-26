@@ -1,6 +1,7 @@
 package com.ims.platform.repository;
 
 import com.ims.model.Subscription;
+import com.ims.model.SubscriptionStatus;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,9 +14,9 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
 
   Optional<Subscription> findFirstByTenantIdOrderByCreatedAtDesc(Long tenantId);
 
-  List<Subscription> findByTenantIdAndStatus(Long tenantId, String status);
+  List<Subscription> findByTenantIdAndStatus(Long tenantId, SubscriptionStatus status);
 
-  List<Subscription> findByStatus(String status);
+  List<Subscription> findByStatus(SubscriptionStatus status);
 
-  long countByPlanAndStatus(String plan, String status);
+  long countByPlanAndStatus(String plan, SubscriptionStatus status);
 }

@@ -15,7 +15,6 @@ import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.lang.NonNull;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -52,7 +51,7 @@ public class RoleController {
   @PostMapping
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Create a new role")
-  public ResponseEntity<Role> createRole(@NonNull @Valid @RequestBody CreateRoleRequest request) {
+  public ResponseEntity<Role> createRole(@Valid @RequestBody CreateRoleRequest request) {
     Long tenantId = getTenantId();
     return ResponseEntity.status(HttpStatus.CREATED).body(roleService.create(tenantId, request));
   }
@@ -61,7 +60,7 @@ public class RoleController {
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Assign permissions to role")
   public ResponseEntity<Role> assignPermissions(
-      @PathVariable long id, @NonNull @Valid @RequestBody AssignPermissionsRequest request) {
+      @PathVariable long id, @Valid @RequestBody AssignPermissionsRequest request) {
     Long tenantId = getTenantId();
     return ResponseEntity.ok(roleService.assignPermissions(tenantId, id, request));
   }

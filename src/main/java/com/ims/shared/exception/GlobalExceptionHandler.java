@@ -11,9 +11,12 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import com.ims.dto.response.ErrorResponse;
+
 
 @RestControllerAdvice
 @Slf4j
@@ -28,18 +31,19 @@ public class GlobalExceptionHandler {
   private static final int STATUS_INTERNAL_ERROR = 500;
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
-  public ResponseEntity<Map<String, Object>> handleValidation(
-      MethodArgumentNotValidException ex, HttpServletRequest request) {
+  public ResponseEntity<ErrorResponse> handleValidation(
+      MethodArgumentNotValidException ex) {
     Map<String, String> fieldErrors = new HashMap<>();
     ex.getBindingResult()
         .getFieldErrors()
         .forEach(err -> fieldErrors.put(err.getField(), err.getDefaultMessage()));
 
-    Map<String, Object> body =
-        errorBody(
-            STATUS_BAD_REQUEST, "VALIDATION_FAILED", "Validation failed", request.getRequestURI());
-    body.put("fields", fieldErrors);
-    return ResponseEntity.badRequest().body(body);
+    return ResponseEntity.badRequest().body(new ErrorResponse("Validation failed", fieldErrors));
+  }
+
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ResponseEntity<ErrorResponse> handleParseError(HttpMessageNotReadableException ex) {
+    return ResponseEntity.badRequest().body(new ErrorResponse("Invalid request format", null));
   }
 
   @ExceptionHandler(EntityNotFoundException.class)

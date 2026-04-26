@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.dto.request.CreateSubscriptionPlanRequest;
 import com.ims.dto.request.UpdateSubscriptionPlanRequest;
 import com.ims.model.SubscriptionPlan;
+import com.ims.model.SubscriptionPlanStatus;
+import com.ims.model.SubscriptionStatus;
 import com.ims.platform.repository.SubscriptionPlanRepository;
 import com.ims.platform.repository.SubscriptionRepository;
 import com.ims.shared.audit.AuditAction;
@@ -57,21 +59,21 @@ public class SubscriptionPlanService {
                 .price(request.getPrice())
                 .currency(request.getCurrency() != null ? request.getCurrency() : "INR")
                 .billingCycle(request.getBillingCycle())
-                .features(features)
+                .features(Objects.requireNonNull(features))
                 .maxUsers(request.getMaxUsers())
                 .maxProducts(request.getMaxProducts())
-                .status("ACTIVE")
+                .status(SubscriptionPlanStatus.ACTIVE)
                 .build());
 
     SubscriptionPlan saved = Objects.requireNonNull(planRepository.save(plan));
-    auditLogService.log(AuditAction.CREATE_PLAN, null, null, "Created plan: " + saved.getName());
+    auditLogService.log(AuditAction.CREATE_PLAN, com.ims.shared.auth.TenantContext.PLATFORM_TENANT_ID, com.ims.shared.auth.TenantContext.PLATFORM_TENANT_ID, "Created plan: " + saved.getName());
     log.info("Subscription plan created: id={} name={}", saved.getId(), saved.getName());
     return saved;
   }
 
   @Transactional(readOnly = true)
-  public List<SubscriptionPlan> findAll(String status) {
-    if (status != null && !status.isBlank()) {
+  public List<SubscriptionPlan> findAll(SubscriptionPlanStatus status) {
+    if (status != null) {
       return planRepository.findByStatusOrderByCreatedAtDesc(status);
     }
     return planRepository.findAllByOrderByCreatedAtDesc();
@@ -97,7 +99,7 @@ public class SubscriptionPlanService {
     }
     if (request.getFeatures() != null) {
       try {
-        plan.setFeatures(objectMapper.writeValueAsString(request.getFeatures()));
+        plan.setFeatures(Objects.requireNonNull(objectMapper.writeValueAsString(request.getFeatures())));
       } catch (Exception e) {
         throw new IllegalArgumentException("Invalid features JSON");
       }
@@ -110,26 +112,26 @@ public class SubscriptionPlanService {
     }
 
     plan.setVersion(plan.getVersion() + 1);
-    plan.setUpdatedAt(LocalDateTime.now());
+    plan.setUpdatedAt(Objects.requireNonNull(LocalDateTime.now()));
     return planRepository.save(plan);
   }
 
   @Transactional
   public Map<String, String> deletePlan(@NonNull Long id) {
     SubscriptionPlan plan = findOne(id);
-    plan.setStatus("DELETED");
-    plan.setUpdatedAt(LocalDateTime.now());
+    plan.setStatus(SubscriptionPlanStatus.ARCHIVED);
+    plan.setUpdatedAt(Objects.requireNonNull(LocalDateTime.now()));
     planRepository.save(plan);
 
-    auditLogService.log(AuditAction.DELETE_PLAN, null, null, "Deleted plan: " + plan.getName());
+    auditLogService.log(AuditAction.DELETE_PLAN, com.ims.shared.auth.TenantContext.PLATFORM_TENANT_ID, com.ims.shared.auth.TenantContext.PLATFORM_TENANT_ID, "Deleted plan: " + plan.getName());
     return Map.of("message", "Plan soft-deleted", "plan", plan.getName());
   }
 
   @Transactional
   public Map<String, String> activatePlan(@NonNull Long id) {
     SubscriptionPlan plan = findOne(id);
-    plan.setStatus("ACTIVE");
-    plan.setUpdatedAt(LocalDateTime.now());
+    plan.setStatus(SubscriptionPlanStatus.ACTIVE);
+    plan.setUpdatedAt(Objects.requireNonNull(LocalDateTime.now()));
     planRepository.save(plan);
     return Map.of("message", "Plan activated", "status", "ACTIVE");
   }
@@ -137,8 +139,8 @@ public class SubscriptionPlanService {
   @Transactional
   public Map<String, String> deactivatePlan(@NonNull Long id) {
     SubscriptionPlan plan = findOne(id);
-    plan.setStatus("INACTIVE");
-    plan.setUpdatedAt(LocalDateTime.now());
+    plan.setStatus(SubscriptionPlanStatus.INACTIVE);
+    plan.setUpdatedAt(Objects.requireNonNull(LocalDateTime.now()));
     planRepository.save(plan);
     return Map.of("message", "Plan deactivated", "status", "INACTIVE");
   }
@@ -153,10 +155,10 @@ public class SubscriptionPlanService {
     Map<String, Long> planBreakdown = new LinkedHashMap<>();
 
     for (SubscriptionPlan plan : allPlans) {
-      if (!"ACTIVE".equals(plan.getStatus())) {
+      if (plan.getStatus() != SubscriptionPlanStatus.ACTIVE) {
         continue;
       }
-      long activeCount = subscriptionRepository.countByPlanAndStatus(plan.getName(), "ACTIVE");
+      long activeCount = subscriptionRepository.countByPlanAndStatus(plan.getName(), SubscriptionStatus.ACTIVE);
       planBreakdown.put(plan.getName(), activeCount);
       totalActive += activeCount;
 
@@ -168,7 +170,7 @@ public class SubscriptionPlanService {
     Map<String, Object> summary = new HashMap<>();
     summary.put("totalPlans", allPlans.size());
     summary.put(
-        "activePlans", allPlans.stream().filter(p -> "ACTIVE".equals(p.getStatus())).count());
+        "activePlans", allPlans.stream().filter(p -> p.getStatus() == SubscriptionPlanStatus.ACTIVE).count());
     summary.put("totalActiveSubscriptions", totalActive);
     summary.put("planBreakdown", planBreakdown);
     summary.put("mrr", mrr);

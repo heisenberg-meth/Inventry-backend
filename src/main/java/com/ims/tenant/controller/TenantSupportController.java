@@ -18,7 +18,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.lang.NonNull;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -41,7 +40,7 @@ public class TenantSupportController {
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Create support ticket")
   public ResponseEntity<SupportTicket> createTicket(
-      @NonNull @Valid @RequestBody CreateTicketRequest request) {
+      @Valid @RequestBody CreateTicketRequest request) {
     JwtAuthDetails auth = getAuthDetails();
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(
@@ -54,7 +53,7 @@ public class TenantSupportController {
   @GetMapping
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "List my tenant tickets")
-  public ResponseEntity<Page<SupportTicket>> listTickets(@NonNull Pageable pageable) {
+  public ResponseEntity<Page<SupportTicket>> listTickets(Pageable pageable) {
     JwtAuthDetails auth = getAuthDetails();
     return ResponseEntity.ok(
         supportService.listTenantTickets(Objects.requireNonNull(auth.getTenantId()), pageable));
@@ -63,7 +62,7 @@ public class TenantSupportController {
   @GetMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Get ticket details")
-  public ResponseEntity<Map<String, Object>> getTicketDetails(@NonNull @PathVariable Long id) {
+  public ResponseEntity<Map<String, Object>> getTicketDetails(@PathVariable Long id) {
     JwtAuthDetails auth = getAuthDetails();
     return ResponseEntity.ok(
         supportService.getTenantTicketDetails(Objects.requireNonNull(auth.getTenantId()), id));
@@ -73,7 +72,7 @@ public class TenantSupportController {
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Add message to ticket")
   public ResponseEntity<SupportMessage> addMessage(
-      @NonNull @PathVariable Long id, @NonNull @Valid @RequestBody AddMessageRequest request) {
+      @PathVariable Long id, @Valid @RequestBody AddMessageRequest request) {
     JwtAuthDetails auth = getAuthDetails();
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(
@@ -84,7 +83,7 @@ public class TenantSupportController {
   @PatchMapping("/{id}/close")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Close ticket")
-  public ResponseEntity<SupportTicket> closeTicket(@NonNull @PathVariable Long id) {
+  public ResponseEntity<SupportTicket> closeTicket(@PathVariable Long id) {
     JwtAuthDetails auth = getAuthDetails();
     return ResponseEntity.ok(
         supportService.closeTicketByTenant(Objects.requireNonNull(auth.getTenantId()), id));

@@ -3,6 +3,7 @@ package com.ims.tenant.service;
 import com.ims.dto.TransferOrderStatusRequest;
 import com.ims.model.StockMovement;
 import com.ims.model.TransferOrder;
+import com.ims.model.TransferOrderStatus;
 import com.ims.platform.service.TenantService;
 import com.ims.product.Product;
 import com.ims.shared.auth.TenantContext;
@@ -17,7 +18,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
-import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,277 +26,218 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class StockTransactionService {
 
-  private final StockMovementRepository stockMovementRepository;
-  private final TenantService tenantService;
-  private final WarehouseProductRepository warehouseProductRepository;
-  private final TransferOrderRepository transferOrderRepository;
-  private final com.ims.product.ProductRepository productRepository;
+    private final StockMovementRepository stockMovementRepository;
+    private final TenantService tenantService;
+    private final WarehouseProductRepository warehouseProductRepository;
+    private final TransferOrderRepository transferOrderRepository;
+    private final com.ims.product.ProductRepository productRepository;
 
-  private void checkWarehouseType() {
-    Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) {
-      throw new com.ims.shared.exception.TenantContextException("No tenant context found");
-    }
-    if (!tenantService.isWarehouse(tenantId)) {
-      throw new IllegalArgumentException("Only available for WAREHOUSE tenants");
-    }
-  }
-
-  @Transactional
-  @Caching(
-      evict = {
-        @CacheEvict(
-            value = "stock",
-            key = "'id:' + #productId",
-            cacheResolver = "tenantAwareCacheResolver"),
-        @CacheEvict(
-            value = "products",
-            key = "'id:' + #productId",
-            cacheResolver = "tenantAwareCacheResolver"),
-        @CacheEvict(value = "products", key = "'list'", cacheResolver = "tenantAwareCacheResolver"),
-        @CacheEvict(
-            value = "reports",
-            key = "'stock-report'",
-            cacheResolver = "tenantAwareCacheResolver"),
-        @CacheEvict(
-            value = "dashboard",
-            key = "'dashboard'",
-            cacheResolver = "tenantAwareCacheResolver")
-      })
-  public void stockInInternal(
-      @NonNull Long productId, int qty, String notes, @NonNull Long userId) {
-    if (qty <= 0) throw new IllegalArgumentException("Quantity must be positive");
-
-    int updated = productRepository.incrementStock(productId, qty, LocalDateTime.now());
-    if (updated == 0) {
-      throw new EntityNotFoundException("Product not found: " + productId);
+    private void checkWarehouseType() {
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId == null) {
+            throw new com.ims.shared.exception.TenantContextException("No tenant context found");
+        }
+        if (!tenantService.isWarehouse(tenantId)) {
+            throw new IllegalArgumentException("Only available for WAREHOUSE tenants");
+        }
     }
 
-    Product product =
-        productRepository
-            .findById(productId)
-            .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "stock", key = "'id:' + #productId", cacheResolver = "tenantAwareCacheResolver"),
+            @CacheEvict(value = "products", key = "'id:' + #productId", cacheResolver = "tenantAwareCacheResolver"),
+            @CacheEvict(value = "products", key = "'list'", cacheResolver = "tenantAwareCacheResolver"),
+            @CacheEvict(value = "reports", key = "'stock-report'", cacheResolver = "tenantAwareCacheResolver"),
+            @CacheEvict(value = "dashboard", key = "'dashboard'", cacheResolver = "tenantAwareCacheResolver")
+    })
+    public void stockInInternal(
+            Long productId, int qty, String notes, Long userId) {
+        if (qty <= 0)
+            throw new IllegalArgumentException("Quantity must be positive");
 
-    int newStock = product.getStock();
-    int previousStock = newStock - qty;
+        int updated = productRepository.incrementStock(productId, qty, Objects.requireNonNull(LocalDateTime.now()));
+        if (updated == 0) {
+            throw new EntityNotFoundException("Product not found: " + productId);
+        }
 
-    StockMovement tmpMovement =
-        StockMovement.builder()
-            .productId(productId)
-            .movementType("IN")
-            .quantity(qty)
-            .previousStock(previousStock)
-            .newStock(newStock)
-            .notes(notes)
-            .createdBy(userId)
-            .build();
-    stockMovementRepository.save(Objects.requireNonNull(tmpMovement));
+        Product product = productRepository
+                .findById(productId)
+                .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
-    log.info("Stock IN: product={} qty={} {}→{}", productId, qty, previousStock, newStock);
-  }
+        int newStock = product.getStock();
+        int previousStock = newStock - qty;
 
-  @Transactional
-  @Caching(
-      evict = {
-        @CacheEvict(
-            value = "stock",
-            key = "'id:' + #productId",
-            cacheResolver = "tenantAwareCacheResolver"),
-        @CacheEvict(
-            value = "products",
-            key = "'id:' + #productId",
-            cacheResolver = "tenantAwareCacheResolver"),
-        @CacheEvict(value = "products", key = "'list'", cacheResolver = "tenantAwareCacheResolver"),
-        @CacheEvict(
-            value = "reports",
-            key = "'stock-report'",
-            cacheResolver = "tenantAwareCacheResolver"),
-        @CacheEvict(
-            value = "dashboard",
-            key = "'dashboard'",
-            cacheResolver = "tenantAwareCacheResolver")
-      })
-  public void stockOutInternal(
-      @NonNull Long productId, int qty, String notes, @NonNull Long userId) {
-    if (qty <= 0) throw new IllegalArgumentException("Quantity must be positive");
+        StockMovement tmpMovement = StockMovement.builder()
+                .productId(productId)
+                .movementType("IN")
+                .quantity(qty)
+                .previousStock(previousStock)
+                .newStock(newStock)
+                .notes(notes)
+                .createdBy(userId)
+                .build();
+        stockMovementRepository.save(Objects.requireNonNull(tmpMovement));
 
-    int updated = productRepository.decrementStockIfAvailable(productId, qty, LocalDateTime.now());
-    if (updated == 0) {
-      // Either product not found or insufficient stock
-      Product product =
-          productRepository
-              .findById(productId)
-              .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
-      throw new InsufficientStockException(
-          "Insufficient stock. Requested: " + qty + ", Available: " + product.getStock(),
-          product.getStock(),
-          qty);
+        log.info("Stock IN: product={} qty={} {}→{}", productId, qty, previousStock, newStock);
     }
 
-    Product product =
-        productRepository
-            .findById(productId)
-            .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "stock", key = "'id:' + #productId", cacheResolver = "tenantAwareCacheResolver"),
+            @CacheEvict(value = "products", key = "'id:' + #productId", cacheResolver = "tenantAwareCacheResolver"),
+            @CacheEvict(value = "products", key = "'list'", cacheResolver = "tenantAwareCacheResolver"),
+            @CacheEvict(value = "reports", key = "'stock-report'", cacheResolver = "tenantAwareCacheResolver"),
+            @CacheEvict(value = "dashboard", key = "'dashboard'", cacheResolver = "tenantAwareCacheResolver")
+    })
+    public void stockOutInternal(
+            Long productId, int qty, String notes, Long userId) {
+        if (qty <= 0)
+            throw new IllegalArgumentException("Quantity must be positive");
 
-    int newStock = product.getStock();
-    int previousStock = newStock + qty;
+        int updated = productRepository.decrementStockIfAvailable(productId, qty, Objects.requireNonNull(LocalDateTime.now()));
+        if (updated == 0) {
+            // Either product not found or insufficient stock
+            Product product = Objects.requireNonNull(productRepository
+                    .findById(productId)
+                    .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId)));
+            throw new InsufficientStockException(
+                    "Insufficient stock. Requested: " + qty + ", Available: " + product.getStock(),
+                    product.getStock(),
+                    qty);
+        }
 
-    StockMovement tmpMovement =
-        StockMovement.builder()
-            .productId(productId)
-            .movementType("OUT")
-            .quantity(qty)
-            .previousStock(previousStock)
-            .newStock(newStock)
-            .notes(notes)
-            .createdBy(userId)
-            .build();
-    stockMovementRepository.save(Objects.requireNonNull(tmpMovement));
+        Product product = productRepository
+                .findById(productId)
+                .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
-    log.info("Stock OUT: product={} qty={} {}→{}", productId, qty, previousStock, newStock);
-  }
+        int newStock = product.getStock();
+        int previousStock = newStock + qty;
 
-  @Transactional
-  @Caching(
-      evict = {
-        @CacheEvict(
-            value = "stock",
-            key = "'id:' + #productId",
-            cacheResolver = "tenantAwareCacheResolver"),
-        @CacheEvict(
-            value = "products",
-            key = "'id:' + #productId",
-            cacheResolver = "tenantAwareCacheResolver"),
-        @CacheEvict(value = "products", key = "'list'", cacheResolver = "tenantAwareCacheResolver"),
-        @CacheEvict(
-            value = "reports",
-            key = "'stock-report'",
-            cacheResolver = "tenantAwareCacheResolver"),
-        @CacheEvict(
-            value = "dashboard",
-            key = "'dashboard'",
-            cacheResolver = "tenantAwareCacheResolver")
-      })
-  public void stockAdjustInternal(
-      @NonNull Long productId, int qty, String notes, @NonNull Long userId) {
-    if (qty == 0) return;
+        StockMovement tmpMovement = StockMovement.builder()
+                .productId(productId)
+                .movementType("OUT")
+                .quantity(qty)
+                .previousStock(previousStock)
+                .newStock(newStock)
+                .notes(notes)
+                .createdBy(userId)
+                .build();
+        stockMovementRepository.save(Objects.requireNonNull(tmpMovement));
 
-    int updated = productRepository.adjustStockIfValid(productId, qty, LocalDateTime.now());
-    if (updated == 0) {
-      Product product =
-          productRepository
-              .findById(productId)
-              .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
-      throw new InsufficientStockException(
-          "Adjustment would result in negative stock. Current: "
-              + product.getStock()
-              + ", Adjustment: "
-              + qty,
-          product.getStock(),
-          Math.abs(qty));
+        log.info("Stock OUT: product={} qty={} {}→{}", productId, qty, previousStock, newStock);
     }
 
-    Product product =
-        productRepository
-            .findById(productId)
-            .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "stock", key = "'id:' + #productId", cacheResolver = "tenantAwareCacheResolver"),
+            @CacheEvict(value = "products", key = "'id:' + #productId", cacheResolver = "tenantAwareCacheResolver"),
+            @CacheEvict(value = "products", key = "'list'", cacheResolver = "tenantAwareCacheResolver"),
+            @CacheEvict(value = "reports", key = "'stock-report'", cacheResolver = "tenantAwareCacheResolver"),
+            @CacheEvict(value = "dashboard", key = "'dashboard'", cacheResolver = "tenantAwareCacheResolver")
+    })
+    public void stockAdjustInternal(
+            Long productId, int qty, String notes, Long userId) {
+        if (qty == 0)
+            return;
 
-    int newStock = product.getStock();
-    int previousStock = newStock - qty;
+        int updated = productRepository.adjustStockIfValid(productId, qty, Objects.requireNonNull(LocalDateTime.now()));
+        if (updated == 0) {
+            Product product = Objects.requireNonNull(productRepository
+                    .findById(productId)
+                    .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId)));
+            throw new InsufficientStockException(
+                    "Adjustment would result in negative stock. Current: "
+                            + product.getStock()
+                            + ", Adjustment: "
+                            + qty,
+                    product.getStock(),
+                    Math.abs(qty));
+        }
 
-    StockMovement tmpMovement =
-        StockMovement.builder()
-            .productId(productId)
-            .movementType("ADJUSTMENT")
-            .quantity(qty)
-            .previousStock(previousStock)
-            .newStock(newStock)
-            .notes(notes)
-            .createdBy(userId)
-            .build();
-    stockMovementRepository.save(Objects.requireNonNull(tmpMovement));
+        Product product = productRepository
+                .findById(productId)
+                .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
-    log.info("Stock ADJUST: product={} qty={} {}→{}", productId, qty, previousStock, newStock);
-  }
+        int newStock = product.getStock();
+        int previousStock = newStock - qty;
 
-  @Transactional
-  @Caching(
-      evict = {
-        @CacheEvict(
-            value = "stock",
-            key = "'order:' + #id",
-            cacheResolver = "tenantAwareCacheResolver"),
-        @CacheEvict(
-            value = "stock",
-            key = "'location:' + #request.toLocation",
-            cacheResolver = "tenantAwareCacheResolver"),
-        @CacheEvict(value = "products", key = "'list'", cacheResolver = "tenantAwareCacheResolver"),
-        @CacheEvict(
-            value = "reports",
-            key = "'stock-report'",
-            cacheResolver = "tenantAwareCacheResolver"),
-        @CacheEvict(
-            value = "dashboard",
-            key = "'dashboard'",
-            cacheResolver = "tenantAwareCacheResolver")
-      })
-  public @NonNull TransferOrder updateTransferStatus(
-      @NonNull Long id, @NonNull TransferOrderStatusRequest request, @NonNull Long userId) {
-    checkWarehouseType();
-    TransferOrder order =
-        transferOrderRepository
-            .findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Transfer Order not found"));
+        StockMovement tmpMovement = StockMovement.builder()
+                .productId(productId)
+                .movementType("ADJUSTMENT")
+                .quantity(qty)
+                .previousStock(previousStock)
+                .newStock(newStock)
+                .notes(notes)
+                .createdBy(userId)
+                .build();
+        stockMovementRepository.save(Objects.requireNonNull(tmpMovement));
 
-    String currentStatus = order.getStatus();
-    String newStatus = request.getStatus();
-
-    if ("COMPLETED".equals(currentStatus)) {
-      throw new IllegalArgumentException("Already COMPLETED");
+        log.info("Stock ADJUST: product={} qty={} {}→{}", productId, qty, previousStock, newStock);
     }
 
-    if ("PENDING".equals(currentStatus) && !"IN_TRANSIT".equals(newStatus)) {
-      throw new IllegalArgumentException("PENDING can only transition to IN_TRANSIT");
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "stock", key = "'order:' + #id", cacheResolver = "tenantAwareCacheResolver"),
+            @CacheEvict(value = "stock", key = "'location:' + #request.toLocation", cacheResolver = "tenantAwareCacheResolver"),
+            @CacheEvict(value = "products", key = "'list'", cacheResolver = "tenantAwareCacheResolver"),
+            @CacheEvict(value = "reports", key = "'stock-report'", cacheResolver = "tenantAwareCacheResolver"),
+            @CacheEvict(value = "dashboard", key = "'dashboard'", cacheResolver = "tenantAwareCacheResolver")
+    })
+    public TransferOrder updateTransferStatus(
+            Long id, TransferOrderStatusRequest request, Long userId) {
+        checkWarehouseType();
+        TransferOrder order = Objects.requireNonNull(
+                transferOrderRepository
+                        .findById(id)
+                        .orElseThrow(() -> new EntityNotFoundException("Transfer Order not found")));
+
+        TransferOrderStatus currentStatus = order.getStatus();
+        TransferOrderStatus newStatus = TransferOrderStatus.valueOf(Objects.requireNonNull(request.getStatus()));
+
+        if (TransferOrderStatus.COMPLETED == currentStatus) {
+            throw new IllegalArgumentException("Already COMPLETED");
+        }
+
+        if (TransferOrderStatus.PENDING == currentStatus && TransferOrderStatus.IN_TRANSIT != newStatus) {
+            throw new IllegalArgumentException("PENDING can only transition to IN_TRANSIT");
+        }
+
+        if (TransferOrderStatus.IN_TRANSIT == currentStatus && TransferOrderStatus.COMPLETED != newStatus) {
+            throw new IllegalArgumentException("IN_TRANSIT can only transition to COMPLETED");
+        }
+
+        order.setStatus(newStatus);
+        TransferOrder savedOrder = transferOrderRepository.save(order);
+        order = Objects.requireNonNull(savedOrder);
+
+        if (TransferOrderStatus.COMPLETED == newStatus) {
+            WarehouseProduct tmpWp = warehouseProductRepository
+                    .findById(Objects.requireNonNull(order.getProductId()))
+                    .orElseThrow(() -> new EntityNotFoundException("Warehouse product not found"));
+            WarehouseProduct wp = Objects.requireNonNull(tmpWp);
+            wp.setStorageLocation(order.getToLocation());
+            warehouseProductRepository.save(wp);
+
+            StockMovement tmpMovement = StockMovement.builder()
+                    .productId(order.getProductId())
+                    .movementType("TRANSFER")
+                    .quantity(order.getQuantity())
+                    .notes("Transfer from " + order.getFromLocation() + " to " + order.getToLocation())
+                    .createdBy(userId)
+                    .referenceId(order.getId())
+                    .referenceType("TRANSFER_ORDER")
+                    .build();
+            stockMovementRepository.save(Objects.requireNonNull(tmpMovement));
+
+            log.info(
+                    "Transfer order COMPLETED: id={} product={} quantity={} {} -> {}",
+                    order.getId(),
+                    order.getProductId(),
+                    order.getQuantity(),
+                    order.getFromLocation(),
+                    order.getToLocation());
+        }
+
+        return order;
     }
-
-    if ("IN_TRANSIT".equals(currentStatus) && !"COMPLETED".equals(newStatus)) {
-      throw new IllegalArgumentException("IN_TRANSIT can only transition to COMPLETED");
-    }
-
-    order.setStatus(newStatus);
-    TransferOrder savedOrder = transferOrderRepository.save(order);
-    order = Objects.requireNonNull(savedOrder);
-
-    if ("COMPLETED".equals(newStatus)) {
-      WarehouseProduct tmpWp =
-          warehouseProductRepository
-              .findById(Objects.requireNonNull(order.getProductId()))
-              .orElseThrow(() -> new EntityNotFoundException("Warehouse product not found"));
-      WarehouseProduct wp = Objects.requireNonNull(tmpWp);
-      wp.setStorageLocation(order.getToLocation());
-      warehouseProductRepository.save(wp);
-
-      StockMovement tmpMovement =
-          StockMovement.builder()
-              .productId(order.getProductId())
-              .movementType("TRANSFER")
-              .quantity(order.getQuantity())
-              .notes("Transfer from " + order.getFromLocation() + " to " + order.getToLocation())
-              .createdBy(userId)
-              .referenceId(order.getId())
-              .referenceType("TRANSFER_ORDER")
-              .build();
-      stockMovementRepository.save(Objects.requireNonNull(tmpMovement));
-
-      log.info(
-          "Transfer order COMPLETED: id={} product={} quantity={} {} -> {}",
-          order.getId(),
-          order.getProductId(),
-          order.getQuantity(),
-          order.getFromLocation(),
-          order.getToLocation());
-    }
-
-    return order;
-  }
 }

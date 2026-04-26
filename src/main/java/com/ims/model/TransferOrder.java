@@ -41,7 +41,10 @@ public class TransferOrder {
   @Column(name = "quantity", nullable = false)
   private Integer quantity;
 
-  @Column @Builder.Default private String status = "PENDING";
+  @Column
+  @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+  @Builder.Default
+  private TransferOrderStatus status = TransferOrderStatus.PENDING;
 
   @Column private String notes;
 

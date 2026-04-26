@@ -42,33 +42,36 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
   @Query(
       "SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o "
-          + "WHERE o.type = :type AND o.createdAt >= :from AND o.createdAt <= :to")
+          + "WHERE o.type = :type AND o.tenantId = :tenantId AND o.createdAt >= :from AND o.createdAt <= :to")
   @NonNull
   BigDecimal sumAmountByTypeAndDateRange(
       @Param("type") @NonNull String type,
+      @Param("tenantId") @NonNull Long tenantId,
       @Param("from") @NonNull LocalDateTime from,
       @Param("to") @NonNull LocalDateTime to);
 
   @Query(
       "SELECT COALESCE(SUM(o.taxAmount), 0) FROM Order o "
-          + "WHERE o.type = :type AND o.createdAt >= :from AND o.createdAt <= :to")
+          + "WHERE o.type = :type AND o.tenantId = :tenantId AND o.createdAt >= :from AND o.createdAt <= :to")
   @NonNull
   BigDecimal sumTaxAmountByTypeAndDateRange(
       @Param("type") @NonNull String type,
+      @Param("tenantId") @NonNull Long tenantId,
       @Param("from") @NonNull LocalDateTime from,
       @Param("to") @NonNull LocalDateTime to);
 
   @Query(
       "SELECT COUNT(o) FROM Order o "
-          + "WHERE o.type = :type AND o.createdAt >= :from AND o.createdAt <= :to")
+          + "WHERE o.type = :type AND o.tenantId = :tenantId AND o.createdAt >= :from AND o.createdAt <= :to")
   long countByTypeAndDateRange(
       @Param("type") @NonNull String type,
+      @Param("tenantId") @NonNull Long tenantId,
       @Param("from") @NonNull LocalDateTime from,
       @Param("to") @NonNull LocalDateTime to);
 
   @Query(
       """
-      SELECT new com.ims.tenant.dto.MonthlyRevenue(YEAR(o.createdAt), MONTH(o.createdAt), SUM(o.totalAmount))
+      SELECT YEAR(o.createdAt) as year, MONTH(o.createdAt) as month, SUM(o.totalAmount) as revenue
       FROM Order o
       WHERE o.type = :type
         AND o.tenantId = :tenantId
@@ -83,7 +86,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
   @Query(
       """
-      SELECT new com.ims.tenant.dto.OrderStatusStat(o.status, COUNT(o))
+      SELECT o.status as status, COUNT(o) as count
       FROM Order o
       WHERE o.tenantId = :tenantId
         AND o.createdAt >= :from

@@ -8,7 +8,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,10 +22,8 @@ public class SignupController {
   private final SignupService signupService;
 
   @PostMapping
-  @Operation(
-      summary = "Registration for new business",
-      description = "Creates a new tenant and its first admin user.")
-  public ResponseEntity<SignupResponse> signup(@Valid @RequestBody @NonNull SignupRequest request) {
+  @Operation(summary = "Registration for new business", description = "Creates a new tenant and its first admin user.")
+  public ResponseEntity<SignupResponse> signup(@Valid @RequestBody SignupRequest request) {
     SignupResponse response = signupService.signup(request);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }

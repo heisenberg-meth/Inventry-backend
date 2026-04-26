@@ -12,7 +12,6 @@ import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.lang.NonNull;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -33,7 +32,7 @@ public class SaleController {
   @Operation(
       summary = "Record a sale with billing",
       description = "Creates a sales order and automatically generates an invoice")
-  public ResponseEntity<Order> createSale(@Valid @RequestBody @NonNull OrderRequest request) {
+  public ResponseEntity<Order> createSale(@Valid @RequestBody OrderRequest request) {
     Long userId =
         (Long)
             Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication())

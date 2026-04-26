@@ -13,5 +13,7 @@ public enum AuditResource {
   SYSTEM_CONFIG,
   AUTH,
   ORDER,
-  SUPPORT_TICKET
+  SUPPORT_TICKET,
+  ROLE,
+  PERMISSION
 }

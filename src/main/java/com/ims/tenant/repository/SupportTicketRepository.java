@@ -1,6 +1,8 @@
 package com.ims.tenant.repository;
 
 import com.ims.model.SupportTicket;
+import com.ims.model.SupportTicketStatus;
+
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -24,5 +26,5 @@ public interface SupportTicketRepository
 
   Page<SupportTicket> findByAssignedTo(Long assignedTo, Pageable pageable);
 
-  long countByStatus(String status);
+  long countByStatus(SupportTicketStatus status);
 }

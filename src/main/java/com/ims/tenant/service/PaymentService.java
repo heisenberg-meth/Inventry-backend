@@ -1,6 +1,7 @@
 package com.ims.tenant.service;
 
 import com.ims.model.Invoice;
+import com.ims.model.InvoiceStatus;
 import com.ims.model.Payment;
 import com.ims.shared.auth.TenantContext;
 import com.ims.shared.exception.ResourceNotFoundException;
@@ -13,7 +14,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +27,7 @@ public class PaymentService {
 
   @Transactional
   public Payment recordPayment(
-      @NonNull Long invoiceId,
+      Long invoiceId,
       BigDecimal amount,
       String mode,
       String reference,
@@ -35,7 +35,6 @@ public class PaymentService {
       Long userId) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.warn("Tenant ID is missing in PaymentService.recordPayment");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
@@ -44,20 +43,20 @@ public class PaymentService {
             .findById(invoiceId)
             .orElseThrow(() -> new ResourceNotFoundException("Invoice not found: " + invoiceId));
 
-    if ("PAID".equals(invoice.getStatus())) {
+    if (InvoiceStatus.PAID == invoice.getStatus()) {
       throw new IllegalArgumentException("Invoice is already fully PAID");
     }
 
     Payment payment =
         Payment.builder()
-            .tenantId(TenantContext.getTenantId())
+            .tenantId(com.ims.shared.auth.TenantContext.requireTenantId())
             .invoiceId(invoiceId)
             .amount(amount)
             .paymentMode(mode)
             .reference(reference)
             .notes(notes)
             .createdBy(userId)
-            .createdAt(LocalDateTime.now())
+            .createdAt(Objects.requireNonNull(LocalDateTime.now()))
             .build();
 
     payment = paymentRepository.save(Objects.requireNonNull(payment));
@@ -73,29 +72,25 @@ public class PaymentService {
     }
 
     if (totalPaid.compareTo(invoiceAmount) >= 0) {
-      invoice.setStatus("PAID");
-      invoice.setPaidAt(LocalDateTime.now());
+      invoice.setStatus(InvoiceStatus.PAID);
+      invoice.setPaidAt(Objects.requireNonNull(LocalDateTime.now()));
     } else if (totalPaid.compareTo(BigDecimal.ZERO) > 0) {
-      invoice.setStatus("PARTIAL");
+      invoice.setStatus(InvoiceStatus.PARTIAL);
     }
 
     invoiceRepository.save(Objects.requireNonNull(invoice));
-    log.info(
-        "Payment recorded: {} for invoice {}. New status: {}",
-        amount,
-        invoiceId,
-        invoice.getStatus());
 
     return Objects.requireNonNull(payment);
   }
 
-  public Page<Payment> getPayments(@NonNull Pageable pageable) {
+  public Page<Payment> getPayments(Pageable pageable) {
     return paymentRepository.findAll(pageable);
   }
 
-  public Payment getById(@NonNull Long id) {
-    return paymentRepository
-        .findById(id)
-        .orElseThrow(() -> new ResourceNotFoundException("Payment not found: " + id));
+  public Payment getById(Long id) {
+    return Objects.requireNonNull(
+        paymentRepository
+            .findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Payment not found: " + id)));
   }
 }

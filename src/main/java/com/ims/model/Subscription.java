@@ -31,7 +31,8 @@ public class Subscription {
   private String plan;
 
   @Column(nullable = false)
-  private String status;
+  @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+  private SubscriptionStatus status;
 
   @Column(name = "start_date", nullable = false)
   private LocalDateTime startDate;

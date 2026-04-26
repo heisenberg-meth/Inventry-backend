@@ -1,6 +1,7 @@
 package com.ims.model;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,7 @@ class UserBuilderTest {
   void shouldAllowSettingRoleOnce() {
     User user = User.builder().name("Test User").role(UserRole.ADMIN).build();
 
-    assertEquals(UserRole.ADMIN, user.getRole());
+    assertNotNull(user.getRole());
+    assertEquals("ADMIN", user.getRole().getName());
   }
 }

@@ -6,11 +6,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.SignupRequest;
 import com.ims.dto.response.SignupResponse;
 import com.ims.shared.auth.SignupService;
+import java.util.Objects;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,12 +19,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(
     properties = {
@@ -64,33 +58,33 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
     verifyUserEmail("admin2-" + uniqueId2 + "@t2.com");
 
     // Get IDs
-    Long t1Id = tenantRepository.findByWorkspaceSlug("t1-auth-" + uniqueId1).orElseThrow().getId();
-    Long t2Id = tenantRepository.findByWorkspaceSlug("t2-auth-" + uniqueId2).orElseThrow().getId();
+    Long t1Id = Objects.requireNonNull(tenantRepository.findByWorkspaceSlug("t1-auth-" + uniqueId1).orElseThrow().getId());
+    Long t2Id = Objects.requireNonNull(tenantRepository.findByWorkspaceSlug("t2-auth-" + uniqueId2).orElseThrow().getId());
 
     // 4. Login Tenant 1
     String t1Token =
-        login("admin1-" + uniqueId1 + "@t1.com", "password123", t1Response.getCompanyCode(), t1Id);
+        login("admin1-" + uniqueId1 + "@t1.com", "password123", Objects.requireNonNull(t1Response.getCompanyCode()), t1Id);
 
     // 5. Verify Tenant 1 Isolation (Should only see 1 user: admin1)
     mockMvc
         .perform(
             get("/api/v1/tenant/users")
                 .header("Authorization", "Bearer " + t1Token)
-                .with(tenant(t1Id.toString())))
+                .with(tenant(Objects.requireNonNull(t1Id.toString()))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content.length()").value(1))
         .andExpect(jsonPath("$.content[0].email").value("admin1-" + uniqueId1 + "@t1.com"));
 
     // 6. Login Tenant 2
     String t2Token =
-        login("admin2-" + uniqueId2 + "@t2.com", "password123", t2Response.getCompanyCode(), t2Id);
+        login("admin2-" + uniqueId2 + "@t2.com", "password123", Objects.requireNonNull(t2Response.getCompanyCode()), t2Id);
 
     // 7. Verify Tenant 2 Isolation (Should only see 1 user: admin2)
     mockMvc
         .perform(
             get("/api/v1/tenant/users")
                 .header("Authorization", "Bearer " + t2Token)
-                .with(tenant(t2Id.toString())))
+                .with(tenant(Objects.requireNonNull(t2Id.toString()))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content.length()").value(1))
         .andExpect(jsonPath("$.content[0].email").value("admin2-" + uniqueId2 + "@t2.com"));
@@ -100,17 +94,17 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
         .perform(
             post("/api/v1/auth/logout")
                 .header("Authorization", "Bearer " + t1Token)
-                .with(tenant(t1Id.toString())))
+                .with(tenant(Objects.requireNonNull(t1Id.toString()))))
         .andExpect(status().isOk());
 
     // Mock Redis blacklist check for next request
-    doReturn(true).when(redisTemplate).hasKey(anyString());
+    doReturn(true).when(redisTemplate).hasKey(Objects.requireNonNull(anyString()));
 
     mockMvc
         .perform(
             get("/api/v1/tenant/users")
                 .header("Authorization", "Bearer " + t1Token)
-                .with(tenant(t1Id.toString())))
+                .with(tenant(Objects.requireNonNull(t1Id.toString()))))
         .andExpect(status().isUnauthorized());
   }
 
@@ -122,13 +116,13 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
   }
 
   @NonNull
-  private SignupRequest createSignupRequest(String name, String workspaceSlug, String email) {
+  private SignupRequest createSignupRequest(@NonNull String name, @NonNull String workspaceSlug, @NonNull String email) {
     SignupRequest req = new SignupRequest();
-    req.setBusinessName(name);
+    req.setBusinessName(Objects.requireNonNull(name));
     req.setBusinessType("Retail");
-    req.setWorkspaceSlug(workspaceSlug);
-    req.setOwnerName("Owner " + name);
-    req.setOwnerEmail(email);
+    req.setWorkspaceSlug(Objects.requireNonNull(workspaceSlug));
+    req.setOwnerName(Objects.requireNonNull("Owner " + name));
+    req.setOwnerEmail(Objects.requireNonNull(email));
     req.setPassword("password123");
     return req;
   }

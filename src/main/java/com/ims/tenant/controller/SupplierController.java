@@ -15,7 +15,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -40,16 +39,16 @@ public class SupplierController {
   @GetMapping
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "List suppliers")
-  public @NonNull ResponseEntity<Page<com.ims.dto.response.SupplierResponse>> list(
-      @NonNull Pageable pageable) {
+  public ResponseEntity<Page<com.ims.dto.response.SupplierResponse>> list(
+      Pageable pageable) {
     return ResponseEntity.ok(Objects.requireNonNull(supplierService.getSuppliers(pageable)));
   }
 
   @PostMapping
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Create supplier")
-  public @NonNull ResponseEntity<com.ims.dto.response.SupplierResponse> create(
-      @jakarta.validation.Valid @RequestBody @NonNull com.ims.dto.request.SupplierRequest request) {
+  public ResponseEntity<com.ims.dto.response.SupplierResponse> create(
+      @jakarta.validation.Valid @RequestBody com.ims.dto.request.SupplierRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(Objects.requireNonNull(supplierService.create(request)));
   }
@@ -57,23 +56,23 @@ public class SupplierController {
   @GetMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Get supplier")
-  public @NonNull ResponseEntity<com.ims.dto.response.SupplierResponse> get(@PathVariable long id) {
+  public ResponseEntity<com.ims.dto.response.SupplierResponse> get(@PathVariable long id) {
     return ResponseEntity.ok(Objects.requireNonNull(supplierService.getSupplierResponseById(id)));
   }
 
   @PutMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Update supplier")
-  public @NonNull ResponseEntity<com.ims.dto.response.SupplierResponse> update(
+  public ResponseEntity<com.ims.dto.response.SupplierResponse> update(
       @PathVariable long id,
-      @jakarta.validation.Valid @RequestBody @NonNull com.ims.dto.request.SupplierRequest request) {
+      @jakarta.validation.Valid @RequestBody com.ims.dto.request.SupplierRequest request) {
     return ResponseEntity.ok(Objects.requireNonNull(supplierService.update(id, request)));
   }
 
   @DeleteMapping("/{id}")
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Delete supplier")
-  public @NonNull ResponseEntity<Void> delete(@PathVariable long id) {
+  public ResponseEntity<Void> delete(@PathVariable long id) {
     supplierService.delete(id);
     return ResponseEntity.noContent().build();
   }

@@ -14,6 +14,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.TenantId;
+import org.springframework.lang.Nullable;
 
 @Entity
 @Table(name = "orders")
@@ -26,6 +27,7 @@ public class Order {
   @Id
   @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "order_seq")
   @SequenceGenerator(name = "order_seq", sequenceName = "orders_id_seq", allocationSize = 50)
+  @Nullable
   private Long id;
 
   @TenantId
@@ -45,9 +47,11 @@ public class Order {
   private OrderStatus status = OrderStatus.PENDING;
 
   @Column(name = "customer_id")
+  @Nullable
   private Long customerId;
 
   @Column(name = "supplier_id")
+  @Nullable
   private Long supplierId;
 
   @Column(name = "total_amount", precision = 12, scale = 2)
@@ -60,12 +64,15 @@ public class Order {
   @Builder.Default
   private BigDecimal discount = BigDecimal.ZERO;
 
-  @Column private String notes;
+  @Column
+  @Nullable
+  private String notes;
 
   @Column(name = "created_by")
   private Long createdBy;
 
   @Column(name = "reference_order_id")
+  @Nullable
   private Long referenceOrderId;
 
   @Column(name = "created_at")

@@ -13,7 +13,6 @@ import java.util.Objects;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.lang.NonNull;
 import io.github.resilience4j.retry.annotation.Retry;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -50,7 +49,7 @@ public class WebhookService {
   private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
   public List<Webhook> getMyWebhooks() {
-    return webhookRepository.findByTenantId(TenantContext.getTenantId());
+    return webhookRepository.findByTenantId(TenantContext.requireTenantId());
   }
 
   @Transactional
@@ -60,17 +59,17 @@ public class WebhookService {
     Webhook webhook =
         Objects.requireNonNull(
             Webhook.builder()
-                .tenantId(TenantContext.getTenantId())
-                .url(normalizedUri.toString())
-                .eventTypes(eventTypes)
-                .secret(encryptionService.encrypt(secret))
+                .tenantId(TenantContext.requireTenantId())
+                .url(Objects.requireNonNull(normalizedUri.toString()))
+                .eventTypes(Objects.requireNonNull(eventTypes))
+                .secret(Objects.requireNonNull(encryptionService.encrypt(secret)))
                 .isActive(true)
                 .build());
     return webhookRepository.save(webhook);
   }
 
   @Transactional
-  public void deleteWebhook(@NonNull Long id) {
+  public void deleteWebhook(Long id) {
     webhookRepository
         .findById(id)
         .ifPresent(
@@ -81,7 +80,7 @@ public class WebhookService {
             });
   }
 
-  public void dispatch(@NonNull Long tenantId, String eventType, Object payload) {
+  public void dispatch(Long tenantId, String eventType, Object payload) {
     List<Webhook> webhooks = webhookRepository.findByTenantId(tenantId);
 
     for (Webhook webhook : webhooks) {

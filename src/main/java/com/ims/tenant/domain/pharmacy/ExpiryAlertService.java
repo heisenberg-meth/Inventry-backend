@@ -2,6 +2,7 @@ package com.ims.tenant.domain.pharmacy;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -29,7 +30,7 @@ public class ExpiryAlertService {
 
           for (Long tenantId : tenantIds) {
             com.ims.shared.auth.TenantContext.runWithTenant(
-                tenantId,
+                Objects.requireNonNull(tenantId),
                 () -> {
                   LocalDate threshold = LocalDate.now().plusDays(EXPIRY_THRESHOLD_DAYS);
                   List<PharmacyProduct> expiring =

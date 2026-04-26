@@ -14,7 +14,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -36,8 +35,8 @@ public class CategoryController {
   @GetMapping
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "List categories")
-  public ResponseEntity<PagedResponse<CategoryResponse>> list(@NonNull Pageable pageable) {
-    long tenantId = TenantContext.getTenantId();
+  public ResponseEntity<PagedResponse<CategoryResponse>> list(Pageable pageable) {
+    long tenantId = TenantContext.requireTenantId();
     return ResponseEntity.ok(categoryService.getCategories(tenantId, pageable));
   }
 
@@ -45,7 +44,7 @@ public class CategoryController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Create category")
   public ResponseEntity<CategoryResponse> create(
-      @Valid @RequestBody @NonNull CategoryRequest request) {
+      @Valid @RequestBody CategoryRequest request) {
     TenantContext.assertTenantPresent();
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(categoryService.toResponse(categoryService.create(Objects.requireNonNull(request))));
@@ -62,7 +61,7 @@ public class CategoryController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Update category")
   public ResponseEntity<CategoryResponse> update(
-      @PathVariable long id, @Valid @RequestBody @NonNull CategoryRequest request) {
+      @PathVariable long id, @Valid @RequestBody CategoryRequest request) {
     return ResponseEntity.ok(categoryService.toResponse(categoryService.update(id, Objects.requireNonNull(request))));
   }
 

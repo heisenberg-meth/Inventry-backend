@@ -143,10 +143,7 @@ public class ProductController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Export all products as CSV")
   public ResponseEntity<String> exportProducts() {
-    var products =
-        productRepository
-            .findByIsActiveTrue(Pageable.unpaged())
-            .getContent();
+    var products = productRepository.findExportDataByIsActiveTrue();
 
     var data =
         products.stream()

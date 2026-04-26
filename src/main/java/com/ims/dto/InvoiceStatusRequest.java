@@ -1,13 +1,14 @@
 package com.ims.dto;
 
-import jakarta.validation.constraints.NotBlank;
+import com.ims.model.InvoiceStatus;
+import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 import lombok.Data;
 
 @Data
 public class InvoiceStatusRequest {
-  @NotBlank(message = "Status is required")
-  private String status;
+  @NotNull(message = "Status is required")
+  private InvoiceStatus status;
 
   private LocalDateTime paidAt;
 

@@ -11,6 +11,7 @@ import com.ims.tenant.dto.OrderItemRequest;
 import com.ims.tenant.dto.OrderRequest;
 import com.ims.tenant.repository.CustomerRepository;
 import com.ims.tenant.repository.OrderItemRepository;
+import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.repository.OrderRepository;
 import com.ims.tenant.repository.SupplierRepository;
 import com.ims.tenant.domain.pharmacy.PharmacyProduct;
@@ -21,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util. HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.HashMap;
 import java.util.function.Function;
@@ -59,14 +61,14 @@ public class OrderService {
 
     // Validate supplier
     supplierRepository
-        .findById(supplierId)
+        .findById(Objects.requireNonNull(supplierId))
         .orElseThrow(() -> new EntityNotFoundException("Supplier not found"));
 
     // Bulk fetch and validate products
     Set<Long> productIds =
         itemRequests.stream().map(OrderItemRequest::getProductId).collect(Collectors.toSet());
     Map<Long, Product> productMap =
-        productRepository.findAllById(productIds).stream()
+        productRepository.findAllById(Objects.requireNonNull(productIds)).stream()
             .collect(Collectors.toMap(Product::getId, Function.identity()));
 
     if (productMap.size() < productIds.size()) {
@@ -96,28 +98,29 @@ public class OrderService {
 
       orderItems.add(
           OrderItem.builder()
-              .productId(item.getProductId())
+              .productId(Objects.requireNonNull(item.getProductId()))
               .quantity(qty)
-              .unitPrice(unitPrice)
-              .discount(discount)
-              .taxRate(taxRate)
-              .total(itemTotal)
+              .unitPrice(Objects.requireNonNull(unitPrice))
+              .discount(Objects.requireNonNull(discount))
+              .taxRate(Objects.requireNonNull(taxRate))
+              .total(Objects.requireNonNull(itemTotal))
               .build());
     }
 
     Order order =
         Order.builder()
+            .tenantId(com.ims.shared.auth.TenantContext.requireTenantId())
             .type("PURCHASE")
             .status(com.ims.model.OrderStatus.PENDING)
             .supplierId(supplierId)
-            .totalAmount(totalAmount)
-            .taxAmount(taxAmount)
+            .totalAmount(Objects.requireNonNull(totalAmount))
+            .taxAmount(Objects.requireNonNull(taxAmount))
             .notes(request.getNotes())
             .createdBy(userId)
             .build();
 
     Order savedPurchaseOrder = orderRepository.save(order);
-    final Long orderId = savedPurchaseOrder.getId();
+    final Long orderId = Objects.requireNonNull(savedPurchaseOrder.getId());
     orderItems.forEach(oi -> oi.setOrderId(orderId));
     orderItemRepository.saveAll(orderItems);
 
@@ -126,9 +129,10 @@ public class OrderService {
         AuditAction.CREATE_PURCHASE_ORDER,
         AuditResource.ORDER,
         orderId,
-        String.format(
-            "Created purchase order #%d, Supplier: %d, Total: %s",
-            orderId, supplierId, totalAmount));
+        Objects.requireNonNull(
+            String.format(
+                "Created purchase order #%d, Supplier: %d, Total: %s",
+                orderId, supplierId, totalAmount)));
 
     return savedPurchaseOrder;
   }
@@ -148,7 +152,7 @@ public class OrderService {
     Set<Long> productIds =
         itemRequests.stream().map(OrderItemRequest::getProductId).collect(Collectors.toSet());
     Map<Long, Product> productMap =
-        productRepository.findAllById(productIds).stream()
+        productRepository.findAllById(Objects.requireNonNull(productIds)).stream()
             .collect(Collectors.toMap(Product::getId, Function.identity()));
 
     if (productMap.size() < productIds.size()) {
@@ -158,7 +162,7 @@ public class OrderService {
     }
 
     Map<Long, PharmacyProduct> pharmacyProductMap =
-        pharmacyProductRepository.findAllById(productIds).stream()
+        pharmacyProductRepository.findAllById(Objects.requireNonNull(productIds)).stream()
             .collect(
                 Collectors.toMap(pp -> pp.getProduct().getId(), Function.identity()));
 
@@ -193,12 +197,12 @@ public class OrderService {
 
       orderItems.add(
           OrderItem.builder()
-              .productId(productId)
+              .productId(Objects.requireNonNull(productId))
               .quantity(qty)
-              .unitPrice(unitPrice)
-              .discount(discount)
-              .taxRate(taxRate)
-              .total(itemTotal)
+              .unitPrice(Objects.requireNonNull(unitPrice))
+              .discount(Objects.requireNonNull(discount))
+              .taxRate(Objects.requireNonNull(taxRate))
+              .total(Objects.requireNonNull(itemTotal))
               .build());
     }
 
@@ -214,18 +218,19 @@ public class OrderService {
 
     Order salesOrder =
         Order.builder()
+            .tenantId(com.ims.shared.auth.TenantContext.requireTenantId())
             .type("SALE")
             .status(OrderStatus.PENDING)
             .customerId(customerId)
-            .totalAmount(totalAmount)
-            .taxAmount(taxAmount)
-            .discount(rootDiscount)
+            .totalAmount(Objects.requireNonNull(totalAmount))
+            .taxAmount(Objects.requireNonNull(taxAmount))
+            .discount(Objects.requireNonNull(rootDiscount))
             .notes(request.getNotes())
             .createdBy(userId)
             .build();
     Order savedSalesOrder = orderRepository.save(salesOrder);
 
-    final Long orderId = savedSalesOrder.getId();
+    final Long orderId = Objects.requireNonNull(savedSalesOrder.getId());
     orderItems.forEach(oi -> oi.setOrderId(orderId));
     orderItemRepository.saveAll(orderItems);
 
@@ -235,8 +240,9 @@ public class OrderService {
         AuditAction.CREATE_SALE_ORDER,
         AuditResource.ORDER,
         orderId,
-        String.format(
-            "Created sales order #%d, Customer: %d, Total: %s", orderId, customerId, totalAmount));
+        Objects.requireNonNull(
+            String.format(
+                "Created sales order #%d, Customer: %d, Total: %s", orderId, customerId, totalAmount)));
 
     return savedSalesOrder;
   }
@@ -260,6 +266,7 @@ public class OrderService {
 
     Order initialReturnOrder =
         Order.builder()
+            .tenantId(com.ims.shared.auth.TenantContext.requireTenantId())
             .type("RETURN")
             .status(com.ims.model.OrderStatus.COMPLETED)
             .customerId(originalOrder.getCustomerId())
@@ -271,19 +278,13 @@ public class OrderService {
     Order savedReturnOrder = orderRepository.save(initialReturnOrder);
 
     List<OrderItem> originalItems = orderItemRepository.findByOrderId(originalOrderId);
-    List<OrderItem> returnOrderItems = new ArrayList<>();
-
-    // 1. Bulk fetch all prior return items for this order
-    List<Order> priorReturnOrders = orderRepository.findByReferenceOrderId(originalOrderId);
-    Map<Long, Integer> alreadyReturnedMap = new HashMap<>();
-
-    if (!priorReturnOrders.isEmpty()) {
-      List<Long> priorReturnIds =
-          priorReturnOrders.stream().map(Order::getId).collect(Collectors.toList());
-      orderItemRepository.findByOrderIdIn(priorReturnIds).forEach(oi -> {
-        alreadyReturnedMap.merge(oi.getProductId(), oi.getQuantity(), (a, b) -> a + b);
-      });
+    
+    // Verify customer linkage
+    if (!Objects.equals(originalOrder.getCustomerId(), initialReturnOrder.getCustomerId())) {
+        throw new IllegalArgumentException("Return order customer must match original order customer");
     }
+
+    List<OrderItem> returnOrderItems = new ArrayList<>();
 
     for (OrderItemRequest item : returnItems) {
       Long productId = item.getProductId();
@@ -298,13 +299,13 @@ public class OrderService {
                       new IllegalArgumentException(
                           "Product " + productId + " was not part of the original order"));
 
-      int alreadyReturned = alreadyReturnedMap.getOrDefault(productId, 0);
-
-      if (qty + alreadyReturned > originalItem.getQuantity()) {
+      // 2. Atomic update to returned_quantity to prevent over-returns and race conditions
+      int updatedRows = orderItemRepository.incrementReturnedQuantity(originalItem.getId(), qty);
+      if (updatedRows == 0) {
         throw new IllegalArgumentException(
             String.format(
-                "Cannot return %d units of product %d. Already returned: %d, Purchased: %d",
-                qty, productId, alreadyReturned, originalItem.getQuantity()));
+                "Cannot return %d units of product %d. This would exceed the remaining returnable quantity.",
+                qty, productId));
       }
 
       BigDecimal unitPrice = originalItem.getUnitPrice();
@@ -320,11 +321,11 @@ public class OrderService {
 
       returnOrderItems.add(
           OrderItem.builder()
-              .productId(productId)
+              .productId(Objects.requireNonNull(productId))
               .quantity(qty)
-              .unitPrice(unitPrice)
-              .taxRate(taxRate)
-              .total(itemTotal)
+              .unitPrice(Objects.requireNonNull(unitPrice))
+              .taxRate(Objects.requireNonNull(taxRate))
+              .total(Objects.requireNonNull(itemTotal))
               .build());
 
       // Restore stock
@@ -335,13 +336,13 @@ public class OrderService {
           userId);
     }
 
-    final Long returnOrderId = savedReturnOrder.getId();
+    final Long returnOrderId = Objects.requireNonNull(savedReturnOrder.getId());
     returnOrderItems.forEach(oi -> oi.setOrderId(returnOrderId));
     orderItemRepository.saveAll(returnOrderItems);
 
-    savedReturnOrder.setTotalAmount(returnTotal);
-    savedReturnOrder.setTaxAmount(returnTax);
-    savedReturnOrder = orderRepository.save(savedReturnOrder);
+    savedReturnOrder.setTotalAmount(Objects.requireNonNull(returnTotal));
+    savedReturnOrder.setTaxAmount(Objects.requireNonNull(returnTax));
+    savedReturnOrder = Objects.requireNonNull(orderRepository.save(savedReturnOrder));
 
     // Create Credit Note
     invoiceService.createCreditNote(savedReturnOrder, null);
@@ -350,8 +351,9 @@ public class OrderService {
         AuditAction.CREATE_RETURN_ORDER,
         AuditResource.ORDER,
         returnOrderId,
-        String.format(
-            "Processed return for order #%d, Total Credit: %s", originalOrderId, returnTotal));
+        Objects.requireNonNull(
+            String.format(
+                "Processed return for order #%d, Total Credit: %s", originalOrderId, returnTotal)));
 
     return savedReturnOrder;
   }
@@ -371,7 +373,7 @@ public class OrderService {
             .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Order not found"));
     List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
-    return Map.of("order", order, "items", items);
+    return Objects.requireNonNull(Map.of("order", order, "items", items));
   }
 
   @Transactional(readOnly = true)
@@ -383,7 +385,7 @@ public class OrderService {
 
     com.ims.model.Tenant tenant =
         tenantRepository
-            .findById(com.ims.shared.auth.TenantContext.getTenantId())
+            .findById(TenantContext.requireTenantId())
             .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
     String partnerName = "N/A";
@@ -391,21 +393,21 @@ public class OrderService {
 
     if ("SALE".equals(order.getType()) && order.getCustomerId() != null) {
       var customer =
-          customerRepository.findById(order.getCustomerId()).orElse(null);
+          customerRepository.findById(Objects.requireNonNull(order.getCustomerId())).orElse(null);
       if (customer != null) {
         partnerName = customer.getName();
         partnerAddress = customer.getAddress();
       }
     } else if ("PURCHASE".equals(order.getType()) && order.getSupplierId() != null) {
       var supplier =
-          supplierRepository.findById(order.getSupplierId()).orElse(null);
+          supplierRepository.findById(Objects.requireNonNull(order.getSupplierId())).orElse(null);
       if (supplier != null) {
         partnerName = supplier.getName();
         partnerAddress = supplier.getAddress();
       }
     }
 
-    List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
+    List<OrderItem> orderItems = orderItemRepository.findByOrderId(Objects.requireNonNull(order.getId()));
 
     // Batch fetch products to avoid N+1
     List<Long> productIds =
@@ -413,7 +415,7 @@ public class OrderService {
             .map(OrderItem::getProductId)
             .collect(Collectors.toList());
     Map<Long, String> productNames =
-        productRepository.findAllById(productIds).stream()
+        productRepository.findAllById(Objects.requireNonNull(productIds)).stream()
             .collect(Collectors.toMap(Product::getId, Product::getName));
 
     List<Map<String, Object>> items =
@@ -448,7 +450,7 @@ public class OrderService {
     context.setVariable("discount", order.getDiscount());
     context.setVariable("totalAmount", order.getTotalAmount());
 
-    return pdfService.generatePdfFromHtml("order-summary", context);
+    return Objects.requireNonNull(pdfService.generatePdfFromHtml("order-summary", context));
   }
 
   private static final Map<OrderStatus, Set<com.ims.model.OrderStatus>>
@@ -479,10 +481,10 @@ public class OrderService {
 
   @Transactional
   public Order confirmOrder(Long id, Long userId) {
-    Order order =
+    Order order = Objects.requireNonNull(
         orderRepository
             .findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+            .orElseThrow(() -> new EntityNotFoundException("Order not found")));
 
     validateTransition(order, com.ims.model.OrderStatus.CONFIRMED);
 
@@ -506,7 +508,7 @@ public class OrderService {
       order.setStatus(com.ims.model.OrderStatus.CONFIRMED);
     }
 
-    order = orderRepository.save(order);
+    order = Objects.requireNonNull(orderRepository.save(order));
     auditLogService.logAudit(
         AuditAction.CONFIRM_ORDER,
         AuditResource.ORDER,
@@ -517,15 +519,15 @@ public class OrderService {
 
   @Transactional
   public Order shipOrder(Long id, Long userId) {
-    Order order =
+    Order order = Objects.requireNonNull(
         orderRepository
             .findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+            .orElseThrow(() -> new EntityNotFoundException("Order not found")));
 
     validateTransition(order, com.ims.model.OrderStatus.SHIPPED);
 
     order.setStatus(com.ims.model.OrderStatus.SHIPPED);
-    order = orderRepository.save(order);
+    order = Objects.requireNonNull(orderRepository.save(order));
     auditLogService.logAudit(
         AuditAction.SHIP_ORDER,
         AuditResource.ORDER,
@@ -536,10 +538,10 @@ public class OrderService {
 
   @Transactional
   public Order completeOrder(Long id, Long userId) {
-    Order order =
+    Order order = Objects.requireNonNull(
         orderRepository
             .findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+            .orElseThrow(() -> new EntityNotFoundException("Order not found")));
 
     if ("PURCHASE".equals(order.getType())) {
       validateTransition(order, com.ims.model.OrderStatus.RECEIVED);
@@ -558,7 +560,7 @@ public class OrderService {
       order.setStatus(com.ims.model.OrderStatus.COMPLETED);
     }
 
-    order = orderRepository.save(order);
+    order = Objects.requireNonNull(orderRepository.save(order));
     auditLogService.logAudit(
         AuditAction.COMPLETE_ORDER,
         AuditResource.ORDER,
@@ -569,10 +571,10 @@ public class OrderService {
 
   @Transactional
   public Order cancelOrder(Long id, Long userId) {
-    Order order =
+    Order order = Objects.requireNonNull(
         orderRepository
             .findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+            .orElseThrow(() -> new EntityNotFoundException("Order not found")));
 
     validateTransition(order, com.ims.model.OrderStatus.CANCELLED);
 
@@ -591,7 +593,7 @@ public class OrderService {
     }
 
     order.setStatus(com.ims.model.OrderStatus.CANCELLED);
-    order = orderRepository.save(order);
+    order = Objects.requireNonNull(orderRepository.save(order));
     auditLogService.logAudit(
         AuditAction.CANCEL_ORDER,
         AuditResource.ORDER,

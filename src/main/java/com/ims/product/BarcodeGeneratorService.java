@@ -5,6 +5,7 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import javax.imageio.ImageIO;
+import java.util.Objects;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -43,7 +44,7 @@ public class BarcodeGeneratorService {
 
     try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
       ImageIO.write(image, "png", baos);
-      return baos.toByteArray();
+      return Objects.requireNonNull(baos.toByteArray());
     } catch (Exception e) {
       throw new RuntimeException("Failed to generate barcode image", e);
     }
