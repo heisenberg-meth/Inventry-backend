@@ -71,7 +71,7 @@ public class PlatformAnalyticsService {
 
   public Map<String, Object> getUsageAnalytics() {
     long totalUsers = userRepository.count();
-    long activeUsers = userRepository.countActive();
+    long activeUsers = userRepository.countActiveGlobal();
 
     Map<String, Object> usage = new LinkedHashMap<>();
     usage.put("total_users", totalUsers);

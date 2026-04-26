@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
  * the application.
  *
  * <p>Public endpoints (signup, login, verify-email) intentionally run without a tenant. They use
- * {@code findByEmailUnfiltered} or {@code findByCompanyCode} repository methods that bypass the
+ * {@code findByEmailGlobal} or {@code findByCompanyCode} repository methods that bypass the
  * tenant filter, so this sentinel never affects them.
  */
 @Component

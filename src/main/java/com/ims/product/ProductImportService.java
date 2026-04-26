@@ -2,7 +2,6 @@ package com.ims.product;
 
 import com.ims.category.Category;
 import com.ims.category.CategoryRepository;
-import com.ims.shared.auth.TenantContext;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
@@ -10,10 +9,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -32,13 +31,21 @@ public class ProductImportService {
 
   private final ProductRepository productRepository;
   private final CategoryRepository categoryRepository;
+  private final com.ims.shared.auth.SecurityContextAccessor securityContextAccessor;
 
-  @Transactional
+  private static final int BATCH_SIZE = 100;
+
+  /**
+   * Main import logic. No longer globally transactional to allow partial success.
+   */
   public Map<String, Object> importProducts(MultipartFile file, boolean dryRun) {
-    Long tenantId = TenantContext.requireTenantId();
+    Long tenantId = securityContextAccessor.requireTenantId();
 
     Map<String, Category> categoryCache = new HashMap<>();
-    List<Product> products = new ArrayList<>();
+    categoryRepository.findByTenantId(tenantId, null).forEach(cat -> 
+        categoryCache.put(cat.getName().toLowerCase(), cat));
+
+    List<Product> chunk = new ArrayList<>();
     int successCount = 0;
     int failCount = 0;
     List<String> errors = new ArrayList<>();
@@ -55,70 +62,35 @@ public class ProductImportService {
           continue;
         }
 
-        String[] data = line.split(",");
-        if (data.length < REQUIRED_COLUMN_COUNT) {
-          errors.add(
-              "Line " + lineNum + ": Invalid format (at least Name, SalePrice, Stock required)");
-          failCount++;
-          continue;
-        }
-
         try {
-          String name = data[0].trim();
-          if (name.isBlank()) {
-            throw new IllegalArgumentException("Product name is required");
+          String[] data = line.split(",");
+          if (data.length < REQUIRED_COLUMN_COUNT) {
+            throw new IllegalArgumentException("Invalid format: at least Name, SalePrice, Stock required");
           }
+
+          String name = data[0].trim();
           BigDecimal salePrice = new BigDecimal(data[1].trim());
           int stock = Integer.parseInt(data[2].trim());
 
           String rawSku = data.length > MIN_COLUMNS_FOR_SKU ? data[COL_SKU_INDEX].trim() : null;
           String sku = (rawSku == null || rawSku.isBlank()) ? "SKU-" + java.util.UUID.randomUUID().toString().substring(0, 8) : rawSku;
-          String categoryName =
-              data.length > MIN_COLUMNS_FOR_CATEGORY ? data[COL_CATEGORY_INDEX].trim() : "General";
+          String categoryName = data.length > MIN_COLUMNS_FOR_CATEGORY ? data[COL_CATEGORY_INDEX].trim() : "General";
 
-          if (categoryName.isBlank()) {
-            categoryName = "General";
+          // Find or create category in a separate transaction if needed
+          Category category = getOrCreateCategory(categoryCache, categoryName, tenantId);
+
+          Product product = Product.builder()
+              .name(name).tenantId(tenantId).salePrice(salePrice).stock(stock).sku(sku)
+              .categoryId(category.getId()).unit("Unit").isActive(true).reorderLevel(DEFAULT_REORDER_LEVEL)
+              .build();
+
+          if (!dryRun) {
+            chunk.add(product);
+            if (chunk.size() >= BATCH_SIZE) {
+              saveChunk(chunk);
+              chunk.clear();
+            }
           }
-
-          // Find or create category with caching
-          String finalCategoryName = categoryName;
-          Category category =
-              categoryCache.computeIfAbsent(
-                  finalCategoryName.toLowerCase(),
-                  nameKey ->
-                      categoryRepository
-                          .findByNameIgnoreCaseAndTenantId(finalCategoryName, tenantId)
-                          .orElseGet(
-                              () -> {
-                                log.info(
-                                    "Creating new category '{}' for tenant {}",
-                                    finalCategoryName,
-                                    tenantId);
-                                Category newCat =
-                                    Objects.requireNonNull(
-                                        Category.builder()
-                                            .name(finalCategoryName)
-                                            .tenantId(tenantId)
-                                            .description("Auto-created during import")
-                                            .build());
-                                return Objects.requireNonNull(categoryRepository.save(newCat));
-                              }));
-
-          Product product =
-              Objects.requireNonNull(
-                  Product.builder()
-                      .name(name)
-                      .tenantId(tenantId)
-                      .salePrice(salePrice)
-                      .stock(stock)
-                      .sku(sku)
-                      .categoryId(Objects.requireNonNull(category.getId()))
-                      .unit("Unit")
-                      .isActive(true)
-                      .reorderLevel(DEFAULT_REORDER_LEVEL)
-                      .build());
-
-          products.add(product);
           successCount++;
         } catch (Exception e) {
           errors.add("Line " + lineNum + ": " + e.getMessage());
@@ -126,37 +98,46 @@ public class ProductImportService {
         }
       }
 
-      if (!errors.isEmpty()) {
-        return Objects.requireNonNull(Map.of(
-            "success_count", 0, "fail_count", failCount, "errors", errors, "status", "FAILED"));
-      }
-
-      if (dryRun) {
-        return Objects.requireNonNull(Map.of(
-            "success_count",
-            successCount,
-            "fail_count",
-            0,
-            "errors",
-            new ArrayList<>(),
-            "status",
-            "DRY_RUN_SUCCESS"));
-      }
-
-      if (!products.isEmpty()) {
-        try {
-          productRepository.saveAll(products);
-        } catch (org.springframework.dao.DataIntegrityViolationException e) {
-          throw new IllegalStateException("Import failed due to DB constraint", e);
-        }
+      // Final partial chunk
+      if (!dryRun && !chunk.isEmpty()) {
+        saveChunk(chunk);
       }
 
     } catch (Exception e) {
       log.error("Fatal error during product import", e);
-      throw new RuntimeException("Import failed: " + e.getMessage());
+      return Map.of("status", "FATAL_ERROR", "message", e.getMessage(), "success_count", successCount);
     }
 
-    return Objects.requireNonNull(Map.of(
-        "success_count", successCount, "fail_count", 0, "errors", errors, "status", "SUCCESS"));
+    String status = failCount == 0 ? (dryRun ? "DRY_RUN_SUCCESS" : "SUCCESS") : "PARTIAL_SUCCESS";
+    return Map.of(
+        "success_count", successCount,
+        "fail_count", failCount,
+        "errors", errors,
+        "status", status
+    );
+  }
+
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void saveChunk(List<Product> products) {
+    try {
+      productRepository.saveAll(products);
+    } catch (Exception e) {
+      log.error("Failed to save chunk of products", e);
+      throw new RuntimeException("Chunk save failed: " + e.getMessage());
+    }
+  }
+
+  @Transactional(propagation = Propagation.REQUIRED)
+  protected Category getOrCreateCategory(Map<String, Category> cache, String name, Long tenantId) {
+    String nameKey = name.trim().toLowerCase();
+    if (cache.containsKey(nameKey)) {
+      return cache.get(nameKey);
+    }
+
+    Category newCat = Category.builder()
+        .name(name.trim()).tenantId(tenantId).description("Auto-created during import").build();
+    Category saved = categoryRepository.save(newCat);
+    cache.put(nameKey, saved);
+    return saved;
   }
 }

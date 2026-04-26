@@ -1,57 +1,33 @@
 spring:
   datasource:
-    # URL, username, and password will be provided by Testcontainers @ServiceConnection
     driver-class-name: org.postgresql.Driver
-    hikari:
-      maximum-pool-size: 5
-      minimum-idle: 0
-      idle-timeout: 10000
-      max-lifetime: 30000
-      connection-timeout: 30000
+
   jpa:
     hibernate:
-      ddl-auto: validate # Use Flyway for migrations
-    show-sql: false
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
+      ddl-auto: validate
     properties:
       hibernate:
-        # multiTenancy: NONE
+        multiTenancy: NONE
+        cache:
+          use_second_level_cache: false
+          use_query_cache: false
+        cache.region.factory_class: org.hibernate.cache.internal.NoCachingRegionFactory
+
   cache:
     type: none
+
   flyway:
     enabled: true
+
   data:
     redis:
-      host: localhost
-      port: 6379
-
-app:
-  jwt:
-    secret: test-only-secret-do-not-use-in-production-000000000000000000000000
-    expiry-seconds: 86400
-    refresh-expiry-seconds: 604800
-  cache:
-    product-ttl-minutes: 15
-    stock-ttl-minutes: 5
-    report-ttl-minutes: 30
-    tenant-ttl-hours: 1
-  rate-limit:
-    auth-rpm: 20
-    public-rpm: 50
-    authenticated-rpm: 200
-    window-seconds: 60
-  security:
-    encryption-key: "test-encryption-key-32-bytes-len"
+      repositories:
+        enabled: false
 
 management:
   health:
     redis:
       enabled: false
-  endpoints:
-    web:
-      exposure:
-        include: health,info
-
-logging:
-  level:
-    org.springframework: DEBUG
+app:
+  test:
+    mode: true

@@ -13,6 +13,8 @@ public class LoginResponse {
   private String accessToken;
   private String refreshToken;
   private long expiresIn;
+  private boolean mfaRequired;
+  private String mfaToken;
   private UserResponse user;
   private TenantResponse tenant;
 

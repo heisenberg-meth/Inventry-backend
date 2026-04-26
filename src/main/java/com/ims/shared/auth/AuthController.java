@@ -168,6 +168,38 @@ public class AuthController {
     return ResponseEntity.ok(Map.of("valid", true));
   }
 
+  @PostMapping("/2fa/setup")
+  @SecurityRequirement(name = "bearerAuth")
+  @Operation(summary = "Initiate 2FA setup", description = "Generates TOTP secret and QR code URL")
+  public ResponseEntity<Map<String, Object>> setup2fa() {
+    Long userId = Objects.requireNonNull(extractUserId());
+    return ResponseEntity.ok(authService.setup2FA(userId));
+  }
+
+  @PostMapping("/2fa/enable")
+  @SecurityRequirement(name = "bearerAuth")
+  @Operation(summary = "Complete 2FA setup", description = "Verifies initial code and enables 2FA")
+  public ResponseEntity<Map<String, Object>> enable2fa(@RequestBody Map<String, String> body) {
+    Long userId = Objects.requireNonNull(extractUserId());
+    String code = Objects.requireNonNull(body.get("code"), "Code is required");
+    return ResponseEntity.ok(authService.enable2FA(userId, code));
+  }
+
+  @PostMapping("/2fa/disable")
+  @SecurityRequirement(name = "bearerAuth")
+  @Operation(summary = "Disable 2FA", description = "Requires current password")
+  public ResponseEntity<Map<String, String>> disable2fa(@RequestBody Map<String, String> body) {
+    Long userId = Objects.requireNonNull(extractUserId());
+    String password = Objects.requireNonNull(body.get("password"), "Password is required");
+    return ResponseEntity.ok(authService.disable2FA(userId, password));
+  }
+
+  @PostMapping("/2fa/verify")
+  @Operation(summary = "Verify MFA code during login challenge")
+  public ResponseEntity<LoginResponse> verifyMfa(@Valid @RequestBody com.ims.dto.request.MfaRequest request) {
+    return ResponseEntity.ok(authService.verifyMfa(request));
+  }
+
   private Long extractUserId() {
     var auth = SecurityContextHolder.getContext().getAuthentication();
     if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {

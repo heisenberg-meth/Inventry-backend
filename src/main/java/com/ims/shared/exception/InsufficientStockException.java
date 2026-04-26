@@ -6,11 +6,11 @@ import lombok.Getter;
 public class InsufficientStockException extends RuntimeException {
   private static final long serialVersionUID = 1L;
   private final int availableStock;
-  private final int requestedQty;
+  private final int requestedQuantity;
 
-  public InsufficientStockException(String message, int availableStock, int requestedQty) {
+  public InsufficientStockException(String message, int availableStock, int requestedQuantity) {
     super(message);
     this.availableStock = availableStock;
-    this.requestedQty = requestedQty;
+    this.requestedQuantity = requestedQuantity;
   }
 }

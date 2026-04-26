@@ -66,7 +66,8 @@ public class InvoiceService {
       throw new IllegalArgumentException("Invoice can only be created for SALE orders");
     }
 
-    if (invoiceRepository.existsByOrderId(order.getId())) {
+    Long tenantId = TenantContext.requireTenantId();
+    if (invoiceRepository.existsByOrderId(order.getId(), tenantId)) {
       throw new IllegalArgumentException("Invoice already exists for this order");
     }
 
@@ -164,13 +165,17 @@ public class InvoiceService {
 
   private String incrementAndGetInvoiceNumber() {
     Long tenantId = TenantContext.requireTenantId();
-    Long sequence = tenantRepository.incrementAndGetInvoiceSequence(tenantId);
-    if (sequence == null) {
-      throw new EntityNotFoundException("Tenant not found or sequence update failed");
-    }
+    
+    // PESSIMISTIC LOCK: Ensure no other thread can increment the sequence for this tenant simultaneously
+    Tenant tenant = tenantRepository.lockById(tenantId)
+        .orElseThrow(() -> new EntityNotFoundException("Tenant not found: " + tenantId));
+    
+    int newSequence = tenant.getInvoiceSequence() + 1;
+    tenant.setInvoiceSequence(newSequence);
+    tenantRepository.saveAndFlush(tenant);
 
     String dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-    return Objects.requireNonNull(String.format("INV-%d-%s-%04d", tenantId, dateStr, sequence));
+    return Objects.requireNonNull(String.format("INV-%d-%s-%04d", tenantId, dateStr, newSequence));
   }
 
   @Transactional(readOnly = true)
@@ -238,18 +243,22 @@ public class InvoiceService {
   }
 
   public Page<Invoice> getInvoices(Pageable pageable) {
-    return Objects.requireNonNull(invoiceRepository.findAll(pageable));
+    Long tenantId = TenantContext.requireTenantId();
+    return Objects.requireNonNull(invoiceRepository.findByTenantIdAndIsActiveTrue(tenantId, pageable));
   }
 
   public Page<Invoice> getOverdueInvoices(Pageable pageable) {
+    Long tenantId = TenantContext.requireTenantId();
     return Objects.requireNonNull(
-        invoiceRepository.findByStatusNotAndDueDateBefore(InvoiceStatus.PAID, LocalDate.now(), pageable));
+        invoiceRepository.findByTenantIdAndStatusNotAndDueDateBefore(tenantId, InvoiceStatus.PAID, LocalDate.now(), pageable));
   }
 
   public Invoice getInvoiceById(Long id) {
+    Long tenantId = TenantContext.requireTenantId();
     return Objects.requireNonNull(
         invoiceRepository
-            .findById(id)
+            .findById(id) // Standard findById needs care if not isolated by DB policy
+            .filter(inv -> tenantId.equals(inv.getTenantId()))
             .orElseThrow(() -> new EntityNotFoundException("Invoice not found")));
   }
 }

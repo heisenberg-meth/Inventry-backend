@@ -2,179 +2,77 @@ package com.ims.shared.exception;
 
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
-import com.ims.dto.response.ErrorResponse;
 
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
-@RestControllerAdvice
+@ControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
 
-  private static final int STATUS_BAD_REQUEST = 400;
-  private static final int STATUS_NOT_FOUND = 404;
-  private static final int STATUS_FORBIDDEN = 403;
-  private static final int STATUS_UNPROCESSABLE = 422;
-  private static final int STATUS_CONFLICT = 409;
-  private static final int STATUS_UNAUTHORIZED = 401;
-  private static final int STATUS_INTERNAL_ERROR = 500;
+    private static final String TRACE_ID_KEY = "traceId";
 
-  @ExceptionHandler(MethodArgumentNotValidException.class)
-  public ResponseEntity<ErrorResponse> handleValidation(
-      MethodArgumentNotValidException ex) {
-    Map<String, String> fieldErrors = new HashMap<>();
-    ex.getBindingResult()
-        .getFieldErrors()
-        .forEach(err -> fieldErrors.put(err.getField(), err.getDefaultMessage()));
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<ApiError> handleNotFound(EntityNotFoundException ex, HttpServletRequest request) {
+        return buildResponse(ex.getMessage(), "NOT_FOUND", HttpStatus.NOT_FOUND, request, null);
+    }
 
-    return ResponseEntity.badRequest().body(new ErrorResponse("Validation failed", fieldErrors));
-  }
+    @ExceptionHandler(InsufficientStockException.class)
+    public ResponseEntity<ApiError> handleInsufficientStock(InsufficientStockException ex, HttpServletRequest request) {
+        Map<String, String> details = new HashMap<>();
+        details.put("available", String.valueOf(ex.getAvailableStock()));
+        details.put("requested", String.valueOf(ex.getRequestedQuantity()));
+        return buildResponse(ex.getMessage(), "INSUFFICIENT_STOCK", HttpStatus.UNPROCESSABLE_ENTITY, request, details);
+    }
 
-  @ExceptionHandler(HttpMessageNotReadableException.class)
-  public ResponseEntity<ErrorResponse> handleParseError(HttpMessageNotReadableException ex) {
-    return ResponseEntity.badRequest().body(new ErrorResponse("Invalid request format", null));
-  }
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiError> handleBadRequest(IllegalArgumentException ex, HttpServletRequest request) {
+        return buildResponse(ex.getMessage(), "BAD_REQUEST", HttpStatus.BAD_REQUEST, request, null);
+    }
 
-  @ExceptionHandler(EntityNotFoundException.class)
-  public ResponseEntity<Map<String, Object>> handleNotFound(
-      EntityNotFoundException ex, HttpServletRequest request) {
-    return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .body(errorBody(STATUS_NOT_FOUND, "NOT_FOUND", ex.getMessage(), request.getRequestURI()));
-  }
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiError> handleConflict(IllegalStateException ex, HttpServletRequest request) {
+        // Map builder overwrite attempts or state conflicts to 409
+        return buildResponse(ex.getMessage(), "STATE_CONFLICT", HttpStatus.CONFLICT, request, null);
+    }
 
-  @ExceptionHandler(ResourceNotFoundException.class)
-  public ResponseEntity<Map<String, Object>> handleResourceNotFound(
-      ResourceNotFoundException ex, HttpServletRequest request) {
-    return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .body(errorBody(STATUS_NOT_FOUND, "NOT_FOUND", ex.getMessage(), request.getRequestURI()));
-  }
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
+        Map<String, String> errors = new HashMap<>();
+        ex.getBindingResult().getFieldErrors().forEach(error -> 
+            errors.put(error.getField(), error.getDefaultMessage())
+        );
+        return buildResponse("Validation failed", "VALIDATION_ERROR", HttpStatus.BAD_REQUEST, request, errors);
+    }
 
-  @ExceptionHandler(AccessDeniedException.class)
-  public ResponseEntity<Map<String, Object>> handleAccessDenied(
-      AccessDeniedException ex, HttpServletRequest request) {
-    return ResponseEntity.status(HttpStatus.FORBIDDEN)
-        .body(errorBody(STATUS_FORBIDDEN, "FORBIDDEN", ex.getMessage(), request.getRequestURI()));
-  }
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiError> handleGeneric(Exception ex, HttpServletRequest request) {
+        log.error("Unhandled exception occurred: traceId={}", MDC.get(TRACE_ID_KEY), ex);
+        return buildResponse("An unexpected error occurred. Please contact support.", 
+            "INTERNAL_SERVER_ERROR", HttpStatus.INTERNAL_SERVER_ERROR, request, null);
+    }
 
-  @ExceptionHandler(UnauthorizedException.class)
-  public ResponseEntity<Map<String, Object>> handleUnauthorized(
-      UnauthorizedException ex, HttpServletRequest request) {
-    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-        .body(
-            errorBody(
-                STATUS_UNAUTHORIZED, "UNAUTHORIZED", ex.getMessage(), request.getRequestURI()));
-  }
+    private ResponseEntity<ApiError> buildResponse(
+            String message, String code, HttpStatus status, HttpServletRequest request, Map<String, String> errors) {
+        
+        ApiError error = ApiError.builder()
+                .message(message)
+                .code(code)
+                .status(status.value())
+                .timestamp(LocalDateTime.now())
+                .path(request.getRequestURI())
+                .traceId(MDC.get(TRACE_ID_KEY))
+                .errors(errors)
+                .build();
 
-  @ExceptionHandler(InsufficientStockException.class)
-  public ResponseEntity<Map<String, Object>> handleInsufficientStock(
-      InsufficientStockException ex, HttpServletRequest request) {
-    Map<String, Object> body =
-        errorBody(
-            STATUS_UNPROCESSABLE, "INSUFFICIENT_STOCK", ex.getMessage(), request.getRequestURI());
-    body.put("available_stock", ex.getAvailableStock());
-    body.put("requested_qty", ex.getRequestedQty());
-    return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(body);
-  }
-
-  @ExceptionHandler(DataIntegrityViolationException.class)
-  public ResponseEntity<Map<String, Object>> handleDataIntegrity(
-      DataIntegrityViolationException ex, HttpServletRequest request) {
-    return ResponseEntity.status(HttpStatus.CONFLICT)
-        .body(
-            errorBody(
-                STATUS_CONFLICT, "CONFLICT", "Data integrity violation", request.getRequestURI()));
-  }
-
-  @ExceptionHandler(BadRequestException.class)
-  public ResponseEntity<Map<String, Object>> handleBadRequestException(
-      BadRequestException ex, HttpServletRequest request) {
-    return ResponseEntity.badRequest()
-        .body(
-            errorBody(STATUS_BAD_REQUEST, "BAD_REQUEST", ex.getMessage(), request.getRequestURI()));
-  }
-
-  @ExceptionHandler(IllegalArgumentException.class)
-  public ResponseEntity<Map<String, Object>> handleBadRequest(
-      IllegalArgumentException ex, HttpServletRequest request) {
-    return ResponseEntity.badRequest()
-        .body(
-            errorBody(STATUS_BAD_REQUEST, "BAD_REQUEST", ex.getMessage(), request.getRequestURI()));
-  }
-
-  @ExceptionHandler(IllegalStateException.class)
-  public ResponseEntity<Map<String, Object>> handleIllegalState(
-      IllegalStateException ex, HttpServletRequest request) {
-    log.error("Illegal state encountered at {}: {}", request.getRequestURI(), ex.getMessage());
-    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .body(
-            errorBody(
-                STATUS_INTERNAL_ERROR, "INTERNAL_ERROR", ex.getMessage(), request.getRequestURI()));
-  }
-
-  @ExceptionHandler(TenantContextException.class)
-  public ResponseEntity<Map<String, Object>> handleTenantContext(
-      TenantContextException ex, HttpServletRequest request) {
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-        .body(
-            errorBody(
-                STATUS_BAD_REQUEST,
-                "TENANT_CONTEXT_MISSING",
-                ex.getMessage(),
-                request.getRequestURI()));
-  }
-
-  @ExceptionHandler(UnauthorizedAccessException.class)
-  public ResponseEntity<Map<String, Object>> handleAuthAccess(
-      UnauthorizedAccessException ex, HttpServletRequest request) {
-    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-        .body(
-            errorBody(
-                STATUS_UNAUTHORIZED, "UNAUTHORIZED", ex.getMessage(), request.getRequestURI()));
-  }
-
-  @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
-  public ResponseEntity<Map<String, Object>> handleNoResourceFound(
-      org.springframework.web.servlet.resource.NoResourceFoundException ex,
-      HttpServletRequest request) {
-    return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .body(
-            errorBody(
-                STATUS_NOT_FOUND, "NOT_FOUND", "Resource not found", request.getRequestURI()));
-  }
-
-  @ExceptionHandler(Exception.class)
-  public ResponseEntity<Map<String, Object>> handleAll(Exception ex, HttpServletRequest request) {
-    log.error(
-        "Unexpected error occurred at [{}]: {}", request.getRequestURI(), ex.getMessage(), ex);
-
-    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .body(
-            errorBody(
-                STATUS_INTERNAL_ERROR,
-                "INTERNAL_ERROR",
-                "An unexpected error occurred",
-                request.getRequestURI()));
-  }
-
-  private Map<String, Object> errorBody(int status, String error, String message, String path) {
-    Map<String, Object> body = new LinkedHashMap<>();
-    body.put("status", status);
-    body.put("error", error);
-    body.put("message", message);
-    body.put("path", path);
-    body.put("timestamp", LocalDateTime.now().toString());
-    body.put("correlation_id", org.slf4j.MDC.get("correlation_id"));
-    return body;
-  }
+        return new ResponseEntity<>(error, status);
+    }
 }

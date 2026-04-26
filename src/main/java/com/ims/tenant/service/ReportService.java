@@ -3,7 +3,6 @@ package com.ims.tenant.service;
 import com.ims.model.Tenant;
 import com.ims.platform.repository.TenantRepository;
 import com.ims.product.ProductRepository;
-import com.ims.shared.auth.JwtAuthDetails;
 import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.domain.pharmacy.PharmacyProductRepository;
 import com.ims.tenant.repository.OrderRepository;
@@ -22,9 +21,7 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.data.domain.Pageable;
 import org.springframework.lang.Nullable;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -37,16 +34,15 @@ public class ReportService {
   private final PharmacyProductRepository pharmacyProductRepository;
   private final TenantRepository tenantRepository;
   private final com.ims.shared.notification.AlertRepository alertRepository;
+  private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+  private final com.ims.shared.auth.SecurityContextAccessor securityContextAccessor;
 
   private static final int DEFAULT_DAYS = 30;
   private static final int PERCENTAGE_BASE = 100;
   private static final int STATUS_PRIORITY_OK = 3;
 
   private int getExpiryThreshold() {
-    Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) {
-      throw new com.ims.shared.exception.TenantContextException("Tenant not resolved from request");
-    }
+    Long tenantId = securityContextAccessor.requireTenantId();
     return tenantRepository
         .findById(tenantId)
         .map(Tenant::getExpiryThresholdDays)
@@ -90,42 +86,54 @@ public class ReportService {
       throw new com.ims.shared.exception.TenantContextException("Tenant not resolved from request");
     }
 
-    LocalDateTime todayStart = LocalDate.now().atStartOfDay();
-    LocalDateTime todayEnd = LocalDate.now().atTime(LocalTime.MAX);
-
-    long totalProducts = productRepository.countActiveByTenant(tenantId);
-    long lowStockCount = productRepository.countLowStockByTenant(tenantId);
-    long outOfStockCount = productRepository.countOutOfStockByTenant(tenantId);
-
-    BigDecimal todaySalesAmount = orderRepository.sumAmountByTypeAndDateRange(
-        "SALE", tenantId, Objects.requireNonNull(todayStart), Objects.requireNonNull(todayEnd));
-
-    long todaySalesCount = orderRepository.countByTypeAndDateRange(
-        "SALE", tenantId, Objects.requireNonNull(todayStart), Objects.requireNonNull(todayEnd));
-
-    BigDecimal todayPurchasesAmount = orderRepository.sumAmountByTypeAndDateRange(
-        "PURCHASE", tenantId, Objects.requireNonNull(todayStart), Objects.requireNonNull(todayEnd));
-
     Map<String, Object> dashboard = new LinkedHashMap<>();
-    dashboard.put("total_products", totalProducts);
-    dashboard.put("low_stock_count", lowStockCount);
-    dashboard.put("out_of_stock_count", outOfStockCount);
-    dashboard.put("today_sales_amount", todaySalesAmount);
-    dashboard.put("today_sales_count", todaySalesCount);
-    dashboard.put("today_purchases_amount", todayPurchasesAmount);
+
+    try {
+      Map<String, Object> stats = jdbcTemplate.queryForMap(
+          "SELECT * FROM tenant_summary_stats WHERE tenant_id = ?", tenantId);
+
+      dashboard.put("total_products", stats.get("total_products"));
+      dashboard.put("low_stock_count", stats.get("low_stock_count"));
+      dashboard.put("out_of_stock_count", stats.get("out_of_stock_count"));
+      dashboard.put("today_sales_amount", stats.get("today_sales_amount"));
+      dashboard.put("today_sales_count", stats.get("today_sales_count"));
+      dashboard.put("today_purchases_amount", stats.get("today_purchases_amount"));
+      dashboard.put("inventory_valuation", stats.get("inventory_valuation"));
+      dashboard.put("last_refreshed_at", stats.get("last_refreshed_at"));
+    } catch (Exception e) {
+      log.warn("Materialized view fetch failed for tenant {}: {}. Falling back to real-time calculation.", tenantId,
+          e.getMessage());
+
+      LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+
+      // COMBINED OPTIMIZED QUERY: Fetch all stats in one trip
+      String sql = """
+          SELECT
+              (SELECT COUNT(*) FROM products WHERE tenant_id = ? AND is_active = true) as total_products,
+              (SELECT COUNT(*) FROM products WHERE tenant_id = ? AND is_active = true AND stock <= reorder_level) as low_stock_count,
+              (SELECT COUNT(*) FROM products WHERE tenant_id = ? AND is_active = true AND stock = 0) as out_of_stock_count,
+              (SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE tenant_id = ? AND type = 'SALE' AND created_at >= ?) as today_sales_amount,
+              (SELECT COUNT(*) FROM orders WHERE tenant_id = ? AND type = 'SALE' AND created_at >= ?) as today_sales_count,
+              (SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE tenant_id = ? AND type = 'PURCHASE' AND created_at >= ?) as today_purchases_amount,
+              (SELECT COALESCE(SUM(sale_price * stock), 0) FROM products WHERE tenant_id = ? AND is_active = true) as inventory_valuation
+      """;
+
+      Map<String, Object> fallbackStats = jdbcTemplate.queryForMap(sql,
+          tenantId, tenantId, tenantId, tenantId, todayStart, tenantId, todayStart, tenantId, todayStart, tenantId);
+
+      dashboard.putAll(fallbackStats);
+    }
 
     // Expiring soon — only for PHARMACY tenants
-    String businessType = getBusinessType();
-    if ("PHARMACY".equals(businessType)) {
+    if ("PHARMACY".equals(securityContextAccessor.getBusinessType().orElse(null))) {
       LocalDate threshold = LocalDate.now().plusDays(getExpiryThreshold());
       long expiringSoon = pharmacyProductRepository.countExpiring(threshold);
       dashboard.put("expiring_soon_count", expiringSoon);
     }
 
-    dashboard.put("inventory_valuation", getInventoryValuation(tenantId));
     dashboard.put("category_distribution", getCategoryDistribution(tenantId));
-
     dashboard.put("cached_at", Objects.requireNonNull(LocalDateTime.now()).toString());
+
     return dashboard;
   }
 
@@ -148,13 +156,10 @@ public class ReportService {
 
   @Cacheable(value = "reports", key = "'stock-report'", cacheResolver = "tenantAwareCacheResolver")
   public List<Map<String, Object>> getStockReport(@Nullable String filter) {
-    Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) {
-      throw new com.ims.shared.exception.TenantContextException("Tenant not resolved");
-    }
+    Long tenantId = securityContextAccessor.requireTenantId();
 
-    // Use findAllWithDetails to avoid N+1 query for PharmacyProduct details
-    var products = productRepository.findAllWithDetails(tenantId, Pageable.unpaged()).getContent();
+    // Use optimized projection to avoid N+1 and memory bloat
+    var products = productRepository.findStockReportView(tenantId);
     List<Map<String, Object>> report = new ArrayList<>();
     int thresholdDays = getExpiryThreshold();
 
@@ -298,8 +303,7 @@ public class ReportService {
   public List<Map<String, Object>> getAlerts() {
     return Objects.requireNonNull(
         alertRepository
-            .findByTenantIdAndIsDismissedFalse(
-                Objects.requireNonNull(TenantContext.getTenantId(), "Tenant context required"))
+            .findByTenantIdAndIsDismissedFalse(securityContextAccessor.requireTenantId())
             .stream()
             .map(
                 a -> {
@@ -341,16 +345,4 @@ public class ReportService {
     };
   }
 
-  @Nullable
-  private String getBusinessType() {
-    try {
-      var auth = SecurityContextHolder.getContext().getAuthentication();
-      if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
-        return details.getBusinessType();
-      }
-    } catch (Exception e) {
-      log.trace("Caught expected exception in report security context: {}", e.getMessage());
-    }
-    return null;
-  }
 }

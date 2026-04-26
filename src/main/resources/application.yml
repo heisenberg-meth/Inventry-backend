@@ -6,6 +6,10 @@ spring:
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      connection-timeout: 20000
+      leak-detection-threshold: 2000
 
   jpa:
     hibernate:
@@ -18,6 +22,11 @@ spring:
         order_inserts: true
         order_updates: true
         batch_versioned_data: true
+        cache:
+          use_second_level_cache: true
+          use_query_cache: true
+          region.factory_class: org.redisson.hibernate.RedissonRegionFactory
+          redisson.config: classpath:redisson-l2.yaml
     show-sql: false
     open-in-view: false
 
@@ -87,12 +96,22 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health, prometheus, metrics, info
   endpoint:
     health:
       show-details: never
       probes:
         enabled: true
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name:ims-backend}
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
 
 springdoc:
   api-docs:
@@ -104,6 +123,11 @@ springdoc:
 server:
   port: ${PORT:8080}
   forward-headers-strategy: native
+  shutdown: graceful
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json,application/xml
+    min-response-size: 1024
   error:
     include-message: never
     include-stacktrace: never
@@ -111,8 +135,6 @@ server:
     include-exception: false
 
 logging:
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger - [tenant:%X{tenantId}] [user:%X{userId}] [req:%X{requestId}] %msg%n"
   level:
     com.ims: INFO
     org.springframework.security: INFO

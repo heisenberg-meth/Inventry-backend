@@ -38,8 +38,10 @@ public class PaymentGatewayService {
   @Transactional
   public Map<String, Object> initiatePayment(
       @NonNull Long invoiceId, @NonNull BigDecimal amount, @NonNull Long userId) {
+    Long tenantId = TenantContext.requireTenantId();
     invoiceRepository
         .findById(invoiceId)
+        .filter(inv -> tenantId.equals(inv.getTenantId()))
         .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
 
     String gatewayOrderId =
@@ -106,7 +108,7 @@ public class PaymentGatewayService {
       // 1. Locate and validate payment record
       Payment payment =
           paymentRepository
-              .findByGatewayTransactionId(gatewayOrderId)
+              .findByGatewayTransactionIdAndTenantId(gatewayOrderId, tenantId)
               .orElseThrow(
                   () -> new EntityNotFoundException("Payment not found for order: " + gatewayOrderId));
 
@@ -137,6 +139,7 @@ public class PaymentGatewayService {
       // 4. Update Invoice state
       invoiceRepository
           .findById(Objects.requireNonNull(payment.getInvoiceId()))
+          .filter(inv -> tenantId.equals(inv.getTenantId()))
           .ifPresent(
               invoice -> {
                 invoice.setStatus(InvoiceStatus.PAID);

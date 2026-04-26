@@ -20,6 +20,8 @@ import org.hibernate.annotations.TenantId;
 
 @Entity
 @Table(name = "roles")
+@jakarta.persistence.Cacheable
+@org.hibernate.annotations.Cache(usage = org.hibernate.annotations.CacheConcurrencyStrategy.READ_WRITE)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

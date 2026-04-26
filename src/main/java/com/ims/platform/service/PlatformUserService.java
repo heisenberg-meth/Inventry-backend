@@ -39,7 +39,7 @@ public class PlatformUserService {
         && !request.getRole().equals(UserRole.SUPPORT_ADMIN.name())) {
       throw new IllegalArgumentException("Invalid role. Must be PLATFORM_ADMIN or SUPPORT_ADMIN.");
     }
-    if (userRepository.existsByEmail(request.getEmail())) {
+    if (userRepository.existsByEmailGlobal(request.getEmail())) {
       throw new IllegalArgumentException("Email already in use");
     }
 
@@ -129,7 +129,7 @@ public class PlatformUserService {
       user.setName(Objects.requireNonNull(request.getName()));
     }
     if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
-      if (userRepository.existsByEmail(request.getEmail())) {
+      if (userRepository.existsByEmailGlobal(request.getEmail())) {
         throw new IllegalArgumentException("Email already in use");
       }
       user.setEmail(Objects.requireNonNull(request.getEmail()));

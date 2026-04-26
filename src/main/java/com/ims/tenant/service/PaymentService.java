@@ -33,14 +33,11 @@ public class PaymentService {
       String reference,
       String notes,
       Long userId) {
-    Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) {
-      throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
-    }
-
+    Long tenantId = TenantContext.requireTenantId();
     Invoice invoice =
         invoiceRepository
             .findById(invoiceId)
+            .filter(inv -> tenantId.equals(inv.getTenantId()))
             .orElseThrow(() -> new ResourceNotFoundException("Invoice not found: " + invoiceId));
 
     if (InvoiceStatus.PAID == invoice.getStatus()) {
@@ -62,7 +59,7 @@ public class PaymentService {
     payment = paymentRepository.save(Objects.requireNonNull(payment));
 
     // Update invoice status
-    BigDecimal totalPaid = paymentRepository.sumAmountByInvoiceId(invoiceId);
+    BigDecimal totalPaid = paymentRepository.sumAmountByInvoiceId(invoiceId, tenantId);
     BigDecimal invoiceAmount = invoice.getAmount();
     if (invoice.getTaxAmount() != null) {
       invoiceAmount = invoiceAmount.add(invoice.getTaxAmount());
@@ -84,13 +81,15 @@ public class PaymentService {
   }
 
   public Page<Payment> getPayments(Pageable pageable) {
-    return paymentRepository.findAll(pageable);
+    Long tenantId = TenantContext.requireTenantId();
+    return paymentRepository.findByTenantId(tenantId, pageable);
   }
 
   public Payment getById(Long id) {
+    Long tenantId = TenantContext.requireTenantId();
     return Objects.requireNonNull(
         paymentRepository
-            .findById(id)
+            .findByIdAndTenantId(id, tenantId)
             .orElseThrow(() -> new ResourceNotFoundException("Payment not found: " + id)));
   }
 }

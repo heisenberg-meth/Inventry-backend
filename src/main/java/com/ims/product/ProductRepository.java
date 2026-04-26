@@ -15,6 +15,8 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
+  Page<Product> findAllByTenantId(Long tenantId, Pageable pageable);
+
   @Query(
       """
       SELECT p.id as id, p.name as name, p.sku as sku, p.barcode as barcode,
@@ -32,6 +34,15 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
       """)
   Page<ProductListView> findAllWithDetails(@Param("tenantId") Long tenantId, Pageable pageable);
 
+  @Query("""
+      SELECT p.id as id, p.name as name, p.sku as sku, p.stock as stock,
+             p.reorderLevel as reorderLevel, p.unit as unit, pp.expiryDate as expiryDate
+      FROM Product p
+      LEFT JOIN PharmacyProduct pp ON pp.product.id = p.id
+      WHERE p.tenantId = :tenantId AND p.isActive = true
+      """)
+  List<ProductReportView> findStockReportView(@Param("tenantId") Long tenantId);
+
   @Query(
       """
       SELECT p.id as id, p.name as name, p.sku as sku, p.barcode as barcode,
@@ -45,9 +56,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
       FROM Product p
       LEFT JOIN PharmacyProduct pp ON pp.product.id = p.id
       LEFT JOIN WarehouseProduct wp ON wp.product.id = p.id
-      WHERE p.id = :id
+      WHERE p.id = :id AND p.tenantId = :tenantId
       """)
-  Optional<ProductListView> findByIdWithDetails(@Param("id") Long id);
+  Optional<ProductListView> findByIdWithDetails(@Param("id") Long id, @Param("tenantId") Long tenantId);
 
   @Query(
       "SELECT p.id as id, p.name as name, p.sku as sku, p.stock as stock, "
@@ -111,14 +122,17 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
   @Query("SELECT COUNT(p) FROM Product p WHERE p.tenantId = :tenantId AND p.stock = 0 AND p.isActive = true")
   long countOutOfStockByTenant(@Param("tenantId") Long tenantId);
 
-  @Query("SELECT COUNT(p) FROM Product p WHERE p.stock <= p.reorderLevel AND p.isActive = true")
-  long countLowStock();
+  @Query("SELECT COUNT(p) FROM Product p WHERE p.tenantId = :tenantId AND p.stock <= p.reorderLevel AND p.isActive = true")
+  long countLowStock(@Param("tenantId") Long tenantId);
+
+  @Query("SELECT p FROM Product p WHERE p.tenantId = :tenantId AND p.stock <= p.reorderLevel AND p.isActive = true")
+  Stream<Product> streamAllLowStock(@Param("tenantId") Long tenantId);
 
   @Query("SELECT p FROM Product p WHERE p.stock <= p.reorderLevel AND p.isActive = true")
-  Stream<Product> streamAllLowStock();
+  Stream<Product> streamAllLowStockGlobal();
 
-  @Query("SELECT COUNT(p) FROM Product p WHERE p.stock = 0 AND p.isActive = true")
-  long countOutOfStock();
+  @Query("SELECT COUNT(p) FROM Product p WHERE p.tenantId = :tenantId AND p.stock = 0 AND p.isActive = true")
+  long countOutOfStock(@Param("tenantId") Long tenantId);
 
   boolean existsByCategoryId(Long categoryId);
 
@@ -126,21 +140,24 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
   long countByCategoryId(Long categoryId);
 
+  @Query("SELECT COUNT(p) FROM Product p WHERE p.tenantId = :tenantId AND p.isActive = true")
+  long countActive(@Param("tenantId") Long tenantId);
+
   @Query("SELECT COUNT(p) FROM Product p WHERE p.isActive = true")
-  long countActive();
+  long countActiveGlobal();
 
   @Query("SELECT p.id as id, p.name as name, p.stock as stock FROM Product p WHERE p.tenantId = :tenantId AND p.stock < p.reorderLevel")
   List<ProductStockView> findLowStock(@Param("tenantId") Long tenantId);
 
   @Query("SELECT p.id as id, p.name as name, p.sku as sku, p.stock as stock, p.salePrice as salePrice, p.categoryId as categoryId "
-      + "FROM Product p WHERE p.isActive = true")
-  List<ProductExportView> findExportDataByIsActiveTrue();
+      + "FROM Product p WHERE p.tenantId = :tenantId AND p.isActive = true")
+  List<ProductExportView> findExportData(@Param("tenantId") Long tenantId);
 
-  Page<Product> findByIsActiveTrue(Pageable pageable);
+  Page<Product> findByTenantIdAndIsActiveTrue(Long tenantId, Pageable pageable);
 
   @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
-  @Query("SELECT p FROM Product p WHERE p.id = :productId")
-  Optional<Product> findByIdWithLock(@Param("productId") Long productId);
+  @Query("SELECT p FROM Product p WHERE p.id = :productId AND p.tenantId = :tenantId")
+  Optional<Product> findByIdWithLock(@Param("productId") Long productId, @Param("tenantId") Long tenantId);
 
   /**
    * Calculates the total inventory valuation for a tenant.

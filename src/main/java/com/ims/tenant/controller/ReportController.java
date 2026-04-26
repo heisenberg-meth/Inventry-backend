@@ -2,8 +2,6 @@ package com.ims.tenant.controller;
 
 import com.ims.model.StockMovement;
 import com.ims.shared.rbac.RequiresRole;
-import com.ims.shared.utils.CsvExportService;
-import com.ims.tenant.repository.OrderRepository;
 import com.ims.tenant.repository.StockMovementRepository;
 import com.ims.tenant.service.ReportService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,11 +9,9 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -36,127 +32,47 @@ public class ReportController {
 
   private final ReportService reportService;
   private final StockMovementRepository stockMovementRepository;
-  private final OrderRepository orderRepository;
-  private final CsvExportService csvExportService;
+  private final com.ims.tenant.service.ExportService exportService;
 
   @GetMapping("/reports/orders/export")
   @RequiresRole({"ADMIN", "MANAGER"})
-  @Operation(summary = "Export orders as CSV")
-  public ResponseEntity<String> exportOrders(
+  @Operation(summary = "Export orders as CSV (Streaming)")
+  public void exportOrders(
       @RequestParam(required = false) String type,
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-
-    var orders =
-        type != null
-            ? orderRepository.findByType(type, Pageable.unpaged()).getContent()
-            : orderRepository.findAll(Pageable.unpaged()).getContent();
-
-    var filtered =
-        orders.stream()
-            .filter(
-                o ->
-                    !o.getCreatedAt().toLocalDate().isBefore(from)
-                        && !o.getCreatedAt().toLocalDate().isAfter(to))
-            .map(
-                o -> {
-                  Map<String, Object> map = new LinkedHashMap<>();
-                  map.put("ID", o.getId());
-                  map.put("Type", o.getType());
-                  map.put("Status", o.getStatus());
-                  map.put("Total", o.getTotalAmount());
-                  map.put("Date", o.getCreatedAt());
-                  return map;
-                })
-            .collect(Collectors.toList());
-
-    String csv =
-        csvExportService.exportToCsv(List.of("ID", "Type", "Status", "Total", "Date"), filtered);
-
-    return ResponseEntity.ok()
-        .header(
-            org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
-            "attachment; filename=orders.csv")
-        .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "text/csv")
-        .body(csv);
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+      jakarta.servlet.http.HttpServletResponse response) throws java.io.IOException {
+    
+    exportService.exportOrdersCsv(response, type, from.atStartOfDay(), to.atTime(java.time.LocalTime.MAX));
   }
 
   @GetMapping("/reports/sales/export")
   @RequiresRole({"ADMIN", "MANAGER"})
-  @Operation(summary = "Export sales as CSV")
-  public ResponseEntity<String> exportSales(
+  @Operation(summary = "Export sales as CSV (Streaming)")
+  public void exportSales(
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-
-    var orders = orderRepository.findByType("SALE", Pageable.unpaged()).getContent();
-    var filtered =
-        orders.stream()
-            .filter(
-                o ->
-                    !o.getCreatedAt().toLocalDate().isBefore(from)
-                        && !o.getCreatedAt().toLocalDate().isAfter(to))
-            .map(
-                o -> {
-                  Map<String, Object> map = new LinkedHashMap<>();
-                  map.put("Order ID", o.getId());
-                  map.put("Customer ID", o.getCustomerId());
-                  map.put("Total Amount", o.getTotalAmount());
-                  map.put("Tax", o.getTaxAmount());
-                  map.put("Discount", o.getDiscount());
-                  map.put("Date", o.getCreatedAt());
-                  return map;
-                })
-            .collect(Collectors.toList());
-
-    String csv =
-        csvExportService.exportToCsv(
-            List.of("Order ID", "Customer ID", "Total Amount", "Tax", "Discount", "Date"),
-            filtered);
-
-    return ResponseEntity.ok()
-        .header(
-            org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
-            "attachment; filename=sales.csv")
-        .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "text/csv")
-        .body(csv);
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+      jakarta.servlet.http.HttpServletResponse response) throws java.io.IOException {
+    
+    exportService.exportOrdersCsv(response, "SALE", from.atStartOfDay(), to.atTime(java.time.LocalTime.MAX));
   }
 
   @GetMapping("/reports/purchases/export")
   @RequiresRole({"ADMIN", "MANAGER"})
-  @Operation(summary = "Export purchases as CSV")
-  public ResponseEntity<String> exportPurchases(
+  @Operation(summary = "Export purchases as CSV (Streaming)")
+  public void exportPurchases(
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+      jakarta.servlet.http.HttpServletResponse response) throws java.io.IOException {
+    
+    exportService.exportOrdersCsv(response, "PURCHASE", from.atStartOfDay(), to.atTime(java.time.LocalTime.MAX));
+  }
 
-    var orders = orderRepository.findByType("PURCHASE", Pageable.unpaged()).getContent();
-    var filtered =
-        orders.stream()
-            .filter(
-                o ->
-                    !o.getCreatedAt().toLocalDate().isBefore(from)
-                        && !o.getCreatedAt().toLocalDate().isAfter(to))
-            .map(
-                o -> {
-                  Map<String, Object> map = new LinkedHashMap<>();
-                  map.put("Order ID", o.getId());
-                  map.put("Supplier ID", o.getSupplierId());
-                  map.put("Total Amount", o.getTotalAmount());
-                  map.put("Tax", o.getTaxAmount());
-                  map.put("Date", o.getCreatedAt());
-                  return map;
-                })
-            .collect(Collectors.toList());
-
-    String csv =
-        csvExportService.exportToCsv(
-            List.of("Order ID", "Supplier ID", "Total Amount", "Tax", "Date"), filtered);
-
-    return ResponseEntity.ok()
-        .header(
-            org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
-            "attachment; filename=purchases.csv")
-        .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "text/csv")
-        .body(csv);
+  @GetMapping("/reports/products/export")
+  @RequiresRole({"ADMIN", "MANAGER"})
+  @Operation(summary = "Export entire product catalog as CSV (Streaming)")
+  public void exportProducts(jakarta.servlet.http.HttpServletResponse response) throws java.io.IOException {
+    exportService.exportProductsCsv(response);
   }
 
   @GetMapping("/reports/purchases")

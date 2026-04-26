@@ -72,19 +72,52 @@ public class Tenant {
   @Column(name = "webhook_secret")
   private String webhookSecret;
 
+  @Column(name = "ip_whitelist", columnDefinition = "TEXT")
+  private String ipWhitelist;
+
   @Column(name = "created_at")
   @Builder.Default
   private LocalDateTime createdAt = LocalDateTime.now();
 
   public static class TenantBuilder {
-    private Object status;
+    private Long id;
+    private Long version;
+    private String name;
+    private String workspaceSlug;
+    private String companyCode;
+    private String businessType;
+    private String plan;
+    private TenantStatus statusValue;
+    private boolean statusSet = false;
+    private Integer invoiceSequence;
+    private Integer maxProducts;
+    private Integer maxUsers;
+    private Integer expiryThresholdDays;
+    private String address;
+    private String gstin;
+    private String webhookSecret;
+    private String ipWhitelist;
+    private LocalDateTime createdAt;
 
     public TenantBuilder status(TenantStatus status) {
-      if (this.status != null) {
-        throw new IllegalStateException("Status already set to: " + this.status);
+      if (this.statusSet) {
+        throw new IllegalStateException("Status already set to: " + this.statusValue);
       }
-      this.status = status;
+      this.statusValue = status;
+      this.statusSet = true;
       return this;
+    }
+
+    public Tenant build() {
+      TenantStatus finalStatus = statusSet ? statusValue : TenantStatus.PENDING;
+      return new Tenant(id, version, name, workspaceSlug, companyCode, businessType, 
+          plan != null ? plan : "FREE", 
+          finalStatus, 
+          invoiceSequence != null ? invoiceSequence : 0, 
+          maxProducts, maxUsers, 
+          expiryThresholdDays != null ? expiryThresholdDays : DEFAULT_EXPIRY_THRESHOLD_DAYS, 
+          address, gstin, webhookSecret, ipWhitelist, 
+          createdAt != null ? createdAt : LocalDateTime.now());
     }
   }
 }

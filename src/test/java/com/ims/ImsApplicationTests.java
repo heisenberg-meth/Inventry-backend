@@ -16,7 +16,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
       "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
       "spring.jpa.hibernate.ddl-auto=create-drop",
       "spring.task.scheduling.enabled=false",
-      "spring.testcontainers.enabled=false"
+      "spring.testcontainers.enabled=false",
+      "spring.jpa.properties.hibernate.multiTenancy=NONE"
     })
 @ActiveProfiles("test")
 class ImsApplicationTests {

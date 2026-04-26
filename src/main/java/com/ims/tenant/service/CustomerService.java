@@ -30,13 +30,15 @@ public class CustomerService {
   private final PaymentRepository paymentRepository;
 
   public Page<CustomerResponse> getCustomers(Pageable pageable) {
-    return customerRepository.findAll(pageable).map(this::toResponse);
+    Long tenantId = com.ims.shared.auth.TenantContext.requireTenantId();
+    return customerRepository.findByTenantId(tenantId, pageable).map(this::toResponse);
   }
 
   public Customer getById(Long id) {
+    Long tenantId = com.ims.shared.auth.TenantContext.requireTenantId();
     return Objects.requireNonNull(
         customerRepository
-            .findById(id)
+            .findByIdAndTenantId(id, tenantId)
             .orElseThrow(() -> new EntityNotFoundException("Customer not found")));
   }
 
@@ -91,11 +93,12 @@ public class CustomerService {
   }
 
   public Map<String, Object> getCustomerLedger(Long id) {
+    Long tenantId = com.ims.shared.auth.TenantContext.requireTenantId();
     Customer customer = getById(id);
 
     List<Order> orders = orderRepository.findByCustomerId(id, Pageable.unpaged()).getContent();
-    List<Invoice> invoices = invoiceRepository.findByCustomerId(id);
-    List<Payment> payments = paymentRepository.findByCustomerId(id);
+    List<Invoice> invoices = invoiceRepository.findByCustomerId(id, tenantId);
+    List<Payment> payments = paymentRepository.findByCustomerId(id, tenantId);
 
     return Objects.requireNonNull(
         Map.of(

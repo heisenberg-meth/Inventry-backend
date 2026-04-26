@@ -4,14 +4,11 @@ import com.ims.model.Customer;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Repository;
 
 @Repository
 public interface CustomerRepository extends JpaRepository<Customer, Long> {
-  // findById is inherited
+  Page<Customer> findByTenantId(Long tenantId, Pageable pageable);
 
-  @Override
-  @NonNull
-  Page<Customer> findAll(@NonNull Pageable pageable);
+  java.util.Optional<Customer> findByIdAndTenantId(Long id, Long tenantId);
 }

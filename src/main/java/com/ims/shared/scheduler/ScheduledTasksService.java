@@ -47,7 +47,7 @@ public class ScheduledTasksService {
   public void checkLowStock() {
     log.info("Scheduled Task: Checking low stock across all tenants (Optimized)");
     
-    try (Stream<Product> lowStockStream = productRepository.streamAllLowStock()) {
+    try (Stream<Product> lowStockStream = productRepository.streamAllLowStockGlobal()) {
       lowStockStream.forEach(this::processLowStockProduct);
     }
   }
@@ -88,7 +88,7 @@ public class ScheduledTasksService {
   public void checkOverdueInvoices() {
     log.info("Scheduled Task: Checking overdue invoices (Optimized)");
     
-    try (Stream<Invoice> overdueStream = invoiceRepository.streamAllOverdue(
+    try (Stream<Invoice> overdueStream = invoiceRepository.streamAllOverdueGlobal(
         InvoiceStatus.PAID, Objects.requireNonNull(LocalDate.now()))) {
       overdueStream.forEach(this::processOverdueInvoice);
     }

@@ -14,7 +14,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-  Optional<User> findByEmail(String email);
+  Optional<User> findByEmailAndTenantId(String email, Long tenantId);
 
   /**
    * Optimized detail fetch with JOIN FETCH for roles and permissions.
@@ -25,21 +25,21 @@ public interface UserRepository extends JpaRepository<User, Long> {
       LEFT JOIN FETCH u.role r
       LEFT JOIN FETCH r.permissions
       LEFT JOIN FETCH u.customPermissions
-      WHERE u.id = :id
+      WHERE u.id = :id AND u.tenantId = :tenantId
       """)
-  Optional<User> findByIdWithFullDetails(@Param("id") Long id);
+  Optional<User> findByIdWithFullDetails(@Param("id") Long id, @Param("tenantId") Long tenantId);
 
   /**
    * Legacy method maintained for compatibility during migration.
    */
-  @Query("SELECT u FROM User u LEFT JOIN FETCH u.customPermissions WHERE u.id = :id")
-  Optional<User> findByIdWithPermissions(@Param("id") Long id);
+  @Query("SELECT u FROM User u LEFT JOIN FETCH u.customPermissions WHERE u.id = :id AND (u.tenantId = :tenantId OR (:tenantId IS NULL AND u.tenantId IS NULL))")
+  Optional<User> findByIdWithPermissions(@Param("id") Long id, @Param("tenantId") Long tenantId);
 
   @Query(value = "SELECT * FROM users WHERE email = :email", nativeQuery = true)
-  Optional<User> findByEmailUnfiltered(@Param("email") String email);
+  Optional<User> findByEmailGlobal(@Param("email") String email);
 
   @Query(value = "SELECT * FROM users WHERE id = :id", nativeQuery = true)
-  Optional<User> findByIdUnfiltered(@Param("id") Long id);
+  Optional<User> findByIdGlobal(@Param("id") Long id);
 
   // findById is inherited
 
@@ -47,18 +47,24 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
   Page<User> findByTenantIdIsNull(Pageable pageable);
 
+  @Query("SELECT COUNT(u) FROM User u WHERE u.tenantId = :tenantId AND u.isActive = true")
+  long countActive(@Param("tenantId") Long tenantId);
+
   @Query("SELECT COUNT(u) FROM User u WHERE u.isActive = true")
-  long countActive();
+  long countActiveGlobal();
 
   @Query(
       value = "SELECT COUNT(*) FROM users WHERE tenant_id = :tenantId AND is_active = true",
       nativeQuery = true)
   long countActiveByTenantId(@Param("tenantId") Long tenantId);
 
-  boolean existsByEmail(String email);
+  boolean existsByEmailAndTenantId(String email, Long tenantId);
 
-  @Query(value = "SELECT * FROM users WHERE reset_token = :token", nativeQuery = true)
-  Optional<User> findByResetToken(@Param("token") String token);
+  @Query("SELECT COUNT(u) > 0 FROM User u WHERE u.email = :email")
+  boolean existsByEmailGlobal(@Param("email") String email);
+
+  @Query(value = "SELECT * FROM users WHERE reset_token = :token AND tenant_id = :tenantId", nativeQuery = true)
+  Optional<User> findByResetToken(@Param("token") String token, @Param("tenantId") Long tenantId);
 
   /**
    * Optimized user summary listing using interface projection.

@@ -223,7 +223,7 @@ public class TenantService {
   @Transactional
   public Map<String, String> resetTenantUserPassword(@NonNull Long userId, String newPassword) {
     User user = userRepository
-        .findByIdUnfiltered(userId)
+        .findByIdGlobal(userId)
         .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     if (!"TENANT".equals(user.getScope())) {
@@ -358,7 +358,7 @@ public class TenantService {
     }
 
     String email = request.getEmail();
-    if (userRepository.existsByEmail(email)) {
+    if (userRepository.existsByEmailGlobal(email)) {
       throw new IllegalArgumentException("Email already in use");
     }
 
@@ -403,7 +403,7 @@ public class TenantService {
   public void hardDeleteTenantUser(@NonNull Long tenantId, @NonNull Long userId) {
     User tmpUser =
         userRepository
-            .findByIdUnfiltered(userId)
+            .findByIdGlobal(userId)
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
     User user = Objects.requireNonNull(tmpUser);
 

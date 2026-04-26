@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- Development Console Logging -->
+    <springProfile name="!prod">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - [trace:%X{traceId}] [tenant:%X{tenantId}] [user:%X{userId}] %msg%n</pattern>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <!-- Production JSON Logging -->
+    <springProfile name="prod">
+        <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <includeMdc>true</includeMdc>
+                <includeContext>true</includeContext>
+                <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+                    <maxDepthPerThrowable>30</maxDepthPerThrowable>
+                    <maxLength>2048</maxLength>
+                    <shortenedClassNameLength>20</shortenedClassNameLength>
+                    <exclude>sun\.reflect\..*</exclude>
+                    <exclude>net\.sf\.cglib\..*</exclude>
+                    <exclude>javax\.servlet\..*</exclude>
+                    <rootCauseFirst>true</rootCauseFirst>
+                </throwableConverter>
+            </encoder>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="JSON_CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <!-- App Levels -->
+    <logger name="com.ims" level="INFO"/>
+    <logger name="org.springframework.web" level="INFO"/>
+    <logger name="org.hibernate.SQL" level="OFF"/>
+</configuration>
