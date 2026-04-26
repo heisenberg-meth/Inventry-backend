@@ -53,7 +53,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
           "/error");
 
   /** Explicit prefixes that route to the authentication endpoints (strict brute-force tier). */
-  private static final List<String> AUTH_PREFIXES = List.of("/auth", "/api/auth");
+  private static final List<String> AUTH_PREFIXES = List.of("/auth", "/api/v1/auth");
 
   /** Shared format string for config-validation errors; pinned by {@code RateLimitFilterTest}. */
   private static final String CONFIG_POSITIVE_MESSAGE = "%s must be >= 1 (got %d)";

@@ -71,6 +71,9 @@ public class ProductController {
       @Valid @RequestBody CreateProductRequest request) {
     CreateProductRequest safeRequest = Objects.requireNonNull(request);
     return ResponseEntity.status(HttpStatus.CREATED).body(productService.createProduct(safeRequest));
+    CreateProductRequest safeRequest = java.util.Objects.requireNonNull(request);
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(productService.createProduct(safeRequest));
   }
 
   @GetMapping("/{id}")
@@ -136,6 +139,8 @@ public class ProductController {
       @RequestParam("file") MultipartFile file,
       @RequestParam(value = "dryRun", defaultValue = "false") boolean dryRun) {
     MultipartFile safeFile = Objects.requireNonNull(file);
+    org.springframework.web.multipart.MultipartFile safeFile =
+        java.util.Objects.requireNonNull(file);
     return ResponseEntity.ok(importService.importProducts(safeFile, dryRun));
   }
 

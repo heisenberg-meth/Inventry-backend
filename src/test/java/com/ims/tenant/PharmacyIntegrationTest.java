@@ -180,5 +180,4 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
                 .content(objectMapper.writeValueAsString(invalidReq)))
         .andExpect(status().isBadRequest());
   }
-
 }

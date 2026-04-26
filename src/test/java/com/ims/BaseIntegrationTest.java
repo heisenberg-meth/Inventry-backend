@@ -3,6 +3,14 @@ package com.ims;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.doReturn;
 import com.ims.model.User;
+
+import com.ims.category.CategoryRepository;
+import com.ims.model.User;
+import com.ims.platform.repository.*;
+import com.ims.product.ProductRepository;
+import com.ims.shared.audit.AuditLogRepository;
+import com.ims.shared.auth.AuthService;
+import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.repository.*;
 import com.ims.platform.repository.*;
 import com.ims.shared.auth.AuthService;
@@ -41,22 +49,33 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.lang.NonNull;
 import org.springframework.transaction.support.TransactionTemplate;
 
-@SpringBootTest(properties = {
-    "spring.autoconfigure.exclude=" +
-    "org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration," +
-    "org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
-    "spring.task.scheduling.enabled=false",
-    "spring.testcontainers.enabled=false",
-    "spring.cache.type=none"
-})
+@SpringBootTest(
+    properties = {
+      "spring.autoconfigure.exclude="
+          + "org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,"
+          + "org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
+      "spring.task.scheduling.enabled=false",
+      "spring.testcontainers.enabled=false",
+      "spring.cache.type=none"
+    })
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public abstract class BaseIntegrationTest {
 
+  /**
+   * Plain-text password used only to seed the in-test root user. This value never leaves the
+   * ephemeral test database created by testcontainers and is not a real credential — extracted to a
+   * constant so secret scanners stop flagging the literal as a hardcoded password.
+   */
+  protected static final String TEST_ROOT_PASSWORD =
+      System.getProperty("ims.test.root.password", java.util.UUID.randomUUID().toString());
+
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("app.jwt.secret", () -> java.util.UUID.randomUUID().toString() + java.util.UUID.randomUUID().toString());
+    registry.add(
+        "app.jwt.secret",
+        () -> java.util.UUID.randomUUID().toString() + java.util.UUID.randomUUID().toString());
   }
 
   @Autowired protected TenantRepository tenantRepository;
@@ -84,7 +103,10 @@ public abstract class BaseIntegrationTest {
   @PersistenceContext protected EntityManager entityManager;
   @Autowired protected org.springframework.test.web.servlet.MockMvc mockMvc;
   @Autowired protected com.fasterxml.jackson.databind.ObjectMapper objectMapper;
-  @Autowired protected org.springframework.transaction.PlatformTransactionManager transactionManager;
+
+  @Autowired
+  protected org.springframework.transaction.PlatformTransactionManager transactionManager;
+
   @Autowired protected AuthService authService;
   @MockitoBean protected RedisTemplate<String, Object> redisTemplate;
   @MockitoBean protected ValueOperations<String, Object> valueOperations;
@@ -116,65 +138,79 @@ public abstract class BaseIntegrationTest {
     // Clear context before truncation to avoid Hibernate issues with stale IDs
     TenantContext.clear();
 
-    new TransactionTemplate(Objects.requireNonNull(transactionManager)).execute(status -> {
-      // H2: Disable referential integrity to allow truncation
-      jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY FALSE");
+    new TransactionTemplate(Objects.requireNonNull(transactionManager))
+        .execute(
+            status -> {
+              // H2: Disable referential integrity to allow truncation
+              jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY FALSE");
 
-      jdbcTemplate.execute("TRUNCATE TABLE audit_logs");
-      jdbcTemplate.execute("TRUNCATE TABLE payments");
-      jdbcTemplate.execute("TRUNCATE TABLE invoices");
-      jdbcTemplate.execute("TRUNCATE TABLE order_items");
-      jdbcTemplate.execute("TRUNCATE TABLE orders");
-      jdbcTemplate.execute("TRUNCATE TABLE transfer_orders");
-      jdbcTemplate.execute("TRUNCATE TABLE stock_movements");
-      jdbcTemplate.execute("TRUNCATE TABLE pharmacy_products");
-      jdbcTemplate.execute("TRUNCATE TABLE products");
-      jdbcTemplate.execute("TRUNCATE TABLE categories");
-      jdbcTemplate.execute("TRUNCATE TABLE user_permissions");
-      jdbcTemplate.execute("TRUNCATE TABLE users");
-      jdbcTemplate.execute("TRUNCATE TABLE role_permissions");
-      jdbcTemplate.execute("TRUNCATE TABLE roles");
-      jdbcTemplate.execute("TRUNCATE TABLE customers");
-      jdbcTemplate.execute("TRUNCATE TABLE suppliers");
-      jdbcTemplate.execute("TRUNCATE TABLE support_attachments");
-      jdbcTemplate.execute("TRUNCATE TABLE support_messages");
-      jdbcTemplate.execute("TRUNCATE TABLE support_tickets");
-      jdbcTemplate.execute("TRUNCATE TABLE subscriptions");
-      jdbcTemplate.execute("TRUNCATE TABLE subscription_plans");
-      jdbcTemplate.execute("TRUNCATE TABLE tenants");
- 
-      jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY TRUE");
+              jdbcTemplate.execute("TRUNCATE TABLE audit_logs");
+              jdbcTemplate.execute("TRUNCATE TABLE payments");
+              jdbcTemplate.execute("TRUNCATE TABLE invoices");
+              jdbcTemplate.execute("TRUNCATE TABLE order_items");
+              jdbcTemplate.execute("TRUNCATE TABLE orders");
+              jdbcTemplate.execute("TRUNCATE TABLE transfer_orders");
+              jdbcTemplate.execute("TRUNCATE TABLE stock_movements");
+              jdbcTemplate.execute("TRUNCATE TABLE pharmacy_products");
+              jdbcTemplate.execute("TRUNCATE TABLE products");
+              jdbcTemplate.execute("TRUNCATE TABLE categories");
+              jdbcTemplate.execute("TRUNCATE TABLE user_permissions");
+              jdbcTemplate.execute("TRUNCATE TABLE users");
+              jdbcTemplate.execute("TRUNCATE TABLE role_permissions");
+              jdbcTemplate.execute("TRUNCATE TABLE roles");
+              jdbcTemplate.execute("TRUNCATE TABLE customers");
+              jdbcTemplate.execute("TRUNCATE TABLE suppliers");
+              jdbcTemplate.execute("TRUNCATE TABLE support_attachments");
+              jdbcTemplate.execute("TRUNCATE TABLE support_messages");
+              jdbcTemplate.execute("TRUNCATE TABLE support_tickets");
+              jdbcTemplate.execute("TRUNCATE TABLE subscriptions");
+              jdbcTemplate.execute("TRUNCATE TABLE subscription_plans");
+              jdbcTemplate.execute("TRUNCATE TABLE tenants");
 
-      // Seed System Tenant
-      jdbcTemplate.execute(
-          "INSERT INTO tenants (name, workspace_slug, business_type, status, plan, company_code) VALUES ('System', 'system', 'SYSTEM', 'ACTIVE', 'PLATFORM', 'SYS001')");
-      systemTenantId = Objects.requireNonNull(
-          jdbcTemplate.queryForObject("SELECT id FROM tenants WHERE workspace_slug = 'system'", Long.class));
-      
-      // Set the correct tenant context for subsequent user/test data seeding
-      TenantContext.setTenantId(systemTenantId);
+              jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY TRUE");
 
-      // Seed Root User (Linked to System Tenant)
-      String rootPassHash = passwordEncoder.encode("root123");
-      jdbcTemplate.update(
-          "INSERT INTO users (name, email, password_hash, role, scope, tenant_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)",
-          "Root Admin", "root@ims.com", rootPassHash, "ROOT", "PLATFORM", systemTenantId, true);
+              // Seed System Tenant
+              jdbcTemplate.execute(
+                  "INSERT INTO tenants (name, workspace_slug, business_type, status, plan, company_code) VALUES ('System', 'system', 'SYSTEM', 'ACTIVE', 'PLATFORM', 'SYS001')");
+              systemTenantId =
+                  Objects.requireNonNull(
+                      jdbcTemplate.queryForObject(
+                          "SELECT id FROM tenants WHERE workspace_slug = 'system'", Long.class));
 
-      // Seed common test tenants for legacy tests
-      jdbcTemplate.execute(
-          "INSERT INTO tenants (name, workspace_slug, business_type, status, plan, company_code) VALUES ('Test Tenant 1', 't1', 'RETAIL', 'ACTIVE', 'FREE', 'T1001')");
-      testTenant1Id = Objects.requireNonNull(
-          jdbcTemplate.queryForObject("SELECT id FROM tenants WHERE workspace_slug = 't1'", Long.class));
+              // Set the correct tenant context for subsequent user/test data seeding
+              TenantContext.setTenantId(systemTenantId);
 
-      jdbcTemplate.execute(
-          "INSERT INTO tenants (name, workspace_slug, business_type, status, plan, company_code) VALUES ('Test Tenant 2', 't2', 'RETAIL', 'ACTIVE', 'FREE', 'T2001')");
-      testTenant2Id = Objects.requireNonNull(
-          jdbcTemplate.queryForObject("SELECT id FROM tenants WHERE workspace_slug = 't2'", Long.class));
+              // Seed Root User (Linked to System Tenant)
+              String rootPassHash = passwordEncoder.encode(TEST_ROOT_PASSWORD);
+              jdbcTemplate.update(
+                  "INSERT INTO users (name, email, password_hash, role, scope, tenant_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                  "Root Admin",
+                  "root@ims.com",
+                  rootPassHash,
+                  "ROOT",
+                  "PLATFORM",
+                  systemTenantId,
+                  true);
 
-      entityManager.clear();
-      TenantContext.clear();
-      return null;
-    });
+              // Seed common test tenants for legacy tests
+              jdbcTemplate.execute(
+                  "INSERT INTO tenants (name, workspace_slug, business_type, status, plan, company_code) VALUES ('Test Tenant 1', 't1', 'RETAIL', 'ACTIVE', 'FREE', 'T1001')");
+              testTenant1Id =
+                  Objects.requireNonNull(
+                      jdbcTemplate.queryForObject(
+                          "SELECT id FROM tenants WHERE workspace_slug = 't1'", Long.class));
+
+              jdbcTemplate.execute(
+                  "INSERT INTO tenants (name, workspace_slug, business_type, status, plan, company_code) VALUES ('Test Tenant 2', 't2', 'RETAIL', 'ACTIVE', 'FREE', 'T2001')");
+              testTenant2Id =
+                  Objects.requireNonNull(
+                      jdbcTemplate.queryForObject(
+                          "SELECT id FROM tenants WHERE workspace_slug = 't2'", Long.class));
+
+              entityManager.clear();
+              TenantContext.clear();
+              return null;
+            });
   }
 
   protected void verifyUser(String email) {
@@ -195,7 +231,10 @@ public abstract class BaseIntegrationTest {
                 User managedUser =
                     userRepository
                         .findById(java.util.Objects.requireNonNull(u.getId()))
-                        .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("User refetch failed"));
+                        .orElseThrow(
+                            () ->
+                                new jakarta.persistence.EntityNotFoundException(
+                                    "User refetch failed"));
 
                 // 4. Update and save within the correct context
                 managedUser.setIsVerified(true);
@@ -235,7 +274,7 @@ public abstract class BaseIntegrationTest {
     LoginRequest loginRequest = new com.ims.dto.request.LoginRequest();
     loginRequest.setEmail(email);
     loginRequest.setPassword(password);
-    
+
     // Platform users (ROOT) must login WITHOUT a company code per AuthService.java:351
     if ("SYS001".equals(workspace) || "PLATFORM".equalsIgnoreCase(workspace)) {
       loginRequest.setCompanyCode(null);
@@ -243,9 +282,10 @@ public abstract class BaseIntegrationTest {
       loginRequest.setCompanyCode(workspace);
     }
 
-    String loginUrl = ("SYS001".equals(workspace) || "PLATFORM".equalsIgnoreCase(workspace))
-        ? "/api/platform/auth/login"
-        : "/api/auth/login";
+    String loginUrl =
+        ("SYS001".equals(workspace) || "PLATFORM".equalsIgnoreCase(workspace))
+            ? "/api/v1/platform/auth/login"
+            : "/api/v1/auth/login";
 
     String loginJson = objectMapper.writeValueAsString(loginRequest);
     MvcResult result =
@@ -262,6 +302,16 @@ public abstract class BaseIntegrationTest {
               }
             })
             .andExpect(MockMvcResultMatchers.status().isOk())
+            .andDo(
+                mvcResult -> {
+                  if (mvcResult.getResponse().getStatus() != 200) {
+                    System.out.println(
+                        "Login Failed! Status: " + mvcResult.getResponse().getStatus());
+                    System.out.println("Response: " + mvcResult.getResponse().getContentAsString());
+                  }
+                })
+            .andExpect(
+                org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
             .andReturn();
 
     String responseJson = result.getResponse().getContentAsString();

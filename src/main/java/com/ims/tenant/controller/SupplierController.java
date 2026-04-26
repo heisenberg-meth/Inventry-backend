@@ -53,8 +53,7 @@ public class SupplierController {
   @GetMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Get supplier")
-  public @NonNull ResponseEntity<com.ims.dto.response.SupplierResponse> get(
-      @PathVariable long id) {
+  public @NonNull ResponseEntity<com.ims.dto.response.SupplierResponse> get(@PathVariable long id) {
     return ResponseEntity.ok(Objects.requireNonNull(supplierService.getSupplierResponseById(id)));
   }
 
@@ -78,8 +77,7 @@ public class SupplierController {
   @GetMapping("/{id}/ledger")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Get full ledger for supplier")
-  public ResponseEntity<java.util.Map<String, Object>> getSupplierLedger(
-      @PathVariable long id) {
+  public ResponseEntity<java.util.Map<String, Object>> getSupplierLedger(@PathVariable long id) {
     return ResponseEntity.ok(supplierService.getSupplierLedger(id));
   }
 

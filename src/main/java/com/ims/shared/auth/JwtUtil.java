@@ -204,7 +204,8 @@ public class JwtUtil {
   }
 
   public String extractBusinessType(@NonNull String token) {
-    return extractAllClaims(java.util.Objects.requireNonNull(token)).get("business_type", String.class);
+    return extractAllClaims(java.util.Objects.requireNonNull(token))
+        .get("business_type", String.class);
   }
 
   public boolean extractIsPlatformUser(@NonNull String token) {
@@ -225,7 +226,8 @@ public class JwtUtil {
 
   public boolean extractImpersonation(@NonNull String token) {
     Boolean val =
-        extractAllClaims(java.util.Objects.requireNonNull(token)).get("impersonation", Boolean.class);
+        extractAllClaims(java.util.Objects.requireNonNull(token))
+            .get("impersonation", Boolean.class);
     return val != null && val;
   }
 

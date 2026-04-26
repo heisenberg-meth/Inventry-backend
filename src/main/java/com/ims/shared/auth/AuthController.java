@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Authentication", description = "Login, Logout, Token Refresh, Password Management")
@@ -85,7 +85,8 @@ public class AuthController {
   public ResponseEntity<Map<String, String>> changePassword(
       @Valid @RequestBody ChangePasswordRequest request) {
     Long userId = java.util.Objects.requireNonNull(extractUserId());
-    return ResponseEntity.ok(authService.changePassword(userId, java.util.Objects.requireNonNull(request)));
+    return ResponseEntity.ok(
+        authService.changePassword(userId, java.util.Objects.requireNonNull(request)));
   }
 
   @PostMapping("/forgot-password")
@@ -108,7 +109,9 @@ public class AuthController {
   @Operation(summary = "Verify email", description = "Verify user email using verification token")
   public ResponseEntity<Map<String, String>> verifyEmail(
       @RequestParam String token, @RequestParam String email) {
-    return ResponseEntity.ok(authService.verifyEmail(java.util.Objects.requireNonNull(token), java.util.Objects.requireNonNull(email)));
+    return ResponseEntity.ok(
+        authService.verifyEmail(
+            java.util.Objects.requireNonNull(token), java.util.Objects.requireNonNull(email)));
   }
 
   @PostMapping("/resend-verification")
@@ -119,7 +122,8 @@ public class AuthController {
     if (email == null || email.isBlank()) {
       return ResponseEntity.badRequest().build();
     }
-    return ResponseEntity.ok(authService.resendVerification(java.util.Objects.requireNonNull(email)));
+    return ResponseEntity.ok(
+        authService.resendVerification(java.util.Objects.requireNonNull(email)));
   }
 
   @GetMapping("/check-email")
