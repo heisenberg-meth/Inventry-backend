@@ -2,8 +2,6 @@ package com.ims.shared.rbac;
 
 import com.ims.platform.service.SystemConfigService;
 import com.ims.shared.auth.JwtAuthDetails;
-import com.ims.tenant.repository.RoleRepository;
-import com.ims.tenant.repository.UserRepository;
 import java.util.Arrays;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -20,8 +18,6 @@ import org.springframework.stereotype.Component;
 public class RbacAspect {
 
   private final SystemConfigService systemConfigService;
-  private final UserRepository userRepository;
-  private final RoleRepository roleRepository;
   private final PermissionService permissionService;
 
   private boolean isRoot() {

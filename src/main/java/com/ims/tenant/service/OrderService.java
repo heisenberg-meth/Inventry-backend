@@ -120,7 +120,7 @@ public class OrderService {
             "Created purchase order #%d, Supplier: %d, Total: %s",
             orderId, supplierId, totalAmount));
 
-    return order;
+    return savedPurchaseOrder;
   }
 
   @Transactional
@@ -209,7 +209,7 @@ public class OrderService {
             .notes(request.getNotes())
             .createdBy(userId)
             .build();
-    Order savedSalesOrder = (Order) Objects.requireNonNull(orderRepository.save(salesOrder));
+    Order savedSalesOrder = Objects.requireNonNull(orderRepository.save(salesOrder));
 
     final Long orderId = savedSalesOrder.getId();
     orderItems.forEach(oi -> oi.setOrderId(orderId));
@@ -254,7 +254,7 @@ public class OrderService {
             .createdBy(userId)
             .build();
 
-    Order savedReturnOrder = (Order) Objects.requireNonNull(orderRepository.save(initialReturnOrder));
+    Order savedReturnOrder = Objects.requireNonNull(orderRepository.save(initialReturnOrder));
 
     List<OrderItem> originalItems = orderItemRepository.findByOrderId(originalOrderId);
     List<OrderItem> returnOrderItems = new ArrayList<>();
