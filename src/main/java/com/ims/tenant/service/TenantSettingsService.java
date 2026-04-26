@@ -9,7 +9,6 @@ import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,24 +20,22 @@ public class TenantSettingsService {
   private final TenantRepository tenantRepository;
 
   @Transactional(readOnly = true)
-  public @NonNull TenantResponse getSettings(@NonNull Long tenantId) {
-    Tenant tenant =
-        Objects.requireNonNull(
-            tenantRepository
-                .findById(Objects.requireNonNull(tenantId))
-                .orElseThrow(() -> new EntityNotFoundException("Tenant not found")));
+  public TenantResponse getSettings(Long tenantId) {
+    Tenant tenant = Objects.requireNonNull(
+        tenantRepository
+            .findById(Objects.requireNonNull(tenantId))
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found")));
     return toResponse(tenant);
   }
 
   @Transactional
   @CacheEvict(value = "tenant", key = "#tenantId")
-  public @NonNull TenantResponse updateSettings(
-      @NonNull Long tenantId, @NonNull UpdateTenantSettingsRequest request) {
-    Tenant tenant =
-        Objects.requireNonNull(
-            tenantRepository
-                .findById(Objects.requireNonNull(tenantId))
-                .orElseThrow(() -> new EntityNotFoundException("Tenant not found")));
+  public TenantResponse updateSettings(
+      Long tenantId, UpdateTenantSettingsRequest request) {
+    Tenant tenant = Objects.requireNonNull(
+        tenantRepository
+            .findById(Objects.requireNonNull(tenantId))
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found")));
 
     if (request.getWorkspaceSlug() != null
         && !request.getWorkspaceSlug().equals(tenant.getWorkspaceSlug())) {
@@ -66,7 +63,7 @@ public class TenantSettingsService {
     return toResponse(tenant);
   }
 
-  private @NonNull TenantResponse toResponse(@NonNull Tenant tenant) {
+  private TenantResponse toResponse(Tenant tenant) {
     return Objects.requireNonNull(
         TenantResponse.builder()
             .id(tenant.getId())

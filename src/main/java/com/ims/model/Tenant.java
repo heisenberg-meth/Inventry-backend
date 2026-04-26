@@ -49,7 +49,7 @@ public class Tenant {
   @Column
   @Enumerated(EnumType.STRING)
   @Builder.Default
-  private TenantStatus status = TenantStatus.ACTIVE;
+  private TenantStatus status = TenantStatus.PENDING;
 
   @Column(name = "invoice_sequence")
   @Builder.Default

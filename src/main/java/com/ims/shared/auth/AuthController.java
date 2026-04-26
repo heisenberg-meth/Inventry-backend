@@ -41,10 +41,6 @@ public class AuthController {
       summary = "Login",
       description = "Authenticate with email/password, returns JWT tokens")
   public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-    log.info(
-        "Login request received: email={}, companyCode={}",
-        request.getEmail(),
-        request.getCompanyCode());
     LoginResponse response = authService.login(request);
     return ResponseEntity.ok(response);
   }

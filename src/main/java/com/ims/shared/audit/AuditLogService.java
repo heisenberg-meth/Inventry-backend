@@ -5,10 +5,11 @@ import com.ims.shared.auth.JwtAuthDetails;
 import com.ims.model.AuditLog;
 import com.ims.shared.auth.TenantContext;
 import com.ims.dto.response.AuditLogResponse;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.lang.NonNull;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import java.util.Objects;
@@ -36,8 +37,8 @@ public class AuditLogService {
             AuditLog.builder()
                 .tenantId(tenantId)
                 .userId(userId)
-                .action(action.name())
-                .details(details)
+                .action(Objects.requireNonNull(action.name()))
+                .details(Objects.requireNonNull(details))
                 .impersonatedBy(impersonatedBy)
                 .build());
 
@@ -48,10 +49,10 @@ public class AuditLogService {
       AuditAction action, Long tenantId, Long userId, Map<String, Object> metadata) {
     try {
       String details = new ObjectMapper().writeValueAsString(metadata);
-      log(action, tenantId, userId, details);
+      log(action, tenantId, userId, Objects.requireNonNull(details));
     } catch (Exception e) {
       log.error("Failed to serialize audit metadata", e);
-      log(action, tenantId, userId, metadata.toString());
+      log(action, tenantId, userId, Objects.requireNonNull(metadata.toString()));
     }
   }
 
@@ -96,7 +97,7 @@ public class AuditLogService {
     String fullDetails =
         String.format(
             "[%s:%s] %s", resource.name(), resourceId != null ? resourceId : "N/A", details);
-    log(action, tenantId, userId, fullDetails);
+    log(action, tenantId != null ? tenantId : TenantContext.PLATFORM_TENANT_ID, userId != null ? userId : TenantContext.PLATFORM_TENANT_ID, Objects.requireNonNull(fullDetails));
   }
 
   /**
@@ -119,8 +120,8 @@ public class AuditLogService {
     }
   }
 
-  public org.springframework.data.domain.Page<AuditLogResponse> getAllLogs(
-      @NonNull org.springframework.data.domain.Pageable pageable) {
+  public Page<AuditLogResponse> getAllLogs(
+      Pageable pageable) {
     var logs = auditLogRepository.findAll(pageable);
 
     // Unmask for ROOT when support mode is explicitly enabled
@@ -130,8 +131,8 @@ public class AuditLogService {
     return logs.map(this::toMaskedDto); // everyone else gets masked
   }
 
-  public org.springframework.data.domain.Page<AuditLogResponse> getTenantLogs(
-      Long tenantId, @NonNull org.springframework.data.domain.Pageable pageable) {
+  public Page<AuditLogResponse> getTenantLogs(
+      Long tenantId, org.springframework.data.domain.Pageable pageable) {
     var logs = auditLogRepository.findByTenantId(tenantId, pageable);
 
     // Unmask for ROOT when support mode is explicitly enabled
@@ -141,9 +142,9 @@ public class AuditLogService {
     return logs.map(this::toMaskedDto);
   }
 
-  public org.springframework.data.domain.Page<AuditLogResponse>
+  public Page<AuditLogResponse>
       getTenantLogsAsDto(
-          Long tenantId, @NonNull org.springframework.data.domain.Pageable pageable) {
+          Long tenantId, org.springframework.data.domain.Pageable pageable) {
     var logs = auditLogRepository.findByTenantId(tenantId, pageable);
     return logs.map(this::toMaskedDto);
   }
@@ -156,30 +157,30 @@ public class AuditLogService {
     return false;
   }
 
-  private com.ims.dto.response.AuditLogResponse toDto(com.ims.model.AuditLog log) {
-    return com.ims.dto.response.AuditLogResponse.builder()
-        .id(log.getId())
-        .tenantId(log.getTenantId())
-        .userId(log.getUserId())
-        .action(log.getAction())
-        .details(log.getDetails())
-        .createdAt(log.getCreatedAt())
-        .build();
+  private AuditLogResponse toDto(AuditLog log) {
+    return Objects.requireNonNull(AuditLogResponse.builder()
+        .id(Objects.requireNonNull(log.getId()))
+        .tenantId(Objects.requireNonNull(log.getTenantId()))
+        .userId(Objects.requireNonNull(log.getUserId()))
+        .action(Objects.requireNonNull(log.getAction()))
+        .details(Objects.requireNonNull(log.getDetails()))
+        .createdAt(Objects.requireNonNull(log.getCreatedAt()))
+        .build());
   }
 
-  private com.ims.dto.response.AuditLogResponse toMaskedDto(com.ims.model.AuditLog log) {
-    return com.ims.dto.response.AuditLogResponse.builder()
-        .id(log.getId())
-        .tenantId(log.getTenantId())
-        .userId(log.getUserId())
-        .action(log.getAction())
-        .details(log.getDetails() != null ? maskDetails(log.getDetails()) : null)
-        .createdAt(log.getCreatedAt())
-        .build();
+  private AuditLogResponse toMaskedDto(AuditLog log) {
+    return Objects.requireNonNull(AuditLogResponse.builder()
+        .id(Objects.requireNonNull(log.getId()))
+        .tenantId(Objects.requireNonNull(log.getTenantId()))
+        .userId(Objects.requireNonNull(log.getUserId()))
+        .action(Objects.requireNonNull(log.getAction()))
+        .details(Objects.requireNonNull(maskDetails(Objects.requireNonNull(log.getDetails()))))
+        .createdAt(Objects.requireNonNull(log.getCreatedAt()))
+        .build());
   }
 
   private String maskDetails(String details) {
     // Mask sensitive tokens/passwords while preserving audit context
-    return details.replaceAll("(?i)(password|token|secret|key)=[^,\\]\\s]+", "$1=****");
+    return Objects.requireNonNull(details.replaceAll("(?i)(password|token|secret|key)=[^,\\]\\s]+", "$1=****"));
   }
 }

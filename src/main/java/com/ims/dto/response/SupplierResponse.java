@@ -2,14 +2,15 @@ package com.ims.dto.response;
 
 import lombok.Builder;
 import lombok.Data;
+import org.springframework.lang.Nullable;
 
 @Data
 @Builder
 public class SupplierResponse {
-  private Long id;
+  @Nullable private Long id;
   private String name;
-  private String phone;
-  private String email;
-  private String address;
-  private String gstin;
+  @Nullable private String phone;
+  @Nullable private String email;
+  @Nullable private String address;
+  @Nullable private String gstin;
 }

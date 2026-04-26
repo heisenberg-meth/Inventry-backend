@@ -13,10 +13,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
 import com.ims.shared.auth.JwtUtil;
 import jakarta.servlet.FilterChain;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -61,7 +61,7 @@ class RateLimitFilterTest {
 
   @Test
   void allowsRequestBelowPublicLimit() throws Exception {
-    when(zSet.zCard(anyString())).thenReturn(1L);
+    when(zSet.zCard(Objects.requireNonNull(anyString()))).thenReturn(1L);
 
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/v1/tenant/products");
     req.setRemoteAddr("10.0.0.1");
@@ -79,7 +79,7 @@ class RateLimitFilterTest {
 
   @Test
   void blocksRequestOverPublicLimit() throws Exception {
-    when(zSet.zCard(anyString())).thenReturn((long) (PUBLIC_RPM + 1));
+    when(zSet.zCard(Objects.requireNonNull(anyString()))).thenReturn((long) (PUBLIC_RPM + 1));
 
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/public/something");
     req.setRemoteAddr("10.0.0.2");
@@ -96,7 +96,7 @@ class RateLimitFilterTest {
 
   @Test
   void enforcesStricterLimitOnAuthEndpoints() throws Exception {
-    when(zSet.zCard(anyString())).thenReturn((long) (AUTH_RPM + 1));
+    when(zSet.zCard(Objects.requireNonNull(anyString()))).thenReturn((long) (AUTH_RPM + 1));
 
     MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/v1/auth/login");
     req.setRemoteAddr("10.0.0.3");
@@ -112,7 +112,7 @@ class RateLimitFilterTest {
 
   @Test
   void usesTenantLimitWhenBearerTokenCarriesTenantId() throws Exception {
-    when(zSet.zCard(anyString())).thenReturn(1L);
+    when(zSet.zCard(Objects.requireNonNull(anyString()))).thenReturn(1L);
     when(jwtUtil.extractTenantId("good-token")).thenReturn(42L);
 
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/v1/tenant/products");
@@ -125,16 +125,16 @@ class RateLimitFilterTest {
 
     assertEquals(200, res.getStatus());
     assertEquals(String.valueOf(TENANT_RPM), res.getHeader("X-RateLimit-Limit"));
-    verify(zSet).add(eq("rate:tenant:42:10.0.0.4"), any(), anyDouble());
+    verify(zSet).add(Objects.requireNonNull(eq("rate:tenant:42:10.0.0.4")), Objects.requireNonNull(any()), anyDouble());
     verify(redisTemplate)
         .expire(
-            eq("rate:tenant:42:10.0.0.4"), eq(Long.valueOf(WINDOW_SECONDS)), eq(TimeUnit.SECONDS));
+            Objects.requireNonNull(eq("rate:tenant:42:10.0.0.4")), Objects.requireNonNull(eq(Long.valueOf(WINDOW_SECONDS))), Objects.requireNonNull(any(TimeUnit.class)));
     verify(chain).doFilter(req, res);
   }
 
   @Test
   void fallsBackToPublicTierWhenTokenIsInvalid() throws Exception {
-    when(zSet.zCard(anyString())).thenReturn(1L);
+    when(zSet.zCard(Objects.requireNonNull(anyString()))).thenReturn(1L);
     when(jwtUtil.extractTenantId("bad-token")).thenThrow(new RuntimeException("bad token"));
 
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/v1/tenant/products");
@@ -152,7 +152,7 @@ class RateLimitFilterTest {
 
   @Test
   void honorsXForwardedForWhenBuildingKey() throws Exception {
-    when(zSet.zCard(anyString())).thenReturn(1L);
+    when(zSet.zCard(Objects.requireNonNull(anyString()))).thenReturn(1L);
 
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/public/ping");
     req.setRemoteAddr("10.0.0.99"); // proxy
@@ -162,12 +162,12 @@ class RateLimitFilterTest {
 
     filter.doFilter(req, res, chain);
 
-    verify(zSet).add(eq("rate:public:203.0.113.7"), any(), anyDouble());
+    verify(zSet).add(Objects.requireNonNull(eq("rate:public:203.0.113.7")), Objects.requireNonNull(any()), anyDouble());
   }
 
   @Test
   void usesSingleXForwardedForIpWhenPresent() throws Exception {
-    when(zSet.zCard(anyString())).thenReturn(1L);
+    when(zSet.zCard(Objects.requireNonNull(anyString()))).thenReturn(1L);
 
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/public/ping");
     req.setRemoteAddr("10.0.0.99");
@@ -177,12 +177,12 @@ class RateLimitFilterTest {
 
     filter.doFilter(req, res, chain);
 
-    verify(zSet).add(eq("rate:public:198.51.100.23"), any(), anyDouble());
+    verify(zSet).add(Objects.requireNonNull(eq("rate:public:198.51.100.23")), Objects.requireNonNull(any()), anyDouble());
   }
 
   @Test
   void fallsBackToXRealIpWhenForwardedForBlank() throws Exception {
-    when(zSet.zCard(anyString())).thenReturn(1L);
+    when(zSet.zCard(Objects.requireNonNull(anyString()))).thenReturn(1L);
 
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/public/ping");
     req.setRemoteAddr("10.0.0.99");
@@ -193,12 +193,12 @@ class RateLimitFilterTest {
 
     filter.doFilter(req, res, chain);
 
-    verify(zSet).add(eq("rate:public:198.51.100.42"), any(), anyDouble());
+    verify(zSet).add(Objects.requireNonNull(eq("rate:public:198.51.100.42")), Objects.requireNonNull(any()), anyDouble());
   }
 
   @Test
   void fallsBackToRemoteAddrWhenNoProxyHeaders() throws Exception {
-    when(zSet.zCard(anyString())).thenReturn(1L);
+    when(zSet.zCard(Objects.requireNonNull(anyString()))).thenReturn(1L);
 
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/public/ping");
     req.setRemoteAddr("192.0.2.55");
@@ -207,12 +207,12 @@ class RateLimitFilterTest {
 
     filter.doFilter(req, res, chain);
 
-    verify(zSet).add(eq("rate:public:192.0.2.55"), any(), anyDouble());
+    verify(zSet).add(Objects.requireNonNull(eq("rate:public:192.0.2.55")), Objects.requireNonNull(any()), anyDouble());
   }
 
   @Test
   void ignoresXForwardedForFromUntrustedProxy() throws Exception {
-    when(zSet.zCard(anyString())).thenReturn(1L);
+    when(zSet.zCard(Objects.requireNonNull(anyString()))).thenReturn(1L);
 
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/public/ping");
     req.setRemoteAddr("203.0.113.1"); // untrusted attacker IP
@@ -223,12 +223,12 @@ class RateLimitFilterTest {
     filter.doFilter(req, res, chain);
 
     // Should use the untrusted remote address, NOT the spoofed XFF
-    verify(zSet).add(eq("rate:public:203.0.113.1"), any(), anyDouble());
+    verify(zSet).add(Objects.requireNonNull(eq("rate:public:203.0.113.1")), Objects.requireNonNull(any()), anyDouble());
   }
 
   @Test
   void honorsXForwardedForFromTrustedCidrProxy() throws Exception {
-    when(zSet.zCard(anyString())).thenReturn(1L);
+    when(zSet.zCard(Objects.requireNonNull(anyString()))).thenReturn(1L);
 
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/public/ping");
     req.setRemoteAddr("10.0.0.50"); // trusted by 10.0.0.0/8
@@ -238,12 +238,12 @@ class RateLimitFilterTest {
 
     filter.doFilter(req, res, chain);
 
-    verify(zSet).add(eq("rate:public:1.2.3.4"), any(), anyDouble());
+    verify(zSet).add(Objects.requireNonNull(eq("rate:public:1.2.3.4")), Objects.requireNonNull(any()), anyDouble());
   }
 
   @Test
   void failsOpenWhenRedisThrows() throws Exception {
-    when(zSet.zCard(anyString())).thenThrow(new RuntimeException("redis down"));
+    when(zSet.zCard(Objects.requireNonNull(anyString()))).thenThrow(new RuntimeException("redis down"));
 
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/public/ping");
     req.setRemoteAddr("10.0.0.6");
@@ -272,7 +272,7 @@ class RateLimitFilterTest {
 
     assertNull(res.getHeader("X-RateLimit-Limit"));
     verify(chain).doFilter(req, res);
-    verify(zSet, never()).zCard(anyString());
+    verify(zSet, never()).zCard(Objects.requireNonNull(anyString()));
   }
 
   @Test
@@ -288,12 +288,12 @@ class RateLimitFilterTest {
       assertNull(res.getHeader("X-RateLimit-Limit"), "headers set for " + path);
       verify(chain).doFilter(req, res);
     }
-    verify(zSet, never()).zCard(anyString());
+    verify(zSet, never()).zCard(Objects.requireNonNull(anyString()));
   }
 
   @Test
   void stillRateLimitsNearMissOfExcludedPath() throws Exception {
-    when(zSet.zCard(anyString())).thenReturn(1L);
+    when(zSet.zCard(Objects.requireNonNull(anyString()))).thenReturn(1L);
 
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/actuatorx/health");
     req.setRemoteAddr("10.0.0.9");
@@ -303,13 +303,13 @@ class RateLimitFilterTest {
     filter.doFilter(req, res, chain);
 
     assertNotNull(res.getHeader("X-RateLimit-Limit"));
-    verify(chain).doFilter(req, res);
-    verify(zSet).zCard(anyString());
+    verify(chain).doFilter(Objects.requireNonNull(any()), Objects.requireNonNull(any()));
+    verify(zSet).zCard(Objects.requireNonNull(anyString()));
   }
 
   @Test
   void doesNotTreatUnrelatedAuthSubstringAsAuthEndpoint() throws Exception {
-    when(zSet.zCard(anyString())).thenReturn(1L);
+    when(zSet.zCard(Objects.requireNonNull(anyString()))).thenReturn(1L);
 
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/v1/tenant/auth-logs");
     req.setRemoteAddr("10.0.0.10");

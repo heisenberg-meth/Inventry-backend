@@ -3,6 +3,7 @@ package com.ims;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.doReturn;
 import com.ims.model.User;
+import com.ims.model.Role;
 import com.ims.category.CategoryRepository;
 import com.ims.platform.repository.*;
 import com.ims.product.ProductRepository;
@@ -37,9 +38,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.lang.NonNull;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @SpringBootTest(
@@ -48,19 +53,19 @@ import org.springframework.transaction.support.TransactionTemplate;
           + "org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,"
           + "org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
       "spring.task.scheduling.enabled=false",
-      "spring.testcontainers.enabled=false",
+      "spring.testcontainers.enabled=true",
       "spring.cache.type=none"
     })
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
+@Testcontainers
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public abstract class BaseIntegrationTest {
 
-  /**
-   * Plain-text password used only to seed the in-test root user. This value never leaves the
-   * ephemeral test database created by testcontainers and is not a real credential — extracted to a
-   * constant so secret scanners stop flagging the literal as a hardcoded password.
-   */
+  @Container
+  @ServiceConnection
+  static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
+
   protected static final String TEST_ROOT_PASSWORD =
       System.getProperty("ims.test.root.password", UUID.randomUUID().toString());
 
@@ -124,43 +129,23 @@ public abstract class BaseIntegrationTest {
 
   @BeforeEach
   void setUp() {
+    if (TEST_ROOT_PASSWORD == null || TEST_ROOT_PASSWORD.isBlank()) {
+      throw new IllegalStateException("TEST_ROOT_PASSWORD must be configured for integration tests.");
+    }
     mockRedisAndCache();
   }
 
   protected void cleanupDatabase() {
-    // Clear context before truncation to avoid Hibernate issues with stale IDs
     TenantContext.clear();
 
     new TransactionTemplate(Objects.requireNonNull(transactionManager))
         .execute(
             status -> {
-              // H2: Disable referential integrity to allow truncation
-              jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY FALSE");
-
-              jdbcTemplate.execute("TRUNCATE TABLE audit_logs");
-              jdbcTemplate.execute("TRUNCATE TABLE payments");
-              jdbcTemplate.execute("TRUNCATE TABLE invoices");
-              jdbcTemplate.execute("TRUNCATE TABLE order_items");
-              jdbcTemplate.execute("TRUNCATE TABLE orders");
-              jdbcTemplate.execute("TRUNCATE TABLE transfer_orders");
-              jdbcTemplate.execute("TRUNCATE TABLE stock_movements");
-              jdbcTemplate.execute("TRUNCATE TABLE pharmacy_products");
-              jdbcTemplate.execute("TRUNCATE TABLE products");
-              jdbcTemplate.execute("TRUNCATE TABLE categories");
-              jdbcTemplate.execute("TRUNCATE TABLE user_permissions");
-              jdbcTemplate.execute("TRUNCATE TABLE users");
-              jdbcTemplate.execute("TRUNCATE TABLE role_permissions");
-              jdbcTemplate.execute("TRUNCATE TABLE roles");
-              jdbcTemplate.execute("TRUNCATE TABLE customers");
-              jdbcTemplate.execute("TRUNCATE TABLE suppliers");
-              jdbcTemplate.execute("TRUNCATE TABLE support_attachments");
-              jdbcTemplate.execute("TRUNCATE TABLE support_messages");
-              jdbcTemplate.execute("TRUNCATE TABLE support_tickets");
-              jdbcTemplate.execute("TRUNCATE TABLE subscriptions");
-              jdbcTemplate.execute("TRUNCATE TABLE subscription_plans");
-              jdbcTemplate.execute("TRUNCATE TABLE tenants");
-
-              jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY TRUE");
+              jdbcTemplate.execute("TRUNCATE TABLE audit_logs, payments, invoices, order_items, orders, " +
+                  "transfer_orders, stock_movements, pharmacy_products, products, categories, " +
+                  "user_permissions, users, role_permissions, roles, customers, suppliers, " +
+                  "support_attachments, support_messages, support_tickets, subscriptions, " +
+                  "subscription_plans, tenants RESTART IDENTITY CASCADE");
 
               // Seed System Tenant
               jdbcTemplate.execute(
@@ -170,22 +155,30 @@ public abstract class BaseIntegrationTest {
                       jdbcTemplate.queryForObject(
                           "SELECT id FROM tenants WHERE workspace_slug = 'system'", Long.class));
 
-              // Set the correct tenant context for subsequent user/test data seeding
               TenantContext.setTenantId(systemTenantId);
 
-              // Seed Root User (Linked to System Tenant)
-              String rootPassHash = passwordEncoder.encode(TEST_ROOT_PASSWORD);
+              // Seed ROOT Role
               jdbcTemplate.update(
-                  "INSERT INTO users (name, email, password_hash, role, scope, tenant_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                  "INSERT INTO roles (name, description, tenant_id) VALUES (?, ?, ?)",
+                  "ROOT",
+                  "Platform Root Administrator",
+                  null);
+              long rootRoleId = Objects.requireNonNull(
+                  jdbcTemplate.queryForObject("SELECT id FROM roles WHERE name = 'ROOT' AND tenant_id IS NULL", Long.class));
+
+              // Seed Root User
+              String rootPassHash = passwordEncoder.encode(Objects.requireNonNull(TEST_ROOT_PASSWORD));
+              jdbcTemplate.update(
+                  "INSERT INTO users (name, email, password_hash, role_id, scope, tenant_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)",
                   "Root Admin",
                   "root@ims.com",
                   rootPassHash,
-                  "ROOT",
+                  rootRoleId,
                   "PLATFORM",
                   systemTenantId,
                   true);
 
-              // Seed common test tenants for legacy tests
+              // Seed common test tenants
               jdbcTemplate.execute(
                   "INSERT INTO tenants (name, workspace_slug, business_type, status, plan, company_code) VALUES ('Test Tenant 1', 't1', 'RETAIL', 'ACTIVE', 'FREE', 'T1001')");
               testTenant1Id =
@@ -206,21 +199,23 @@ public abstract class BaseIntegrationTest {
             });
   }
 
+  /**
+   * Helper to get or create a role for a tenant.
+   */
+  protected Role getOrCreateRole(@NonNull String name, @NonNull Long tenantId) {
+    return roleRepository.findByNameAndTenantId(name, tenantId)
+        .orElseGet(() -> roleRepository.save(Role.builder().name(name).tenantId(tenantId).build()));
+  }
+
   protected void verifyUser(String email) {
     new TransactionTemplate(Objects.requireNonNull(transactionManager))
         .execute(
             status -> {
-              // 1. Fetch user neutrally to get tenant information
               var userOpt = userRepository.findByEmailUnfiltered(email);
               if (userOpt.isPresent()) {
                 var u = userOpt.get();
                 Long tenantId = u.getTenantId();
-
-                // 2. Set the correct tenant context BEFORE any entity operations
                 TenantContext.setTenantId(tenantId);
-
-                // 3. Re-fetch the entity under the active tenant context to ensure Hibernate
-                // management
                 User managedUser =
                     userRepository
                         .findById(Objects.requireNonNull(u.getId()))
@@ -228,12 +223,8 @@ public abstract class BaseIntegrationTest {
                             () ->
                                 new jakarta.persistence.EntityNotFoundException(
                                     "User refetch failed"));
-
-                // 4. Update and save within the correct context
                 managedUser.setIsVerified(true);
                 userRepository.save(managedUser);
-
-                // 5. Cleanup
                 TenantContext.clear();
               }
               return null;
@@ -245,30 +236,27 @@ public abstract class BaseIntegrationTest {
   }
 
   protected void mockRedisAndCache() {
-    // Redis Mocks to prevent NPEs (e.g., in RateLimitFilter)
     doReturn(valueOperations).when(redisTemplate).opsForValue();
     doReturn(zSetOperations).when(redisTemplate).opsForZSet();
-    doReturn(1L).when(valueOperations).increment(notNull());
-    doReturn(0L).when(zSetOperations).zCard(notNull());
+    doReturn(1L).when(valueOperations).increment(Objects.requireNonNull(notNull()));
+    doReturn(0L).when(zSetOperations).zCard(Objects.requireNonNull(notNull()));
 
-    // Cache Mocks for TenantAwareCacheResolver
     Cache dummyCache =
         new ConcurrentMapCache("dummy");
 
     doReturn(Collections.<Cache>singletonList(dummyCache))
         .when(tenantAwareCacheResolver)
-        .resolveCaches(notNull());
-    doReturn(dummyCache).when(cacheManager).getCache(notNull());
+        .resolveCaches(Objects.requireNonNull(notNull()));
+    doReturn(dummyCache).when(cacheManager).getCache(Objects.requireNonNull(notNull()));
   }
 
   @NonNull
-  protected String login(String email, String password, String workspace, Long tenantId)
+  protected String login(@NonNull String email, @NonNull String password, @NonNull String workspace, @NonNull Long tenantId)
       throws Exception {
     LoginRequest loginRequest = new com.ims.dto.request.LoginRequest();
     loginRequest.setEmail(email);
     loginRequest.setPassword(password);
 
-    // Platform users (ROOT) must login WITHOUT a company code per AuthService.java:351
     if ("SYS001".equals(workspace) || "PLATFORM".equalsIgnoreCase(workspace)) {
       loginRequest.setCompanyCode(null);
     } else {
@@ -285,26 +273,10 @@ public abstract class BaseIntegrationTest {
         mockMvc
             .perform(
                 MockMvcRequestBuilders.post(loginUrl)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(loginJson)
-                    .with(tenant(String.valueOf(tenantId))))
-            .andDo(mvcResult -> {
-              if (mvcResult.getResponse().getStatus() != 200) {
-                System.out.println("Login Failed! Status: " + mvcResult.getResponse().getStatus());
-                System.out.println("Response: " + mvcResult.getResponse().getContentAsString());
-              }
-            })
+                    .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                    .content(Objects.requireNonNull(loginJson))
+                    .with(tenant(Objects.requireNonNull(String.valueOf(tenantId)))))
             .andExpect(MockMvcResultMatchers.status().isOk())
-            .andDo(
-                mvcResult -> {
-                  if (mvcResult.getResponse().getStatus() != 200) {
-                    System.out.println(
-                        "Login Failed! Status: " + mvcResult.getResponse().getStatus());
-                    System.out.println("Response: " + mvcResult.getResponse().getContentAsString());
-                  }
-                })
-            .andExpect(
-                org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
             .andReturn();
 
     String responseJson = result.getResponse().getContentAsString();

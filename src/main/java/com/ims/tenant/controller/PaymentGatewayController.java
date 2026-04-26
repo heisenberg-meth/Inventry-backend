@@ -16,6 +16,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.Nullable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -63,7 +64,7 @@ public class PaymentGatewayController {
       }
 
       // 3. Parse payload to identify tenant and event
-      JsonNode root = objectMapper.readTree(rawBody);
+      JsonNode root = Objects.requireNonNull(objectMapper.readTree(rawBody));
 
       // Extract tenant ID from notes
       Long tenantId = extractTenantId(root);
@@ -122,6 +123,7 @@ public class PaymentGatewayController {
     }
   }
 
+  @Nullable
   private Long extractTenantId(JsonNode root) {
     // Try to find tenant_id in notes (common practice)
     JsonNode notes = root.path("payload").path("payment").path("entity").path("notes");

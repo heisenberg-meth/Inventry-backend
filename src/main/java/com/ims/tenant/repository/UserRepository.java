@@ -16,6 +16,22 @@ import org.springframework.stereotype.Repository;
 public interface UserRepository extends JpaRepository<User, Long> {
   Optional<User> findByEmail(String email);
 
+  /**
+   * Optimized detail fetch with JOIN FETCH for roles and permissions.
+   * Prevents N+1 queries when accessing these relationships in the detail view.
+   */
+  @Query("""
+      SELECT u FROM User u
+      LEFT JOIN FETCH u.role r
+      LEFT JOIN FETCH r.permissions
+      LEFT JOIN FETCH u.customPermissions
+      WHERE u.id = :id
+      """)
+  Optional<User> findByIdWithFullDetails(@Param("id") Long id);
+
+  /**
+   * Legacy method maintained for compatibility during migration.
+   */
   @Query("SELECT u FROM User u LEFT JOIN FETCH u.customPermissions WHERE u.id = :id")
   Optional<User> findByIdWithPermissions(@Param("id") Long id);
 
@@ -44,8 +60,22 @@ public interface UserRepository extends JpaRepository<User, Long> {
   @Query(value = "SELECT * FROM users WHERE reset_token = :token", nativeQuery = true)
   Optional<User> findByResetToken(@Param("token") String token);
 
+  /**
+   * Optimized user summary listing using interface projection.
+   * Resolves roles in a single JOIN query.
+   */
+  @Query("""
+      SELECT u.id as id, u.name as name, u.email as email,
+             r.name as roleName, u.scope as scope,
+             u.isActive as isActive, u.createdAt as createdAt
+      FROM User u
+      LEFT JOIN u.role r
+      WHERE u.tenantId = :tenantId AND u.scope = 'TENANT'
+      """)
+  Page<UserSummaryView> findSummariesByTenantId(@Param("tenantId") Long tenantId, Pageable pageable);
+
   @Query(
-      value = "SELECT * FROM users WHERE tenant_id = :tenantId AND role = :role LIMIT 1",
+      value = "SELECT u.* FROM users u JOIN roles r ON u.role_id = r.id WHERE u.tenant_id = :tenantId AND r.name = :role LIMIT 1",
       nativeQuery = true)
   Optional<User> findFirstByTenantIdAndRole(
       @Param("tenantId") Long tenantId, @Param("role") String role);
@@ -61,8 +91,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
   @Query(
       value =
-          "SELECT * FROM users WHERE tenant_id = :tenantId AND scope = 'TENANT'"
-              + " AND (name ILIKE '%' || :search || '%' OR email ILIKE '%' || :search || '%')",
+          "SELECT u.* FROM users u "
+              + "WHERE u.tenant_id = :tenantId AND u.scope = 'TENANT'"
+              + " AND (u.name ILIKE '%' || :search || '%' OR u.email ILIKE '%' || :search || '%')",
       nativeQuery = true)
   Page<User> findByTenantIdAndSearch(
       @Param("tenantId") Long tenantId, @Param("search") String search, Pageable pageable);
@@ -90,4 +121,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
       """)
   int clearExpiredResetTokens(
       @Param("tenantId") Long tenantId, @Param("now") LocalDateTime now);
+
+  @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+  @Query(
+      """
+      UPDATE User u
+      SET u.resetToken = null,
+          u.resetTokenExpiry = null
+      WHERE u.resetTokenExpiry < :now
+      """)
+  int clearAllExpiredResetTokens(@Param("now") LocalDateTime now);
 }

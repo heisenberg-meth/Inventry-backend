@@ -12,6 +12,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.TenantId;
+import org.springframework.lang.Nullable;
 
 @Entity
 @Table(name = "payment_gateway_logs")
@@ -23,6 +24,7 @@ public class PaymentGatewayLog {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @Nullable
   private Long id;
 
   @TenantId
@@ -30,6 +32,7 @@ public class PaymentGatewayLog {
   private Long tenantId;
 
   @Column(name = "payment_id")
+  @Nullable
   private Long paymentId;
 
   @Column(name = "event_type")

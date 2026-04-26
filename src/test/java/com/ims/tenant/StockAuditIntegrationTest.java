@@ -49,7 +49,7 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
             .email("u1@t1.com")
             .name("U1")
             .passwordHash("p")
-            .role(UserRole.ADMIN)
+            .role(Objects.requireNonNull(getOrCreateRole(Objects.requireNonNull(UserRole.ADMIN.name()), testTenant1Id)))
             .scope("TENANT")
             .isVerified(true)
             .build();
@@ -61,7 +61,7 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
             .tenantId(testTenant1Id)
             .name("T1 Product")
             .sku("T1-PROD")
-            .salePrice(BigDecimal.valueOf(10.0))
+            .salePrice(Objects.requireNonNull(BigDecimal.valueOf(10.0)))
             .stock(50)
             .reorderLevel(5)
             .isActive(true)
@@ -77,7 +77,7 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
             .email("u2@t2.com")
             .name("U2")
             .passwordHash("p")
-            .role(UserRole.ADMIN)
+            .role(Objects.requireNonNull(getOrCreateRole(Objects.requireNonNull(UserRole.ADMIN.name()), testTenant2Id)))
             .scope("TENANT")
             .isVerified(true)
             .build();
@@ -89,7 +89,7 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
             .tenantId(testTenant2Id)
             .name("T2 Product")
             .sku("T2-PROD")
-            .salePrice(BigDecimal.valueOf(20.0))
+            .salePrice(Objects.requireNonNull(BigDecimal.valueOf(20.0)))
             .stock(100)
             .reorderLevel(10)
             .isActive(true)
@@ -110,13 +110,13 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
     TenantContext.setTenantId(testTenant1Id);
 
     // 1. Stock In
-    stockService.stockIn(product1Id, 10, "Initial stock", user1Id);
+    stockService.stockIn(Objects.requireNonNull(product1Id), 10, "Initial stock", Objects.requireNonNull(user1Id));
 
     // 2. Stock Out
-    stockService.stockOut(product1Id, 5, "Sale", user1Id);
+    stockService.stockOut(Objects.requireNonNull(product1Id), 5, "Sale", Objects.requireNonNull(user1Id));
 
     // 3. Stock Adjust
-    stockService.stockAdjust(product1Id, -2, "Damage", user1Id);
+    stockService.stockAdjust(Objects.requireNonNull(product1Id), -2, "Damage", Objects.requireNonNull(user1Id));
 
     Page<StockMovement> movements = stockService.getMovements(PageRequest.of(0, 10));
     List<StockMovement> list = movements.getContent();
@@ -141,12 +141,12 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
   void testMultiTenantIsolation() {
     // Tenant 1 actions
     TenantContext.setTenantId(testTenant1Id);
-    stockService.stockIn(product1Id, 10, "T1 In", user1Id);
+    stockService.stockIn(Objects.requireNonNull(product1Id), 10, "T1 In", Objects.requireNonNull(user1Id));
 
     // Tenant 2 actions
     TenantContext.setTenantId(testTenant2Id);
-    stockService.stockIn(product2Id, 50, "T2 In", user2Id);
-    stockService.stockOut(product2Id, 5, "T2 Out", user2Id);
+    stockService.stockIn(Objects.requireNonNull(product2Id), 50, "T2 In", Objects.requireNonNull(user2Id));
+    stockService.stockOut(Objects.requireNonNull(product2Id), 5, "T2 Out", Objects.requireNonNull(user2Id));
 
     // Verify Tenant 1 only sees their movements
     TenantContext.setTenantId(testTenant1Id);
@@ -170,14 +170,14 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
 
     // Initial stock is 50, reorder level is 5.
     // Stock out 46 -> stock is 4 (Low Stock!)
-    stockService.stockOut(product1Id, 46, "Big sale", user1Id);
+    stockService.stockOut(Objects.requireNonNull(product1Id), 46, "Big sale", Objects.requireNonNull(user1Id));
 
     var lowStock = productRepository.findLowStock(testTenant1Id);
     assertThat(lowStock).hasSize(1);
     assertThat(lowStock.get(0).getId()).isEqualTo(product1Id);
 
     // Stock in 10 -> stock is 14 (Not low stock anymore)
-    stockService.stockIn(product1Id, 10, "Restock", user1Id);
+    stockService.stockIn(Objects.requireNonNull(product1Id), 10, "Restock", Objects.requireNonNull(user1Id));
     lowStock = productRepository.findLowStock(testTenant1Id);
     assertThat(lowStock).isEmpty();
   }

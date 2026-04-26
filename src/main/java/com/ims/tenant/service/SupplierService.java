@@ -17,7 +17,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,21 +31,19 @@ public class SupplierService {
   private final PaymentRepository paymentRepository;
   private final com.ims.shared.audit.AuditLogService auditLogService;
 
-  public @NonNull Page<com.ims.dto.response.SupplierResponse> getSuppliers(
-      @NonNull Pageable pageable) {
+  public Page<com.ims.dto.response.SupplierResponse> getSuppliers(
+      Pageable pageable) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.warn("Tenant ID is missing in SupplierService.getSuppliers");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
     return Objects.requireNonNull(supplierRepository.findAll(pageable).map(this::toResponse));
   }
 
-  public @NonNull Supplier getById(@NonNull Long id) {
+  public Supplier getById(Long id) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.warn("Tenant ID is missing in SupplierService.getById");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
@@ -56,16 +53,15 @@ public class SupplierService {
             .orElseThrow(() -> new EntityNotFoundException("Supplier not found")));
   }
 
-  public @NonNull com.ims.dto.response.SupplierResponse getSupplierResponseById(@NonNull Long id) {
+  public com.ims.dto.response.SupplierResponse getSupplierResponseById(Long id) {
     return Objects.requireNonNull(toResponse(getById(id)));
   }
 
   @Transactional
-  public @NonNull com.ims.dto.response.SupplierResponse create(
-      @NonNull com.ims.dto.request.SupplierRequest request) {
+  public com.ims.dto.response.SupplierResponse create(
+      com.ims.dto.request.SupplierRequest request) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.warn("Tenant ID is missing in SupplierService.create");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
@@ -80,18 +76,17 @@ public class SupplierService {
     auditLogService.logAudit(
         AuditAction.CREATE,
         AuditResource.SUPPLIER,
-        savedSupplier.getId(),
+        Objects.requireNonNull(savedSupplier.getId()),
         "Created supplier: " + savedSupplier.getName());
 
     return Objects.requireNonNull(toResponse(savedSupplier));
   }
 
   @Transactional
-  public @NonNull com.ims.dto.response.SupplierResponse update(
-      @NonNull Long id, @NonNull com.ims.dto.request.SupplierRequest updates) {
+  public com.ims.dto.response.SupplierResponse update(
+      Long id, com.ims.dto.request.SupplierRequest updates) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.warn("Tenant ID is missing in SupplierService.update");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
@@ -116,7 +111,7 @@ public class SupplierService {
     auditLogService.logAudit(
         AuditAction.UPDATE,
         AuditResource.SUPPLIER,
-        updatedSupplier.getId(),
+        Objects.requireNonNull(updatedSupplier.getId()),
         "Updated supplier: " + updatedSupplier.getName());
 
     return Objects.requireNonNull(toResponse(updatedSupplier));
@@ -124,10 +119,9 @@ public class SupplierService {
 
   @Transactional
   @RequiresPermission("delete_supplier")
-  public void delete(@NonNull Long id) {
+  public void delete(Long id) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.warn("Tenant ID is missing in SupplierService.delete");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
@@ -138,35 +132,35 @@ public class SupplierService {
         AuditAction.DELETE, AuditResource.SUPPLIER, id, "Deleted supplier: " + supplier.getName());
   }
 
-  public Map<String, Object> getSupplierLedger(@NonNull Long id) {
+  public Map<String, Object> getSupplierLedger(Long id) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.warn("Tenant ID is missing in SupplierService.getSupplierLedger");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
     Supplier supplier = getById(id);
 
-    List<com.ims.model.Order> orders =
-        orderRepository.findBySupplierId(id, Pageable.unpaged()).getContent();
+    List<com.ims.model.Order> orders = orderRepository.findBySupplierId(id, Pageable.unpaged()).getContent();
     List<com.ims.model.Invoice> invoices = invoiceRepository.findBySupplierId(id);
     List<com.ims.model.Payment> payments = paymentRepository.findBySupplierId(id);
 
-    return Map.of(
-        "supplier", toResponse(supplier),
-        "orders", orders,
-        "invoices", invoices,
-        "payments", payments);
+    return Objects.requireNonNull(
+        Map.of(
+            "supplier", toResponse(supplier),
+            "orders", orders,
+            "invoices", invoices,
+            "payments", payments));
   }
 
   private com.ims.dto.response.SupplierResponse toResponse(Supplier supplier) {
-    return com.ims.dto.response.SupplierResponse.builder()
-        .id(supplier.getId())
-        .name(supplier.getName())
-        .phone(supplier.getPhone())
-        .email(supplier.getEmail())
-        .address(supplier.getAddress())
-        .gstin(supplier.getGstin())
-        .build();
+    return Objects.requireNonNull(
+        com.ims.dto.response.SupplierResponse.builder()
+            .id(supplier.getId())
+            .name(supplier.getName())
+            .phone(supplier.getPhone())
+            .email(supplier.getEmail())
+            .address(supplier.getAddress())
+            .gstin(supplier.getGstin())
+            .build());
   }
 }

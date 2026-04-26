@@ -6,14 +6,17 @@ import com.ims.dto.request.CreateTicketRequest;
 import com.ims.dto.request.UpdateTicketStatusRequest;
 import com.ims.model.SupportMessage;
 import com.ims.model.SupportTicket;
+import com.ims.model.SupportTicketStatus;
 import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditLogService;
+import com.ims.shared.audit.AuditResource;
 import com.ims.tenant.repository.SupportMessageRepository;
 import com.ims.tenant.repository.SupportTicketRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,7 +48,7 @@ public class SupportService {
             .description(request.getDescription())
             .priority(request.getPriority() != null ? request.getPriority() : "MEDIUM")
             .category(request.getCategory() != null ? request.getCategory() : "GENERAL")
-            .status("OPEN")
+            .status(SupportTicketStatus.OPEN)
             .build();
 
     var savedTicket = ticketRepository.save(initialTicket);
@@ -58,7 +61,7 @@ public class SupportService {
 
   @Transactional(readOnly = true)
   public Page<SupportTicket> listTenantTickets(Long tenantId, Pageable pageable) {
-    return ticketRepository.findByTenantId(tenantId, pageable);
+    return Objects.requireNonNull(ticketRepository.findByTenantId(tenantId, pageable));
   }
 
   @Transactional(readOnly = true)
@@ -74,7 +77,7 @@ public class SupportService {
     Map<String, Object> details = new HashMap<>();
     details.put("ticket", ticket);
     details.put("messages", messages);
-    return details;
+    return Objects.requireNonNull(details);
   }
 
   @Transactional
@@ -84,12 +87,12 @@ public class SupportService {
             .findByIdAndTenantId(ticketId, tenantId)
             .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
 
-    ticket.setStatus("CLOSED");
-    ticket.setUpdatedAt(LocalDateTime.now());
-    SupportTicket saved = ticketRepository.save(ticket);
+    ticket.setStatus(SupportTicketStatus.CLOSED);
+    ticket.setUpdatedAt(Objects.requireNonNull(LocalDateTime.now()));
+    SupportTicket saved = Objects.requireNonNull(ticketRepository.save(ticket));
 
-    auditLogService.log(
-        AuditAction.CLOSE_TICKET, tenantId, null, "Tenant closed ticket: #" + ticketId);
+    auditLogService.logAudit(
+        AuditAction.CLOSE_TICKET, AuditResource.SUPPORT_TICKET, ticketId, "Tenant closed ticket: #" + ticketId);
     return saved;
   }
 
@@ -97,13 +100,13 @@ public class SupportService {
 
   @Transactional(readOnly = true)
   public Page<SupportTicket> listAllTickets(Pageable pageable) {
-    return ticketRepository.findAll(pageable);
+    return Objects.requireNonNull(ticketRepository.findAll(pageable));
   }
 
   @Transactional(readOnly = true)
   public Page<SupportTicket> listMyAssignedTickets(
       Long userId, Pageable pageable) {
-    return ticketRepository.findByAssignedTo(userId, pageable);
+    return Objects.requireNonNull(ticketRepository.findByAssignedTo(userId, pageable));
   }
 
   @Transactional(readOnly = true)
@@ -129,16 +132,16 @@ public class SupportService {
             .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
 
     ticket.setAssignedTo(request.getSupportAdminId());
-    if ("OPEN".equals(ticket.getStatus())) {
-      ticket.setStatus("IN_PROGRESS");
+    if (SupportTicketStatus.OPEN.equals(ticket.getStatus())) {
+      ticket.setStatus(SupportTicketStatus.IN_PROGRESS);
     }
-    ticket.setUpdatedAt(LocalDateTime.now());
-    SupportTicket saved = ticketRepository.save(ticket);
+    ticket.setUpdatedAt(Objects.requireNonNull(LocalDateTime.now()));
+    SupportTicket saved = Objects.requireNonNull(ticketRepository.save(ticket));
 
-    auditLogService.log(
+    auditLogService.logAudit(
         AuditAction.ASSIGN_TICKET,
-        ticket.getTenantId(),
-        request.getSupportAdminId(),
+        AuditResource.SUPPORT_TICKET,
+        ticketId,
         "Ticket #" + ticketId + " assigned to user " + request.getSupportAdminId());
 
     return saved;
@@ -153,13 +156,13 @@ public class SupportService {
             .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
 
     ticket.setStatus(request.getStatus());
-    ticket.setUpdatedAt(LocalDateTime.now());
-    SupportTicket saved = ticketRepository.save(ticket);
+    ticket.setUpdatedAt(Objects.requireNonNull(LocalDateTime.now()));
+    SupportTicket saved = Objects.requireNonNull(ticketRepository.save(ticket));
 
-    auditLogService.log(
+    auditLogService.logAudit(
         AuditAction.UPDATE_TICKET_STATUS,
-        ticket.getTenantId(),
-        null,
+        AuditResource.SUPPORT_TICKET,
+        ticketId,
         "Ticket #" + ticketId + " status changed to " + request.getStatus());
 
     return saved;
@@ -172,14 +175,14 @@ public class SupportService {
             .findById(ticketId)
             .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
 
-    ticket.setStatus("CLOSED");
-    ticket.setUpdatedAt(LocalDateTime.now());
-    SupportTicket saved = ticketRepository.save(ticket);
+    ticket.setStatus(SupportTicketStatus.CLOSED);
+    ticket.setUpdatedAt(Objects.requireNonNull(LocalDateTime.now()));
+    SupportTicket saved = Objects.requireNonNull(ticketRepository.save(ticket));
 
-    auditLogService.log(
+    auditLogService.logAudit(
         AuditAction.CLOSE_TICKET,
-        ticket.getTenantId(),
-        null,
+        AuditResource.SUPPORT_TICKET,
+        ticketId,
         "Platform closed ticket: #" + ticketId);
     return saved;
   }
@@ -209,9 +212,9 @@ public class SupportService {
     SupportMessage saved = messageRepository.save(message);
 
     // Reopen if CLOSED and tenant messages
-    if ("CLOSED".equals(ticket.getStatus()) && "TENANT".equals(senderType)) {
-      ticket.setStatus("REOPENED");
-      ticket.setUpdatedAt(LocalDateTime.now());
+    if (SupportTicketStatus.CLOSED.equals(ticket.getStatus()) && "TENANT".equals(senderType)) {
+      ticket.setStatus(SupportTicketStatus.REOPENED);
+      ticket.setUpdatedAt(Objects.requireNonNull(LocalDateTime.now()));
       ticketRepository.save(ticket);
     }
 
@@ -222,10 +225,10 @@ public class SupportService {
   public Map<String, Object> getStats() {
     Map<String, Object> stats = new HashMap<>();
     stats.put("total", ticketRepository.count());
-    stats.put("open", ticketRepository.countByStatus("OPEN"));
-    stats.put("inProgress", ticketRepository.countByStatus("IN_PROGRESS"));
-    stats.put("closed", ticketRepository.countByStatus("CLOSED"));
-    stats.put("reopened", ticketRepository.countByStatus("REOPENED"));
-    return stats;
+    stats.put("open", ticketRepository.countByStatus(SupportTicketStatus.OPEN));
+    stats.put("inProgress", ticketRepository.countByStatus(SupportTicketStatus.IN_PROGRESS));
+    stats.put("closed", ticketRepository.countByStatus(SupportTicketStatus.CLOSED));
+    stats.put("reopened", ticketRepository.countByStatus(SupportTicketStatus.REOPENED));
+    return Objects.requireNonNull(stats);
   }
 }

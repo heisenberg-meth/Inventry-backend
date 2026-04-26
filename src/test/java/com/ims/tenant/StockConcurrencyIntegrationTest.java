@@ -71,7 +71,7 @@ public class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
             .tenantId(tenantId)
             .name("Concurrency Test Product")
             .sku("CONC-001")
-            .salePrice(BigDecimal.valueOf(10.0))
+            .salePrice(Objects.requireNonNull(BigDecimal.valueOf(10.0)))
             .stock(100)
             .reorderLevel(10)
             .isActive(true)

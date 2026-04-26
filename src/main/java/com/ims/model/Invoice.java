@@ -2,6 +2,7 @@ package com.ims.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -15,6 +16,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.TenantId;
+import org.springframework.lang.Nullable;
 
 @Entity
 @Table(
@@ -32,6 +34,7 @@ public class Invoice {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @Nullable
   private Long id;
 
   @TenantId
@@ -39,6 +42,7 @@ public class Invoice {
   private Long tenantId;
 
   @Column(name = "order_id")
+  @Nullable
   private Long orderId;
 
   @Column(name = "invoice_number", nullable = false)
@@ -54,15 +58,20 @@ public class Invoice {
   @Builder.Default
   private BigDecimal discount = BigDecimal.ZERO;
 
-  @Column @Builder.Default private String status = "UNPAID";
+  @Column
+  @Enumerated(jakarta.persistence.EnumType.STRING)
+  @Builder.Default
+  private InvoiceStatus status = InvoiceStatus.UNPAID;
 
   @Column(name = "due_date")
   private LocalDate dueDate;
 
   @Column(name = "paid_at")
+  @Nullable
   private LocalDateTime paidAt;
 
   @Column(name = "parent_invoice_id")
+  @Nullable
   private Long parentInvoiceId;
 
   @Column(name = "created_at")

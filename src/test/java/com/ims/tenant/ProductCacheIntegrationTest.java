@@ -11,6 +11,7 @@ import com.ims.dto.request.SignupRequest;
 import com.ims.shared.auth.SignupService;
 import java.math.BigDecimal;
 import java.util.Collections;
+import java.util.Objects;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,8 +43,8 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
     doReturn(Collections.<org.springframework.cache.Cache>singletonList(spyCache))
         .when(tenantAwareCacheResolver)
         .resolveCaches(
-            any(org.springframework.cache.interceptor.CacheOperationInvocationContext.class));
-    doReturn(spyCache).when(cacheManager).getCache(any(String.class));
+            Objects.requireNonNull(any(org.springframework.cache.interceptor.CacheOperationInvocationContext.class)));
+    doReturn(spyCache).when(cacheManager).getCache(Objects.requireNonNull(any(String.class)));
   }
 
   @Test
@@ -59,7 +60,7 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
     verifyUserEmail("admin@cache.com");
     verifyUser("admin@cache.com");
     Long tenantId = tenantRepository.findByWorkspaceSlug("cache-corp").orElseThrow().getId();
-    String token = login("admin@cache.com", "password123", response.getCompanyCode(), tenantId);
+    String token = login("admin@cache.com", "password123", Objects.requireNonNull(response.getCompanyCode()), tenantId);
 
     // 1. Create Product
     CreateProductRequest createReq = new CreateProductRequest();
@@ -71,9 +72,9 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
             .perform(
                 post("/api/v1/tenant/products")
                     .header("Authorization", "Bearer " + token)
-                    .with(tenant(String.valueOf(tenantId)))
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(objectMapper.writeValueAsString(createReq)))
+                    .with(tenant(Objects.requireNonNull(String.valueOf(tenantId))))
+                    .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                    .content(Objects.requireNonNull(objectMapper.writeValueAsString(createReq))))
             .andExpect(status().isCreated())
             .andReturn();
 
@@ -90,7 +91,7 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
         .perform(
             get("/api/v1/tenant/products/" + productId)
                 .header("Authorization", "Bearer " + token)
-                .with(tenant(String.valueOf(tenantId))))
+                .with(tenant(Objects.requireNonNull(String.valueOf(tenantId)))))
         .andExpect(status().isOk());
 
     // verify(spyCache, atLeastOnce()).get(any());
@@ -100,7 +101,7 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
         .perform(
             get("/api/v1/tenant/products/" + productId)
                 .header("Authorization", "Bearer " + token)
-                .with(tenant(String.valueOf(tenantId))))
+                .with(tenant(Objects.requireNonNull(String.valueOf(tenantId)))))
         .andExpect(status().isOk());
 
     // 3. Second fetch (Should be a cache hit)
@@ -108,7 +109,7 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
         .perform(
             get("/api/v1/tenant/products/" + productId)
                 .header("Authorization", "Bearer " + token)
-                .with(tenant(String.valueOf(tenantId))))
+                .with(tenant(Objects.requireNonNull(String.valueOf(tenantId)))))
         .andExpect(status().isOk());
 
     // 4. Update product (Should trigger eviction)
@@ -117,9 +118,9 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
         .perform(
             put("/api/v1/tenant/products/" + productId)
                 .header("Authorization", "Bearer " + token)
-                .with(tenant(String.valueOf(tenantId)))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(createReq)))
+                .with(tenant(Objects.requireNonNull(String.valueOf(tenantId))))
+                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                .content(Objects.requireNonNull(objectMapper.writeValueAsString(createReq))))
         .andExpect(status().isOk());
 
     // verify(spyCache, atLeastOnce()).evict(any());
@@ -129,7 +130,7 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
         .perform(
             get("/api/v1/tenant/products/" + productId)
                 .header("Authorization", "Bearer " + token)
-                .with(tenant(String.valueOf(tenantId))))
+                .with(tenant(Objects.requireNonNull(String.valueOf(tenantId)))))
         .andExpect(status().isOk());
 
     // 5. Fetch again (Cache miss again)
@@ -137,7 +138,7 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
         .perform(
             get("/api/v1/tenant/products/" + productId)
                 .header("Authorization", "Bearer " + token)
-                .with(tenant(String.valueOf(tenantId))))
+                .with(tenant(Objects.requireNonNull(String.valueOf(tenantId)))))
         .andExpect(status().isOk());
   }
 }

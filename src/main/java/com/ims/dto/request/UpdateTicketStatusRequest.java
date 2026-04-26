@@ -1,13 +1,14 @@
 package com.ims.dto.request;
 
-import jakarta.validation.constraints.NotBlank;
+import com.ims.model.SupportTicketStatus;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data
 public class UpdateTicketStatusRequest {
 
-  @NotBlank(message = "Status is required")
-  private String status;
+  @NotNull(message = "Status is required")
+  private SupportTicketStatus status;
 
   private String reason;
 }

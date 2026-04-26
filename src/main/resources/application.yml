@@ -81,6 +81,9 @@ app:
       - 192.168.0.0/16
 
 management:
+  health:
+    mail:
+      enabled: false
   endpoints:
     web:
       exposure:

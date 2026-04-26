@@ -44,8 +44,8 @@ public class PermissionService {
     if (user.getRole() != null) {
       Optional<Role> roleOpt =
           tenantId != null
-              ? roleRepository.findByNameAndTenantIdWithPermissions(user.getRole().name(), tenantId)
-              : roleRepository.findByNameAndTenantIdIsNullWithPermissions(user.getRole().name());
+              ? roleRepository.findByNameAndTenantIdWithPermissions(user.getRole().getName(), tenantId)
+              : roleRepository.findByNameAndTenantIdIsNullWithPermissions(user.getRole().getName());
 
       roleOpt.ifPresent(
           role ->

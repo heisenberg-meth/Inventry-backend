@@ -7,6 +7,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,6 +33,7 @@ public class CustomerImportService {
     int successCount = 0;
     int failCount = 0;
     List<String> errors = new ArrayList<>();
+    Long tenantId = com.ims.shared.auth.TenantContext.requireTenantId();
 
     try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
       String line;
@@ -61,13 +63,15 @@ public class CustomerImportService {
           String gstin = data.length > MIN_COLUMNS_FOR_GSTIN ? data[COL_GSTIN_INDEX].trim() : null;
 
           Customer customer =
-              Customer.builder()
-                  .name(name)
-                  .phone(phone)
-                  .email(email)
-                  .address(address)
-                  .gstin(gstin)
-                  .build();
+              Objects.requireNonNull(
+                  Customer.builder()
+                      .tenantId(tenantId)
+                      .name(Objects.requireNonNull(name))
+                      .phone(phone)
+                      .email(email)
+                      .address(address)
+                      .gstin(gstin)
+                      .build());
 
           customers.add(customer);
           successCount++;
@@ -78,20 +82,22 @@ public class CustomerImportService {
       }
 
       if (!errors.isEmpty()) {
-        return Map.of(
-            "success_count", 0, "fail_count", failCount, "errors", errors, "status", "FAILED");
+        return Objects.requireNonNull(
+            Map.of(
+                "success_count", 0, "fail_count", failCount, "errors", errors, "status", "FAILED"));
       }
 
       if (dryRun) {
-        return Map.of(
-            "success_count",
-            successCount,
-            "fail_count",
-            0,
-            "errors",
-            new ArrayList<>(),
-            "status",
-            "DRY_RUN_SUCCESS");
+        return Objects.requireNonNull(
+            Map.of(
+                "success_count",
+                successCount,
+                "fail_count",
+                0,
+                "errors",
+                new ArrayList<>(),
+                "status",
+                "DRY_RUN_SUCCESS"));
       }
 
       if (!customers.isEmpty()) {
@@ -107,7 +113,8 @@ public class CustomerImportService {
       throw new RuntimeException("Import failed: " + e.getMessage());
     }
 
-    return Map.of(
-        "success_count", successCount, "fail_count", 0, "errors", errors, "status", "SUCCESS");
+    return Objects.requireNonNull(
+        Map.of(
+            "success_count", successCount, "fail_count", 0, "errors", errors, "status", "SUCCESS"));
   }
 }

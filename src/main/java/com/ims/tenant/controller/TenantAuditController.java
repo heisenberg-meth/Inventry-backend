@@ -12,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
-import org.springframework.lang.NonNull;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,7 +29,7 @@ public class TenantAuditController {
   @GetMapping
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Get activity logs for current tenant")
-  public ResponseEntity<Page<AuditLogResponse>> getTenantLogs(@NonNull Pageable pageable) {
+  public ResponseEntity<Page<AuditLogResponse>> getTenantLogs(Pageable pageable) {
     Long tenantId = getTenantId();
     return ResponseEntity.ok(auditLogService.getTenantLogsAsDto(tenantId, Objects.requireNonNull(pageable)));
   }
