@@ -159,7 +159,8 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
     verifyStock(token, product.getId(), 100, tenantId);
   }
 
-  private void verifyStock(String token, Long productId, int expected, Long tenantId) throws Exception {
+  private void verifyStock(String token, Long productId, int expected, Long tenantId)
+      throws Exception {
     mockMvc
         .perform(
             get("/api/v1/tenant/products/" + productId)

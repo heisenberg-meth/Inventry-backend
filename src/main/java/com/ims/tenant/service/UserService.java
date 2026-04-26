@@ -54,9 +54,10 @@ public class UserService {
   }
 
   public @NonNull UserResponse getUserById(@NonNull Long id) {
-    User tmpUser = userRepository
-        .findByIdWithPermissions(Objects.requireNonNull(id))
-        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User tmpUser =
+        userRepository
+            .findByIdWithPermissions(Objects.requireNonNull(id))
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
     User user = Objects.requireNonNull(tmpUser);
     return toResponse(user, true);
   }
@@ -77,9 +78,10 @@ public class UserService {
     TenantContext.assertTenantPresent();
     Long tenantId = TenantContext.getTenantId();
 
-    var tmpTenant = tenantRepository
-        .lockById(tenantId)
-        .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+    var tmpTenant =
+        tenantRepository
+            .lockById(tenantId)
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
     var tenant = Objects.requireNonNull(tmpTenant);
 
     if (tenant.getMaxUsers() != null) {
@@ -147,9 +149,10 @@ public class UserService {
       @NonNull Long id, @NonNull AssignPermissionsRequest request) {
     Objects.requireNonNull(id, "user id required");
     Objects.requireNonNull(request, "request body required");
-    User tmpUser = userRepository
-        .findByIdWithPermissions(id)
-        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User tmpUser =
+        userRepository
+            .findByIdWithPermissions(id)
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
     User user = Objects.requireNonNull(tmpUser);
 
     var perms = permissionRepository.findByIdIn(request.getPermissionIds());
@@ -186,7 +189,6 @@ public class UserService {
   private @Nullable Long getTenantId() {
     return TenantContext.getTenantId();
   }
-
 
   private @NonNull UserResponse toResponse(@NonNull User user, boolean includePermissions) {
     List<String> permissions = null;

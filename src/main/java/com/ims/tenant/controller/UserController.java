@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/tenant/users")
+@RequestMapping("/api/v1/tenant/users")
 @RequiredArgsConstructor
 @Tag(name = "Tenant - Users", description = "Tenant-scoped user management")
 @SecurityRequirement(name = "bearerAuth")
@@ -67,18 +67,15 @@ public class UserController {
     if (role == null || role.isBlank()) {
       throw new IllegalArgumentException("Role is required");
     }
-    return ResponseEntity.ok(
-        userService.updateRole(id, Objects.requireNonNull(role)));
+    return ResponseEntity.ok(userService.updateRole(id, Objects.requireNonNull(role)));
   }
 
   @PostMapping("/{id}/permissions")
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Assign custom permissions to user")
   public ResponseEntity<UserResponse> assignPermissions(
-      @PathVariable long id,
-      @Valid @RequestBody @NonNull AssignPermissionsRequest request) {
-    return ResponseEntity.ok(
-        userService.assignPermissions(id, Objects.requireNonNull(request)));
+      @PathVariable long id, @Valid @RequestBody @NonNull AssignPermissionsRequest request) {
+    return ResponseEntity.ok(userService.assignPermissions(id, Objects.requireNonNull(request)));
   }
 
   @DeleteMapping("/{id}")

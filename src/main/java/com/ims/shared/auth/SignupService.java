@@ -10,8 +10,8 @@ import com.ims.platform.repository.TenantRepository;
 import com.ims.tenant.repository.UserRepository;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.lang.NonNull;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service

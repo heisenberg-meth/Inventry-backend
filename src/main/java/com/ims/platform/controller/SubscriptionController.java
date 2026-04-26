@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/platform/subscriptions")
+@RequestMapping("/api/v1/platform/subscriptions")
 @RequiredArgsConstructor
 @Tag(name = "Platform - Subscriptions", description = "Global subscription management")
 @SecurityRequirement(name = "bearerAuth")

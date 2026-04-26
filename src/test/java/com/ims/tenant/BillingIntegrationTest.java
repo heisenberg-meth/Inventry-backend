@@ -173,5 +173,4 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
                 .string(
                     "Content-Disposition", "attachment; filename=invoice-" + invoiceId + ".pdf"));
   }
-
 }
