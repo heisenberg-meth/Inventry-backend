@@ -72,6 +72,7 @@ app:
     authenticated-rpm: ${APP_RATE_LIMIT_AUTHENTICATED_RPM:500}
     window-seconds: ${APP_RATE_LIMIT_WINDOW_SECONDS:60}
   security:
+    encryption-key: ${APP_ENCRYPTION_KEY:12345678901234567890123456789012} # Must be 32 bytes
     trusted-proxies:
       - 127.0.0.1
       - ::1
@@ -87,6 +88,8 @@ management:
   endpoint:
     health:
       show-details: never
+      probes:
+        enabled: true
 
 springdoc:
   api-docs:
@@ -123,6 +126,13 @@ resilience4j:
         limitForPeriod: 3
         limitRefreshPeriod: 15m
         timeoutDuration: 0
+  retry:
+    instances:
+      webhookRetry:
+        maxAttempts: 3
+        waitDuration: 2s
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
   circuitbreaker:
     instances:
       webhook:

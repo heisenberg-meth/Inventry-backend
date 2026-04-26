@@ -24,6 +24,7 @@ import java.util.HexFormat;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -182,13 +183,24 @@ public class AuthService {
     UserRole role = UserRole.ADMIN; // Always enforce ADMIN role inside tenant
     String businessType = tenant.getBusinessType();
 
-    java.util.Set<String> permissions =
+    Set<String> permissions =
         permissionService.getUserPermissions(targetUser.getId(), safeTenantId);
 
     // Impersonation TTLs (see IMPERSONATION_ACCESS_TTL_SECONDS /
     // IMPERSONATION_REFRESH_TTL_SECONDS)
     long impersonationAccessTtl = IMPERSONATION_ACCESS_TTL_SECONDS;
     long impersonationRefreshTtl = IMPERSONATION_REFRESH_TTL_SECONDS;
+
+    // 3. Track session for revocation
+    String sessionId = UUID.randomUUID().toString();
+    String sessionKey = "impersonation:session:" + sessionId;
+    redisTemplate
+        .opsForValue()
+        .set(
+            sessionKey,
+            Objects.requireNonNull(rootUserId.toString()),
+            impersonationRefreshTtl,
+            TimeUnit.SECONDS);
 
     String accessToken =
         Objects.requireNonNull(
@@ -202,6 +214,7 @@ public class AuthService {
                 permissions,
                 true,
                 rootUserId,
+                sessionId,
                 impersonationAccessTtl));
 
     String refreshToken =
@@ -216,17 +229,17 @@ public class AuthService {
                 permissions,
                 true,
                 rootUserId,
+                sessionId,
                 impersonationRefreshTtl));
 
     auditLogService.log(
         AuditAction.ROOT_IMPERSONATION_START,
         safeTenantId,
         rootUserId,
-        "ROOT user started impersonation of tenant: "
-            + tenant.getName()
-            + " (targetUser: "
-            + targetUser.getEmail()
-            + ")");
+        Map.of(
+            "target_user", targetUser.getEmail(),
+            "target_user_id", targetUser.getId(),
+            "session_id", sessionId));
 
     log.info(
         "ROOT user {} impersonating tenant admin: {} (tenant={})",
@@ -279,7 +292,7 @@ public class AuthService {
       throw new IllegalArgumentException("Only platform administrators can log in here");
     }
 
-    java.util.Set<String> permissions = permissionService.getUserPermissions(user.getId(), null);
+    Set<String> permissions = permissionService.getUserPermissions(user.getId(), null);
 
     String scope = Objects.requireNonNull(user.getScope());
     String accessToken =
@@ -392,7 +405,7 @@ public class AuthService {
     // Tenant-filtered lookups below (permissionService, lastLogin) must run in the
     // user's tenant context.
     Long previousTenant = TenantContext.getTenantId();
-    java.util.Set<String> permissions;
+    Set<String> permissions;
     try {
       if (safeTenantId != null) {
         TenantContext.setTenantId(safeTenantId);
@@ -504,6 +517,31 @@ public class AuthService {
     log.info("Token blacklisted: {}", tokenHash.substring(0, HASH_LOG_LENGTH) + "...");
   }
 
+  public void endImpersonation(@NonNull String token) {
+    if (!jwtUtil.validateToken(token) || !jwtUtil.extractImpersonation(token)) {
+      throw new IllegalArgumentException("Invalid or non-impersonation token");
+    }
+
+    String sessionId = jwtUtil.extractSessionId(token);
+    if (sessionId != null) {
+      redisTemplate.delete("impersonation:session:" + sessionId);
+      log.info("Impersonation session {} revoked", sessionId);
+    }
+
+    Long rootUserId = jwtUtil.extractImpersonatedBy(token);
+    Long tenantId = jwtUtil.extractTenantId(token);
+    if (tenantId != null) {
+      auditLogService.log(
+          AuditAction.ROOT_IMPERSONATION_END,
+          tenantId,
+          rootUserId,
+          Map.of("session_id", sessionId != null ? sessionId : "N/A"));
+    }
+    
+    // Also blacklist the current token
+    logout(token);
+  }
+
   public @NonNull LoginResponse refresh(@NonNull String refreshToken) {
     if (!jwtUtil.validateToken(refreshToken)) {
       throw new IllegalArgumentException("Invalid refresh token");
@@ -518,10 +556,14 @@ public class AuthService {
 
     boolean impersonation = jwtUtil.extractImpersonation(refreshToken);
     Long impersonatedBy = jwtUtil.extractImpersonatedBy(refreshToken);
+    String sessionId = jwtUtil.extractSessionId(refreshToken);
 
     if (impersonation) {
       if (impersonatedBy == null) {
         throw new IllegalArgumentException("Invalid impersonation token");
+      }
+      if (sessionId == null || !redisTemplate.hasKey("impersonation:session:" + sessionId)) {
+        throw new IllegalArgumentException("Impersonation session expired or revoked");
       }
       User rootUser =
           userRepository
@@ -553,7 +595,7 @@ public class AuthService {
       }
     }
 
-    java.util.Set<String> permissions =
+    Set<String> permissions =
         permissionService.getUserPermissions(user.getId(), safeTenantId);
 
     // Maintain impersonation TTLs on refresh
@@ -573,6 +615,7 @@ public class AuthService {
                 permissions,
                 impersonation,
                 impersonatedBy,
+                sessionId,
                 accessTtl));
     String newRefreshToken =
         Objects.requireNonNull(
@@ -586,6 +629,7 @@ public class AuthService {
                 permissions,
                 impersonation,
                 impersonatedBy,
+                sessionId,
                 refreshTtl));
 
     // Blacklist old refresh token

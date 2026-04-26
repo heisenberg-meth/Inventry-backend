@@ -61,7 +61,8 @@ public class PlatformAnalyticsService {
     Map<String, Object> analytics = new LinkedHashMap<>();
     analytics.put("total_tenants", tenants.size());
     analytics.put(
-        "active_tenants", tenants.stream().filter(t -> "ACTIVE".equals(t.getStatus())).count());
+        "active_tenants",
+        tenants.stream().filter(t -> com.ims.model.TenantStatus.ACTIVE.equals(t.getStatus())).count());
     analytics.put("signup_trend", trend);
 
     return analytics;

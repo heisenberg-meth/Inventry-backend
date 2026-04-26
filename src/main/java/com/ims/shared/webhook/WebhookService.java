@@ -14,9 +14,7 @@ import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
-import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Recover;
-import org.springframework.retry.annotation.Retryable;
+import io.github.resilience4j.retry.annotation.Retry;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,6 +46,8 @@ public class WebhookService {
 
   private final WebhookRepository webhookRepository;
   private final RestTemplate webhookRestTemplate;
+  private final com.ims.shared.security.SecretEncryptionService encryptionService;
+  private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
   public List<Webhook> getMyWebhooks() {
     return webhookRepository.findByTenantId(TenantContext.getTenantId());
@@ -63,7 +63,7 @@ public class WebhookService {
                 .tenantId(TenantContext.getTenantId())
                 .url(normalizedUri.toString())
                 .eventTypes(eventTypes)
-                .secret(secret)
+                .secret(encryptionService.encrypt(secret))
                 .isActive(true)
                 .build());
     return webhookRepository.save(webhook);
@@ -93,33 +93,42 @@ public class WebhookService {
   }
 
   @Async("webhookExecutor")
-  @Retryable(
-      retryFor = {Exception.class},
-      maxAttempts = 3,
-      backoff = @Backoff(delay = 1000, multiplier = 2))
+  @Retry(name = "webhookRetry", fallbackMethod = "recover")
   @CircuitBreaker(name = "webhook")
   public void sendWebhook(Webhook webhook, String eventType, Long tenantId, Object payload) {
     try {
       validateAndNormalize(webhook.getUrl());
+
+      String timestamp = LocalDateTime.now().toString();
       Map<String, Object> body =
           Map.of(
               "version", "v1",
               "event", eventType,
               "tenant_id", tenantId,
-              "timestamp", LocalDateTime.now().toString(),
+              "timestamp", timestamp,
               "data", payload);
+
+      String jsonPayload = objectMapper.writeValueAsString(body);
+      String decryptedSecret = encryptionService.decrypt(webhook.getSecret());
+
+      org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+      headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+      headers.set("X-IMS-Signature", com.ims.shared.util.CryptoUtils.hmacSha256(jsonPayload, decryptedSecret));
+      headers.set("X-IMS-Timestamp", timestamp);
+
+      org.springframework.http.HttpEntity<String> entity = new org.springframework.http.HttpEntity<>(jsonPayload, headers);
+
       webhookRestTemplate.postForEntity(
-          Objects.requireNonNull(webhook.getUrl()), body, String.class);
+          Objects.requireNonNull(webhook.getUrl()), entity, String.class);
       log.debug("Webhook dispatched to {} for event {}", webhook.getUrl(), eventType);
     } catch (Exception e) {
       log.error("Failed to dispatch webhook to {}: {}", webhook.getUrl(), e.getMessage());
-      throw e; // Rethrow for retry/circuit breaker
+      throw new RuntimeException("Webhook dispatch failed", e); // Rethrow for retry
     }
   }
 
-  @Recover
   public void recover(
-      Exception ex, Webhook webhook, String eventType, Long tenantId, Object payload) {
+      Webhook webhook, String eventType, Long tenantId, Object payload, Exception ex) {
     log.error(
         "Permanent failure delivering webhook to {} after retries: {}",
         webhook.getUrl(),

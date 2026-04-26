@@ -20,18 +20,38 @@ public class DataSeeder implements CommandLineRunner {
   private final UserRepository userRepository;
   private final PasswordEncoder passwordEncoder;
 
-  @Value("${app.seeder.admin-password:#{null}}")
-  private String seedAdminPassword;
+  @Value("${PLATFORM_ADMIN_PASSWORD:#{null}}")
+  private String platformAdminPassword;
+
+  @Value("${seed.admin:false}")
+  private boolean seedAdmin;
+
+  @Value("${spring.profiles.active:}")
+  private String activeProfile;
+
+  @jakarta.annotation.PostConstruct
+  public void validateProfile() {
+    if (activeProfile == null || activeProfile.isBlank()) {
+      log.warn("SPRING_PROFILES_ACTIVE is not set. Defaulting to safe behavior.");
+      return;
+    }
+
+    if (!activeProfile.contains("dev") && !activeProfile.contains("test")) {
+      throw new IllegalStateException("DataSeeder is active but the profile is NOT dev/test. Security breach prevention triggered.");
+    }
+  }
 
   @Override
   public void run(String... args) {
+    if (!seedAdmin) {
+      return;
+    }
     seedPlatformAdmin();
   }
 
   private void seedPlatformAdmin() {
-    if (seedAdminPassword == null || seedAdminPassword.isBlank()) {
-      log.warn("Seeder skipped: app.seeder.admin-password not set");
-      return;
+    if (platformAdminPassword == null || platformAdminPassword.isBlank()) {
+      throw new IllegalStateException("PLATFORM_ADMIN_PASSWORD env var is required when seed.admin=true");
     }
 
     String adminEmail = "admin@platform.com";
@@ -41,7 +61,7 @@ public class DataSeeder implements CommandLineRunner {
               User.builder()
                   .name("Platform Admin")
                   .email(adminEmail)
-                  .passwordHash(passwordEncoder.encode(seedAdminPassword))
+                  .passwordHash(passwordEncoder.encode(platformAdminPassword))
                   .role(UserRole.PLATFORM_ADMIN)
                   .scope("PLATFORM")
                   .isPlatformUser(true)

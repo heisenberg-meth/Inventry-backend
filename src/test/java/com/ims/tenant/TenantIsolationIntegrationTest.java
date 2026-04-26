@@ -2,7 +2,7 @@ package com.ims.tenant;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
+import java.util.Objects;
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.CategoryRequest;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,10 +44,10 @@ public class TenantIsolationIntegrationTest extends BaseIntegrationTest {
         .perform(
             post("/api/v1/tenant/categories")
                 .header("Authorization", "Bearer " + token)
-                .with(java.util.Objects.requireNonNull(tenant(String.valueOf(testTenant1Id))))
-                .contentType(java.util.Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                .with(Objects.requireNonNull(tenant(testTenant1Id)))
+                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
                 .content(
-                    java.util.Objects.requireNonNull(objectMapper.writeValueAsString(request1))))
+                    Objects.requireNonNull(objectMapper.writeValueAsString(request1))))
         .andExpect(status().isCreated());
   }
 
@@ -64,9 +64,9 @@ public class TenantIsolationIntegrationTest extends BaseIntegrationTest {
             post("/api/v1/tenant/categories")
                 .header("Authorization", "Bearer " + token)
                 .with(tenant(String.valueOf(testTenant1Id)))
-                .contentType(java.util.Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
                 .content(
-                    java.util.Objects.requireNonNull(objectMapper.writeValueAsString(request1))))
+                    Objects.requireNonNull(objectMapper.writeValueAsString(request1))))
         .andExpect(status().isCreated());
 
     // Verify Tenant 1 can see it

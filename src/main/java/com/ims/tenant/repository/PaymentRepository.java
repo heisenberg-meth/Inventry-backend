@@ -2,6 +2,8 @@ package com.ims.tenant.repository;
 
 import com.ims.model.Payment;
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,13 +16,15 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
   @Query(
       "SELECT p FROM Payment p JOIN Invoice i ON p.invoiceId = i.id "
           + "JOIN Order o ON i.orderId = o.id WHERE o.customerId = :customerId")
-  java.util.List<Payment> findByCustomerId(@Param("customerId") Long customerId);
+  List<Payment> findByCustomerId(@Param("customerId") Long customerId);
 
   @Query(
       "SELECT p FROM Payment p JOIN Invoice i ON p.invoiceId = i.id "
           + "JOIN Order o ON i.orderId = o.id WHERE o.supplierId = :supplierId")
-  java.util.List<Payment> findBySupplierId(@Param("supplierId") Long supplierId);
+  List<Payment> findBySupplierId(@Param("supplierId") Long supplierId);
 
   @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.invoiceId = :invoiceId")
   BigDecimal sumAmountByInvoiceId(@Param("invoiceId") Long invoiceId);
+
+  Optional<Payment> findByGatewayTransactionId(String gatewayTransactionId);
 }

@@ -8,7 +8,9 @@ import com.ims.tenant.repository.InvoiceRepository;
 import com.ims.tenant.repository.PaymentRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,7 +44,7 @@ public class PaymentGatewayService {
         "order_" + UUID.randomUUID().toString().substring(0, ORDER_ID_SUFFIX_LENGTH);
 
     Payment payment =
-        java.util.Objects.requireNonNull(
+        Objects.requireNonNull(
             Payment.builder()
                 .tenantId(TenantContext.getTenantId())
                 .invoiceId(invoiceId)
@@ -78,7 +80,7 @@ public class PaymentGatewayService {
     log.info("Processing validated payment gateway webhook: {} for tenant {}", eventType, tenantId);
 
     PaymentGatewayLog pgLog =
-        java.util.Objects.requireNonNull(
+        Objects.requireNonNull(
             PaymentGatewayLog.builder()
                 .tenantId(tenantId)
                 .eventId(eventId)
@@ -96,17 +98,52 @@ public class PaymentGatewayService {
               .divide(PAISE_PER_RUPEE); // Razorpay reports amount in paise
       String currency =
           payload.path("payload").path("payment").path("entity").path("currency").asText();
+      String gatewayPaymentId =
+          payload.path("payload").path("payment").path("entity").path("id").asText();
 
-      // Validate business details
-      // Payment payment = paymentRepository.findByGatewayTransactionId(gatewayOrderId)
-      //    .orElseThrow(() -> new EntityNotFoundException("Payment not found"));
+      // 1. Locate and validate payment record
+      Payment payment =
+          paymentRepository
+              .findByGatewayTransactionId(gatewayOrderId)
+              .orElseThrow(
+                  () -> new EntityNotFoundException("Payment not found for order: " + gatewayOrderId));
 
-      // if (!payment.getAmount().equals(amount)) { ... }
-      // if (!"INR".equals(currency)) { ... }
+      if ("PAID".equals(payment.getStatus())) {
+        log.info("Payment {} already processed, skipping state update", gatewayOrderId);
+        return;
+      }
 
-      log.info("Payment captured for order {}: {} {}", gatewayOrderId, amount, currency);
+      // 2. Cross-verify amount and currency
+      if (payment.getAmount().compareTo(amount) != 0 || !"INR".equals(currency)) {
+        log.error(
+            "CRITICAL: Payment mismatch for order {}. Expected: {} INR, Received: {} {}",
+            gatewayOrderId,
+            payment.getAmount(),
+            amount,
+            currency);
+        payment.setStatus("FAILED");
+        payment.setNotes("Amount/Currency mismatch on webhook");
+        paymentRepository.save(payment);
+        return;
+      }
 
-      // Update payment and invoice status here
+      // 3. Update Payment state
+      payment.setStatus("PAID");
+      payment.setReference(gatewayPaymentId);
+      paymentRepository.save(payment);
+
+      // 4. Update Invoice state
+      invoiceRepository
+          .findById(Objects.requireNonNull(payment.getInvoiceId()))
+          .ifPresent(
+              invoice -> {
+                invoice.setStatus("PAID");
+                invoice.setPaidAt(LocalDateTime.now());
+                invoiceRepository.save(invoice);
+                log.info("Invoice {} marked as PAID", invoice.getId());
+              });
+
+      log.info("Successfully processed payment capture for order {}", gatewayOrderId);
     }
   }
 }

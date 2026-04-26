@@ -167,16 +167,14 @@ public class InvoiceService {
   }
 
   private String incrementAndGetInvoiceNumber() {
-    Tenant tenant =
-        tenantRepository
-            .lockById(Objects.requireNonNull(TenantContext.getTenantId()))
-            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
-
-    tenant.setInvoiceSequence(tenant.getInvoiceSequence() + 1);
-    tenantRepository.save(tenant);
+    Long tenantId = Objects.requireNonNull(TenantContext.getTenantId());
+    Long sequence = tenantRepository.incrementAndGetInvoiceSequence(tenantId);
+    if (sequence == null) {
+      throw new EntityNotFoundException("Tenant not found or sequence update failed");
+    }
 
     String dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-    return String.format("INV-%d-%s-%04d", tenant.getId(), dateStr, tenant.getInvoiceSequence());
+    return String.format("INV-%d-%s-%04d", tenantId, dateStr, sequence);
   }
 
   @Transactional(readOnly = true)

@@ -15,6 +15,7 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -306,7 +307,7 @@ public class ReportService {
             .stream()
             .map(
                 a -> {
-                  Map<String, Object> map = new java.util.HashMap<>();
+                  Map<String, Object> map = new HashMap<>();
                   map.put("id", a.getId());
                   map.put("type", a.getType());
                   map.put("severity", a.getSeverity());

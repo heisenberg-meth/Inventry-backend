@@ -6,6 +6,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.Objects;
+import java.util.Map;
+import java.util.LinkedHashMap;
+import java.util.stream.Collectors;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -77,14 +81,14 @@ public class SupplierController {
   @GetMapping("/{id}/ledger")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Get full ledger for supplier")
-  public ResponseEntity<java.util.Map<String, Object>> getSupplierLedger(@PathVariable long id) {
+  public ResponseEntity<Map<String, Object>> getSupplierLedger(@PathVariable long id) {
     return ResponseEntity.ok(supplierService.getSupplierLedger(id));
   }
 
   @PostMapping("/bulk-import")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Bulk import suppliers via CSV")
-  public ResponseEntity<java.util.Map<String, Object>> bulkImport(
+  public ResponseEntity<Map<String, Object>> bulkImport(
       @org.springframework.web.bind.annotation.RequestParam("file")
           org.springframework.web.multipart.MultipartFile file,
       @org.springframework.web.bind.annotation.RequestParam(
@@ -102,7 +106,7 @@ public class SupplierController {
         supplierRepository.findAll().stream()
             .map(
                 s -> {
-                  java.util.Map<String, Object> map = new java.util.LinkedHashMap<>();
+                  Map<String, Object> map = new LinkedHashMap<>();
                   map.put("ID", s.getId());
                   map.put("Name", s.getName());
                   map.put("Phone", s.getPhone());
@@ -111,11 +115,11 @@ public class SupplierController {
                   map.put("GSTIN", s.getGstin());
                   return map;
                 })
-            .collect(java.util.stream.Collectors.toList());
+            .collect(Collectors.toList());
 
     String csv =
         csvExportService.exportToCsv(
-            java.util.List.of("ID", "Name", "Phone", "Email", "Address", "GSTIN"), data);
+            List.of("ID", "Name", "Phone", "Email", "Address", "GSTIN"), data);
     return ResponseEntity.ok()
         .header(
             org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,

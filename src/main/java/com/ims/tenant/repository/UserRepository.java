@@ -3,6 +3,8 @@ package com.ims.tenant.repository;
 import com.ims.model.User;
 import com.ims.model.UserRole;
 import java.util.Optional;
+import java.time.LocalDateTime;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -68,15 +70,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
   @org.springframework.transaction.annotation.Transactional
   @org.springframework.data.jpa.repository.Modifying
   @Query("UPDATE User u SET u.lastLogin = :lastLogin WHERE u.id = :id")
-  void updateLastLogin(@Param("id") Long id, @Param("lastLogin") java.time.LocalDateTime lastLogin);
+  void updateLastLogin(@Param("id") Long id, @Param("lastLogin") LocalDateTime lastLogin);
 
   @Query(
       value = "SELECT EXISTS(SELECT 1 FROM users WHERE tenant_id = :tenantId)",
       nativeQuery = true)
   boolean existsByTenantId(@Param("tenantId") Long tenantId);
 
-  java.util.List<User> findByResetTokenIsNotNullAndResetTokenExpiryBefore(
-      java.time.LocalDateTime now);
+  List<User> findByResetTokenIsNotNullAndResetTokenExpiryBefore(
+      LocalDateTime now);
 
   @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
   @Query(
@@ -87,5 +89,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
       WHERE u.tenantId = :tenantId AND u.resetTokenExpiry < :now
       """)
   int clearExpiredResetTokens(
-      @Param("tenantId") Long tenantId, @Param("now") java.time.LocalDateTime now);
+      @Param("tenantId") Long tenantId, @Param("now") LocalDateTime now);
 }
