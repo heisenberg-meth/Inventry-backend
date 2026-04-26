@@ -2,6 +2,8 @@ package com.ims.shared.payment;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.ims.model.Payment;
+import com.ims.model.PaymentStatus;
+import com.ims.model.InvoiceStatus;
 import com.ims.model.PaymentGatewayLog;
 import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.repository.InvoiceRepository;
@@ -46,12 +48,12 @@ public class PaymentGatewayService {
     Payment payment =
         Objects.requireNonNull(
             Payment.builder()
-                .tenantId(TenantContext.getTenantId())
+                .tenantId(TenantContext.requireTenantId())
                 .invoiceId(invoiceId)
                 .amount(amount)
                 .paymentMode("GATEWAY")
                 .gatewayTransactionId(gatewayOrderId)
-                .status("PENDING")
+                .status(PaymentStatus.PENDING)
                 .createdBy(userId)
                 .build());
 
@@ -82,10 +84,10 @@ public class PaymentGatewayService {
     PaymentGatewayLog pgLog =
         Objects.requireNonNull(
             PaymentGatewayLog.builder()
-                .tenantId(tenantId)
-                .eventId(eventId)
-                .eventType(eventType)
-                .rawPayload(payload.toString())
+                .tenantId(Objects.requireNonNull(tenantId))
+                .eventId(Objects.requireNonNull(eventId))
+                .eventType(Objects.requireNonNull(eventType))
+                .rawPayload(Objects.requireNonNull(payload.toString()))
                 .build());
     logRepository.save(pgLog);
 
@@ -108,7 +110,7 @@ public class PaymentGatewayService {
               .orElseThrow(
                   () -> new EntityNotFoundException("Payment not found for order: " + gatewayOrderId));
 
-      if ("PAID".equals(payment.getStatus())) {
+      if (PaymentStatus.PAID.equals(payment.getStatus())) {
         log.info("Payment {} already processed, skipping state update", gatewayOrderId);
         return;
       }
@@ -121,15 +123,15 @@ public class PaymentGatewayService {
             payment.getAmount(),
             amount,
             currency);
-        payment.setStatus("FAILED");
+        payment.setStatus(PaymentStatus.FAILED);
         payment.setNotes("Amount/Currency mismatch on webhook");
         paymentRepository.save(payment);
         return;
       }
 
       // 3. Update Payment state
-      payment.setStatus("PAID");
-      payment.setReference(gatewayPaymentId);
+      payment.setStatus(PaymentStatus.PAID);
+      payment.setReference(Objects.requireNonNull(gatewayPaymentId));
       paymentRepository.save(payment);
 
       // 4. Update Invoice state
@@ -137,8 +139,8 @@ public class PaymentGatewayService {
           .findById(Objects.requireNonNull(payment.getInvoiceId()))
           .ifPresent(
               invoice -> {
-                invoice.setStatus("PAID");
-                invoice.setPaidAt(LocalDateTime.now());
+                invoice.setStatus(InvoiceStatus.PAID);
+                invoice.setPaidAt(Objects.requireNonNull(LocalDateTime.now()));
                 invoiceRepository.save(invoice);
                 log.info("Invoice {} marked as PAID", invoice.getId());
               });

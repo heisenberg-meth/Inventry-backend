@@ -7,6 +7,7 @@ import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,7 +46,7 @@ public class NotificationService {
 
   @Transactional
   public void createNotification(
-      Long tenantId, Long userId, String title, String message, String type, Long resourceId) {
+      Long tenantId, Long userId, String title, String message, String type, @Nullable Long resourceId) {
     if (tenantId == null || tenantId <= 0) {
       throw new IllegalArgumentException("tenantId is required and must be positive");
     }
@@ -53,11 +54,11 @@ public class NotificationService {
     Notification notification =
         Objects.requireNonNull(
             Notification.builder()
-                .userId(userId)
+                .userId(Objects.requireNonNull(userId))
                 .tenantId(tenantId)
-                .title(title)
-                .message(message)
-                .type(type)
+                .title(Objects.requireNonNull(title))
+                .message(Objects.requireNonNull(message))
+                .type(Objects.requireNonNull(type))
                 .resourceId(resourceId)
                 .build());
     notificationRepository.save(notification);
@@ -66,7 +67,7 @@ public class NotificationService {
 
   @Transactional
   public void createNotificationForCurrentTenant(
-      Long userId, String title, String message, String type, Long resourceId) {
+      Long userId, String title, String message, String type, @Nullable Long resourceId) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
       log.warn("Tenant context missing in createNotificationForCurrentTenant");

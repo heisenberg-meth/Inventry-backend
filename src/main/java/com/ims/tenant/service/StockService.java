@@ -16,7 +16,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -40,15 +39,11 @@ public class StockService {
     }
   }
 
-  @Cacheable(
-      value = "stock",
-      key = "'location:' + #location",
-      cacheResolver = "tenantAwareCacheResolver")
-  public @NonNull Page<WarehouseProduct> getProductsByLocation(
-      @NonNull String location, @NonNull Pageable pageable) {
+  @Cacheable(value = "stock", key = "'location:' + #location", cacheResolver = "tenantAwareCacheResolver")
+  public  Page<WarehouseProduct> getProductsByLocation(
+       String location,  Pageable pageable) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.warn("Tenant ID is missing in StockService.getProductsByLocation");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
@@ -56,10 +51,9 @@ public class StockService {
     return Objects.requireNonNull(warehouseProductRepository.findByLocation(location, pageable));
   }
 
-  public @NonNull Page<TransferOrder> getTransferOrders(@NonNull Pageable pageable) {
+  public Page<TransferOrder> getTransferOrders(Pageable pageable) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.warn("Tenant ID is missing in StockService.getTransferOrders");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
@@ -68,10 +62,9 @@ public class StockService {
   }
 
   @Cacheable(value = "stock", key = "'order:' + #id", cacheResolver = "tenantAwareCacheResolver")
-  public @NonNull TransferOrder getTransferOrderById(@NonNull Long id) {
+  public TransferOrder getTransferOrderById(Long id) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.warn("Tenant ID is missing in StockService.getTransferOrderById");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
@@ -82,62 +75,56 @@ public class StockService {
             .orElseThrow(() -> new EntityNotFoundException("Transfer Order not found")));
   }
 
-  public @NonNull TransferOrder updateTransferStatus(
-      @NonNull Long id, @NonNull TransferOrderStatusRequest request, @NonNull Long userId) {
+  public TransferOrder updateTransferStatus(
+      Long id, TransferOrderStatusRequest request, Long userId) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.warn("Tenant ID is missing in StockService.updateTransferStatus");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
     return stockTransactionService.updateTransferStatus(id, request, userId);
   }
 
-  public void stockIn(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
+  public void stockIn(Long productId, int qty, String notes, Long userId) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.warn("Tenant ID is missing in StockService.stockIn");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
     stockTransactionService.stockInInternal(productId, qty, notes, userId);
   }
 
-  public void stockOut(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
+  public void stockOut(Long productId, int qty, String notes, Long userId) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.warn("Tenant ID is missing in StockService.stockOut");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
     stockTransactionService.stockOutInternal(productId, qty, notes, userId);
   }
 
-  public void stockAdjust(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
+  public void stockAdjust(Long productId, int qty, String notes, Long userId) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.warn("Tenant ID is missing in StockService.stockAdjust");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
     stockTransactionService.stockAdjustInternal(productId, qty, notes, userId);
   }
 
-  public @NonNull Page<StockMovement> getMovements(@NonNull Pageable pageable) {
+  public Page<StockMovement> getMovements(Pageable pageable) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.warn("Tenant ID is missing in StockService.getMovements");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 
     return Objects.requireNonNull(stockMovementRepository.findAllByOrderByCreatedAtDesc(pageable));
   }
 
-  public @NonNull Page<StockMovement> getFilteredMovements(
-      @NonNull Long productId, LocalDateTime from, LocalDateTime to, @NonNull Pageable pageable) {
+  public Page<StockMovement> getFilteredMovements(
+      Long productId, LocalDateTime from, LocalDateTime to, Pageable pageable) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      log.warn("Tenant ID is missing in StockService.getFilteredMovements");
       throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
     }
 

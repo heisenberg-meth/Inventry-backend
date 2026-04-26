@@ -7,6 +7,8 @@ import com.ims.dto.response.TenantResponse;
 import com.ims.dto.response.UserResponse;
 import com.ims.model.Subscription;
 import com.ims.model.SubscriptionPlan;
+import com.ims.model.SubscriptionPlanStatus;
+import com.ims.model.SubscriptionStatus;
 import com.ims.model.Tenant;
 import com.ims.model.TenantStatus;
 import com.ims.model.User;
@@ -96,7 +98,7 @@ public class TenantService {
         Tenant.builder()
             .name(request.getName())
             .workspaceSlug(request.getWorkspaceSlug())
-            .companyCode(companyCode)
+            .companyCode(Objects.requireNonNull(companyCode))
             .businessType(request.getBusinessType())
             .plan(request.getPlan() != null ? request.getPlan() : "FREE")
             .status(TenantStatus.ACTIVE)
@@ -116,7 +118,7 @@ public class TenantService {
     auditLogService.log(
         AuditAction.CREATE_TENANT,
         tenantIdForAudit,
-        null,
+        com.ims.shared.auth.TenantContext.PLATFORM_TENANT_ID,
         "Created tenant: " + savedTenant.getName());
 
     return toResponse(savedTenant);
@@ -177,7 +179,7 @@ public class TenantService {
     tenantRepository.save(tenant);
 
     auditLogService.log(
-        AuditAction.UPDATE_TENANT_STATUS, id, null, "Tenant suspended: " + tenant.getName());
+        AuditAction.UPDATE_TENANT_STATUS, id, com.ims.shared.auth.TenantContext.PLATFORM_TENANT_ID, "Tenant suspended: " + tenant.getName());
     log.info("Tenant suspended: id={}", id);
     return Map.of("message", "Tenant suspended successfully", "status", "SUSPENDED");
   }
@@ -194,7 +196,7 @@ public class TenantService {
     tenantRepository.save(tenant);
 
     auditLogService.log(
-        AuditAction.UPDATE_TENANT_STATUS, id, null, "Tenant activated: " + tenant.getName());
+        AuditAction.UPDATE_TENANT_STATUS, id, com.ims.shared.auth.TenantContext.PLATFORM_TENANT_ID, "Tenant activated: " + tenant.getName());
     log.info("Tenant activated: id={}", id);
     return Map.of("message", "Tenant activated successfully", "status", "ACTIVE");
   }
@@ -230,7 +232,7 @@ public class TenantService {
 
     String password = (newPassword != null && !newPassword.isBlank()) ? newPassword : generateRandomPassword();
 
-    user.setPasswordHash(passwordEncoder.encode(password));
+    user.setPasswordHash(Objects.requireNonNull(passwordEncoder.encode(password)));
     user.setResetToken(null);
     user.setResetTokenExpiry(null);
     userRepository.save(user);
@@ -268,15 +270,15 @@ public class TenantService {
         .orElseThrow(() -> new EntityNotFoundException("Subscription plan not found"));
     SubscriptionPlan plan = Objects.requireNonNull(tmpPlan);
 
-    if (!"ACTIVE".equals(plan.getStatus())) {
+    if (plan.getStatus() != SubscriptionPlanStatus.ACTIVE) {
       throw new IllegalArgumentException("Plan is not active");
     }
 
     subscriptionRepository
-        .findByTenantIdAndStatus(tenantId, "ACTIVE")
+        .findByTenantIdAndStatus(tenantId, SubscriptionStatus.ACTIVE)
         .forEach(
             sub -> {
-              sub.setStatus("DEACTIVATED");
+              sub.setStatus(SubscriptionStatus.DEACTIVATED);
               subscriptionRepository.save(sub);
             });
 
@@ -302,9 +304,9 @@ public class TenantService {
         Subscription.builder()
             .tenantId(tenantId)
             .plan(plan.getName())
-            .status("ACTIVE")
-            .startDate(startDate)
-            .endDate(endDate)
+            .status(SubscriptionStatus.ACTIVE)
+            .startDate(Objects.requireNonNull(startDate))
+            .endDate(Objects.requireNonNull(endDate))
             .build());
 
     Subscription savedSub = Objects.requireNonNull(subscriptionRepository.save(subscription));
@@ -312,7 +314,7 @@ public class TenantService {
     auditLogService.log(
         AuditAction.ASSIGN_PLAN,
         tenantId,
-        null,
+        com.ims.shared.auth.TenantContext.PLATFORM_TENANT_ID,
         "Assigned plan " + plan.getName() + " to tenant " + tenant.getName());
 
     Map<String, Object> response = new HashMap<>();
@@ -340,7 +342,7 @@ public class TenantService {
         .findFirstByTenantIdOrderByCreatedAtDesc(tenantId)
         .ifPresent(
             sub -> {
-              response.put("subscriptionStatus", sub.getStatus());
+              response.put("subscriptionStatus", sub.getStatus() != null ? sub.getStatus().name() : null);
               response.put("startDate", sub.getStartDate());
               response.put("endDate", sub.getEndDate());
             });
@@ -365,7 +367,7 @@ public class TenantService {
             User.builder()
                 .name(request.getUsername())
                 .email(email)
-                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .passwordHash(Objects.requireNonNull(passwordEncoder.encode(request.getPassword())))
                 .role(UserRole.valueOf(request.getRole()))
                 .scope(request.getScope())
                 .isActive(true)
@@ -384,15 +386,13 @@ public class TenantService {
       }
     }
 
-    tenantInitializationService.createUserForTenant(user, Objects.requireNonNull(tenantId));
-    tenantInitializationService.createUserForTenant(
-        user, Objects.requireNonNull(tenantId));
+    tenantInitializationService.createUserForTenant(user, tenantId);
 
     return UserResponse.builder()
         .id(Objects.requireNonNull(user.getId()))
         .name(user.getName())
         .email(user.getEmail())
-        .role(user.getRole() != null ? user.getRole().name() : null)
+        .role(user.getRole() != null ? user.getRole().getName() : null)
         .scope(user.getScope())
         .isActive(user.getIsActive())
         .createdAt(Objects.requireNonNull(user.getCreatedAt()))
@@ -417,7 +417,7 @@ public class TenantService {
     auditLogService.log(
         AuditAction.PLATFORM_DELETE_USER,
         tenantId,
-        null,
+        com.ims.shared.auth.TenantContext.PLATFORM_TENANT_ID,
         "Platform admin hard-deleted user: " + user.getEmail());
   }
 
@@ -440,7 +440,7 @@ public class TenantService {
         .id(user.getId())
         .name(user.getName())
         .email(user.getEmail())
-        .role(user.getRole() != null ? user.getRole().name() : null)
+        .role(user.getRole() != null ? user.getRole().getName() : null)
         .scope(user.getScope())
         .isActive(user.getIsActive())
         .createdAt(user.getCreatedAt())

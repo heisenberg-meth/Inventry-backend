@@ -56,8 +56,8 @@ public class PlatformInviteService {
             PlatformInvite.builder()
             .email(email)
             .role(UserRole.valueOf(role))
-            .token(token)
-            .expiresAt(LocalDateTime.now().plusHours(INVITE_TTL_HOURS))
+            .token(Objects.requireNonNull(token))
+            .expiresAt(Objects.requireNonNull(LocalDateTime.now().plusHours(INVITE_TTL_HOURS)))
             .createdBy(currentUserId)
             .build());
 
@@ -97,7 +97,7 @@ public class PlatformInviteService {
             User.builder()
                 .name(name)
                 .email(invite.getEmail())
-                .passwordHash(passwordEncoder.encode(password))
+                .passwordHash(Objects.requireNonNull(passwordEncoder.encode(password)))
                 .role(invite.getRole())
                 .scope("PLATFORM")
                 .isPlatformUser(true)
@@ -107,7 +107,7 @@ public class PlatformInviteService {
  
     userRepository.save(user);
 
-    invite.setUsedAt(LocalDateTime.now());
+    invite.setUsedAt(Objects.requireNonNull(LocalDateTime.now()));
     inviteRepository.save(invite);
 
     log.info("Platform invite completed for {}. User created.", invite.getEmail());

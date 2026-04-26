@@ -51,4 +51,8 @@ public class OrderItem {
 
   @Column(nullable = false, precision = 10, scale = 2)
   private BigDecimal total;
+
+  @Column(name = "returned_quantity")
+  @Builder.Default
+  private Integer returnedQuantity = 0;
 }

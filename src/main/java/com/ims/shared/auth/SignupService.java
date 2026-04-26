@@ -5,12 +5,10 @@ import com.ims.dto.response.SignupResponse;
 import com.ims.model.Tenant;
 import com.ims.model.TenantStatus;
 import com.ims.model.User;
-import com.ims.model.UserRole;
+import java.util.Objects;
 import com.ims.platform.repository.TenantRepository;
 import com.ims.tenant.repository.UserRepository;
-import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.lang.NonNull;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -40,16 +38,14 @@ public class SignupService {
     this.companyCodeGenerator = companyCodeGenerator;
   }
 
-  @NonNull
-  public SignupResponse signup(@NonNull SignupRequest request) {
+  public SignupResponse signup(SignupRequest request) {
     TenantContext.clear();
-    Objects.requireNonNull(request, "request cannot be null");
-    String rawEmail = Objects.requireNonNull(request.getOwnerEmail());
+    String rawEmail = request.getOwnerEmail();
     String normalizedEmail = rawEmail.trim().toLowerCase();
 
-    String businessName = Objects.requireNonNull(request.getBusinessName());
+    String businessName = request.getBusinessName();
     String workspaceSlug = (request.getWorkspaceSlug() != null && !request.getWorkspaceSlug().isBlank())
-        ? Objects.requireNonNull(request.getWorkspaceSlug())
+        ? request.getWorkspaceSlug()
         : generateWorkspaceSlug(businessName);
     workspaceSlug = ensureUniqueWorkspaceSlug(workspaceSlug);
 
@@ -63,57 +59,65 @@ public class SignupService {
 
     String companyCode = generateUniqueCompanyCode(businessName);
 
-    // 1. Save tenant in its own committed transaction
+    // 1. Create tenant as PENDING in its own transaction
     Tenant newTenant =
-        Objects.requireNonNull(
-            Tenant.builder()
-                .name(businessName)
-                .businessType(request.getBusinessType())
-                .workspaceSlug(workspaceSlug)
-                .companyCode(companyCode)
-                .status(TenantStatus.ACTIVE)
-                .plan("FREE")
-                .address(request.getAddress())
-                .gstin(request.getGstin())
-                .build());
+        Tenant.builder()
+            .name(businessName)
+            .businessType(request.getBusinessType())
+            .workspaceSlug(workspaceSlug)
+            .companyCode(companyCode)
+            .status(TenantStatus.PENDING)
+            .plan("FREE")
+            .address(request.getAddress())
+            .gstin(request.getGstin())
+            .build();
  
-    Tenant tenant = Objects.requireNonNull(tenantPersistenceService.saveTenant(newTenant));
-    log.info(
-        "Signup: Created tenant id={} name={}",
-        Objects.requireNonNull(tenant.getId()),
-        tenant.getName());
+    Tenant tenant = tenantPersistenceService.saveTenant(newTenant);
+    Long tenantId = tenant.getId();
+    String tenantName = tenant.getName();
 
-    User user =
-        Objects.requireNonNull(
-            User.builder()
-                .name(Objects.requireNonNull(request.getOwnerName()))
-                .email(normalizedEmail)
-                .phone(request.getOwnerPhone())
-                .passwordHash(passwordEncoder.encode(Objects.requireNonNull(request.getPassword())))
-                .role(UserRole.ADMIN)
-                .scope("TENANT")
-                .isActive(true)
-                .build());
-
-    Long previousTenant = TenantContext.getTenantId();
-    Long tenantId = Objects.requireNonNull(tenant.getId());
-    String tenantName = Objects.requireNonNull(tenant.getName());
     try {
-      TenantContext.setTenantId(tenantId);
-      tenantInitializationService.initializeTenant(user, tenantId, tenantName);
-    } finally {
-      if (previousTenant == null) {
-        TenantContext.clear();
-      } else {
-        TenantContext.setTenantId(previousTenant);
-      }
-    }
+      // 2. Create user object (Role is assigned inside initializeTenant)
+      User user =
+          User.builder()
+              .name(request.getOwnerName())
+              .email(Objects.requireNonNull(normalizedEmail))
+              .phone(request.getOwnerPhone())
+              .passwordHash(Objects.requireNonNull(passwordEncoder.encode(request.getPassword())))
+              .scope("TENANT")
+              .isActive(true)
+              .tenantId(tenantId)
+              .build();
 
-    log.info("Signup: Created owner user and seeded data for tenant={}", tenantId);
-    return new SignupResponse(
-        "Signup successful",
-        Objects.requireNonNull(tenant.getCompanyCode()),
-        Objects.requireNonNull(tenant.getWorkspaceSlug()));
+      Long previousTenant = TenantContext.getTenantId();
+      try {
+        TenantContext.setTenantId(tenantId);
+        tenantInitializationService.initializeTenant(user, tenantId, tenantName);
+      } finally {
+        if (previousTenant == null) {
+          TenantContext.clear();
+        } else {
+          TenantContext.setTenantId(previousTenant);
+        }
+      }
+
+      // 3. Promote to ACTIVE
+      tenant.setStatus(TenantStatus.ACTIVE);
+      tenantPersistenceService.saveTenant(tenant);
+
+      log.info("Signup: Completed onboarding for tenant id={} name={}", tenantId, tenantName);
+      
+      return new SignupResponse(
+          "Signup successful",
+          tenant.getCompanyCode(),
+          tenant.getWorkspaceSlug());
+
+    } catch (Exception e) {
+      log.error("Signup: Failed to initialize tenant id={}. Marking as FAILED.", tenantId, e);
+      tenant.setStatus(TenantStatus.FAILED);
+      tenantPersistenceService.saveTenant(tenant);
+      throw e;
+    }
   }
 
   private String generateUniqueCompanyCode(String businessName) {
@@ -121,11 +125,11 @@ public class SignupService {
     do {
       code = companyCodeGenerator.generateCode(businessName);
     } while (tenantRepository.existsByCompanyCode(code));
-    return code;
+    return Objects.requireNonNull(code);
   }
 
   private String generateWorkspaceSlug(String businessName) {
-    return businessName.toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("(^-|-$)", "");
+    return Objects.requireNonNull(businessName.toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("(^-|-$)", ""));
   }
 
   private String ensureUniqueWorkspaceSlug(String baseSlug) {

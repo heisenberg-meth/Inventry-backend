@@ -6,6 +6,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -62,7 +63,7 @@ public class SupplierImportService {
 
           Supplier supplier =
               Supplier.builder()
-                  .name(name)
+                  .name(Objects.requireNonNull(name))
                   .phone(phone)
                   .email(email)
                   .address(address)
@@ -77,21 +78,17 @@ public class SupplierImportService {
         }
       }
 
-      if (!errors.isEmpty()) {
-        return Map.of(
-            "success_count", 0, "fail_count", failCount, "errors", errors, "status", "FAILED");
-      }
-
       if (dryRun) {
-        return Map.of(
-            "success_count",
-            successCount,
-            "fail_count",
-            0,
-            "errors",
-            new ArrayList<>(),
-            "status",
-            "DRY_RUN_SUCCESS");
+        return Objects.requireNonNull(
+            Map.of(
+                "success_count",
+                successCount,
+                "fail_count",
+                failCount,
+                "errors",
+                errors,
+                "status",
+                "DRY_RUN_SUCCESS"));
       }
 
       if (!suppliers.isEmpty()) {
@@ -107,7 +104,15 @@ public class SupplierImportService {
       throw new RuntimeException("Import failed: " + e.getMessage());
     }
 
-    return Map.of(
-        "success_count", successCount, "fail_count", 0, "errors", errors, "status", "SUCCESS");
+    return Objects.requireNonNull(
+        Map.of(
+            "success_count",
+            successCount,
+            "fail_count",
+            failCount,
+            "errors",
+            errors,
+            "status",
+            "SUCCESS"));
   }
 }

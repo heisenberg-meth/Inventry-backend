@@ -7,9 +7,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.BaseIntegrationTest;
-import com.ims.dto.request.LoginRequest;
-import com.ims.dto.response.LoginResponse;
 import java.util.Map;
+import java.util.Objects;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,19 +17,19 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 
-@SpringBootTest(
-    properties = {
-      "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
-      "spring.cache.type=none"
-    })
+@SpringBootTest(properties = {
+    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
+    "spring.cache.type=none"
+})
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired private MockMvc mockMvc;
-  @Autowired private ObjectMapper objectMapper;
+  @Autowired
+  private MockMvc mockMvc;
+  @Autowired
+  private ObjectMapper objectMapper;
 
   @BeforeEach
   void setup() {
@@ -50,7 +49,7 @@ public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
   @Test
   void testRateLimitEnforcement() throws Exception {
     // Mock Redis to return 100 requests already made (Public limit is 50)
-    doReturn(100L).when(zSetOperations).zCard(any(String.class));
+    doReturn(100L).when(zSetOperations).zCard(Objects.requireNonNull(any(String.class)));
 
     mockMvc
         .perform(get("/api/any-public-endpoint"))
@@ -62,38 +61,17 @@ public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
   @Test
   void testAuthRateLimitEnforcement() throws Exception {
     // Mock Redis for auth endpoint (Limit is 20)
-    doReturn(25L).when(zSetOperations).zCard(any(String.class));
+    doReturn(25L).when(zSetOperations).zCard(Objects.requireNonNull(any(String.class)));
 
-    String authLoginJson =
-        objectMapper.writeValueAsString(
-            Map.of("email", "root@ims.com", "password", TEST_ROOT_PASSWORD));
+    String authLoginJson = objectMapper.writeValueAsString(
+        Map.of("email", "root@ims.com", "password", TEST_ROOT_PASSWORD));
     mockMvc
         .perform(
             post("/api/v1/auth/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(authLoginJson))
+                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                .content(Objects.requireNonNull(authLoginJson)))
         .andExpect(status().isTooManyRequests())
-        .andExpect(header().string("X-RateLimit-Limit", "20"));
-  }
-
-  private String login(String email, String password, String workspace) throws Exception {
-    LoginRequest loginRequest = new LoginRequest();
-    loginRequest.setEmail(email);
-    loginRequest.setPassword(password);
-    loginRequest.setCompanyCode(workspace);
-
-    String loginJson = objectMapper.writeValueAsString(loginRequest);
-    MvcResult result =
-        mockMvc
-            .perform(
-                post("/api/v1/auth/login")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(loginJson))
-            .andExpect(status().isOk())
-            .andReturn();
-
-    String responseJson = result.getResponse().getContentAsString();
-    LoginResponse response = objectMapper.readValue(responseJson, LoginResponse.class);
-    return response.getAccessToken();
+        .andExpect(header().string("X-RateLimit-Limit", "20"))
+        .andExpect(jsonPath("$.error").value("Too Many Requests"));
   }
 }

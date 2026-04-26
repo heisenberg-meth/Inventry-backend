@@ -4,6 +4,7 @@ import com.ims.dto.CreateInvoiceRequest;
 import com.ims.dto.InvoiceStatusRequest;
 import com.ims.model.Customer;
 import com.ims.model.Invoice;
+import com.ims.model.InvoiceStatus;
 import com.ims.model.Order;
 import com.ims.model.OrderItem;
 import com.ims.model.Tenant;
@@ -30,7 +31,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.thymeleaf.context.Context;
@@ -50,15 +51,16 @@ public class InvoiceService {
 
   private static final int DEFAULT_DUE_DAYS = 30;
 
-  /** Length of the "INV-" prefix that we strip when deriving credit-note numbers. */
+  /**
+   * Length of the "INV-" prefix that we strip when deriving credit-note numbers.
+   */
   private static final int INVOICE_PREFIX_LENGTH = 4;
 
   @Transactional
-  public @NonNull Invoice createManual(@NonNull CreateInvoiceRequest request) {
-    Order order =
-        orderRepository
-            .findById(Objects.requireNonNull(request.getOrderId()))
-            .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+  public Invoice createManual(CreateInvoiceRequest request) {
+    Order order = orderRepository
+        .findById(Objects.requireNonNull(request.getOrderId()))
+        .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
     if (!"SALE".equals(order.getType())) {
       throw new IllegalArgumentException("Invoice can only be created for SALE orders");
@@ -70,155 +72,143 @@ public class InvoiceService {
 
     String invoiceNumber = incrementAndGetInvoiceNumber();
 
-    Invoice invoice =
-        Objects.requireNonNull(
-            Invoice.builder()
-                .orderId(order.getId())
-                .invoiceNumber(invoiceNumber)
-                .amount(order.getTotalAmount())
-                .taxAmount(order.getTaxAmount())
-                .discount(order.getDiscount())
-                .status("UNPAID")
-                .dueDate(
+    Invoice invoice = Objects.requireNonNull(
+        Invoice.builder()
+            .orderId(Objects.requireNonNull(order.getId()))
+            .invoiceNumber(invoiceNumber)
+            .amount(order.getTotalAmount())
+            .taxAmount(order.getTaxAmount())
+            .discount(order.getDiscount())
+            .status(InvoiceStatus.UNPAID)
+            .dueDate(
+                Objects.requireNonNull(
                     request.getDueDate() != null
                         ? request.getDueDate()
-                        : LocalDate.now().plusDays(DEFAULT_DUE_DAYS))
-                .build());
+                        : LocalDate.now().plusDays(DEFAULT_DUE_DAYS)))
+            .build());
 
     log.info("Manual invoice created: {} for order {}", invoiceNumber, order.getId());
     return Objects.requireNonNull(invoiceRepository.save(invoice));
   }
 
   @Transactional
-  public @NonNull Invoice updateStatus(@NonNull Long id, @NonNull InvoiceStatusRequest request) {
-    Invoice invoice =
-        invoiceRepository
-            .findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
+  public Invoice updateStatus(Long id, InvoiceStatusRequest request) {
+    Invoice invoice = invoiceRepository
+        .findById(id)
+        .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
 
-    String currentStatus = invoice.getStatus();
-    String newStatus = request.getStatus();
+    InvoiceStatus currentStatus = invoice.getStatus();
+    InvoiceStatus newStatus = request.getStatus();
 
-    if ("PAID".equals(currentStatus) || "CANCELLED".equals(currentStatus)) {
+    if (InvoiceStatus.PAID.equals(currentStatus) || InvoiceStatus.CANCELLED.equals(currentStatus)) {
       throw new IllegalArgumentException("Cannot update status from " + currentStatus);
     }
-    if (!"PAID".equals(newStatus)
-        && !"PARTIAL".equals(newStatus)
-        && !"CANCELLED".equals(newStatus)) {
-      throw new IllegalArgumentException("Invalid status: " + newStatus);
-    }
 
-    invoice.setStatus(newStatus);
-    if ("PAID".equals(newStatus)) {
-      invoice.setPaidAt(request.getPaidAt() != null ? request.getPaidAt() : LocalDateTime.now());
+    invoice.setStatus(Objects.requireNonNull(newStatus));
+    if (InvoiceStatus.PAID.equals(newStatus)) {
+      invoice.setPaidAt(
+          Objects.requireNonNull(request.getPaidAt() != null ? request.getPaidAt() : LocalDateTime.now()));
     }
 
     return invoiceRepository.save(invoice);
   }
 
   @Transactional
-  public @NonNull Invoice createFromOrder(@NonNull Order order) {
+  public Invoice createFromOrder(Order order) {
     String invoiceNumber = incrementAndGetInvoiceNumber();
 
-    Invoice invoice =
-        Objects.requireNonNull(
-            Invoice.builder()
-                .orderId(order.getId())
-                .invoiceNumber(invoiceNumber)
-                .amount(order.getTotalAmount())
-                .taxAmount(order.getTaxAmount())
-                .discount(order.getDiscount())
-                .status("UNPAID")
-                .dueDate(LocalDate.now().plusDays(DEFAULT_DUE_DAYS))
-                .build());
+    Invoice invoice = Objects.requireNonNull(
+        Invoice.builder()
+            .orderId(Objects.requireNonNull(order.getId()))
+            .invoiceNumber(invoiceNumber)
+            .amount(order.getTotalAmount())
+            .taxAmount(order.getTaxAmount())
+            .discount(order.getDiscount())
+            .status(InvoiceStatus.UNPAID)
+            .dueDate(Objects.requireNonNull(LocalDate.now().plusDays(DEFAULT_DUE_DAYS)))
+            .build());
 
     log.info("Invoice created: {} for order {}", invoiceNumber, order.getId());
     return Objects.requireNonNull(invoiceRepository.save(invoice));
   }
 
   @Transactional
-  public @NonNull Invoice createCreditNote(@NonNull Order returnOrder, Long parentInvoiceId) {
+  public Invoice createCreditNote(Order returnOrder, @Nullable Long parentInvoiceId) {
     // Use CN prefix in place of the invoice's "INV-" prefix.
     String invoiceNumber = "CN-" + incrementAndGetInvoiceNumber().substring(INVOICE_PREFIX_LENGTH);
 
-    Invoice creditNote =
-        Objects.requireNonNull(
-            Invoice.builder()
-                .orderId(returnOrder.getId())
-                .invoiceNumber(invoiceNumber)
-                .amount(returnOrder.getTotalAmount().negate())
-                .taxAmount(
+    Invoice creditNote = Objects.requireNonNull(
+        Invoice.builder()
+            .orderId(Objects.requireNonNull(returnOrder.getId()))
+            .invoiceNumber(invoiceNumber)
+            .amount(Objects.requireNonNull(returnOrder.getTotalAmount().negate()))
+            .taxAmount(
+                Objects.requireNonNull(
                     returnOrder.getTaxAmount() != null
                         ? returnOrder.getTaxAmount().negate()
-                        : BigDecimal.ZERO)
-                .discount(
+                        : BigDecimal.ZERO))
+            .discount(
+                Objects.requireNonNull(
                     returnOrder.getDiscount() != null
                         ? returnOrder.getDiscount().negate()
-                        : BigDecimal.ZERO)
-                .status(
-                    "PAID") // Credit notes are usually considered "settled" immediately as a reduction
-                .parentInvoiceId(parentInvoiceId)
-                .dueDate(LocalDate.now())
-                .paidAt(LocalDateTime.now())
-                .build());
+                        : BigDecimal.ZERO))
+            .status(InvoiceStatus.PAID) // Credit notes are usually considered "settled" immediately as a reduction
+            .parentInvoiceId(parentInvoiceId)
+            .dueDate(Objects.requireNonNull(LocalDate.now()))
+            .paidAt(Objects.requireNonNull(LocalDateTime.now()))
+            .build());
 
     log.info("Credit note created: {} for return order {}", invoiceNumber, returnOrder.getId());
     return Objects.requireNonNull(invoiceRepository.save(creditNote));
   }
 
   private String incrementAndGetInvoiceNumber() {
-    Long tenantId = Objects.requireNonNull(TenantContext.getTenantId());
+    Long tenantId = TenantContext.requireTenantId();
     Long sequence = tenantRepository.incrementAndGetInvoiceSequence(tenantId);
     if (sequence == null) {
       throw new EntityNotFoundException("Tenant not found or sequence update failed");
     }
 
     String dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-    return String.format("INV-%d-%s-%04d", tenantId, dateStr, sequence);
+    return Objects.requireNonNull(String.format("INV-%d-%s-%04d", tenantId, dateStr, sequence));
   }
 
   @Transactional(readOnly = true)
-  public byte[] generatePdf(@NonNull Long id) {
-    Invoice invoice =
-        invoiceRepository
-            .findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
+  public byte[] generatePdf(Long id) {
+    Invoice invoice = invoiceRepository
+        .findById(id)
+        .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
 
-    Order order =
-        orderRepository
-            .findById(Objects.requireNonNull(invoice.getOrderId()))
-            .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+    Order order = orderRepository
+        .findById(Objects.requireNonNull(invoice.getOrderId()))
+        .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
-    Tenant tenant =
-        tenantRepository
-            .findById(Objects.requireNonNull(TenantContext.getTenantId()))
-            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+    Tenant tenant = tenantRepository
+        .findById(Objects.requireNonNull(TenantContext.getTenantId()))
+        .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
-    Customer customer =
-        customerRepository
-            .findById(Objects.requireNonNull(order.getCustomerId(), "customer id required"))
-            .orElseThrow(() -> new EntityNotFoundException("Customer not found"));
+    Customer customer = customerRepository
+        .findById(Objects.requireNonNull(order.getCustomerId(), "customer id required"))
+        .orElseThrow(() -> new EntityNotFoundException("Customer not found"));
 
     List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
 
-    List<Map<String, Object>> items =
-        orderItems.stream()
-            .map(
-                item -> {
-                  Product product =
-                      productRepository
-                          .findById(
-                              Objects.requireNonNull(item.getProductId(), "product id required"))
-                          .orElseThrow(() -> new EntityNotFoundException("Product not found"));
-                  Map<String, Object> map = new HashMap<>();
-                  map.put("productName", product.getName());
-                  map.put("quantity", item.getQuantity());
-                  map.put("unitPrice", item.getUnitPrice());
-                  map.put("discount", item.getDiscount());
-                  map.put("total", item.getTotal());
-                  return map;
-                })
-            .collect(Collectors.toList());
+    List<Map<String, Object>> items = orderItems.stream()
+        .map(
+            item -> {
+              Product product = productRepository
+                  .findById(
+                      Objects.requireNonNull(item.getProductId(), "product id required"))
+                  .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+              Map<String, Object> map = new HashMap<>();
+              map.put("productName", product.getName());
+              map.put("quantity", item.getQuantity());
+              map.put("unitPrice", item.getUnitPrice());
+              map.put("discount", item.getDiscount());
+              map.put("total", item.getTotal());
+              return map;
+            })
+        .collect(Collectors.toList());
 
     Context context = new Context();
     context.setVariable("tenantName", tenant.getName());
@@ -244,19 +234,19 @@ public class InvoiceService {
     context.setVariable("discount", order.getDiscount());
     context.setVariable("totalAmount", order.getTotalAmount());
 
-    return pdfService.generatePdfFromHtml("invoice-template", context);
+    return Objects.requireNonNull(pdfService.generatePdfFromHtml("invoice-template", context));
   }
 
-  public @NonNull Page<Invoice> getInvoices(@NonNull Pageable pageable) {
+  public Page<Invoice> getInvoices(Pageable pageable) {
     return Objects.requireNonNull(invoiceRepository.findAll(pageable));
   }
 
-  public @NonNull Page<Invoice> getOverdueInvoices(@NonNull Pageable pageable) {
+  public Page<Invoice> getOverdueInvoices(Pageable pageable) {
     return Objects.requireNonNull(
-        invoiceRepository.findByStatusNotAndDueDateBefore("PAID", LocalDate.now(), pageable));
+        invoiceRepository.findByStatusNotAndDueDateBefore(InvoiceStatus.PAID, LocalDate.now(), pageable));
   }
 
-  public @NonNull Invoice getInvoiceById(@NonNull Long id) {
+  public Invoice getInvoiceById(Long id) {
     return Objects.requireNonNull(
         invoiceRepository
             .findById(id)

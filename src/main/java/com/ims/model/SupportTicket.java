@@ -38,7 +38,10 @@ public class SupportTicket {
 
   @Column @Builder.Default private String priority = "MEDIUM";
 
-  @Column @Builder.Default private String status = "OPEN";
+  @Column
+  @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+  @Builder.Default
+  private SupportTicketStatus status = SupportTicketStatus.OPEN;
 
   @Column @Builder.Default private String category = "GENERAL";
 

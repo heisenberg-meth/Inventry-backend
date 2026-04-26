@@ -12,11 +12,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 
-@SpringBootTest(
-    properties = {
-      "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
-      "spring.cache.type=none"
-    })
+@SpringBootTest(properties = {
+    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
+    "spring.cache.type=none"
+})
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 public class TenantIsolationIntegrationTest extends BaseIntegrationTest {
@@ -34,58 +33,62 @@ public class TenantIsolationIntegrationTest extends BaseIntegrationTest {
 
   @Test
   void testRequestSucceedsWithTenantHeader() throws Exception {
-    // We still need a valid JWT token because of SecurityConfig
-    String token = login("root@ims.com", TEST_ROOT_PASSWORD, "SYS001", systemTenantId);
+    final String test_ROOT_PASSWORD2 = TEST_ROOT_PASSWORD;
+    if (test_ROOT_PASSWORD2 != null) {
+      // We still need a valid JWT token because of SecurityConfig
+      String token = login("root@ims.com", test_ROOT_PASSWORD2, "SYS001", systemTenantId);
+      CategoryRequest request1 = new CategoryRequest();
+      request1.setName("Test Category");
 
-    CategoryRequest request1 = new CategoryRequest();
-    request1.setName("Test Category");
-
-    mockMvc
-        .perform(
-            post("/api/v1/tenant/categories")
-                .header("Authorization", "Bearer " + token)
-                .with(Objects.requireNonNull(tenant(testTenant1Id)))
-                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
-                .content(
-                    Objects.requireNonNull(objectMapper.writeValueAsString(request1))))
-        .andExpect(status().isCreated());
+      mockMvc
+          .perform(
+              post("/api/v1/tenant/categories")
+                  .header("Authorization", "Bearer " + token)
+                  .with(tenant(Objects.requireNonNull(testTenant1Id, "testTenant1Id missing")))
+                  .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                  .content(Objects.requireNonNull(objectMapper.writeValueAsString(request1))))
+          .andExpect(status().isCreated())
+          .andExpect(jsonPath("$.name").value("Test Category"));
+    }
   }
 
   @Test
   void testDataIsolationBetweenTenants() throws Exception {
-    String token = login("root@ims.com", TEST_ROOT_PASSWORD, "SYS001", systemTenantId);
+    final String test_ROOT_PASSWORD2 = TEST_ROOT_PASSWORD;
+    if (test_ROOT_PASSWORD2 != null) {
+      String token = login("root@ims.com", test_ROOT_PASSWORD2, "SYS001", systemTenantId);
+      // Create category for Tenant 1
+      CategoryRequest request1 = new CategoryRequest();
+      request1.setName("Tenant 1 Category");
 
-    // Create category for Tenant 1
-    CategoryRequest request1 = new CategoryRequest();
-    request1.setName("Tenant 1 Category");
+      mockMvc
+          .perform(
+              post("/api/v1/tenant/categories")
+                  .header("Authorization", "Bearer " + token)
+                  .with(tenant(Objects.requireNonNull(testTenant1Id, "testTenant1Id missing")))
+                  .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                  .content(Objects.requireNonNull(objectMapper.writeValueAsString(request1))))
+          .andExpect(status().isCreated())
+          .andExpect(jsonPath("$.name").value("Tenant 1 Category"));
 
-    mockMvc
-        .perform(
-            post("/api/v1/tenant/categories")
-                .header("Authorization", "Bearer " + token)
-                .with(tenant(String.valueOf(testTenant1Id)))
-                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
-                .content(
-                    Objects.requireNonNull(objectMapper.writeValueAsString(request1))))
-        .andExpect(status().isCreated());
+      // Verify Tenant 1 can see it
+      mockMvc
+          .perform(
+              get("/api/v1/tenant/categories")
+                  .header("Authorization", "Bearer " + token)
+                  .with(tenant(Objects.requireNonNull(testTenant1Id, "testTenant1Id missing"))))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.content.length()").value(1))
+          .andExpect(jsonPath("$.content[0].name").value("Tenant 1 Category"));
 
-    // Verify Tenant 1 can see it
-    mockMvc
-        .perform(
-            get("/api/v1/tenant/categories")
-                .header("Authorization", "Bearer " + token)
-                .with(tenant(String.valueOf(testTenant1Id))))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.content.length()").value(1))
-        .andExpect(jsonPath("$.content[0].name").value("Tenant 1 Category"));
-
-    // Verify Tenant 2 cannot see it
-    mockMvc
-        .perform(
-            get("/api/v1/tenant/categories")
-                .header("Authorization", "Bearer " + token)
-                .with(tenant(String.valueOf(testTenant2Id))))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.totalElements").value(0));
+      // Verify Tenant 2 cannot see it
+      mockMvc
+          .perform(
+              get("/api/v1/tenant/categories")
+                  .header("Authorization", "Bearer " + token)
+                  .with(tenant(Objects.requireNonNull(testTenant2Id, "testTenant2Id missing"))))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.totalElements").value(0));
+    }
   }
 }

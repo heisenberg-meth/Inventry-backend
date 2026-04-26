@@ -55,7 +55,10 @@ public class SubscriptionPlan {
   @Builder.Default
   private Integer maxProducts = 0;
 
-  @Column @Builder.Default private String status = "ACTIVE";
+  @Column
+  @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+  @Builder.Default
+  private SubscriptionPlanStatus status = SubscriptionPlanStatus.ACTIVE;
 
   @Column @Builder.Default private Integer version = 1;
 

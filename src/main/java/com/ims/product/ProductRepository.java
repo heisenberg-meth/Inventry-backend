@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -104,12 +105,17 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
   @Query("SELECT COUNT(p) FROM Product p WHERE p.tenantId = :tenantId AND p.isActive = true")
   long countActiveByTenant(@Param("tenantId") Long tenantId);
 
-  @Query(
-      "SELECT COUNT(p) FROM Product p WHERE p.tenantId = :tenantId AND p.stock <= p.reorderLevel AND p.isActive = true")
+  @Query("SELECT COUNT(p) FROM Product p WHERE p.tenantId = :tenantId AND p.stock <= p.reorderLevel AND p.isActive = true")
   long countLowStockByTenant(@Param("tenantId") Long tenantId);
+
+  @Query("SELECT COUNT(p) FROM Product p WHERE p.tenantId = :tenantId AND p.stock = 0 AND p.isActive = true")
+  long countOutOfStockByTenant(@Param("tenantId") Long tenantId);
 
   @Query("SELECT COUNT(p) FROM Product p WHERE p.stock <= p.reorderLevel AND p.isActive = true")
   long countLowStock();
+
+  @Query("SELECT p FROM Product p WHERE p.stock <= p.reorderLevel AND p.isActive = true")
+  Stream<Product> streamAllLowStock();
 
   @Query("SELECT COUNT(p) FROM Product p WHERE p.stock = 0 AND p.isActive = true")
   long countOutOfStock();
@@ -123,8 +129,12 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
   @Query("SELECT COUNT(p) FROM Product p WHERE p.isActive = true")
   long countActive();
 
-  @Query("SELECT p FROM Product p WHERE p.tenantId = :tenantId AND p.stock < p.reorderLevel")
-  List<Product> findLowStock(@Param("tenantId") Long tenantId);
+  @Query("SELECT p.id as id, p.name as name, p.stock as stock FROM Product p WHERE p.tenantId = :tenantId AND p.stock < p.reorderLevel")
+  List<ProductStockView> findLowStock(@Param("tenantId") Long tenantId);
+
+  @Query("SELECT p.id as id, p.name as name, p.sku as sku, p.stock as stock, p.salePrice as salePrice, p.categoryId as categoryId "
+      + "FROM Product p WHERE p.isActive = true")
+  List<ProductExportView> findExportDataByIsActiveTrue();
 
   Page<Product> findByIsActiveTrue(Pageable pageable);
 
@@ -132,6 +142,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
   @Query("SELECT p FROM Product p WHERE p.id = :productId")
   Optional<Product> findByIdWithLock(@Param("productId") Long productId);
 
+  /**
+   * Calculates the total inventory valuation for a tenant.
+   * Basis: Current Sale Price * Current Stock Level.
+   */
   @Query(
       """
       SELECT COALESCE(SUM(p.salePrice * p.stock), 0)
@@ -140,9 +154,21 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
       """)
   BigDecimal getTotalInventoryValue(@Param("tenantId") Long tenantId);
 
+  /**
+   * Calculates the total inventory cost value for a tenant.
+   * Basis: Current Purchase Price * Current Stock Level.
+   */
   @Query(
       """
-      SELECT new com.ims.product.CategoryCount(c.name, COUNT(p))
+      SELECT COALESCE(SUM(p.purchasePrice * p.stock), 0)
+      FROM Product p
+      WHERE p.tenantId = :tenantId AND p.isActive = true
+      """)
+  BigDecimal getTotalInventoryCost(@Param("tenantId") Long tenantId);
+
+  @Query(
+      """
+      SELECT c.name as categoryName, COUNT(p) as productCount
       FROM Product p
       JOIN Category c ON p.categoryId = c.id
       WHERE p.tenantId = :tenantId AND p.isActive = true
@@ -160,12 +186,13 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
   @Query(
       """
-      SELECT new com.ims.product.ProductStockView(p.id, p.name, p.stock)
+      SELECT p.id as id, p.name as name, p.stock as stock
       FROM Product p
       WHERE p.tenantId = :tenantId AND p.isActive = true
       ORDER BY p.stock DESC
       """)
   Page<ProductStockView> findTopStock(@Param("tenantId") Long tenantId, Pageable pageable);
+
   @org.springframework.data.jpa.repository.Modifying
   @Query("UPDATE Product p SET p.stock = p.stock + :qty, p.updatedAt = :now WHERE p.id = :productId")
   int incrementStock(

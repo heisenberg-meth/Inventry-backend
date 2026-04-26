@@ -15,7 +15,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class TraceFilter extends OncePerRequestFilter {
 
   private static final String CORRELATION_ID_HEADER = "X-Correlation-ID";
-  private static final String MDC_CORRELATION_ID = "correlation_id";
+  private static final String MDC_REQUEST_ID = "requestId";
 
   @Override
   protected void doFilterInternal(
@@ -24,18 +24,18 @@ public class TraceFilter extends OncePerRequestFilter {
       @NonNull FilterChain filterChain)
       throws ServletException, IOException {
 
-    String correlationId = request.getHeader(CORRELATION_ID_HEADER);
-    if (correlationId == null || correlationId.isBlank()) {
-      correlationId = UUID.randomUUID().toString();
+    String requestId = request.getHeader(CORRELATION_ID_HEADER);
+    if (requestId == null || requestId.isBlank()) {
+      requestId = UUID.randomUUID().toString();
     }
 
-    MDC.put(MDC_CORRELATION_ID, correlationId);
-    response.setHeader(CORRELATION_ID_HEADER, correlationId);
+    MDC.put(MDC_REQUEST_ID, requestId);
+    response.setHeader(CORRELATION_ID_HEADER, requestId);
 
     try {
       filterChain.doFilter(request, response);
     } finally {
-      MDC.remove(MDC_CORRELATION_ID);
+      MDC.remove(MDC_REQUEST_ID);
     }
   }
 }

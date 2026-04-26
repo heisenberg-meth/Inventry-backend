@@ -1,5 +1,6 @@
 package com.ims.platform.service;
 
+import com.ims.model.SubscriptionStatus;
 import com.ims.platform.repository.SubscriptionPlanRepository;
 import com.ims.platform.repository.SubscriptionRepository;
 import com.ims.platform.repository.TenantRepository;
@@ -26,7 +27,7 @@ public class PlatformAnalyticsService {
   private final SubscriptionPlanRepository subscriptionPlanRepository;
 
   public Map<String, Object> getRevenueAnalytics() {
-    var activeSubscriptions = subscriptionRepository.findByStatus("ACTIVE");
+    var activeSubscriptions = subscriptionRepository.findByStatus(SubscriptionStatus.ACTIVE);
     var plans =
         subscriptionPlanRepository.findAll().stream()
             .collect(Collectors.toMap(com.ims.model.SubscriptionPlan::getName, p -> p));

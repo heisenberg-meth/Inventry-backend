@@ -5,7 +5,7 @@ import com.ims.platform.repository.TenantRepository;
 import com.ims.shared.security.SecretEncryptionService;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
-import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,7 +17,8 @@ public class TenantSecretService {
   private final SecretEncryptionService encryptionService;
 
   @Transactional(readOnly = true)
-  public String getWebhookSecret(@NonNull Long tenantId) {
+  @Nullable
+  public String getWebhookSecret(Long tenantId) {
     return tenantRepository
         .findById(Objects.requireNonNull(tenantId))
         .map(Tenant::getWebhookSecret)

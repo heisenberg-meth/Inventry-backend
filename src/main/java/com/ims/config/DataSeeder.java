@@ -1,7 +1,9 @@
 package com.ims.config;
 
+import com.ims.model.Role;
 import com.ims.model.User;
 import com.ims.model.UserRole;
+import com.ims.tenant.repository.RoleRepository;
 import com.ims.tenant.repository.UserRepository;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +20,7 @@ import org.springframework.stereotype.Component;
 public class DataSeeder implements CommandLineRunner {
 
   private final UserRepository userRepository;
+  private final RoleRepository roleRepository;
   private final PasswordEncoder passwordEncoder;
 
   @Value("${PLATFORM_ADMIN_PASSWORD:#{null}}")
@@ -54,6 +57,16 @@ public class DataSeeder implements CommandLineRunner {
       throw new IllegalStateException("PLATFORM_ADMIN_PASSWORD env var is required when seed.admin=true");
     }
 
+    // 1. Ensure the Platform Admin role exists
+    Role platformAdminRole = roleRepository.findByNameAndTenantIdIsNull(UserRole.PLATFORM_ADMIN.name())
+        .orElseGet(() -> {
+          Role role = Role.builder()
+              .name(Objects.requireNonNull(UserRole.PLATFORM_ADMIN.name()))
+              .description("Global Platform Administrator")
+              .build();
+          return roleRepository.save(role);
+        });
+
     String adminEmail = "admin@platform.com";
     if (userRepository.findByEmailUnfiltered(adminEmail).isEmpty()) {
       User admin =
@@ -61,8 +74,8 @@ public class DataSeeder implements CommandLineRunner {
               User.builder()
                   .name("Platform Admin")
                   .email(adminEmail)
-                  .passwordHash(passwordEncoder.encode(platformAdminPassword))
-                  .role(UserRole.PLATFORM_ADMIN)
+                  .passwordHash(Objects.requireNonNull(passwordEncoder.encode(platformAdminPassword)))
+                  .role(Objects.requireNonNull(platformAdminRole))
                   .scope("PLATFORM")
                   .isPlatformUser(true)
                   .isActive(true)

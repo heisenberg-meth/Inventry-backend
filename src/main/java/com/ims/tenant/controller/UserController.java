@@ -16,7 +16,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -39,7 +38,7 @@ public class UserController {
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Create tenant user")
   public ResponseEntity<UserResponse> createUser(
-      @Valid @RequestBody @NonNull CreateUserRequest request) {
+      @Valid @RequestBody CreateUserRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(userService.createUser(Objects.requireNonNull(request)));
   }
@@ -47,7 +46,7 @@ public class UserController {
   @GetMapping
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "List tenant users")
-  public ResponseEntity<Page<UserResponse>> getUsers(@NonNull Pageable pageable) {
+  public ResponseEntity<Page<UserResponse>> getUsers(Pageable pageable) {
     return ResponseEntity.ok(userService.getUsers(Objects.requireNonNull(pageable)));
   }
 
@@ -74,7 +73,7 @@ public class UserController {
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Assign custom permissions to user")
   public ResponseEntity<UserResponse> assignPermissions(
-      @PathVariable long id, @Valid @RequestBody @NonNull AssignPermissionsRequest request) {
+      @PathVariable long id, @Valid @RequestBody AssignPermissionsRequest request) {
     return ResponseEntity.ok(userService.assignPermissions(id, Objects.requireNonNull(request)));
   }
 

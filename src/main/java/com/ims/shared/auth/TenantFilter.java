@@ -29,11 +29,14 @@ public class TenantFilter extends OncePerRequestFilter {
     try {
       String tenantHeader = request.getHeader("X-Tenant-ID");
       if (tenantHeader != null && !tenantHeader.isBlank()) {
-        TenantContext.setTenantId(Long.parseLong(tenantHeader));
+        Long tenantId = Long.parseLong(tenantHeader);
+        TenantContext.setTenantId(tenantId);
+        org.slf4j.MDC.put("tenantId", String.valueOf(tenantId));
       }
       filterChain.doFilter(request, response);
     } finally {
       TenantContext.clear();
+      org.slf4j.MDC.remove("tenantId");
     }
   }
 

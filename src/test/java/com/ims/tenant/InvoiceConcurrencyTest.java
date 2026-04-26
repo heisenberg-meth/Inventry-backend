@@ -8,13 +8,13 @@ import com.ims.model.Order;
 import com.ims.model.Tenant;
 import com.ims.platform.repository.TenantRepository;
 import com.ims.shared.auth.TenantContext;
-import com.ims.tenant.repository.InvoiceRepository;
 import com.ims.tenant.repository.OrderRepository;
 import com.ims.tenant.service.InvoiceService;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Objects;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -37,8 +37,6 @@ import org.springframework.test.context.ActiveProfiles;
 public class InvoiceConcurrencyTest extends BaseIntegrationTest {
 
   @Autowired private InvoiceService invoiceService;
-
-  @Autowired private InvoiceRepository invoiceRepository;
 
   @Autowired private TenantRepository tenantRepository;
 
@@ -68,13 +66,13 @@ public class InvoiceConcurrencyTest extends BaseIntegrationTest {
     for (int i = 0; i < 10; i++) {
       Order order =
           Order.builder()
-              .tenantId(tenantId)
+              .tenantId(Objects.requireNonNull(tenantId))
               .type("SALE")
               .status(com.ims.model.OrderStatus.PENDING)
               .totalAmount(new BigDecimal("100.00"))
               .taxAmount(new BigDecimal("10.00"))
-              .discount(BigDecimal.ZERO)
-              .createdAt(LocalDateTime.now())
+              .discount(Objects.requireNonNull(BigDecimal.ZERO))
+              .createdAt(Objects.requireNonNull(LocalDateTime.now()))
               .build();
       order = orderRepository.save(order);
       orderIds.add(order.getId());
@@ -115,7 +113,7 @@ public class InvoiceConcurrencyTest extends BaseIntegrationTest {
     assertThat(generatedInvoiceNumbers).hasSize(numberOfThreads);
 
     // Verify that the sequence in the database is correct
-    Tenant tenant = tenantRepository.findById(tenantId).orElseThrow();
+    Tenant tenant = tenantRepository.findById(Objects.requireNonNull(tenantId)).orElseThrow();
     assertThat(tenant.getInvoiceSequence()).isEqualTo(numberOfThreads);
 
     // Verify that all invoice numbers follow the expected pattern and are unique

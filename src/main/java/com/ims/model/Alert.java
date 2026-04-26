@@ -12,6 +12,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.TenantId;
+import org.springframework.lang.Nullable;
 
 @Entity
 @Table(name = "alerts")
@@ -23,6 +24,7 @@ public class Alert {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @Nullable
   private Long id;
 
   @TenantId
@@ -39,6 +41,7 @@ public class Alert {
   private String message;
 
   @Column(name = "resource_id")
+  @Nullable
   private Long resourceId;
 
   @Column(name = "is_dismissed")
@@ -50,5 +53,6 @@ public class Alert {
   private LocalDateTime createdAt = LocalDateTime.now();
 
   @Column(name = "dismissed_at")
+  @Nullable
   private LocalDateTime dismissedAt;
 }

@@ -13,6 +13,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.lang.Nullable;
 import org.hibernate.annotations.TenantId;
 
 @Entity
@@ -26,6 +27,7 @@ public class Category {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @Nullable
   private Long id;
 
   @TenantId
@@ -35,7 +37,9 @@ public class Category {
   @Column(nullable = false)
   private String name;
 
-  @Column private String description;
+  @Column
+  @Nullable
+  private String description;
 
   @Column(name = "tax_rate")
   @Builder.Default

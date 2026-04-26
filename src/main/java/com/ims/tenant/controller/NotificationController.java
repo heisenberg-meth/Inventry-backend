@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.lang.NonNull;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -44,7 +43,7 @@ public class NotificationController {
   @PatchMapping("/{id}/read")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Mark notification as read")
-  public ResponseEntity<Void> markAsRead(@PathVariable @NonNull Long id) {
+  public ResponseEntity<Void> markAsRead(@PathVariable Long id) {
     notificationService.markAsRead(Objects.requireNonNull(id));
     return ResponseEntity.noContent().build();
   }
@@ -58,6 +57,7 @@ public class NotificationController {
   }
 
   private Long extractUserId() {
-    return (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    var auth = Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication(), "Authentication required");
+    return Objects.requireNonNull((Long) auth.getPrincipal(), "User ID principal required");
   }
 }

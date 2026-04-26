@@ -11,6 +11,7 @@ import com.ims.dto.response.ProductResponse;
 import com.ims.shared.auth.SignupService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Objects;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,8 +50,8 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
     com.ims.dto.response.SignupResponse response = signupService.signup(signup);
     verifyUserEmail("admin@pharmacy.com");
     verifyUser("admin@pharmacy.com");
-    Long tId = tenantRepository.findByWorkspaceSlug("pharmacy-corp").orElseThrow().getId();
-    String token = login("admin@pharmacy.com", "password123", response.getCompanyCode(), tId);
+    Long tId = Objects.requireNonNull(tenantRepository.findByWorkspaceSlug("pharmacy-corp").orElseThrow().getId());
+    String token = login("admin@pharmacy.com", "password123", Objects.requireNonNull(response.getCompanyCode()), tId);
 
     // 1. Create Pharmacy Product
     CreateProductRequest createReq = new CreateProductRequest();
@@ -61,7 +62,7 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
     CreateProductRequest.PharmacyDetailsRequest pharm =
         new CreateProductRequest.PharmacyDetailsRequest();
     pharm.setBatchNumber("BATCH-123");
-    pharm.setExpiryDate(LocalDate.now().plusMonths(6).toString());
+    pharm.setExpiryDate(Objects.requireNonNull(LocalDate.now().plusMonths(6).toString()));
     pharm.setManufacturer("Pharma Co");
     createReq.setPharmacyDetails(pharm);
 
@@ -71,9 +72,9 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
             .perform(
                 post("/api/v1/tenant/products")
                     .header("Authorization", "Bearer " + token)
-                    .with(tenant(String.valueOf(tId)))
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(createReqJson))
+                    .with(tenant(Objects.requireNonNull(String.valueOf(tId))))
+                    .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                    .content(Objects.requireNonNull(createReqJson)))
             .andExpect(status().isCreated())
             .andReturn();
 
@@ -86,9 +87,9 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
         .perform(
             get("/api/v1/tenant/products/expiring?days=200")
                 .header("Authorization", "Bearer " + token)
-                .with(tenant(String.valueOf(tId))))
+                .with(tenant(Objects.requireNonNull(String.valueOf(tId)))))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.length()", org.hamcrest.Matchers.<Integer>greaterThanOrEqualTo(1)));
+        .andExpect(jsonPath("$.length()", Objects.requireNonNull(org.hamcrest.Matchers.<Integer>greaterThanOrEqualTo(1))));
   }
 
   @Test
@@ -104,8 +105,8 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
     verifyUserEmail("admin@expired.com");
     verifyUser("admin@expired.com");
 
-    Long tId = tenantRepository.findByWorkspaceSlug("expired-corp").orElseThrow().getId();
-    String token = login("admin@expired.com", "password123", response.getCompanyCode(), tId);
+    Long tId = Objects.requireNonNull(tenantRepository.findByWorkspaceSlug("expired-corp").orElseThrow().getId());
+    String token = login("admin@expired.com", "password123", Objects.requireNonNull(response.getCompanyCode()), tId);
 
     // 1. Create ALREADY EXPIRED product
     CreateProductRequest expiredReq = new CreateProductRequest();
@@ -116,7 +117,7 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
     CreateProductRequest.PharmacyDetailsRequest pharm =
         new CreateProductRequest.PharmacyDetailsRequest();
     pharm.setBatchNumber("EXPIRED-BATCH");
-    pharm.setExpiryDate(LocalDate.now().minusDays(10).toString()); // 10 days ago
+    pharm.setExpiryDate(Objects.requireNonNull(LocalDate.now().minusDays(10).toString())); // 10 days ago
     pharm.setManufacturer("Old Pharma");
     expiredReq.setPharmacyDetails(pharm);
 
@@ -124,9 +125,9 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
         .perform(
             post("/api/v1/tenant/products")
                 .header("Authorization", "Bearer " + token)
-                .with(tenant(String.valueOf(tId)))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(expiredReq)))
+                .with(tenant(Objects.requireNonNull(String.valueOf(tId))))
+                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                .content(Objects.requireNonNull(objectMapper.writeValueAsString(expiredReq))))
         .andExpect(status().isCreated());
 
     // 2. Fetch expiring products (threshold 30 days)
@@ -137,7 +138,7 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
             .perform(
                 get("/api/v1/tenant/products/expiring?days=30")
                     .header("Authorization", "Bearer " + token)
-                    .with(tenant(String.valueOf(tId))))
+                    .with(tenant(Objects.requireNonNull(String.valueOf(tId)))))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.length()").value(1))
             .andReturn();
@@ -160,8 +161,8 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
     verifyUserEmail("admin@missing.com");
     verifyUser("admin@missing.com");
 
-    Long tId = tenantRepository.findByWorkspaceSlug("missing-corp").orElseThrow().getId();
-    String token = login("admin@missing.com", "password123", response.getCompanyCode(), tId);
+    Long tId = Objects.requireNonNull(tenantRepository.findByWorkspaceSlug("missing-corp").orElseThrow().getId());
+    String token = login("admin@missing.com", "password123", Objects.requireNonNull(response.getCompanyCode()), tId);
 
     // Create Pharmacy Product with missing pharmacy_details
     CreateProductRequest invalidReq = new CreateProductRequest();
@@ -175,9 +176,9 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
         .perform(
             post("/api/v1/tenant/products")
                 .header("Authorization", "Bearer " + token)
-                .with(tenant(String.valueOf(tId)))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(invalidReq)))
+                .with(tenant(Objects.requireNonNull(String.valueOf(tId))))
+                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                .content(Objects.requireNonNull(objectMapper.writeValueAsString(invalidReq))))
         .andExpect(status().isBadRequest());
   }
 }

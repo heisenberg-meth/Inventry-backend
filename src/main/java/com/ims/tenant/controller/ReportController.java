@@ -21,7 +21,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -164,8 +163,8 @@ public class ReportController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Purchases analytics with date range")
   public ResponseEntity<Map<String, Object>> getPurchasesReport(
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @NonNull LocalDate from,
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @NonNull LocalDate to) {
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
     return ResponseEntity.ok(
         reportService.getPurchasesReport(Objects.requireNonNull(from), Objects.requireNonNull(to)));
   }
@@ -189,8 +188,8 @@ public class ReportController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Sales analytics with date range")
   public ResponseEntity<Map<String, Object>> getSalesReport(
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @NonNull LocalDate from,
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @NonNull LocalDate to) {
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
     return ResponseEntity.ok(
         reportService.getSalesAnalytics(Objects.requireNonNull(from), Objects.requireNonNull(to)));
   }
@@ -199,8 +198,8 @@ public class ReportController {
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Profit & Loss report")
   public ResponseEntity<Map<String, Object>> getProfitLoss(
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @NonNull LocalDate from,
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @NonNull LocalDate to) {
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
     return ResponseEntity.ok(
         reportService.getProfitLoss(Objects.requireNonNull(from), Objects.requireNonNull(to)));
   }
@@ -209,8 +208,8 @@ public class ReportController {
   @RequiresRole({"ADMIN"})
   @Operation(summary = "GST summary report")
   public ResponseEntity<Map<String, Object>> getGstReport(
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @NonNull LocalDate from,
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) @NonNull LocalDate to) {
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
     return ResponseEntity.ok(reportService.getGstReport(from, to));
   }
 
@@ -224,7 +223,7 @@ public class ReportController {
   @org.springframework.web.bind.annotation.PatchMapping("/reports/alerts/{id}/dismiss")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Dismiss an alert")
-  public ResponseEntity<Void> dismissAlert(@PathVariable @NonNull Long id) {
+  public ResponseEntity<Void> dismissAlert(@PathVariable Long id) {
     reportService.dismissAlert(Objects.requireNonNull(id));
     return ResponseEntity.noContent().build();
   }

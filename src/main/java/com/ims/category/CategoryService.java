@@ -17,7 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,12 +29,11 @@ public class CategoryService {
   private final ProductRepository productRepository;
   private final AuditLogService auditLogService;
 
-  public @NonNull PagedResponse<CategoryResponse> getCategories(
-      @NonNull Long tenantId, @NonNull Pageable pageable) {
+  public PagedResponse<CategoryResponse> getCategories(
+      Long tenantId, Pageable pageable) {
     TenantContext.assertTenantPresent();
 
-    Page<CategoryResponse> page =
-        categoryRepository.findByTenantId(tenantId, pageable).map(this::toResponse);
+    Page<CategoryResponse> page = categoryRepository.findByTenantId(tenantId, pageable).map(this::toResponse);
     return new PagedResponse<>(
         page.getContent(),
         page.getTotalElements(),
@@ -44,9 +42,9 @@ public class CategoryService {
         page.getSize());
   }
 
-  public @NonNull Category getById(@NonNull Long id) {
+  public Category getById(Long id) {
     TenantContext.assertTenantPresent();
-    Long tenantId = TenantContext.getTenantId();
+    Long tenantId = TenantContext.requireTenantId();
     return Objects.requireNonNull(
         categoryRepository
             .findByIdAndTenantId(id, tenantId)
@@ -54,19 +52,19 @@ public class CategoryService {
   }
 
   @Transactional
-  public @NonNull Category create(@NonNull CategoryRequest request) {
+  public Category create(CategoryRequest request) {
     String name = Objects.requireNonNull(request.getName());
 
-    if (categoryRepository.existsByNameIgnoreCaseAndTenantId(name, TenantContext.getTenantId())) {
+    if (categoryRepository.existsByNameIgnoreCaseAndTenantId(name, TenantContext.requireTenantId())) {
       throw new IllegalArgumentException("Category with this name already exists");
     }
 
-    Category category =
-        Objects.requireNonNull(
-            Category.builder()
+    Category category = Objects.requireNonNull(
+        Category.builder()
+            .tenantId(TenantContext.requireTenantId())
             .name(name)
             .description(request.getDescription())
-            .taxRate(request.getTaxRate() != null ? request.getTaxRate() : BigDecimal.ZERO)
+            .taxRate(Objects.requireNonNull(request.getTaxRate() != null ? request.getTaxRate() : BigDecimal.ZERO))
             .build());
 
     Category savedCategory = Objects.requireNonNull(categoryRepository.save(category));
@@ -81,11 +79,11 @@ public class CategoryService {
   }
 
   @Transactional
-  public @NonNull Category update(@NonNull Long id, @NonNull CategoryRequest request) {
+  public Category update(Long id, CategoryRequest request) {
 
     Category category = getById(id);
     TenantContext.assertTenantPresent();
-    Long tenantId = TenantContext.getTenantId();
+    Long tenantId = TenantContext.requireTenantId();
 
     String name = Objects.requireNonNull(request.getName());
 
@@ -98,7 +96,7 @@ public class CategoryService {
     category.setDescription(request.getDescription());
 
     if (request.getTaxRate() != null) {
-      category.setTaxRate(request.getTaxRate());
+      category.setTaxRate(Objects.requireNonNull(request.getTaxRate()));
     }
 
     Category updatedCategory = Objects.requireNonNull(categoryRepository.save(category));
@@ -114,7 +112,7 @@ public class CategoryService {
 
   @Transactional
   @RequiresPermission("delete_category")
-  public void delete(@NonNull Long id) {
+  public void delete(Long id) {
     Category category = getById(id);
     long productCount = productRepository.countByCategoryId(id);
 
@@ -129,7 +127,7 @@ public class CategoryService {
         AuditAction.DELETE, AuditResource.CATEGORY, id, "Deleted category: " + category.getName());
   }
 
-  public @NonNull CategoryResponse toResponse(@NonNull Category category) {
+  public CategoryResponse toResponse(Category category) {
     return Objects.requireNonNull(
         CategoryResponse.builder()
             .id(category.getId())

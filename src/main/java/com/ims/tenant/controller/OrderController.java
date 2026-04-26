@@ -15,7 +15,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -38,18 +38,18 @@ public class OrderController {
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "List all orders")
   public ResponseEntity<Page<Order>> getOrders(
-      @RequestParam(required = false) String type, @NonNull Pageable pageable) {
+      @RequestParam(required = false) @Nullable String type, Pageable pageable) {
     if (type != null) {
-      return ResponseEntity.ok(orderService.getOrdersByType(type, pageable));
+      return ResponseEntity.ok(orderService.getOrdersByType(Objects.requireNonNull(type), Objects.requireNonNull(pageable)));
     }
-    return ResponseEntity.ok(orderService.getOrders(pageable));
+    return ResponseEntity.ok(orderService.getOrders(Objects.requireNonNull(pageable)));
   }
 
   @PostMapping("/purchase")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Create purchase order")
   public ResponseEntity<Order> createPurchaseOrder(
-      @Valid @RequestBody @NonNull OrderRequest request) {
+      @Valid @RequestBody OrderRequest request) {
     Long userId = extractUserId();
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(orderService.createPurchaseOrder(request, userId));
@@ -58,7 +58,7 @@ public class OrderController {
   @PostMapping("/sale")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Create sale order")
-  public ResponseEntity<Order> createSalesOrder(@Valid @RequestBody @NonNull OrderRequest request) {
+  public ResponseEntity<Order> createSalesOrder(@Valid @RequestBody OrderRequest request) {
     Long userId = extractUserId();
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(orderService.createSalesOrder(request, userId));
@@ -68,7 +68,7 @@ public class OrderController {
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Create return order")
   public ResponseEntity<Order> createReturnOrder(
-      @Valid @RequestBody @NonNull OrderRequest request) {
+      @Valid @RequestBody OrderRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(orderService.createReturnOrder(request, extractUserId()));
   }

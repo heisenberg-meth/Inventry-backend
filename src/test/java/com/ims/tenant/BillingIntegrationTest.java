@@ -36,6 +36,7 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
 
   @Autowired private SignupService signupService;
   @Autowired private CustomerService customerService;
+  @Autowired private com.ims.tenant.repository.CustomerRepository customerRepository;
 
   @BeforeEach
   void setup() {
@@ -59,8 +60,8 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
     verifyUserEmail("admin@billing.com");
     verifyUser("admin@billing.com");
 
-    Long tenantId = tenantRepository.findByWorkspaceSlug("billing-corp").orElseThrow().getId();
-    String token = login("admin@billing.com", "password123", response.getCompanyCode(), tenantId);
+    Long tenantId = Objects.requireNonNull(tenantRepository.findByWorkspaceSlug("billing-corp").orElseThrow().getId());
+    String token2 = login("admin@billing.com", "password123", Objects.requireNonNull(response.getCompanyCode()), tenantId);
 
     Customer customer;
     try {
@@ -69,12 +70,7 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
       custReq.setName("Billing Customer");
       custReq.setAddress("123 Street");
       com.ims.dto.response.CustomerResponse custResponse = customerService.create(custReq);
-      customer =
-          Customer.builder()
-              .id(custResponse.getId())
-              .name(custResponse.getName())
-              .address(custResponse.getAddress())
-              .build();
+      customer = customerRepository.findById(Objects.requireNonNull(custResponse.getId())).orElseThrow();
     } finally {
       TenantContext.clear();
     }
@@ -88,9 +84,9 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
         mockMvc
             .perform(
                 post("/api/v1/tenant/products")
-                    .header("Authorization", "Bearer " + token)
-                    .with(tenant(tenantId.toString()))
-                    .contentType(MediaType.APPLICATION_JSON)
+                    .header("Authorization", "Bearer " + token2)
+                    .with(tenant(Objects.requireNonNull(String.valueOf(tenantId))))
+                    .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
                     .content(createReqJson))
             .andExpect(status().isCreated())
             .andReturn();
@@ -106,9 +102,9 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
     mockMvc
         .perform(
             post("/api/v1/tenant/stock/in")
-                .header("Authorization", "Bearer " + token)
-                .with(tenant(tenantId.toString()))
-                .contentType(MediaType.APPLICATION_JSON)
+                .header("Authorization", "Bearer " + token2)
+                .with(tenant(Objects.requireNonNull(String.valueOf(tenantId))))
+                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
                 .content(stockInJson))
         .andExpect(status().isOk());
 
@@ -125,9 +121,9 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
         mockMvc
             .perform(
                 post("/api/v1/tenant/orders/sale")
-                    .header("Authorization", "Bearer " + token)
-                    .with(tenant(tenantId.toString()))
-                    .contentType(MediaType.APPLICATION_JSON)
+                    .header("Authorization", "Bearer " + token2)
+                    .with(tenant(Objects.requireNonNull(String.valueOf(tenantId))))
+                    .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
                     .content(orderReqJson))
             .andExpect(status().isCreated())
             .andReturn();
@@ -142,8 +138,8 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
     mockMvc
         .perform(
             post("/api/v1/tenant/orders/" + orderId + "/confirm")
-                .header("Authorization", "Bearer " + token)
-                .with(tenant(tenantId.toString())))
+                .header("Authorization", "Bearer " + token2)
+                .with(tenant(Objects.requireNonNull(String.valueOf(tenantId)))))
         .andExpect(status().isOk());
 
     // 4. Verify Invoice Exists
@@ -151,8 +147,8 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
         mockMvc
             .perform(
                 get("/api/v1/tenant/invoices")
-                    .header("Authorization", "Bearer " + token)
-                    .with(tenant(tenantId.toString())))
+                    .header("Authorization", "Bearer " + token2)
+                    .with(tenant(Objects.requireNonNull(String.valueOf(tenantId)))))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.content[0].orderId").value(orderId))
             .andReturn();
@@ -164,10 +160,11 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
     mockMvc
         .perform(
             get("/api/v1/tenant/invoices/" + invoiceId + "/pdf")
-                .header("Authorization", "Bearer " + token)
-                .with(tenant(tenantId.toString())))
+                .header("Authorization", "Bearer " + token2)
+                .with(tenant(Objects.requireNonNull(String.valueOf(tenantId))))
+                .contentType(Objects.requireNonNull(MediaType.APPLICATION_PDF)))
         .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+        .andExpect(content().contentType(Objects.requireNonNull(MediaType.APPLICATION_PDF)))
         .andExpect(
             header()
                 .string(

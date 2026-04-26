@@ -17,7 +17,6 @@ import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,23 +29,23 @@ public class CustomerService {
   private final InvoiceRepository invoiceRepository;
   private final PaymentRepository paymentRepository;
 
-  public @NonNull Page<CustomerResponse> getCustomers(@NonNull Pageable pageable) {
+  public Page<CustomerResponse> getCustomers(Pageable pageable) {
     return customerRepository.findAll(pageable).map(this::toResponse);
   }
 
-  public @NonNull Customer getById(@NonNull Long id) {
+  public Customer getById(Long id) {
     return Objects.requireNonNull(
         customerRepository
             .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Customer not found")));
   }
 
-  public @NonNull CustomerResponse getCustomerResponseById(@NonNull Long id) {
+  public CustomerResponse getCustomerResponseById(Long id) {
     return toResponse(getById(id));
   }
 
   @Transactional
-  public @NonNull CustomerResponse create(@NonNull CustomerRequest request) {
+  public CustomerResponse create(CustomerRequest request) {
     Long tenantId = com.ims.shared.auth.TenantContext.getTenantId();
     if (tenantId == null) {
       throw new com.ims.shared.exception.TenantContextException("Tenant context missing");
@@ -64,7 +63,7 @@ public class CustomerService {
   }
 
   @Transactional
-  public @NonNull CustomerResponse update(@NonNull Long id, @NonNull CustomerRequest updates) {
+  public CustomerResponse update(Long id, CustomerRequest updates) {
     Customer customer = getById(id);
     if (updates.getName() != null) {
       customer.setName(updates.getName());
@@ -86,12 +85,12 @@ public class CustomerService {
   }
 
   @Transactional
-  public void delete(@NonNull Long id) {
+  public void delete(Long id) {
     Customer customer = getById(id);
     customerRepository.delete(customer);
   }
 
-  public @NonNull Map<String, Object> getCustomerLedger(@NonNull Long id) {
+  public Map<String, Object> getCustomerLedger(Long id) {
     Customer customer = getById(id);
 
     List<Order> orders = orderRepository.findByCustomerId(id, Pageable.unpaged()).getContent();
@@ -106,7 +105,7 @@ public class CustomerService {
             "payments", payments));
   }
 
-  private @NonNull CustomerResponse toResponse(Customer customer) {
+  private CustomerResponse toResponse(Customer customer) {
     return Objects.requireNonNull(
         CustomerResponse.builder()
             .id(customer.getId())

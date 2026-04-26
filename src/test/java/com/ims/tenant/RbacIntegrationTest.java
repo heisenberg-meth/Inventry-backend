@@ -36,11 +36,11 @@ public class RbacIntegrationTest extends BaseIntegrationTest {
   @Test
   void testRBAC() throws Exception {
     com.ims.dto.response.SignupResponse response =
-        signupService.signup(createSignupRequest("RBAC Corp", "rbac-corp", "admin@rbac.com"));
+        signupService.signup(Objects.requireNonNull(createSignupRequest("RBAC Corp", "rbac-corp", "admin@rbac.com")));
     verifyUserEmail("admin@rbac.com");
     verifyUser("admin@rbac.com");
     Long tenantId = tenantRepository.findByWorkspaceSlug("rbac-corp").orElseThrow().getId();
-    String token = login("admin@rbac.com", "password123", response.getCompanyCode(), tenantId);
+    String token = login("admin@rbac.com", "password123", Objects.requireNonNull(response.getCompanyCode()), tenantId);
 
     // 1. Create a product first (with all mandatory fields)
     CreateProductRequest createReq = new CreateProductRequest();
@@ -52,27 +52,30 @@ public class RbacIntegrationTest extends BaseIntegrationTest {
         .perform(
             post("/api/v1/tenant/products")
                 .header("Authorization", "Bearer " + token)
-                .with(tenant(String.valueOf(tenantId)))
+                .with(tenant(Objects.requireNonNull(tenantId, "tenantId missing")))
                 .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
                 .content(Objects.requireNonNull(objectMapper.writeValueAsString(createReq))))
-        .andExpect(status().isCreated());
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.name").value("RBAC Product"))
+        .andExpect(jsonPath("$.sku").value("RBAC-001"));
 
     // 2. ADMIN can access products
     mockMvc
         .perform(
             get("/api/v1/tenant/products")
                 .header("Authorization", "Bearer " + token)
-                .with(tenant(String.valueOf(tenantId))))
-        .andExpect(status().isOk());
+                .with(tenant(Objects.requireNonNull(tenantId, "tenantId missing"))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content").isArray());
   }
 
   private SignupRequest createSignupRequest(String name, String slug, String email) {
     SignupRequest signup = new SignupRequest();
-    signup.setBusinessName(name);
-    signup.setWorkspaceSlug(slug);
+    signup.setBusinessName(Objects.requireNonNull(name));
+    signup.setWorkspaceSlug(Objects.requireNonNull(slug));
     signup.setBusinessType("RETAIL");
     signup.setOwnerName("Admin");
-    signup.setOwnerEmail(email);
+    signup.setOwnerEmail(Objects.requireNonNull(email));
     signup.setPassword("password123");
     return signup;
   }

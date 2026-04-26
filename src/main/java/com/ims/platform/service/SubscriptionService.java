@@ -1,6 +1,7 @@
 package com.ims.platform.service;
 
 import com.ims.model.Subscription;
+import com.ims.model.SubscriptionStatus;
 import com.ims.platform.repository.SubscriptionRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
@@ -20,7 +21,7 @@ public class SubscriptionService {
   private final SubscriptionRepository subscriptionRepository;
 
   public List<Subscription> getActiveSubscriptions() {
-    return subscriptionRepository.findByStatus("ACTIVE");
+    return subscriptionRepository.findByStatus(SubscriptionStatus.ACTIVE);
   }
 
   @Transactional
@@ -32,8 +33,8 @@ public class SubscriptionService {
             .orElseThrow(() -> new EntityNotFoundException("Subscription not found"));
     Subscription subscription = Objects.requireNonNull(tmpSubscription);
 
-    subscription.setEndDate(Objects.requireNonNull(subscription.getEndDate()).plusDays(days));
-    subscription.setUpdatedAt(LocalDateTime.now());
+    subscription.setEndDate(Objects.requireNonNull(Objects.requireNonNull(subscription.getEndDate()).plusDays(days)));
+    subscription.setUpdatedAt(Objects.requireNonNull(LocalDateTime.now()));
 
     log.info("Subscription {} extended by {} days", id, days);
     Subscription tmpSaved = subscriptionRepository.save(subscription);

@@ -35,11 +35,7 @@ public class ProductImportService {
 
   @Transactional
   public Map<String, Object> importProducts(MultipartFile file, boolean dryRun) {
-    Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) {
-      throw new com.ims.shared.exception.TenantContextException(
-          "Tenant context missing during import");
-    }
+    Long tenantId = TenantContext.requireTenantId();
 
     Map<String, Category> categoryCache = new HashMap<>();
     List<Product> products = new ArrayList<>();
@@ -75,7 +71,8 @@ public class ProductImportService {
           BigDecimal salePrice = new BigDecimal(data[1].trim());
           int stock = Integer.parseInt(data[2].trim());
 
-          String sku = data.length > MIN_COLUMNS_FOR_SKU ? data[COL_SKU_INDEX].trim() : null;
+          String rawSku = data.length > MIN_COLUMNS_FOR_SKU ? data[COL_SKU_INDEX].trim() : null;
+          String sku = (rawSku == null || rawSku.isBlank()) ? "SKU-" + java.util.UUID.randomUUID().toString().substring(0, 8) : rawSku;
           String categoryName =
               data.length > MIN_COLUMNS_FOR_CATEGORY ? data[COL_CATEGORY_INDEX].trim() : "General";
 
@@ -115,7 +112,7 @@ public class ProductImportService {
                       .salePrice(salePrice)
                       .stock(stock)
                       .sku(sku)
-                      .categoryId(category.getId())
+                      .categoryId(Objects.requireNonNull(category.getId()))
                       .unit("Unit")
                       .isActive(true)
                       .reorderLevel(DEFAULT_REORDER_LEVEL)
@@ -130,12 +127,12 @@ public class ProductImportService {
       }
 
       if (!errors.isEmpty()) {
-        return Map.of(
-            "success_count", 0, "fail_count", failCount, "errors", errors, "status", "FAILED");
+        return Objects.requireNonNull(Map.of(
+            "success_count", 0, "fail_count", failCount, "errors", errors, "status", "FAILED"));
       }
 
       if (dryRun) {
-        return Map.of(
+        return Objects.requireNonNull(Map.of(
             "success_count",
             successCount,
             "fail_count",
@@ -143,7 +140,7 @@ public class ProductImportService {
             "errors",
             new ArrayList<>(),
             "status",
-            "DRY_RUN_SUCCESS");
+            "DRY_RUN_SUCCESS"));
       }
 
       if (!products.isEmpty()) {
@@ -159,7 +156,7 @@ public class ProductImportService {
       throw new RuntimeException("Import failed: " + e.getMessage());
     }
 
-    return Map.of(
-        "success_count", successCount, "fail_count", 0, "errors", errors, "status", "SUCCESS");
+    return Objects.requireNonNull(Map.of(
+        "success_count", successCount, "fail_count", 0, "errors", errors, "status", "SUCCESS"));
   }
 }

@@ -7,23 +7,24 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.lang.Nullable;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserResponse {
-  private Long id;
+  @Nullable private Long id;
   private String name;
   private String email;
-  private String role;
-  private String scope;
+  @Nullable private String role;
+  @Nullable private String scope;
 
-  private List<String> permissions;
+  @Nullable private List<String> permissions;
 
   @JsonProperty("is_active")
-  private Boolean isActive;
+  @Nullable private Boolean isActive;
 
   @JsonProperty("created_at")
-  private LocalDateTime createdAt;
+  @Nullable private LocalDateTime createdAt;
 }

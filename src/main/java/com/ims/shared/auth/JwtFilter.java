@@ -69,8 +69,7 @@ public class JwtFilter extends OncePerRequestFilter {
       if (!redisAvailable || Boolean.TRUE.equals(isBlacklisted)) {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json");
-        String errorMessage =
-            !redisAvailable ? "Service temporarily unavailable" : "Token has been revoked";
+        String errorMessage = !redisAvailable ? "Service temporarily unavailable" : "Token has been revoked";
         response
             .getWriter()
             .write(
@@ -82,35 +81,23 @@ public class JwtFilter extends OncePerRequestFilter {
 
       String safeToken = Objects.requireNonNull(token);
       final Long userId = jwtUtil.extractUserId(safeToken);
-      final Long tenantId = jwtUtil.extractTenantId(safeToken);
+      final Long tenantId = Objects.requireNonNull(
+          jwtUtil.extractTenantId(safeToken),
+          "tenantId missing in JWT");
       final boolean isPlatformUser = jwtUtil.extractIsPlatformUser(safeToken);
 
-      if (TenantContext.getTenantId() == null) {
-        if (tenantId != null) {
-          TenantContext.setTenantId(tenantId);
-        } else if (!isPlatformUser) {
-          log.error("Rejecting request: No tenantId in JWT for non-platform user");
-          response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-          response.setContentType("application/json");
-          response
-              .getWriter()
-              .write("{\"status\":400,\"error\":\"BAD_REQUEST\",\"message\":\"Tenant ID required\"}");
-          return;
-        } else {
-          log.info("Setting PLATFORM_TENANT_ID for platform user");
-          TenantContext.setTenantId(TenantContext.PLATFORM_TENANT_ID);
-        }
-      }
+      TenantContext.setTenantId(tenantId);
 
       MDC.put("tenantId", tenantId != null ? String.valueOf(tenantId) : "none");
       MDC.put("userId", userId != null ? String.valueOf(userId) : "anonymous");
-      MDC.put("requestId", UUID.randomUUID().toString());
+      if (MDC.get("requestId") == null) {
+        MDC.put("requestId", UUID.randomUUID().toString());
+      }
 
       final String role = Objects.requireNonNull(jwtUtil.extractRole(safeToken));
       final String scope = Objects.requireNonNull(jwtUtil.extractScope(safeToken));
       final String businessType = jwtUtil.extractBusinessType(safeToken);
-      final Set<String> permissions =
-          Objects.requireNonNull(jwtUtil.extractPermissions(safeToken));
+      final Set<String> permissions = Objects.requireNonNull(jwtUtil.extractPermissions(safeToken));
       final boolean impersonation = jwtUtil.extractImpersonation(safeToken);
       final Long impersonatedBy = jwtUtil.extractImpersonatedBy(safeToken);
 
@@ -127,12 +114,10 @@ public class JwtFilter extends OncePerRequestFilter {
       }
 
       String authority = role.startsWith("ROLE_") ? role : "ROLE_" + role;
-      UsernamePasswordAuthenticationToken auth =
-          new UsernamePasswordAuthenticationToken(
-              Objects.requireNonNull(userId),
-              null,
-              List.of(new SimpleGrantedAuthority(authority)));
-      log.info("JWT Auth: userId={} role={} authorities={}", userId, role, auth.getAuthorities());
+      UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+          Objects.requireNonNull(userId),
+          null,
+          List.of(new SimpleGrantedAuthority(authority)));
 
       // Store additional details for downstream use
       auth.setDetails(
@@ -159,7 +144,7 @@ public class JwtFilter extends OncePerRequestFilter {
     try {
       MessageDigest md = MessageDigest.getInstance("SHA-256");
       byte[] hash = md.digest(token.getBytes());
-      return HexFormat.of().formatHex(hash);
+      return Objects.requireNonNull(HexFormat.of().formatHex(hash));
     } catch (NoSuchAlgorithmException e) {
       throw new RuntimeException("SHA-256 not available", e);
     }

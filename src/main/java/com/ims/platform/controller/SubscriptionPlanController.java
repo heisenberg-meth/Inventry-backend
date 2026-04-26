@@ -3,6 +3,7 @@ package com.ims.platform.controller;
 import com.ims.dto.request.CreateSubscriptionPlanRequest;
 import com.ims.dto.request.UpdateSubscriptionPlanRequest;
 import com.ims.model.SubscriptionPlan;
+import com.ims.model.SubscriptionPlanStatus;
 import com.ims.platform.service.SubscriptionPlanService;
 import com.ims.shared.rbac.RequiresRole;
 import io.swagger.v3.oas.annotations.Operation;
@@ -46,7 +47,7 @@ public class SubscriptionPlanController {
   @RequiresRole({"ROOT", "PLATFORM_ADMIN"})
   @Operation(summary = "List all subscription plans")
   public ResponseEntity<List<SubscriptionPlan>> findAll(
-      @RequestParam(required = false) String status) {
+      @RequestParam(required = false) SubscriptionPlanStatus status) {
     return ResponseEntity.ok(planService.findAll(status));
   }
 

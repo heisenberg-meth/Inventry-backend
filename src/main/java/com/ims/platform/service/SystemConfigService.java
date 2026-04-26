@@ -41,7 +41,7 @@ public class SystemConfigService {
             .findById(Objects.requireNonNull(key))
             .orElseThrow(() -> new EntityNotFoundException("Config not found: " + key));
     config.setValue(value);
-    config.setUpdatedAt(LocalDateTime.now());
+    config.setUpdatedAt(Objects.requireNonNull(LocalDateTime.now()));
     log.info("System config updated: {} = {}", key, value);
     return systemConfigRepository.save(config);
   }

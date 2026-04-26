@@ -46,7 +46,10 @@ public class Payment {
   @Column(name = "gateway_transaction_id")
   private String gatewayTransactionId;
 
-  @Column @Builder.Default private String status = "PENDING";
+  @Column
+  @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+  @Builder.Default
+  private PaymentStatus status = PaymentStatus.PENDING;
 
   @Column private String reference;
 

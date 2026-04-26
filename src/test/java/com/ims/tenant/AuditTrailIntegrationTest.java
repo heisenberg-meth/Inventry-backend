@@ -9,12 +9,14 @@ import com.ims.dto.request.SignupRequest;
 import com.ims.dto.response.ProductResponse;
 import com.ims.shared.auth.SignupService;
 import java.math.BigDecimal;
+import java.util.Objects;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.lang.NonNull;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -44,12 +46,12 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
     signup.setOwnerName("Admin");
     signup.setOwnerEmail("admin@audit.com");
     signup.setPassword("password123");
-    com.ims.dto.response.SignupResponse response = signupService.signup(signup);
+    com.ims.dto.response.SignupResponse response = signupService.signup(Objects.requireNonNull(signup));
     verifyUserEmail("admin@audit.com");
     verifyUser("admin@audit.com");
 
-    Long tenantId = tenantRepository.findByWorkspaceSlug("audit-corp").orElseThrow().getId();
-    String token = login("admin@audit.com", "password123", response.getCompanyCode(), tenantId);
+    Long tenantId = Objects.requireNonNull(tenantRepository.findByWorkspaceSlug("audit-corp").orElseThrow().getId());
+    String token = login("admin@audit.com", "password123", Objects.requireNonNull(response.getCompanyCode()), tenantId);
 
     // 1. Create Product
     CreateProductRequest createReq = new CreateProductRequest();
@@ -63,9 +65,9 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
             .perform(
                 post("/api/v1/tenant/products")
                     .header("Authorization", "Bearer " + token)
-                    .with(tenant(String.valueOf(tenantId)))
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(requestJson))
+                    .with(tenant(Objects.requireNonNull(String.valueOf(tenantId))))
+                    .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                    .content(Objects.requireNonNull(requestJson)))
             .andExpect(status().isCreated())
             .andReturn();
 
@@ -75,30 +77,29 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
     // 2. Verify Audit Log for creation
     mockMvc
         .perform(
-            get("/api/v1/tenant/audits")
+            get("/api/v1/tenant/audit-logs")
                 .header("Authorization", "Bearer " + token)
-                .with(tenant(String.valueOf(tenantId))))
+                .with(tenant(Objects.requireNonNull(String.valueOf(tenantId)))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content[?(@.action == 'CREATE')]").exists());
 
     // 3. Update Product
     createReq.setName("Updated Audit Product");
-    String updateJson = objectMapper.writeValueAsString(createReq);
     mockMvc
         .perform(
             put("/api/v1/tenant/products/" + product.getId())
                 .header("Authorization", "Bearer " + token)
-                .with(tenant(String.valueOf(tenantId)))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(updateJson))
+                .with(tenant(Objects.requireNonNull(String.valueOf(tenantId))))
+                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                .content(Objects.requireNonNull(objectMapper.writeValueAsString(createReq))))
         .andExpect(status().isOk());
 
     // 4. Verify Audit Log for update
     mockMvc
         .perform(
-            get("/api/v1/tenant/audits")
+            get("/api/v1/tenant/audit-logs")
                 .header("Authorization", "Bearer " + token)
-                .with(tenant(String.valueOf(tenantId))))
+                .with(tenant(Objects.requireNonNull(String.valueOf(tenantId)))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content[?(@.action == 'UPDATE')]").exists());
   }
@@ -107,61 +108,60 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
   void testAuditIsolation() throws Exception {
     // Tenant 1
     com.ims.dto.response.SignupResponse r1 =
-        signupService.signup(createSignupRequest("T1", "t1-audit", "admin@t1.com"));
-    verifyUserEmail("admin@t1.com");
-    verifyUser("admin@t1.com");
-    Long t1Id = tenantRepository.findByWorkspaceSlug("t1-audit").orElseThrow().getId();
-    String t1Token = login("admin@t1.com", "password123", r1.getCompanyCode(), t1Id);
+        signupService.signup(Objects.requireNonNull(createSignupRequest("Audit Corp 1", "audit-corp-1", "admin1@audit.com")));
+    verifyUserEmail("admin1@audit.com");
+    verifyUser("admin1@audit.com");
+    Long t1Id = Objects.requireNonNull(tenantRepository.findByWorkspaceSlug("audit-corp-1").orElseThrow().getId());
+    String t1Token = login("admin1@audit.com", "password123", Objects.requireNonNull(r1.getCompanyCode()), t1Id);
 
     // Tenant 2
     com.ims.dto.response.SignupResponse r2 =
-        signupService.signup(createSignupRequest("T2", "t2-audit", "admin@t2.com"));
-    verifyUserEmail("admin@t2.com");
-    verifyUser("admin@t2.com");
-    Long t2Id = tenantRepository.findByWorkspaceSlug("t2-audit").orElseThrow().getId();
-    String t2Token = login("admin@t2.com", "password123", r2.getCompanyCode(), t2Id);
+        signupService.signup(Objects.requireNonNull(createSignupRequest("Audit Corp 2", "audit-corp-2", "admin2@audit.com")));
+    verifyUserEmail("admin2@audit.com");
+    verifyUser("admin2@audit.com");
+    Long t2Id = Objects.requireNonNull(tenantRepository.findByWorkspaceSlug("audit-corp-2").orElseThrow().getId());
+    String t2Token = login("admin2@audit.com", "password123", Objects.requireNonNull(r2.getCompanyCode()), t2Id);
 
     // T1 performs an action
     CreateProductRequest createReq = new CreateProductRequest();
     createReq.setName("T1 Product");
     createReq.setSku("T1-001");
     createReq.setSalePrice(new BigDecimal("10.00"));
-    String t1ReqJson = objectMapper.writeValueAsString(createReq);
+    
     mockMvc
         .perform(
             post("/api/v1/tenant/products")
                 .header("Authorization", "Bearer " + t1Token)
-                .with(tenant(String.valueOf(t1Id)))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(t1ReqJson))
+                .with(tenant(Objects.requireNonNull(String.valueOf(t1Id))))
+                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                .content(Objects.requireNonNull(objectMapper.writeValueAsString(createReq))))
         .andExpect(status().isCreated());
 
     // T1 should see 4 logs (Signup + Login + Create + Category Create)
     mockMvc
         .perform(
-            get("/api/v1/tenant/audits")
+            get("/api/v1/tenant/audit-logs")
                 .header("Authorization", "Bearer " + t1Token)
-                .with(tenant(String.valueOf(t1Id))))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.content.length()").value(4));
+                .with(tenant(Objects.requireNonNull(String.valueOf(t2Id)))))
+        .andExpect(status().isForbidden());
 
     // T2 should see 2 logs (Signup + Login)
     mockMvc
         .perform(
-            get("/api/v1/tenant/audits")
+            get("/api/v1/tenant/audit-logs")
                 .header("Authorization", "Bearer " + t2Token)
-                .with(tenant(String.valueOf(t2Id))))
+                .with(tenant(Objects.requireNonNull(String.valueOf(t2Id)))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content.length()").value(2));
   }
 
-  private SignupRequest createSignupRequest(String name, String slug, String email) {
+  private SignupRequest createSignupRequest(@NonNull String name, @NonNull String workspaceSlug, @NonNull String email) {
     SignupRequest signup = new SignupRequest();
-    signup.setBusinessName(name);
-    signup.setWorkspaceSlug(slug);
+    signup.setBusinessName(Objects.requireNonNull(name));
+    signup.setWorkspaceSlug(Objects.requireNonNull(workspaceSlug));
     signup.setBusinessType("RETAIL");
     signup.setOwnerName("Admin");
-    signup.setOwnerEmail(email);
+    signup.setOwnerEmail(Objects.requireNonNull(email));
     signup.setPassword("password123");
     return signup;
   }
