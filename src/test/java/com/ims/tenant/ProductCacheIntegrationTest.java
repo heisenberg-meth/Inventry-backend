@@ -10,6 +10,7 @@ import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.request.SignupRequest;
 import com.ims.shared.auth.SignupService;
 import java.math.BigDecimal;
+import java.util.Collections;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,7 +39,7 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
     mockRedisAndCache();
 
     spyCache = spy(new org.springframework.cache.concurrent.ConcurrentMapCache("products"));
-    doReturn(java.util.Collections.<org.springframework.cache.Cache>singletonList(spyCache))
+    doReturn(Collections.<org.springframework.cache.Cache>singletonList(spyCache))
         .when(tenantAwareCacheResolver)
         .resolveCaches(
             any(org.springframework.cache.interceptor.CacheOperationInvocationContext.class));

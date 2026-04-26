@@ -50,23 +50,6 @@ public class RedisConfig {
     configs.put("reports", ttl(Objects.requireNonNull(Duration.ofMinutes(TTL_REPORTS_MINUTES))));
     configs.put("tenant", ttl(Objects.requireNonNull(Duration.ofHours(TTL_TENANT_HOURS))));
     configs.put("permissions", ttl(Objects.requireNonNull(Duration.ofMinutes(TTL_PERMISSIONS_MINUTES))));
-    final RedisConnectionFactory f = java.util.Objects.requireNonNull(factory);
-    Map<String, RedisCacheConfiguration> configs = new HashMap<>();
-    configs.put(
-        "products",
-        ttl(java.util.Objects.requireNonNull(Duration.ofMinutes(TTL_PRODUCTS_MINUTES))));
-    configs.put(
-        "categories",
-        ttl(java.util.Objects.requireNonNull(Duration.ofMinutes(TTL_PRODUCTS_MINUTES))));
-    configs.put(
-        "stock", ttl(java.util.Objects.requireNonNull(Duration.ofMinutes(TTL_STOCK_MINUTES))));
-    configs.put(
-        "reports", ttl(java.util.Objects.requireNonNull(Duration.ofMinutes(TTL_REPORTS_MINUTES))));
-    configs.put(
-        "tenant", ttl(java.util.Objects.requireNonNull(Duration.ofHours(TTL_TENANT_HOURS))));
-    configs.put(
-        "permissions",
-        ttl(java.util.Objects.requireNonNull(Duration.ofMinutes(TTL_PERMISSIONS_MINUTES))));
 
     RedisCacheConfiguration tmp =
         ttl(Objects.requireNonNull(Duration.ofMinutes(TTL_DEFAULT_MINUTES)));
@@ -91,9 +74,7 @@ public class RedisConfig {
         Collection<String> cacheNames = context.getOperation().getCacheNames();
 
         String tenantSuffix =
-            Objects.requireNonNull(
-                tenantId != null ? tenantId.toString() : "default");
-            java.util.Objects.requireNonNull(tenantId != null ? tenantId.toString() : "default");
+            Objects.requireNonNull(tenantId != null ? tenantId.toString() : "default");
 
         Collection<? extends Cache> result =
             cacheNames.stream()
@@ -102,15 +83,8 @@ public class RedisConfig {
                     cacheName -> {
                       Cache cache = cacheManager.getCache(Objects.requireNonNull(cacheName));
                       if (cache == null) {
-                        String[] parts =
-                            Objects.requireNonNull(cacheName.split(":"));
-                        String baseName =
-                            Objects.requireNonNull(parts[0]);
-                      Cache cache =
-                          cacheManager.getCache(java.util.Objects.requireNonNull(cacheName));
-                      if (cache == null) {
-                        String[] parts = java.util.Objects.requireNonNull(cacheName.split(":"));
-                        String baseName = java.util.Objects.requireNonNull(parts[0]);
+                        String[] parts = Objects.requireNonNull(cacheName.split(":"));
+                        String baseName = Objects.requireNonNull(parts[0]);
                         return cacheManager.getCache(baseName);
                       }
                       return cache;
@@ -141,9 +115,7 @@ public class RedisConfig {
     // Polymorphic typing is removed for security (RCE risk).
     // DTOs should be plain Pojos with Jackson annotations if needed.
 
-    return Objects.requireNonNull(
-        new GenericJackson2JsonRedisSerializer(mapper));
-    return java.util.Objects.requireNonNull(new GenericJackson2JsonRedisSerializer(mapper));
+    return Objects.requireNonNull(new GenericJackson2JsonRedisSerializer(mapper));
   }
 
   private RedisCacheConfiguration ttl(Duration duration) {

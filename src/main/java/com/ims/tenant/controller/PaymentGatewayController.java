@@ -11,13 +11,9 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -82,11 +78,23 @@ public class PaymentGatewayController {
       }
 
       // 5. Verify signature
-      String expectedSig = hmacSha256(rawBody, webhookSecret);
-      if (!MessageDigest.isEqual(
-          expectedSig.getBytes(StandardCharsets.UTF_8),
-          receivedSig.getBytes(StandardCharsets.UTF_8))) {
+      String expectedSig = com.ims.shared.util.CryptoUtils.hmacSha256(rawBody, webhookSecret);
+      if (!com.ims.shared.util.CryptoUtils.constantTimeEquals(receivedSig, expectedSig)) {
         throw new UnauthorizedException("Invalid webhook signature");
+      }
+
+      // 5b. Replay protection (if timestamp provided)
+      String timestampStr = request.getHeader("X-Razorpay-Timestamp");
+      if (timestampStr != null) {
+        try {
+          long timestamp = Long.parseLong(timestampStr);
+          long now = System.currentTimeMillis() / 1000;
+          if (Math.abs(now - timestamp) > 300) { // 5 minutes
+            throw new UnauthorizedException("Webhook timestamp expired (replay attack prevention)");
+          }
+        } catch (NumberFormatException e) {
+          throw new UnauthorizedException("Invalid webhook timestamp format");
+        }
       }
 
       final String eventType = root.path("event").asText();
@@ -122,26 +130,5 @@ public class PaymentGatewayController {
     }
     // Fallback or other extraction logic can go here
     return null;
-  }
-
-  private String hmacSha256(String data, String secret) {
-    try {
-      Mac mac = Mac.getInstance("HmacSHA256");
-      SecretKeySpec keySpec =
-          new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
-      mac.init(keySpec);
-      byte[] rawHmac = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
-      return bytesToHex(rawHmac);
-    } catch (Exception e) {
-      throw new IllegalStateException("HMAC calculation failed", e);
-    }
-  }
-
-  private String bytesToHex(byte[] bytes) {
-    StringBuilder hex = new StringBuilder(bytes.length * 2);
-    for (byte b : bytes) {
-      hex.append(String.format("%02x", b));
-    }
-    return hex.toString();
   }
 }

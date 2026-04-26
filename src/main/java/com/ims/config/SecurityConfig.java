@@ -2,6 +2,7 @@ package com.ims.config;
 
 import com.ims.shared.audit.TraceFilter;
 import com.ims.shared.auth.JwtFilter;
+import com.ims.shared.auth.TenantFilter;
 import com.ims.shared.ratelimit.RateLimitFilter;
 import java.util.List;
 import java.util.Arrays;
@@ -33,7 +34,7 @@ public class SecurityConfig {
   private final JwtFilter jwtFilter;
   private final RateLimitFilter rateLimitFilter;
   private final TraceFilter traceFilter;
-  private final com.ims.shared.auth.TenantFilter tenantFilter;
+  private final TenantFilter tenantFilter;
 
   @Value("${app.security.allowed-origins:*}")
   private String allowedOrigins;
@@ -68,20 +69,15 @@ public class SecurityConfig {
         .authorizeHttpRequests(
             auth -> {
               auth.requestMatchers(AUTH_WHITELIST).permitAll();
-              auth.requestMatchers("/api/v1/auth/**").permitAll();
-              auth.requestMatchers("/api/platform/auth/**").permitAll();
               auth.requestMatchers("/actuator/health", "/api/v1/actuator/health").permitAll();
-              auth.requestMatchers("/api/v1/auth/**", "/api/v1/platform/auth/**").permitAll();
-              auth.requestMatchers("/api/v1/platform/invites/**").permitAll();
-              auth.requestMatchers("/api/v1/tenant/payments/gateway/webhook").permitAll();
-              auth.requestMatchers("/actuator/health").permitAll();
 
               if (isDev) {
                 auth.requestMatchers("/actuator/**").permitAll();
                 auth.requestMatchers(SWAGGER_WHITELIST).permitAll();
               } else {
+                // Production-grade restrictions
                 auth.requestMatchers("/actuator/**").hasAuthority("ROLE_ROOT");
-                auth.requestMatchers(SWAGGER_WHITELIST).hasAuthority("ROLE_ROOT");
+                auth.requestMatchers(SWAGGER_WHITELIST).denyAll();
               }
 
               auth.requestMatchers("/internal/**").hasAuthority("ROLE_ROOT");

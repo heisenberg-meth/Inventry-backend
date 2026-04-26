@@ -1,6 +1,7 @@
 package com.ims.product;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -165,4 +166,20 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
       ORDER BY p.stock DESC
       """)
   Page<ProductStockView> findTopStock(@Param("tenantId") Long tenantId, Pageable pageable);
+  @org.springframework.data.jpa.repository.Modifying
+  @Query("UPDATE Product p SET p.stock = p.stock + :qty, p.updatedAt = :now WHERE p.id = :productId")
+  int incrementStock(
+      @Param("productId") Long productId, @Param("qty") int qty, @Param("now") LocalDateTime now);
+
+  @org.springframework.data.jpa.repository.Modifying
+  @Query(
+      "UPDATE Product p SET p.stock = p.stock - :qty, p.updatedAt = :now WHERE p.id = :productId AND p.stock >= :qty")
+  int decrementStockIfAvailable(
+      @Param("productId") Long productId, @Param("qty") int qty, @Param("now") LocalDateTime now);
+
+  @org.springframework.data.jpa.repository.Modifying
+  @Query(
+      "UPDATE Product p SET p.stock = p.stock + :qty, p.updatedAt = :now WHERE p.id = :productId AND (p.stock + :qty) >= 0")
+  int adjustStockIfValid(
+      @Param("productId") Long productId, @Param("qty") int qty, @Param("now") LocalDateTime now);
 }

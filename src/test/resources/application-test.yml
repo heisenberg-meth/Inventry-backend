@@ -42,6 +42,8 @@ app:
     public-rpm: 50
     authenticated-rpm: 200
     window-seconds: 60
+  security:
+    encryption-key: "test-encryption-key-32-bytes-len"
 
 management:
   health:

@@ -1,5 +1,5 @@
 package com.ims.config;
-
+import com.ims.shared.logging.MdcTaskDecorator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskDecorator;
@@ -11,6 +11,6 @@ public class AsyncTenantConfig {
 
   @Bean
   public TaskDecorator tenantTaskDecorator() {
-    return new com.ims.shared.logging.MdcTaskDecorator();
+    return new MdcTaskDecorator();
   }
 }

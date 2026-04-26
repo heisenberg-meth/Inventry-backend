@@ -48,11 +48,6 @@ public class CategoryService {
     TenantContext.assertTenantPresent();
     Long tenantId = TenantContext.getTenantId();
     return Objects.requireNonNull(
-    categoryRepository
-        .findByIdAndTenantId(id, tenantId)
-        .orElseThrow(() -> new EntityNotFoundException("Category not found"))
-    );
-    return java.util.Objects.requireNonNull(
         categoryRepository
             .findByIdAndTenantId(id, tenantId)
             .orElseThrow(() -> new EntityNotFoundException("Category not found")));
@@ -136,15 +131,6 @@ public class CategoryService {
 
   public @NonNull CategoryResponse toResponse(@NonNull Category category) {
     return Objects.requireNonNull(
-    CategoryResponse.builder()
-        .id(category.getId())
-        .name(category.getName())
-        .description(category.getDescription())
-        .taxRate(category.getTaxRate())
-        .createdAt(category.getCreatedAt())
-        .build()
-    );
-    return java.util.Objects.requireNonNull(
         CategoryResponse.builder()
             .id(category.getId())
             .name(category.getName())

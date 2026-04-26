@@ -39,7 +39,7 @@ public class ScheduledTasksService {
   @Transactional
   public void checkLowStock() {
     TenantContext.runWithTenant(
-        TenantContext.SYSTEM_TENANT_ID,
+        TenantContext.PLATFORM_TENANT_ID,
         () -> {
           log.info("Scheduled Task: Checking low stock across all tenants");
           List<Long> tenantIds = tenantRepository.findAllIds();
@@ -94,7 +94,7 @@ public class ScheduledTasksService {
   @Transactional
   public void checkOverdueInvoices() {
     TenantContext.runWithTenant(
-        TenantContext.SYSTEM_TENANT_ID,
+        TenantContext.PLATFORM_TENANT_ID,
         () -> {
           log.info("Scheduled Task: Checking overdue invoices");
           List<Long> tenantIds = tenantRepository.findAllIds();
@@ -139,7 +139,7 @@ public class ScheduledTasksService {
   @Transactional
   public void cleanupTokens() {
     TenantContext.runWithTenant(
-        TenantContext.SYSTEM_TENANT_ID,
+        TenantContext.PLATFORM_TENANT_ID,
         () -> {
           log.info("Scheduled Task: Cleaning up expired reset tokens across all tenants");
           List<Long> tenantIds = tenantRepository.findAllIds();
@@ -163,7 +163,7 @@ public class ScheduledTasksService {
   @Transactional
   public void cleanupOrphanTenants() {
     TenantContext.runWithTenant(
-        TenantContext.SYSTEM_TENANT_ID,
+        TenantContext.PLATFORM_TENANT_ID,
         () -> {
           log.info("Scheduled Task: Cleaning up orphan tenants (no users after 1 hour)");
           LocalDateTime threshold = LocalDateTime.now().minusHours(1);
