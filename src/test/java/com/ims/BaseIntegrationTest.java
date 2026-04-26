@@ -66,6 +66,10 @@ public abstract class BaseIntegrationTest {
   @ServiceConnection
   static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
 
+  static {
+    System.setProperty("app.test.mode", "true");
+  }
+
   protected static final String TEST_ROOT_PASSWORD =
       System.getProperty("ims.test.root.password", UUID.randomUUID().toString());
 
@@ -211,7 +215,7 @@ public abstract class BaseIntegrationTest {
     new TransactionTemplate(Objects.requireNonNull(transactionManager))
         .execute(
             status -> {
-              var userOpt = userRepository.findByEmailUnfiltered(email);
+              var userOpt = userRepository.findByEmailGlobal(email);
               if (userOpt.isPresent()) {
                 var u = userOpt.get();
                 Long tenantId = u.getTenantId();

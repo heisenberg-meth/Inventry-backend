@@ -51,6 +51,8 @@ public class OrderService {
   private final com.ims.shared.pdf.PdfService pdfService;
   private final com.ims.tenant.domain.pharmacy.PharmacyProductRepository pharmacyProductRepository;
   private final com.ims.platform.repository.TenantRepository tenantRepository;
+  private final com.ims.shared.metrics.BusinessMetrics businessMetrics;
+  private final com.ims.shared.outbox.OutboxService outboxService;
 
   private static final int PERCENTAGE_BASE = 100;
 
@@ -133,7 +135,8 @@ public class OrderService {
             String.format(
                 "Created purchase order #%d, Supplier: %d, Total: %s",
                 orderId, supplierId, totalAmount)));
-
+    
+    businessMetrics.incrementOrders("PURCHASE");
     return savedPurchaseOrder;
   }
 
@@ -243,6 +246,11 @@ public class OrderService {
         Objects.requireNonNull(
             String.format(
                 "Created sales order #%d, Customer: %d, Total: %s", orderId, customerId, totalAmount)));
+    
+    businessMetrics.incrementOrders("SALE");
+
+    // Save outbox event for reliable notification
+    outboxService.saveEvent("ORDER", orderId.toString(), "SALE_ORDER_CREATED", savedSalesOrder);
 
     return savedSalesOrder;
   }

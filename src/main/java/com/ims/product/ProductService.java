@@ -8,7 +8,6 @@ import com.ims.platform.repository.TenantRepository;
 import com.ims.platform.service.SystemConfigService;
 import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditResource;
-import com.ims.shared.auth.JwtAuthDetails;
 import com.ims.shared.rbac.RequiresPermission;
 import com.ims.tenant.domain.pharmacy.PharmacyProduct;
 import com.ims.tenant.domain.pharmacy.PharmacyProductRepository;
@@ -30,7 +29,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.Nullable;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +43,8 @@ public class ProductService {
   private final TenantRepository tenantRepository;
   private final SystemConfigService systemConfigService;
   private final com.ims.shared.audit.AuditLogService auditLogService;
+  private final com.ims.shared.auth.SecurityContextAccessor securityContextAccessor;
+  private final com.ims.shared.utils.CsvExportService csvExportService;
 
   private static final int DEFAULT_REORDER_LEVEL = 10;
   private static final int MAX_PAGE_SIZE = 100;
@@ -57,7 +57,7 @@ public class ProductService {
 
   @Cacheable(value = "products", key = "'list'", cacheResolver = "tenantAwareCacheResolver")
   public PagedResponse<ProductResponse> getProducts(Pageable pageable) {
-    Long tenantId = getRequiredTenantId();
+    Long tenantId = securityContextAccessor.requireTenantId();
 
     if (pageable.getPageSize() > MAX_PAGE_SIZE) {
       pageable = PageRequest.of(pageable.getPageNumber(), MAX_PAGE_SIZE, pageable.getSort());
@@ -76,7 +76,7 @@ public class ProductService {
 
   public List<ProductResponse> getNextProducts(
       Long tenantId, @Nullable Long lastId, int limit) {
-    getRequiredTenantId();
+    securityContextAccessor.requireTenantId();
     Pageable pageable = PageRequest.of(0, Math.min(limit, MAX_PAGE_SIZE));
     List<ProductResponse> list = productRepository.findNextProducts(Objects.requireNonNull(tenantId), lastId != null ? lastId : 0L, pageable)
         .stream()
@@ -89,8 +89,9 @@ public class ProductService {
   @Cacheable(value = "products", key = "'id:' + #id", cacheResolver = "tenantAwareCacheResolver")
   public ProductResponse getProductById(Long id) {
     Objects.requireNonNull(id, "product id required");
+    Long tenantId = securityContextAccessor.requireTenantId();
     ProductResponse response = productRepository
-        .findByIdWithDetails(id)
+        .findByIdWithDetails(id, tenantId)
         .map(view -> toResponse(Objects.requireNonNull(view)))
         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
@@ -98,10 +99,12 @@ public class ProductService {
   }
 
   public Optional<Product> findByIdWithLock(Long id) {
-    return productRepository.findByIdWithLock(id);
+    Long tenantId = securityContextAccessor.requireTenantId();
+    return productRepository.findByIdWithLock(id, tenantId);
   }
 
   @Transactional
+  @RequiresPermission("create_product")
   @Caching(evict = {
       @CacheEvict(value = "products", key = "'list'", cacheResolver = "tenantAwareCacheResolver"),
       @CacheEvict(value = "reports", key = "'stock-report'", cacheResolver = "tenantAwareCacheResolver"),
@@ -109,7 +112,7 @@ public class ProductService {
   })
   public ProductResponse createProduct(CreateProductRequest request) {
     Objects.requireNonNull(request, "request body required");
-    Long tenantId = getRequiredTenantId();
+    Long tenantId = securityContextAccessor.requireTenantId();
 
     if (tenantId != null) {
       var tenant = tenantRepository
@@ -124,7 +127,7 @@ public class ProductService {
       }
     }
 
-    String businessType = getBusinessType();
+    String businessType = securityContextAccessor.getBusinessType().orElse(null);
 
     // Validate pharmacy products must have pharmacy_details and extension must be
     // enabled
@@ -200,6 +203,7 @@ public class ProductService {
   }
 
   @Transactional
+  @RequiresPermission("update_product")
   @Caching(evict = {
       @CacheEvict(value = "products", key = "'id:' + #id", cacheResolver = "tenantAwareCacheResolver"),
       @CacheEvict(value = "products", key = "'list'", cacheResolver = "tenantAwareCacheResolver"),
@@ -251,7 +255,7 @@ public class ProductService {
         Objects.requireNonNull(product.getId()),
         "Updated product: " + Objects.requireNonNull(product.getName()));
 
-    String businessType = getBusinessType();
+    String businessType = securityContextAccessor.getBusinessType().orElse(null);
     PharmacyProduct pp = null;
     WarehouseProduct wp = null;
 
@@ -342,6 +346,7 @@ public class ProductService {
   }
 
   @Transactional
+  @RequiresPermission("create_product")
   public ProductResponse duplicateProduct(Long id) {
     Objects.requireNonNull(id, "product id required");
     Product tmpOriginal = productRepository
@@ -375,7 +380,7 @@ public class ProductService {
     ProductResponse fallback = toResponse(Objects.requireNonNull(savedProduct));
 
     ProductResponse result = productRepository
-        .findByIdWithDetails(savedProduct.getId())
+        .findByIdWithDetails(savedProduct.getId(), tenantId)
         .map(this::toResponse)
         .orElse(fallback);
 
@@ -397,7 +402,7 @@ public class ProductService {
   }
 
   public List<ProductResponse> getLowStockProducts() {
-    Long tenantId = getRequiredTenantId();
+    Long tenantId = securityContextAccessor.requireTenantId();
 
     List<ProductResponse> list = Objects.requireNonNull(productRepository.findLowStockByTenant(tenantId)).stream()
         .map(this::toResponse)
@@ -407,9 +412,9 @@ public class ProductService {
   }
 
   public List<ProductResponse> getExpiringProducts(@Nullable Integer days) {
-    Long tenantId = getRequiredTenantId();
+    Long tenantId = securityContextAccessor.requireTenantId();
 
-    String businessType = getBusinessType();
+    String businessType = securityContextAccessor.getBusinessType().orElse(null);
 
     if (!"PHARMACY".equals(businessType)) {
       throw new IllegalArgumentException(
@@ -435,9 +440,38 @@ public class ProductService {
     return Objects.requireNonNull(list);
   }
 
+  /**
+   * Generates a CSV export of all active products for the current tenant.
+   * Hardened against cross-tenant leakage.
+   */
+  @Transactional(readOnly = true)
+  @RequiresPermission("export_products")
+  public String exportProductsAsCsv() {
+    Long tenantId = securityContextAccessor.requireTenantId();
+    var products = productRepository.findExportData(tenantId);
+
+    var data =
+        products.stream()
+            .map(
+                p -> {
+                  java.util.Map<String, Object> map = new java.util.LinkedHashMap<>();
+                  map.put("ID", p.getId());
+                  map.put("Name", p.getName());
+                  map.put("SKU", p.getSku());
+                  map.put("Stock", p.getStock());
+                  map.put("Price", p.getSalePrice());
+                  map.put("CategoryID", p.getCategoryId());
+                  return map;
+                })
+            .collect(Collectors.toList());
+
+    return csvExportService.exportToCsv(
+        List.of("ID", "Name", "SKU", "Stock", "Price", "CategoryID"), data);
+  }
+
   public PagedResponse<ProductResponse> searchProducts(
       String query, Pageable pageable) {
-    Long tenantId = getRequiredTenantId();
+    Long tenantId = securityContextAccessor.requireTenantId();
 
     Page<ProductResponse> page = productRepository
         .searchFast(tenantId, query, pageable)
@@ -450,38 +484,6 @@ public class ProductService {
         page.getSize());
   }
 
-  private Long getRequiredTenantId() {
-    Long tenantId = getTenantId();
-    if (tenantId == null) {
-      throw new com.ims.shared.exception.TenantContextException(
-          "Tenant not found in security context");
-    }
-    return Objects.requireNonNull(tenantId);
-  }
-
-  private @Nullable String getBusinessType() {
-    try {
-      var auth = SecurityContextHolder.getContext().getAuthentication();
-      if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
-        return details.getBusinessType();
-      }
-    } catch (Exception e) {
-      log.trace("Caught expected exception in business type retrieval: {}", e.getMessage());
-    }
-    return null;
-  }
-
-  private @Nullable Long getTenantId() {
-    try {
-      var auth = SecurityContextHolder.getContext().getAuthentication();
-      if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
-        return details.getTenantId();
-      }
-    } catch (Exception e) {
-      log.trace("Caught expected exception in tenant id retrieval: {}", e.getMessage());
-    }
-    return null;
-  }
 
   private ProductResponse toResponse(Product product) {
     return toResponse(Objects.requireNonNull(product), null, null);

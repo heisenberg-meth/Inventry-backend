@@ -208,6 +208,10 @@ public class JwtUtil {
     return Objects.requireNonNull(tmpClaims);
   }
 
+  public Date extractIssuedAt(String token) {
+    return Objects.requireNonNull(extractAllClaims(Objects.requireNonNull(token)).getIssuedAt());
+  }
+
   public Long extractUserId(String token) {
     return Objects.requireNonNull(extractAllClaims(Objects.requireNonNull(token)).get("user_id", Long.class));
   }

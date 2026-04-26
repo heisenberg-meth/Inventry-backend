@@ -81,10 +81,39 @@ public class JwtFilter extends OncePerRequestFilter {
 
       String safeToken = Objects.requireNonNull(token);
       final Long userId = jwtUtil.extractUserId(safeToken);
+      
+      // Check global user revocation
+      String revokedAtStr = (String) redisTemplate.opsForValue().get("user:revoked-at:" + userId);
+      if (revokedAtStr != null) {
+          long revokedAt = Long.parseLong(revokedAtStr);
+          long issuedAt = jwtUtil.extractIssuedAt(safeToken).getTime();
+          if (issuedAt < revokedAt) {
+              log.warn("Token for user {} rejected due to global session invalidation", userId);
+              response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+              response.setContentType("application/json");
+              response.getWriter().write("{\"error\":\"Your session has been terminated. Please log in again.\"}");
+              return;
+          }
+      }
+
       final Long tenantId = Objects.requireNonNull(
           jwtUtil.extractTenantId(safeToken),
           "tenantId missing in JWT");
       final boolean isPlatformUser = jwtUtil.extractIsPlatformUser(safeToken);
+
+      // Check global tenant revocation (e.g. suspension)
+      String tenantRevokedAtStr = (String) redisTemplate.opsForValue().get("tenant:revoked-at:" + tenantId);
+      if (tenantRevokedAtStr != null) {
+          long revokedAt = Long.parseLong(tenantRevokedAtStr);
+          long issuedAt = jwtUtil.extractIssuedAt(safeToken).getTime();
+          if (issuedAt < revokedAt) {
+              log.warn("Token for tenant {} rejected due to global suspension", tenantId);
+              response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+              response.setContentType("application/json");
+              response.getWriter().write("{\"error\":\"This account has been suspended. Please contact support.\"}");
+              return;
+          }
+      }
 
       TenantContext.setTenantId(tenantId);
 

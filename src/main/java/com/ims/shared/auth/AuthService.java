@@ -13,6 +13,7 @@ import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditLogService;
 import com.ims.shared.audit.AuditResource;
 import com.ims.shared.email.EmailService;
+import com.ims.shared.exception.UnauthorizedException;
 import com.ims.tenant.repository.UserRepository;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import jakarta.persistence.EntityNotFoundException;
@@ -23,6 +24,7 @@ import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.Map;
 import java.util.Objects;
+import java.util.List;
 import java.util.UUID;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -42,6 +44,9 @@ public class AuthService {
   private static final int LOGOUT_EXPIRY_HOURS = 24;
   private static final int RESET_TOKEN_EXPIRY_MINUTES = 15;
   private static final int VERIFICATION_TOKEN_EXPIRY_MINUTES = 15;
+  private static final String FAILED_ATTEMPTS_PREFIX = "auth:failed:";
+  private static final int MAX_FAILED_ATTEMPTS = 5;
+  private static final int LOCKOUT_DURATION_MINUTES = 15;
 
   /** Access-token TTL (seconds) for ROOT-user tenant impersonation sessions (10 minutes). */
   private static final long IMPERSONATION_ACCESS_TTL_SECONDS = 600L;
@@ -57,12 +62,18 @@ public class AuthService {
   private final AuditLogService auditLogService;
   private final EmailService emailService;
   private final com.ims.shared.rbac.PermissionService permissionService;
+  private final TwoFactorAuthService twoFactorAuthService;
+  private final com.ims.shared.metrics.BusinessMetrics businessMetrics;
+
+  private static final String MFA_SESSION_PREFIX = "mfa:session:";
+  private static final String MFA_SETUP_PREFIX = "mfa:setup:";
+  private static final int MFA_SESSION_TTL_MINUTES = 5;
 
   @Transactional(readOnly = true)
   public Map<String, Boolean> checkEmail(String email) {
     boolean exists =
         userRepository
-            .findByEmailUnfiltered(Objects.requireNonNull(email).trim().toLowerCase())
+            .findByEmailGlobal(Objects.requireNonNull(email).trim().toLowerCase())
             .isPresent();
     Map<String, Boolean> result = Map.of("available", !exists);
     return Objects.requireNonNull(result);
@@ -88,7 +99,7 @@ public class AuthService {
   public Map<String, String> verifyEmail(String token, String email) {
     User user =
         userRepository
-            .findByEmailUnfiltered(Objects.requireNonNull(email).trim().toLowerCase())
+            .findByEmailGlobal(Objects.requireNonNull(email).trim().toLowerCase())
             .orElseThrow(() -> new IllegalArgumentException("Invalid verification token"));
 
     if (user.getVerificationToken() == null
@@ -116,7 +127,7 @@ public class AuthService {
   public Map<String, String> resendVerification(String email) {
     User user =
         userRepository
-            .findByEmailUnfiltered(Objects.requireNonNull(email).trim().toLowerCase())
+            .findByEmailGlobal(Objects.requireNonNull(email).trim().toLowerCase())
             .orElse(null);
 
     // Always return generic success message to prevent email enumeration
@@ -166,6 +177,12 @@ public class AuthService {
         tenantRepository
             .findById(safeTenantId)
             .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+
+    auditLogService.logAudit(
+        com.ims.shared.audit.AuditAction.ROOT_IMPERSONATION_START,
+        com.ims.shared.audit.AuditResource.TENANT,
+        safeTenantId,
+        String.format("ROOT user %d started impersonation for tenant %d", rootUserId, safeTenantId));
 
     if (com.ims.model.TenantStatus.SUSPENDED.equals(tenant.getStatus())
         || com.ims.model.TenantStatus.INACTIVE.equals(tenant.getStatus())) {
@@ -275,12 +292,24 @@ public class AuthService {
   public LoginResponse platformLogin(LoginRequest request) {
     User user =
         userRepository
-            .findByEmailUnfiltered(request.getEmail())
+            .findByEmailGlobal(request.getEmail())
             .orElseThrow(() -> new EntityNotFoundException("Invalid email or password"));
 
+    String lockoutKey = FAILED_ATTEMPTS_PREFIX + request.getEmail().toLowerCase();
+    String attemptsStr = (String) redisTemplate.opsForValue().get(lockoutKey);
+    int attempts = attemptsStr != null ? Integer.parseInt(attemptsStr) : 0;
+
+    if (attempts >= MAX_FAILED_ATTEMPTS) {
+        throw new com.ims.shared.exception.UnauthorizedException("Account is temporarily locked due to multiple failed attempts. Please try again in " + LOCKOUT_DURATION_MINUTES + " minutes.");
+    }
+
     if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+      redisTemplate.opsForValue().set(lockoutKey, String.valueOf(attempts + 1), LOCKOUT_DURATION_MINUTES, TimeUnit.MINUTES);
+      businessMetrics.incrementLoginFailures();
       throw new IllegalArgumentException("Invalid email or password");
     }
+
+    redisTemplate.delete(lockoutKey);
 
     if (!Boolean.TRUE.equals(user.getIsActive())) {
       throw new IllegalArgumentException("Account is deactivated");
@@ -341,12 +370,24 @@ public class AuthService {
   public LoginResponse login(LoginRequest request) {
     User user =
         userRepository
-            .findByEmailUnfiltered(request.getEmail())
+            .findByEmailGlobal(request.getEmail())
             .orElseThrow(() -> new EntityNotFoundException("Invalid email or password"));
 
+    String lockoutKey = FAILED_ATTEMPTS_PREFIX + request.getEmail().toLowerCase();
+    String attemptsStr = (String) redisTemplate.opsForValue().get(lockoutKey);
+    int attempts = attemptsStr != null ? Integer.parseInt(attemptsStr) : 0;
+
+    if (attempts >= MAX_FAILED_ATTEMPTS) {
+        throw new com.ims.shared.exception.UnauthorizedException("Account is temporarily locked due to multiple failed attempts. Please try again in " + LOCKOUT_DURATION_MINUTES + " minutes.");
+    }
+
     if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+      redisTemplate.opsForValue().set(lockoutKey, String.valueOf(attempts + 1), LOCKOUT_DURATION_MINUTES, TimeUnit.MINUTES);
+      businessMetrics.incrementLoginFailures();
       throw new IllegalArgumentException("Invalid email or password");
     }
+
+    redisTemplate.delete(lockoutKey);
 
     if (!Boolean.TRUE.equals(user.getIsActive())) {
       throw new IllegalArgumentException("Account is deactivated");
@@ -403,6 +444,16 @@ public class AuthService {
       } else {
         TenantContext.setTenantId(previousTenant);
       }
+    }
+
+    if (user.isTwoFactorEnabled()) {
+        String mfaToken = UUID.randomUUID().toString();
+        redisTemplate.opsForValue().set(MFA_SESSION_PREFIX + mfaToken, user.getId(), MFA_SESSION_TTL_MINUTES, TimeUnit.MINUTES);
+        
+        return LoginResponse.builder()
+            .mfaRequired(true)
+            .mfaToken(mfaToken)
+            .build();
     }
 
     UserRole roleEnum = user.getRole() != null ? UserRole.valueOf(user.getRole().getName()) : null;
@@ -522,6 +573,11 @@ public class AuthService {
     logout(token);
   }
 
+  public void invalidateAllSessions(Long userId) {
+      redisTemplate.opsForValue().set("user:revoked-at:" + userId, String.valueOf(System.currentTimeMillis()), 24, TimeUnit.HOURS);
+      log.info("Invalidated all sessions for user {}", userId);
+  }
+
   public LoginResponse refresh(String refreshToken) {
     if (!jwtUtil.validateToken(refreshToken)) {
       throw new IllegalArgumentException("Invalid refresh token");
@@ -547,7 +603,7 @@ public class AuthService {
       }
       User rootUser =
           userRepository
-              .findByIdUnfiltered(impersonatedBy)
+              .findByIdGlobal(impersonatedBy)
               .orElseThrow(() -> new IllegalArgumentException("Root user no longer exists"));
       if (!rootUser.hasRole(UserRole.ROOT) || !Boolean.TRUE.equals(rootUser.getIsActive())) {
         throw new IllegalArgumentException("Root user no longer authorized for impersonation");
@@ -557,7 +613,7 @@ public class AuthService {
     Long userId = Objects.requireNonNull(jwtUtil.extractUserId(refreshToken));
     User user =
         userRepository
-            .findByIdUnfiltered(userId)
+            .findByIdGlobal(userId)
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     String scope = Objects.requireNonNull(impersonation ? "TENANT" : user.getScope());
@@ -655,7 +711,7 @@ public class AuthService {
   public Map<String, Object> getProfile(Long userId) {
     User user =
         userRepository
-            .findByIdUnfiltered(Objects.requireNonNull(userId))
+            .findByIdGlobal(Objects.requireNonNull(userId))
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     Map<String, Object> userMap = new HashMap<>();
@@ -704,7 +760,7 @@ public class AuthService {
       Long userId, ChangePasswordRequest request) {
     User user =
         userRepository
-            .findByIdUnfiltered(Objects.requireNonNull(userId))
+            .findByIdGlobal(Objects.requireNonNull(userId))
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
@@ -726,7 +782,7 @@ public class AuthService {
   @Transactional
   public Map<String, String> forgotPassword(ForgotPasswordRequest request) {
     User user =
-        userRepository.findByEmailUnfiltered(request.getEmail().trim().toLowerCase()).orElse(null);
+        userRepository.findByEmailGlobal(request.getEmail().trim().toLowerCase()).orElse(null);
 
     String responseMessage = "If the email exists, a password reset link has been sent";
 
@@ -750,7 +806,7 @@ public class AuthService {
   public Map<String, String> resetPassword(ResetPasswordRequest request) {
     User user =
         userRepository
-            .findByEmailUnfiltered(request.getEmail().trim().toLowerCase())
+            .findByEmailGlobal(request.getEmail().trim().toLowerCase())
             .orElseThrow(() -> new IllegalArgumentException("Invalid or expired reset token"));
 
     String storedToken =
@@ -772,6 +828,153 @@ public class AuthService {
     userRepository.save(user);
 
     return Objects.requireNonNull(Map.of("message", "Password reset successfully"));
+  }
+
+  @Transactional
+  public Map<String, Object> setup2FA(Long userId) {
+    User user = userRepository.findByIdGlobal(userId)
+        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    
+    if (user.isTwoFactorEnabled()) {
+        throw new IllegalStateException("2FA is already enabled");
+    }
+
+    var secret = twoFactorAuthService.generateNewSecret(user.getEmail());
+    redisTemplate.opsForValue().set(MFA_SETUP_PREFIX + userId, secret.secret(), MFA_SESSION_TTL_MINUTES, TimeUnit.MINUTES);
+    
+    return Map.of(
+        "secret", secret.secret(),
+        "qrCodeUrl", secret.qrCodeUrl()
+    );
+  }
+
+  @Transactional
+  public Map<String, Object> enable2FA(Long userId, String code) {
+    String secret = (String) redisTemplate.opsForValue().get(MFA_SETUP_PREFIX + userId);
+    if (secret == null) {
+        throw new IllegalStateException("2FA setup not initiated or expired");
+    }
+
+    if (!twoFactorAuthService.verifyCode(secret, Integer.parseInt(code))) {
+        throw new IllegalArgumentException("Invalid verification code");
+    }
+
+    User user = userRepository.findByIdGlobal(userId)
+        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+        
+    List<String> backupCodes = twoFactorAuthService.generateBackupCodes();
+    
+    user.setTwoFactorEnabled(true);
+    user.setTwoFactorSecret(secret);
+    user.setBackupCodes(String.join(",", backupCodes));
+    userRepository.save(user);
+    
+    redisTemplate.delete(MFA_SETUP_PREFIX + userId);
+    
+    return Map.of(
+        "message", "2FA enabled successfully",
+        "backupCodes", backupCodes
+    );
+  }
+
+  @Transactional
+  public Map<String, String> disable2FA(Long userId, String currentPassword) {
+    User user = userRepository.findByIdGlobal(userId)
+        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+        
+    if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+        throw new IllegalArgumentException("Invalid password");
+    }
+
+    user.setTwoFactorEnabled(false);
+    user.setTwoFactorSecret(null);
+    user.setBackupCodes(null);
+    userRepository.save(user);
+    
+    return Map.of("message", "2FA disabled successfully");
+  }
+
+  @Transactional
+  public LoginResponse verifyMfa(com.ims.dto.request.MfaRequest request) {
+    String mfaToken = request.getMfaToken();
+    Long userId = (Long) redisTemplate.opsForValue().get(MFA_SESSION_PREFIX + mfaToken);
+    
+    if (userId == null) {
+        throw new UnauthorizedException("MFA session expired or invalid");
+    }
+
+    User user = userRepository.findByIdGlobal(userId)
+        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+        
+    boolean verified = false;
+    try {
+        int code = Integer.parseInt(request.getCode());
+        verified = twoFactorAuthService.verifyCode(user.getTwoFactorSecret(), code);
+    } catch (NumberFormatException e) {
+        // Check backup codes
+        String backupCodes = user.getBackupCodes();
+        if (backupCodes != null && backupCodes.contains(request.getCode().toUpperCase())) {
+            verified = true;
+            // Remove used backup code
+            String newBackupCodes = backupCodes.replace(request.getCode().toUpperCase(), "").replace(",,", ",");
+            user.setBackupCodes(newBackupCodes);
+            userRepository.save(user);
+        }
+    }
+
+    if (!verified) {
+        throw new IllegalArgumentException("Invalid verification code");
+    }
+
+    redisTemplate.delete(MFA_SESSION_PREFIX + mfaToken);
+    
+    // Proceed with generating tokens (similar to login logic)
+    // For brevity, I'll call a private method that generates the full LoginResponse
+    return generateLoginResponse(user);
+  }
+
+  private LoginResponse generateLoginResponse(User user) {
+      Long safeTenantId = user.getTenantId();
+      String scope = user.getScope();
+      String businessType = null;
+      
+      if ("TENANT".equals(scope) && safeTenantId != null) {
+          businessType = tenantRepository.findById(safeTenantId).map(Tenant::getBusinessType).orElse(null);
+      }
+      
+      Set<String> permissions = permissionService.getUserPermissions(user.getId(), safeTenantId);
+      UserRole roleEnum = user.getRole() != null ? UserRole.valueOf(user.getRole().getName()) : null;
+
+      String accessToken = jwtUtil.generateToken(user.getId(), safeTenantId != null ? safeTenantId : TenantContext.PLATFORM_TENANT_ID, roleEnum, scope, businessType != null ? businessType : "NONE", Boolean.TRUE.equals(user.getIsPlatformUser()), permissions);
+      String refreshToken = jwtUtil.generateRefreshToken(user.getId(), safeTenantId != null ? safeTenantId : TenantContext.PLATFORM_TENANT_ID, roleEnum, scope, businessType != null ? businessType : "NONE", Boolean.TRUE.equals(user.getIsPlatformUser()), permissions);
+
+      LoginResponse.LoginResponseBuilder builder = LoginResponse.builder()
+          .accessToken(accessToken)
+          .refreshToken(refreshToken)
+          .expiresIn(jwtUtil.getExpirySeconds())
+          .user(LoginResponse.UserResponse.builder()
+              .id(user.getId().toString())
+              .name(user.getName())
+              .email(user.getEmail())
+              .phone(user.getPhone())
+              .role(user.getRole() != null ? user.getRole().getName() : null)
+              .scope(user.getScope())
+              .isPlatformUser(Boolean.TRUE.equals(user.getIsPlatformUser()))
+              .build());
+
+      if (safeTenantId != null) {
+          tenantRepository.findById(safeTenantId).ifPresent(tenant -> {
+              builder.tenant(LoginResponse.TenantResponse.builder()
+                  .id(tenant.getId())
+                  .name(tenant.getName())
+                  .type(tenant.getBusinessType())
+                  .companyCode(tenant.getCompanyCode())
+                  .workspaceSlug(tenant.getWorkspaceSlug())
+                  .build());
+          });
+      }
+      
+      return builder.build();
   }
 
   private String hashToken(String token) {

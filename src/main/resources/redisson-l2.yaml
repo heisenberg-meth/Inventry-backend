@@ -1,0 +1,9 @@
+singleServerConfig:
+  address: "redis://${REDIS_HOST:localhost}:${REDIS_PORT:6379}"
+  password: ${REDIS_PASSWORD:null}
+  connectionPoolSize: 64
+  connectionMinimumIdleSize: 10
+  clientName: "ims-l2-cache"
+codec: !<org.redisson.codec.Kryo5Codec> {}
+threads: 16
+nettyThreads: 32

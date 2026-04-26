@@ -49,11 +49,7 @@ public class UserService {
    * This avoids N+1 queries by joining roles at the database level.
    */
   public Page<UserResponse> getUsers(Pageable pageable) {
-    Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) {
-      return Objects.requireNonNull(
-          userRepository.findAll(pageable).map(u -> toResponse(Objects.requireNonNull(u), false)));
-    }
+    Long tenantId = TenantContext.requireTenantId();
     return Objects.requireNonNull(
         userRepository
             .findSummariesByTenantId(tenantId, Objects.requireNonNull(pageable))
@@ -63,9 +59,10 @@ public class UserService {
   /**
    * Fetches a single user with all role and permission details in a single query.
    */
-  public UserResponse getUserById( Long id) {
+  public UserResponse getUserById(Long id) {
+    Long tenantId = TenantContext.requireTenantId();
     User tmpUser = userRepository
-        .findByIdWithFullDetails(Objects.requireNonNull(id))
+        .findByIdWithFullDetails(Objects.requireNonNull(id), tenantId)
         .orElseThrow(() -> new EntityNotFoundException("User not found"));
     User user = Objects.requireNonNull(tmpUser);
     return toResponse(user, true);
@@ -79,7 +76,7 @@ public class UserService {
     }
 
     // Email must be unique platform-wide
-    if (userRepository.findByEmailUnfiltered(request.getEmail()).isPresent()) {
+    if (userRepository.findByEmailGlobal(request.getEmail()).isPresent()) {
       throw new IllegalArgumentException("Email already in use: " + request.getEmail());
     }
 
@@ -134,15 +131,17 @@ public class UserService {
       throw new IllegalArgumentException("Invalid role. Must be one of: " + VALID_TENANT_ROLES);
     }
 
+    Long tenantId = TenantContext.requireTenantId();
     User user = Objects.requireNonNull(
         userRepository
             .findById(Objects.requireNonNull(id))
+            .filter(u -> tenantId.equals(u.getTenantId()))
             .orElseThrow(() -> new EntityNotFoundException("User not found")));
 
-    Long tenantId = TenantContext.getTenantId();
+    Long tenantId1 = TenantContext.getTenantId();
     Role role = Objects.requireNonNull(
         roleRepository
-            .findByNameAndTenantId(newRole, tenantId)
+            .findByNameAndTenantId(newRole, tenantId1)
             .orElseThrow(() -> new EntityNotFoundException("Role not found: " + newRole)));
 
     user.setRole(role);
@@ -165,8 +164,9 @@ public class UserService {
        Long id,  AssignPermissionsRequest request) {
     Objects.requireNonNull(id, "user id required");
     Objects.requireNonNull(request, "request body required");
+    Long tenantId = TenantContext.requireTenantId();
     User tmpUser = userRepository
-        .findByIdWithFullDetails(id)
+        .findByIdWithFullDetails(id, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("User not found"));
     User user = Objects.requireNonNull(tmpUser);
 
@@ -185,9 +185,11 @@ public class UserService {
 
   @Transactional
   public void deactivateUser( Long id) {
+    Long tenantId = TenantContext.requireTenantId();
     User user = Objects.requireNonNull(
         userRepository
             .findById(Objects.requireNonNull(id))
+            .filter(u -> tenantId.equals(u.getTenantId()))
             .orElseThrow(() -> new EntityNotFoundException("User not found")));
     user.setIsActive(false);
     userRepository.save(Objects.requireNonNull(user));

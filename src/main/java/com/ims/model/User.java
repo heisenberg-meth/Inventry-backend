@@ -31,14 +31,54 @@ import org.springframework.lang.Nullable;
 public class User {
 
   public static class UserBuilder {
+    private Long id;
+    private Long version;
+    private Long tenantId;
+    private String name;
+    private String email;
+    private String phone;
+    private String passwordHash;
+    private Role roleValue;
+    private boolean roleSet = false;
+    private String scope;
+    private Boolean isPlatformUser;
+    private Set<Permission> customPermissions;
+    private Boolean isActive;
+    private Boolean isVerified;
+    private String resetToken;
+    private LocalDateTime resetTokenExpiry;
+    private String verificationToken;
+    private LocalDateTime verificationTokenExpiry;
+    private LocalDateTime lastLogin;
+    private boolean twoFactorEnabled;
+    private String twoFactorSecret;
+    private String backupCodes;
+    private LocalDateTime createdAt;
+
     public UserBuilder role(Role role) {
-      this.role = role;
+      if (this.roleSet) {
+        throw new IllegalStateException("Role already set to: " + (this.roleValue != null ? this.roleValue.getName() : "null"));
+      }
+      this.roleValue = role;
+      this.roleSet = true;
       return this;
     }
 
     public UserBuilder role(UserRole roleEnum) {
-      this.role = Role.builder().name(Objects.requireNonNull(roleEnum.name())).build();
-      return this;
+      return this.role(Role.builder().name(Objects.requireNonNull(roleEnum.name())).build());
+    }
+
+    public User build() {
+      Role finalRole = roleSet ? roleValue : null;
+      return new User(id, version, tenantId, name, email, phone, passwordHash, finalRole, 
+          scope != null ? scope : "TENANT", 
+          isPlatformUser != null ? isPlatformUser : false, 
+          customPermissions != null ? customPermissions : new HashSet<>(), 
+          isActive != null ? isActive : true, 
+          isVerified != null ? isVerified : false, 
+          resetToken, resetTokenExpiry, verificationToken, verificationTokenExpiry, lastLogin, 
+          twoFactorEnabled, twoFactorSecret, backupCodes, 
+          createdAt != null ? createdAt : LocalDateTime.now());
     }
   }
 
@@ -122,6 +162,18 @@ public class User {
   @Column(name = "last_login")
   @Nullable
   private LocalDateTime lastLogin;
+
+  @Column(name = "two_factor_enabled")
+  @Builder.Default
+  private boolean twoFactorEnabled = false;
+
+  @Column(name = "two_factor_secret")
+  @Nullable
+  private String twoFactorSecret;
+
+  @Column(name = "backup_codes", columnDefinition = "TEXT")
+  @Nullable
+  private String backupCodes;
 
   @Column(name = "created_at")
   @Builder.Default

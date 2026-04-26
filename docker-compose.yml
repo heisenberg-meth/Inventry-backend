@@ -1,74 +1,138 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# IMS Inventory Backend — Full Stack (Development + Staging)
+# Usage:
+#   docker compose up -d
+#   docker compose --profile monitoring up -d   (adds Prometheus + Grafana)
+# ─────────────────────────────────────────────────────────────────────────────
+
 services:
 
+  # ── Application ─────────────────────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ims-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ims_db
+      SPRING_DATASOURCE_USERNAME: ims_user
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-changeme}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      APP_JWT_SECRET: ${JWT_SECRET}
+      APP_JWT_EXPIRY_SECONDS: 3600
+      APP_JWT_REFRESH_EXPIRY_SECONDS: 86400
+      APP_SECURITY_ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+      JASYPT_ENCRYPTOR_PASSWORD: ${JASYPT_ENCRYPTOR_PASSWORD}
+      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+    ports:
+      - "8080:8080"
+    networks:
+      - ims-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  # ── PostgreSQL ───────────────────────────────────────────────────────────────
   postgres:
-    image: postgres:17.4-alpine
-    container_name: ims_postgres
+    image: postgres:16-alpine
+    container_name: ims-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ims_db
       POSTGRES_USER: ims_user
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5433:5432"
+      - "5432:5432"
+    networks:
+      - ims-net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ims_user -d ims_db"]
       interval: 10s
       timeout: 5s
       retries: 5
-    restart: unless-stopped
+      start_period: 20s
 
-  valkey:
-    image: valkey/valkey:8.1.0-alpine
-    container_name: ims_valkey
-    command: valkey-server --requirepass ${REDIS_PASSWORD} --save 60 1 --loglevel warning
+  # ── Redis (Valkey) ───────────────────────────────────────────────────────────
+  redis:
+    image: valkey/valkey:8-alpine
+    container_name: ims-redis
+    restart: unless-stopped
+    command: >
+      valkey-server
+      --requirepass ${REDIS_PASSWORD:-}
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save 60 1000
     volumes:
-      - valkey_data:/data
+      - redis_data:/data
     ports:
       - "6379:6379"
+    networks:
+      - ims-net
     healthcheck:
-      test: ["CMD", "valkey-cli", "--pass", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD", "valkey-cli", "ping"]
       interval: 10s
-      timeout: 5s
-      retries: 3
-    restart: unless-stopped
+      timeout: 3s
+      retries: 5
 
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: ims_backend
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ims_db
-      SPRING_DATASOURCE_USERNAME: ims_user
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-      SPRING_DATA_REDIS_HOST: valkey
-      SPRING_DATA_REDIS_PORT: 6379
-      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET}
-      SPRING_PROFILES_ACTIVE: prod
-      SERVER_PORT: 8080
-      APP_ENV: production
-    ports:
-      - "8080:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      valkey:
-        condition: service_healthy
+  # ── Monitoring (optional profile) ───────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ims-prometheus
+    profiles: ["monitoring"]
     restart: unless-stopped
-
-  nginx:
-    image: nginx:alpine
-    container_name: ims_nginx
-    depends_on:
-      - backend
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=30d"
     ports:
-      - "8001:8001"
+      - "9090:9090"
+    networks:
+      - ims-net
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ims-grafana
+    profiles: ["monitoring"]
     restart: unless-stopped
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./deploy/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+    ports:
+      - "3100:3000"
+    networks:
+      - ims-net
+
+# ── Networks & Volumes ────────────────────────────────────────────────────────
+networks:
+  ims-net:
+    driver: bridge
 
 volumes:
   postgres_data:
-  valkey_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:

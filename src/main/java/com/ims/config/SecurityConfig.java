@@ -1,11 +1,13 @@
 package com.ims.config;
 
 import com.ims.shared.audit.TraceFilter;
+import com.ims.shared.auth.ApiKeyFilter;
 import com.ims.shared.auth.JwtFilter;
 import com.ims.shared.auth.TenantFilter;
 import com.ims.shared.ratelimit.RateLimitFilter;
 import java.util.List;
 import java.util.Arrays;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -35,6 +37,8 @@ public class SecurityConfig {
   private final RateLimitFilter rateLimitFilter;
   private final TraceFilter traceFilter;
   private final TenantFilter tenantFilter;
+  private final com.ims.shared.security.IpWhitelistFilter ipWhitelistFilter;
+  private final com.ims.shared.auth.ApiKeyFilter apiKeyFilter;
 
   @Value("${app.security.allowed-origins:*}")
   private String allowedOrigins;
@@ -100,18 +104,21 @@ public class SecurityConfig {
                             xss.headerValue(
                                 org.springframework.security.web.header.writers
                                     .XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
+                    .contentTypeOptions(Objects.requireNonNull(org.springframework.security.config.Customizer.withDefaults()))
                     .contentSecurityPolicy(
                         csp ->
                             csp.policyDirectives(
-                                "default-src 'self'; frame-ancestors 'none'; object-src 'none';"))
+                                "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; object-src 'none';"))
                     .httpStrictTransportSecurity(
-                        hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(HSTS_MAX_AGE_SECONDS)))
+                        hsts -> hsts.includeSubDomains(true).preload(true).maxAgeInSeconds(HSTS_MAX_AGE_SECONDS)))
         .exceptionHandling(
             ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
         .addFilterBefore(traceFilter, UsernamePasswordAuthenticationFilter.class)
         .addFilterAfter(rateLimitFilter, TraceFilter.class)
-        .addFilterAfter(jwtFilter, RateLimitFilter.class)
-        .addFilterAfter(tenantFilter, JwtFilter.class);
+        .addFilterAfter(apiKeyFilter, RateLimitFilter.class)
+        .addFilterAfter(jwtFilter, ApiKeyFilter.class)
+        .addFilterAfter(tenantFilter, JwtFilter.class)
+        .addFilterAfter(ipWhitelistFilter, TenantFilter.class);
   }
 
   @Bean
@@ -136,8 +143,7 @@ public class SecurityConfig {
             "Authorization",
             "Content-Type",
             "X-Correlation-ID",
-            "X-Tenant-ID",
-            "ngrok-skip-browser-warning"));
+            "X-Tenant-ID"));
     configuration.setExposedHeaders(
         List.of("X-Correlation-ID", "X-RateLimit-Limit", "X-RateLimit-Remaining"));
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

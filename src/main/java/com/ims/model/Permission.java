@@ -13,6 +13,8 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "permissions")
+@jakarta.persistence.Cacheable
+@org.hibernate.annotations.Cache(usage = org.hibernate.annotations.CacheConcurrencyStrategy.READ_ONLY)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
