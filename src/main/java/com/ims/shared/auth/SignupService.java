@@ -40,6 +40,7 @@ public class SignupService {
     this.companyCodeGenerator = companyCodeGenerator;
   }
 
+  @NonNull
   public SignupResponse signup(@NonNull SignupRequest request) {
     TenantContext.clear();
     Objects.requireNonNull(request, "request cannot be null");

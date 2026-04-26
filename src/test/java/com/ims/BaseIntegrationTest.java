@@ -2,27 +2,34 @@ package com.ims;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.doReturn;
-
-import com.ims.category.CategoryRepository;
-import com.ims.platform.repository.*;
-import com.ims.product.ProductRepository;
-import com.ims.shared.audit.AuditLogRepository;
-import com.ims.shared.auth.AuthService;
-import com.ims.shared.auth.TenantContext;
 import com.ims.model.User;
 import com.ims.tenant.repository.*;
+import com.ims.platform.repository.*;
+import com.ims.shared.auth.AuthService;
+import com.ims.product.ProductRepository;
 import jakarta.persistence.EntityManager;
+import com.ims.shared.auth.TenantContext;
+import com.ims.dto.response.LoginResponse;
+import com.ims.category.CategoryRepository;
+import com.ims.dto.request.LoginRequest;
 import jakarta.persistence.PersistenceContext;
-import java.util.Collections;
+import com.ims.shared.audit.AuditLogRepository;
 import java.util.Objects;
+import java.util.Collections;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cache.interceptor.CacheOperationInvocationContext;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.http.MediaType;
+import org.springframework.cache.Cache;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.cache.concurrent.ConcurrentMapCache;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -31,6 +38,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.lang.NonNull;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @SpringBootTest(properties = {
@@ -170,7 +178,7 @@ public abstract class BaseIntegrationTest {
   }
 
   protected void verifyUser(String email) {
-    new TransactionTemplate(transactionManager)
+    new TransactionTemplate(Objects.requireNonNull(transactionManager))
         .execute(
             status -> {
               // 1. Fetch user neutrally to get tenant information
@@ -208,22 +216,23 @@ public abstract class BaseIntegrationTest {
     // Redis Mocks to prevent NPEs (e.g., in RateLimitFilter)
     doReturn(valueOperations).when(redisTemplate).opsForValue();
     doReturn(zSetOperations).when(redisTemplate).opsForZSet();
-    doReturn(1L).when(valueOperations).increment(any(String.class));
-    doReturn(0L).when(zSetOperations).zCard(any(String.class));
+    doReturn(1L).when(valueOperations).increment(notNull());
+    doReturn(0L).when(zSetOperations).zCard(notNull());
 
     // Cache Mocks for TenantAwareCacheResolver
-    org.springframework.cache.Cache dummyCache =
-        new org.springframework.cache.concurrent.ConcurrentMapCache("dummy");
+    Cache dummyCache =
+        new ConcurrentMapCache("dummy");
 
-    doReturn(Collections.<org.springframework.cache.Cache>singletonList(dummyCache))
+    doReturn(Collections.<Cache>singletonList(dummyCache))
         .when(tenantAwareCacheResolver)
-        .resolveCaches(any(CacheOperationInvocationContext.class));
-    doReturn(dummyCache).when(cacheManager).getCache(any(String.class));
+        .resolveCaches(notNull());
+    doReturn(dummyCache).when(cacheManager).getCache(notNull());
   }
 
+  @NonNull
   protected String login(String email, String password, String workspace, Long tenantId)
       throws Exception {
-    com.ims.dto.request.LoginRequest loginRequest = new com.ims.dto.request.LoginRequest();
+    LoginRequest loginRequest = new com.ims.dto.request.LoginRequest();
     loginRequest.setEmail(email);
     loginRequest.setPassword(password);
     
@@ -239,11 +248,11 @@ public abstract class BaseIntegrationTest {
         : "/api/auth/login";
 
     String loginJson = objectMapper.writeValueAsString(loginRequest);
-    org.springframework.test.web.servlet.MvcResult result =
+    MvcResult result =
         mockMvc
             .perform(
-                org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(loginUrl)
-                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                MockMvcRequestBuilders.post(loginUrl)
+                    .contentType(MediaType.APPLICATION_JSON)
                     .content(loginJson)
                     .with(tenant(String.valueOf(tenantId))))
             .andDo(mvcResult -> {
@@ -252,19 +261,20 @@ public abstract class BaseIntegrationTest {
                 System.out.println("Response: " + mvcResult.getResponse().getContentAsString());
               }
             })
-            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+            .andExpect(MockMvcResultMatchers.status().isOk())
             .andReturn();
 
     String responseJson = result.getResponse().getContentAsString();
-    com.ims.dto.response.LoginResponse response =
+    LoginResponse response =
         objectMapper.readValue(responseJson, com.ims.dto.response.LoginResponse.class);
-    return java.util.Objects.requireNonNull(response.getAccessToken());
+    return Objects.requireNonNull(response.getAccessToken());
   }
 
-  protected org.springframework.test.web.servlet.request.RequestPostProcessor tenant(
-      String tenantId) {
+  @NonNull
+  protected RequestPostProcessor tenant(
+      @NonNull Object tenantId) {
     return request -> {
-      request.addHeader("X-Tenant-ID", tenantId);
+      request.addHeader("X-Tenant-ID", Objects.requireNonNull(String.valueOf(tenantId)));
       return request;
     };
   }

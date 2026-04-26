@@ -51,7 +51,7 @@ public class SupportService {
             .build();
 
     var savedTicket = Objects.requireNonNull(ticketRepository.save(initialTicket));
-
+  
     auditLogService.log(
         AuditAction.CREATE_TICKET, tenantId, userId, "Created ticket: " + savedTicket.getTitle());
     log.info("Support ticket created: id={}", savedTicket.getId());
