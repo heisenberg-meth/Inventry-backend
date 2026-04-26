@@ -21,10 +21,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
    * Prevents N+1 queries when accessing these relationships in the detail view.
    */
   @Query("""
-      SELECT u FROM User u 
+      SELECT u FROM User u
       LEFT JOIN FETCH u.role r
       LEFT JOIN FETCH r.permissions
-      LEFT JOIN FETCH u.customPermissions 
+      LEFT JOIN FETCH u.customPermissions
       WHERE u.id = :id
       """)
   Optional<User> findByIdWithFullDetails(@Param("id") Long id);
@@ -65,8 +65,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
    * Resolves roles in a single JOIN query.
    */
   @Query("""
-      SELECT u.id as id, u.name as name, u.email as email, 
-             r.name as roleName, u.scope as scope, 
+      SELECT u.id as id, u.name as name, u.email as email,
+             r.name as roleName, u.scope as scope,
              u.isActive as isActive, u.createdAt as createdAt
       FROM User u
       LEFT JOIN u.role r

@@ -38,9 +38,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.lang.NonNull;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @SpringBootTest(
@@ -49,13 +53,18 @@ import org.springframework.transaction.support.TransactionTemplate;
           + "org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,"
           + "org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
       "spring.task.scheduling.enabled=false",
-      "spring.testcontainers.enabled=false",
+      "spring.testcontainers.enabled=true",
       "spring.cache.type=none"
     })
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
+@Testcontainers
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public abstract class BaseIntegrationTest {
+
+  @Container
+  @ServiceConnection
+  static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
 
   protected static final String TEST_ROOT_PASSWORD =
       System.getProperty("ims.test.root.password", UUID.randomUUID().toString());
@@ -132,32 +141,11 @@ public abstract class BaseIntegrationTest {
     new TransactionTemplate(Objects.requireNonNull(transactionManager))
         .execute(
             status -> {
-              jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY FALSE");
-
-              jdbcTemplate.execute("TRUNCATE TABLE audit_logs");
-              jdbcTemplate.execute("TRUNCATE TABLE payments");
-              jdbcTemplate.execute("TRUNCATE TABLE invoices");
-              jdbcTemplate.execute("TRUNCATE TABLE order_items");
-              jdbcTemplate.execute("TRUNCATE TABLE orders");
-              jdbcTemplate.execute("TRUNCATE TABLE transfer_orders");
-              jdbcTemplate.execute("TRUNCATE TABLE stock_movements");
-              jdbcTemplate.execute("TRUNCATE TABLE pharmacy_products");
-              jdbcTemplate.execute("TRUNCATE TABLE products");
-              jdbcTemplate.execute("TRUNCATE TABLE categories");
-              jdbcTemplate.execute("TRUNCATE TABLE user_permissions");
-              jdbcTemplate.execute("TRUNCATE TABLE users");
-              jdbcTemplate.execute("TRUNCATE TABLE role_permissions");
-              jdbcTemplate.execute("TRUNCATE TABLE roles");
-              jdbcTemplate.execute("TRUNCATE TABLE customers");
-              jdbcTemplate.execute("TRUNCATE TABLE suppliers");
-              jdbcTemplate.execute("TRUNCATE TABLE support_attachments");
-              jdbcTemplate.execute("TRUNCATE TABLE support_messages");
-              jdbcTemplate.execute("TRUNCATE TABLE support_tickets");
-              jdbcTemplate.execute("TRUNCATE TABLE subscriptions");
-              jdbcTemplate.execute("TRUNCATE TABLE subscription_plans");
-              jdbcTemplate.execute("TRUNCATE TABLE tenants");
-
-              jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY TRUE");
+              jdbcTemplate.execute("TRUNCATE TABLE audit_logs, payments, invoices, order_items, orders, " +
+                  "transfer_orders, stock_movements, pharmacy_products, products, categories, " +
+                  "user_permissions, users, role_permissions, roles, customers, suppliers, " +
+                  "support_attachments, support_messages, support_tickets, subscriptions, " +
+                  "subscription_plans, tenants RESTART IDENTITY CASCADE");
 
               // Seed System Tenant
               jdbcTemplate.execute(
