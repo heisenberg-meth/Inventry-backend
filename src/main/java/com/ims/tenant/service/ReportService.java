@@ -1,6 +1,5 @@
 package com.ims.tenant.service;
 
-import com.ims.category.CategoryRepository;
 import com.ims.model.Tenant;
 import com.ims.platform.repository.TenantRepository;
 import com.ims.product.ProductRepository;
@@ -37,7 +36,6 @@ public class ReportService {
   private final OrderRepository orderRepository;
   private final PharmacyProductRepository pharmacyProductRepository;
   private final TenantRepository tenantRepository;
-  private final CategoryRepository categoryRepository;
   private final com.ims.shared.notification.AlertRepository alertRepository;
 
   private static final int DEFAULT_DAYS = 30;
@@ -283,10 +281,13 @@ public class ReportService {
     LocalDateTime fromDt = Objects.requireNonNull(from, "from date required").atStartOfDay();
     LocalDateTime toDt = Objects.requireNonNull(to, "to date required").atTime(LocalTime.MAX);
 
-    BigDecimal totalSalesTax = orderRepository.sumTaxAmountByTypeAndDateRange("SALE", fromDt, toDt);
+    BigDecimal totalSalesTax =
+        orderRepository.sumTaxAmountByTypeAndDateRange(
+            "SALE", Objects.requireNonNull(fromDt), Objects.requireNonNull(toDt));
 
     BigDecimal totalPurchaseTax =
-        orderRepository.sumTaxAmountByTypeAndDateRange("PURCHASE", fromDt, toDt);
+        orderRepository.sumTaxAmountByTypeAndDateRange(
+            "PURCHASE", Objects.requireNonNull(fromDt), Objects.requireNonNull(toDt));
 
     Map<String, Object> gst = new LinkedHashMap<>();
     gst.put("period", Map.of("from", from, "to", to));
@@ -298,19 +299,23 @@ public class ReportService {
   }
 
   public @NonNull List<Map<String, Object>> getAlerts() {
-    return alertRepository.findByTenantIdAndIsDismissedFalse(TenantContext.getTenantId()).stream()
-        .map(
-            a -> {
-              Map<String, Object> map = new java.util.HashMap<>();
-              map.put("id", a.getId());
-              map.put("type", a.getType());
-              map.put("severity", a.getSeverity());
-              map.put("message", a.getMessage());
-              map.put("resource_id", a.getResourceId());
-              map.put("created_at", a.getCreatedAt());
-              return map;
-            })
-        .collect(Collectors.toList());
+    return Objects.requireNonNull(
+        alertRepository
+            .findByTenantIdAndIsDismissedFalse(
+                Objects.requireNonNull(TenantContext.getTenantId(), "Tenant context required"))
+            .stream()
+            .map(
+                a -> {
+                  Map<String, Object> map = new java.util.HashMap<>();
+                  map.put("id", a.getId());
+                  map.put("type", a.getType());
+                  map.put("severity", a.getSeverity());
+                  map.put("message", a.getMessage());
+                  map.put("resource_id", a.getResourceId());
+                  map.put("created_at", a.getCreatedAt());
+                  return map;
+                })
+            .collect(Collectors.toList()));
   }
 
   @org.springframework.transaction.annotation.Transactional

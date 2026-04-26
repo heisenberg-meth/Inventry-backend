@@ -11,6 +11,7 @@ import com.ims.shared.auth.TenantContext;
 import com.ims.shared.rbac.RequiresPermission;
 import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -46,6 +47,11 @@ public class CategoryService {
   public @NonNull Category getById(@NonNull Long id) {
     TenantContext.assertTenantPresent();
     Long tenantId = TenantContext.getTenantId();
+    return Objects.requireNonNull(
+    categoryRepository
+        .findByIdAndTenantId(id, tenantId)
+        .orElseThrow(() -> new EntityNotFoundException("Category not found"))
+    );
     return java.util.Objects.requireNonNull(
         categoryRepository
             .findByIdAndTenantId(id, tenantId)
@@ -54,26 +60,26 @@ public class CategoryService {
 
   @Transactional
   public @NonNull Category create(@NonNull CategoryRequest request) {
-    String name = java.util.Objects.requireNonNull(request.getName());
+    String name = Objects.requireNonNull(request.getName());
 
     if (categoryRepository.existsByNameIgnoreCaseAndTenantId(name, TenantContext.getTenantId())) {
       throw new IllegalArgumentException("Category with this name already exists");
     }
 
     Category category =
-        Category.builder()
+        Objects.requireNonNull(
+            Category.builder()
             .name(name)
             .description(request.getDescription())
             .taxRate(request.getTaxRate() != null ? request.getTaxRate() : BigDecimal.ZERO)
-            .build();
+            .build());
 
-    Category tmpCategory = categoryRepository.save(category);
-    Category savedCategory = java.util.Objects.requireNonNull(tmpCategory);
+    Category savedCategory = Objects.requireNonNull(categoryRepository.save(category));
 
     auditLogService.logAudit(
         AuditAction.CREATE,
         AuditResource.CATEGORY,
-        java.util.Objects.requireNonNull(savedCategory.getId()),
+        Objects.requireNonNull(savedCategory.getId()),
         "Created category: " + savedCategory.getName());
 
     return savedCategory;
@@ -86,7 +92,7 @@ public class CategoryService {
     TenantContext.assertTenantPresent();
     Long tenantId = TenantContext.getTenantId();
 
-    String name = java.util.Objects.requireNonNull(request.getName());
+    String name = Objects.requireNonNull(request.getName());
 
     if (!category.getName().equalsIgnoreCase(name)
         && categoryRepository.existsByNameIgnoreCaseAndTenantId(name, tenantId)) {
@@ -100,12 +106,12 @@ public class CategoryService {
       category.setTaxRate(request.getTaxRate());
     }
 
-    Category updatedCategory = java.util.Objects.requireNonNull(categoryRepository.save(category));
+    Category updatedCategory = Objects.requireNonNull(categoryRepository.save(category));
 
     auditLogService.logAudit(
         AuditAction.UPDATE,
         AuditResource.CATEGORY,
-        java.util.Objects.requireNonNull(updatedCategory.getId()),
+        Objects.requireNonNull(updatedCategory.getId()),
         "Updated category: " + updatedCategory.getName());
 
     return updatedCategory;
@@ -129,6 +135,15 @@ public class CategoryService {
   }
 
   public @NonNull CategoryResponse toResponse(@NonNull Category category) {
+    return Objects.requireNonNull(
+    CategoryResponse.builder()
+        .id(category.getId())
+        .name(category.getName())
+        .description(category.getDescription())
+        .taxRate(category.getTaxRate())
+        .createdAt(category.getCreatedAt())
+        .build()
+    );
     return java.util.Objects.requireNonNull(
         CategoryResponse.builder()
             .id(category.getId())

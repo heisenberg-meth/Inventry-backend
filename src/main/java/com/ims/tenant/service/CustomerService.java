@@ -98,21 +98,23 @@ public class CustomerService {
     List<Invoice> invoices = invoiceRepository.findByCustomerId(id);
     List<Payment> payments = paymentRepository.findByCustomerId(id);
 
-    return Map.of(
-        "customer", toResponse(customer),
-        "orders", orders,
-        "invoices", invoices,
-        "payments", payments);
+    return Objects.requireNonNull(
+        Map.of(
+            "customer", toResponse(customer),
+            "orders", orders,
+            "invoices", invoices,
+            "payments", payments));
   }
 
   private @NonNull CustomerResponse toResponse(Customer customer) {
-    return CustomerResponse.builder()
-        .id(customer.getId())
-        .name(customer.getName())
-        .phone(customer.getPhone())
-        .email(customer.getEmail())
-        .address(customer.getAddress())
-        .gstin(customer.getGstin())
-        .build();
+    return Objects.requireNonNull(
+        CustomerResponse.builder()
+            .id(customer.getId())
+            .name(customer.getName())
+            .phone(customer.getPhone())
+            .email(customer.getEmail())
+            .address(customer.getAddress())
+            .gstin(customer.getGstin())
+            .build());
   }
 }

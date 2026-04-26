@@ -3,6 +3,7 @@ package com.ims.tenant.service;
 import com.ims.model.Order;
 import com.ims.model.OrderItem;
 import com.ims.product.Product;
+import com.ims.model.OrderStatus;
 import com.ims.product.ProductRepository;
 import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditResource;
@@ -12,6 +13,7 @@ import com.ims.tenant.repository.CustomerRepository;
 import com.ims.tenant.repository.OrderItemRepository;
 import com.ims.tenant.repository.OrderRepository;
 import com.ims.tenant.repository.SupplierRepository;
+import com.ims.tenant.domain.pharmacy.PharmacyProduct;
 import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -19,6 +21,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -99,10 +103,10 @@ public class OrderService {
 
     order.setTotalAmount(totalAmount);
     order.setTaxAmount(taxAmount);
-    order = Objects.requireNonNull(orderRepository.save(order));
+    Order savedPurchaseOrder = Objects.requireNonNull(orderRepository.save(order));
 
     // Link items to order and batch save
-    final Long orderId = order.getId();
+    final Long orderId = savedPurchaseOrder.getId();
     orderItems.forEach(oi -> oi.setOrderId(orderId));
     orderItemRepository.saveAll(orderItems);
 
@@ -116,7 +120,7 @@ public class OrderService {
             "Created purchase order #%d, Supplier: %d, Total: %s",
             orderId, supplierId, totalAmount));
 
-    return order;
+    return savedPurchaseOrder;
   }
 
   @Transactional
@@ -149,10 +153,10 @@ public class OrderService {
       // confirmation/deduction.
 
       // PHARMACY EXPIRY CHECK
-      java.util.Optional<com.ims.tenant.domain.pharmacy.PharmacyProduct> pharmacyProduct =
+      java.util.Optional<PharmacyProduct> pharmacyProduct =
           pharmacyProductRepository.findById(productId);
       if (pharmacyProduct.isPresent()
-          && pharmacyProduct.get().getExpiryDate().isBefore(java.time.LocalDate.now())) {
+          && pharmacyProduct.get().getExpiryDate().isBefore(LocalDate.now())) {
         throw new IllegalArgumentException(
             "Product "
                 + product.getName()
@@ -194,10 +198,10 @@ public class OrderService {
           "Grand total mismatch. Calculated: " + grandTotalCalculated);
     }
 
-    Order order =
+    Order salesOrder =
         Order.builder()
             .type("SALE")
-            .status(com.ims.model.OrderStatus.PENDING)
+            .status(OrderStatus.PENDING)
             .customerId(customerId)
             .totalAmount(totalAmount)
             .taxAmount(taxAmount)
@@ -205,9 +209,9 @@ public class OrderService {
             .notes(request.getNotes())
             .createdBy(userId)
             .build();
-    order = Objects.requireNonNull(orderRepository.save(order));
+    Order savedSalesOrder = Objects.requireNonNull(orderRepository.save(salesOrder));
 
-    final Long orderId = order.getId();
+    final Long orderId = savedSalesOrder.getId();
     orderItems.forEach(oi -> oi.setOrderId(orderId));
     orderItemRepository.saveAll(orderItems);
 
@@ -220,7 +224,7 @@ public class OrderService {
         String.format(
             "Created sales order #%d, Customer: %d, Total: %s", orderId, customerId, totalAmount));
 
-    return order;
+    return savedSalesOrder;
   }
 
   @Transactional
@@ -230,7 +234,7 @@ public class OrderService {
 
     Order originalOrder =
         orderRepository
-            .findById(originalOrderId)
+            .findById(Objects.requireNonNull(originalOrderId))
             .orElseThrow(() -> new EntityNotFoundException("Original order not found"));
 
     if (!"SALE".equals(originalOrder.getType())) {
@@ -240,7 +244,7 @@ public class OrderService {
     BigDecimal returnTotal = BigDecimal.ZERO;
     BigDecimal returnTax = BigDecimal.ZERO;
 
-    Order returnOrder =
+    Order initialReturnOrder =
         Order.builder()
             .type("RETURN")
             .status(com.ims.model.OrderStatus.COMPLETED)
@@ -250,7 +254,7 @@ public class OrderService {
             .createdBy(userId)
             .build();
 
-    returnOrder = orderRepository.save(returnOrder);
+    Order savedReturnOrder = Objects.requireNonNull(orderRepository.save(initialReturnOrder));
 
     List<OrderItem> originalItems = orderItemRepository.findByOrderId(originalOrderId);
     List<OrderItem> returnOrderItems = new ArrayList<>();
@@ -311,19 +315,23 @@ public class OrderService {
               .build());
 
       // Restore stock
-      stockService.stockIn(productId, qty, "Return for Order #" + originalOrderId, userId);
+      stockService.stockIn(
+          Objects.requireNonNull(productId),
+          qty,
+          "Return for Order #" + originalOrderId,
+          Objects.requireNonNull(userId));
     }
 
-    final Long returnOrderId = returnOrder.getId();
+    final Long returnOrderId = savedReturnOrder.getId();
     returnOrderItems.forEach(oi -> oi.setOrderId(returnOrderId));
     orderItemRepository.saveAll(returnOrderItems);
 
-    returnOrder.setTotalAmount(returnTotal);
-    returnOrder.setTaxAmount(returnTax);
-    returnOrder = orderRepository.save(returnOrder);
+    savedReturnOrder.setTotalAmount(returnTotal);
+    savedReturnOrder.setTaxAmount(returnTax);
+    savedReturnOrder = Objects.requireNonNull(orderRepository.save(savedReturnOrder));
 
     // Create Credit Note
-    invoiceService.createCreditNote(returnOrder, null);
+    invoiceService.createCreditNote(savedReturnOrder, null);
 
     auditLogService.logAudit(
         AuditAction.CREATE_RETURN_ORDER,
@@ -332,7 +340,7 @@ public class OrderService {
         String.format(
             "Processed return for order #%d, Total Credit: %s", originalOrderId, returnTotal));
 
-    return returnOrder;
+    return savedReturnOrder;
   }
 
   public @NonNull Page<Order> getOrders(@NonNull Pageable pageable) {
@@ -369,13 +377,15 @@ public class OrderService {
     String partnerAddress = "N/A";
 
     if ("SALE".equals(order.getType()) && order.getCustomerId() != null) {
-      var customer = customerRepository.findById(order.getCustomerId()).orElse(null);
+      var customer =
+          customerRepository.findById(Objects.requireNonNull(order.getCustomerId())).orElse(null);
       if (customer != null) {
         partnerName = customer.getName();
         partnerAddress = customer.getAddress();
       }
     } else if ("PURCHASE".equals(order.getType()) && order.getSupplierId() != null) {
-      var supplier = supplierRepository.findById(order.getSupplierId()).orElse(null);
+      var supplier =
+          supplierRepository.findById(Objects.requireNonNull(order.getSupplierId())).orElse(null);
       if (supplier != null) {
         partnerName = supplier.getName();
         partnerAddress = supplier.getAddress();
@@ -390,7 +400,7 @@ public class OrderService {
             .map(OrderItem::getProductId)
             .collect(java.util.stream.Collectors.toList());
     Map<Long, String> productNames =
-        productRepository.findAllById(productIds).stream()
+        productRepository.findAllById(Objects.requireNonNull(productIds)).stream()
             .collect(java.util.stream.Collectors.toMap(Product::getId, Product::getName));
 
     List<Map<String, Object>> items =
@@ -444,8 +454,8 @@ public class OrderService {
                   java.util.Set.of(
                       com.ims.model.OrderStatus.COMPLETED, com.ims.model.OrderStatus.RECEIVED),
               com.ims.model.OrderStatus.COMPLETED, java.util.Set.of(),
-              com.ims.model.OrderStatus.RECEIVED, java.util.Set.of(),
-              com.ims.model.OrderStatus.CANCELLED, java.util.Set.of());
+              com.ims.model.OrderStatus.RECEIVED, Set.of(),
+              com.ims.model.OrderStatus.CANCELLED, Set.of());
 
   private void validateTransition(Order order, com.ims.model.OrderStatus newStatus) {
     if (!ALLOWED_TRANSITIONS.get(order.getStatus()).contains(newStatus)) {

@@ -4,6 +4,7 @@ import com.ims.shared.audit.TraceFilter;
 import com.ims.shared.auth.JwtFilter;
 import com.ims.shared.ratelimit.RateLimitFilter;
 import java.util.List;
+import java.util.Arrays;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -61,12 +62,15 @@ public class SecurityConfig {
   @Bean
   public SecurityFilterChain securityFilterChain(
       HttpSecurity http, org.springframework.core.env.Environment env) throws Exception {
-    boolean isDev = java.util.Arrays.asList(env.getActiveProfiles()).contains("dev");
+    boolean isDev = Arrays.asList(env.getActiveProfiles()).contains("dev");
 
     return configureCommon(http)
         .authorizeHttpRequests(
             auth -> {
               auth.requestMatchers(AUTH_WHITELIST).permitAll();
+              auth.requestMatchers("/api/v1/auth/**").permitAll();
+              auth.requestMatchers("/api/platform/auth/**").permitAll();
+              auth.requestMatchers("/actuator/health", "/api/v1/actuator/health").permitAll();
               auth.requestMatchers("/api/v1/auth/**", "/api/v1/platform/auth/**").permitAll();
               auth.requestMatchers("/api/v1/platform/invites/**").permitAll();
               auth.requestMatchers("/api/v1/tenant/payments/gateway/webhook").permitAll();

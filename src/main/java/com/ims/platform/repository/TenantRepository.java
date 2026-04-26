@@ -2,8 +2,14 @@ package com.ims.platform.repository;
 
 import com.ims.model.Tenant;
 import java.util.Optional;
+import java.util.List;
+import java.time.LocalDateTime;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 @Repository
 public interface TenantRepository extends JpaRepository<Tenant, Long> {
@@ -15,12 +21,12 @@ public interface TenantRepository extends JpaRepository<Tenant, Long> {
 
   boolean existsByCompanyCode(String companyCode);
 
-  java.util.List<Tenant> findAllByCreatedAtBefore(java.time.LocalDateTime dateTime);
+  List<Tenant> findAllByCreatedAtBefore(LocalDateTime dateTime);
 
-  @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
-  @org.springframework.data.jpa.repository.Query("SELECT t FROM Tenant t WHERE t.id = :id")
-  Optional<Tenant> lockById(@org.springframework.data.repository.query.Param("id") Long id);
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT t FROM Tenant t WHERE t.id = :id")
+  Optional<Tenant> lockById(@Param("id") Long id);
 
-  @org.springframework.data.jpa.repository.Query("SELECT t.id FROM Tenant t")
-  java.util.List<Long> findAllIds();
+  @Query("SELECT t.id FROM Tenant t")
+  List<Long> findAllIds();
 }

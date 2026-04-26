@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
@@ -50,18 +51,19 @@ public class SubscriptionPlanService {
     }
 
     SubscriptionPlan plan =
-        SubscriptionPlan.builder()
-            .name(request.getName())
-            .price(request.getPrice())
-            .currency(request.getCurrency() != null ? request.getCurrency() : "INR")
-            .billingCycle(request.getBillingCycle())
-            .features(features)
-            .maxUsers(request.getMaxUsers())
-            .maxProducts(request.getMaxProducts())
-            .status("ACTIVE")
-            .build();
+        Objects.requireNonNull(
+            SubscriptionPlan.builder()
+                .name(request.getName())
+                .price(request.getPrice())
+                .currency(request.getCurrency() != null ? request.getCurrency() : "INR")
+                .billingCycle(request.getBillingCycle())
+                .features(features)
+                .maxUsers(request.getMaxUsers())
+                .maxProducts(request.getMaxProducts())
+                .status("ACTIVE")
+                .build());
 
-    SubscriptionPlan saved = planRepository.save(plan);
+    SubscriptionPlan saved = Objects.requireNonNull(planRepository.save(plan));
     auditLogService.log(AuditAction.CREATE_PLAN, null, null, "Created plan: " + saved.getName());
     log.info("Subscription plan created: id={} name={}", saved.getId(), saved.getName());
     return saved;

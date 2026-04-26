@@ -9,13 +9,22 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.SignupRequest;
+import com.ims.dto.response.SignupResponse;
 import com.ims.shared.auth.SignupService;
-import org.junit.jupiter.api.BeforeEach;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.lang.NonNull;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(
     properties = {
@@ -37,18 +46,18 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
   @Test
   void testSecurityAndIsolationFlow() throws Exception {
     // 1. Signup Tenant 1
-    String uniqueId1 = java.util.UUID.randomUUID().toString().substring(0, 8);
+    String uniqueId1 = UUID.randomUUID().toString().substring(0, 8);
     SignupRequest t1Signup =
         createSignupRequest(
             "Tenant 1 " + uniqueId1, "t1-auth-" + uniqueId1, "admin1-" + uniqueId1 + "@t1.com");
-    com.ims.dto.response.SignupResponse t1Response = signupService.signup(t1Signup);
+    SignupResponse t1Response = signupService.signup(t1Signup);
 
     // 2. Signup Tenant 2
-    String uniqueId2 = java.util.UUID.randomUUID().toString().substring(0, 8);
+    String uniqueId2 = UUID.randomUUID().toString().substring(0, 8);
     SignupRequest t2Signup =
         createSignupRequest(
             "Tenant 2 " + uniqueId2, "t2-auth-" + uniqueId2, "admin2-" + uniqueId2 + "@t2.com");
-    com.ims.dto.response.SignupResponse t2Response = signupService.signup(t2Signup);
+    SignupResponse t2Response = signupService.signup(t2Signup);
 
     // 3. Verify users (simulating realistic email verification flow)
     verifyUserEmail("admin1-" + uniqueId1 + "@t1.com");
@@ -112,6 +121,7 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
         .andExpect(status().isUnauthorized());
   }
 
+  @NonNull
   private SignupRequest createSignupRequest(String name, String workspaceSlug, String email) {
     SignupRequest req = new SignupRequest();
     req.setBusinessName(name);
