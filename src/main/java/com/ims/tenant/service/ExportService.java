@@ -39,7 +39,7 @@ public class ExportService {
         response.setHeader("Content-Disposition", "attachment; filename=products_" + tenantId + ".csv");
         
         // Fetch all categories for this tenant to provide names in the CSV
-        Map<Long, String> categoryMap = categoryRepository.findByTenantId(tenantId, Pageable.unpaged())
+        Map<Long, String> categoryMap = categoryRepository.findAll(Pageable.unpaged())
             .getContent().stream()
             .collect(Collectors.toMap(Category::getId, Category::getName));
         
@@ -52,7 +52,7 @@ public class ExportService {
             Page<Product> page;
             
             do {
-                page = productRepository.findAllByTenantId(tenantId, PageRequest.of(pageNum, pageSize));
+                page = productRepository.findAllByIsActiveTrue(PageRequest.of(pageNum, pageSize));
                 for (var product : page.getContent()) {
                     writer.printf("%d,\"%s\",\"%s\",\"%s\",%d,\"%s\",%.2f,%.2f,\"%s\"%n",
                         product.getId(),
@@ -91,9 +91,9 @@ public class ExportService {
             
             do {
                 if (type != null) {
-                    page = orderRepository.findByTypeAndDateRange(type, tenantId, from, to, PageRequest.of(pageNum, pageSize));
+                    page = orderRepository.findByTypeAndDateRange(type, from, to, PageRequest.of(pageNum, pageSize));
                 } else {
-                    page = orderRepository.findByTenantIdAndDateRange(tenantId, from, to, PageRequest.of(pageNum, pageSize));
+                    page = orderRepository.findByDateRange(from, to, PageRequest.of(pageNum, pageSize));
                 }
 
                 for (var order : page.getContent()) {

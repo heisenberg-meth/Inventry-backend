@@ -30,15 +30,15 @@ public class CustomerService {
   private final PaymentRepository paymentRepository;
 
   public Page<CustomerResponse> getCustomers(Pageable pageable) {
-    Long tenantId = com.ims.shared.auth.TenantContext.requireTenantId();
-    return customerRepository.findByTenantId(tenantId, pageable).map(this::toResponse);
+    com.ims.shared.auth.TenantContext.assertTenantPresent();
+    return customerRepository.findAll(pageable).map(this::toResponse);
   }
 
   public Customer getById(Long id) {
-    Long tenantId = com.ims.shared.auth.TenantContext.requireTenantId();
+    com.ims.shared.auth.TenantContext.assertTenantPresent();
     return Objects.requireNonNull(
         customerRepository
-            .findByIdAndTenantId(id, tenantId)
+            .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Customer not found")));
   }
 

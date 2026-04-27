@@ -66,8 +66,7 @@ public class InvoiceService {
       throw new IllegalArgumentException("Invoice can only be created for SALE orders");
     }
 
-    Long tenantId = TenantContext.requireTenantId();
-    if (invoiceRepository.existsByOrderId(order.getId(), tenantId)) {
+    if (invoiceRepository.existsByOrderId(order.getId())) {
       throw new IllegalArgumentException("Invoice already exists for this order");
     }
 
@@ -192,9 +191,20 @@ public class InvoiceService {
         .findById(Objects.requireNonNull(TenantContext.getTenantId()))
         .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
-    Customer customer = customerRepository
-        .findById(Objects.requireNonNull(order.getCustomerId(), "customer id required"))
-        .orElseThrow(() -> new EntityNotFoundException("Customer not found"));
+    String customerName = "Walk-in Customer";
+    String customerAddress = "N/A";
+    String customerGstin = "N/A";
+
+    if (order.getCustomerId() != null) {
+      Customer customer = customerRepository
+          .findById(order.getCustomerId())
+          .orElse(null);
+      if (customer != null) {
+        customerName = customer.getName();
+        customerAddress = customer.getAddress();
+        customerGstin = customer.getGstin();
+      }
+    }
 
     List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
 
@@ -221,9 +231,9 @@ public class InvoiceService {
         "tenantAddress", tenant.getAddress() != null ? tenant.getAddress() : "Company Address TBD");
     context.setVariable("tenantGstin", tenant.getGstin() != null ? tenant.getGstin() : "GSTIN-TBD");
 
-    context.setVariable("customerName", customer.getName());
-    context.setVariable("customerAddress", customer.getAddress());
-    context.setVariable("customerGstin", customer.getGstin());
+    context.setVariable("customerName", customerName);
+    context.setVariable("customerAddress", customerAddress != null ? customerAddress : "N/A");
+    context.setVariable("customerGstin", customerGstin != null ? customerGstin : "N/A");
 
     context.setVariable("invoiceNumber", invoice.getInvoiceNumber());
     context.setVariable(
@@ -243,22 +253,21 @@ public class InvoiceService {
   }
 
   public Page<Invoice> getInvoices(Pageable pageable) {
-    Long tenantId = TenantContext.requireTenantId();
-    return Objects.requireNonNull(invoiceRepository.findByTenantIdAndIsActiveTrue(tenantId, pageable));
+    TenantContext.assertTenantPresent();
+    return Objects.requireNonNull(invoiceRepository.findAllByIsActiveTrue(pageable));
   }
 
   public Page<Invoice> getOverdueInvoices(Pageable pageable) {
-    Long tenantId = TenantContext.requireTenantId();
+    TenantContext.assertTenantPresent();
     return Objects.requireNonNull(
-        invoiceRepository.findByTenantIdAndStatusNotAndDueDateBefore(tenantId, InvoiceStatus.PAID, LocalDate.now(), pageable));
+        invoiceRepository.findByStatusNotAndDueDateBefore(InvoiceStatus.PAID, LocalDate.now(), pageable));
   }
 
   public Invoice getInvoiceById(Long id) {
-    Long tenantId = TenantContext.requireTenantId();
+    TenantContext.assertTenantPresent();
     return Objects.requireNonNull(
         invoiceRepository
-            .findById(id) // Standard findById needs care if not isolated by DB policy
-            .filter(inv -> tenantId.equals(inv.getTenantId()))
+            .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Invoice not found")));
   }
 }

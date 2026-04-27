@@ -1,0 +1,77 @@
+{"properties": [
+  {
+    "name": "app.jwt.secret",
+    "type": "java.lang.String",
+    "description": "A description for 'app.jwt.secret'"
+  },
+  {
+    "name": "app.jwt.expiry-seconds",
+    "type": "java.lang.String",
+    "description": "A description for 'app.jwt.expiry-seconds'"
+  },
+  {
+    "name": "app.jwt.refresh-expiry-seconds",
+    "type": "java.lang.String",
+    "description": "A description for 'app.jwt.refresh-expiry-seconds'"
+  },
+  {
+    "name": "app.cache.product-ttl-minutes",
+    "type": "java.lang.String",
+    "description": "A description for 'app.cache.product-ttl-minutes'"
+  },
+  {
+    "name": "app.cache.stock-ttl-minutes",
+    "type": "java.lang.String",
+    "description": "A description for 'app.cache.stock-ttl-minutes'"
+  },
+  {
+    "name": "app.cache.report-ttl-minutes",
+    "type": "java.lang.String",
+    "description": "A description for 'app.cache.report-ttl-minutes'"
+  },
+  {
+    "name": "app.cache.tenant-ttl-hours",
+    "type": "java.lang.String",
+    "description": "A description for 'app.cache.tenant-ttl-hours'"
+  },
+  {
+    "name": "app.rate-limit.auth-rpm",
+    "type": "java.lang.String",
+    "description": "A description for 'app.rate-limit.auth-rpm'"
+  },
+  {
+    "name": "app.rate-limit.public-rpm",
+    "type": "java.lang.String",
+    "description": "A description for 'app.rate-limit.public-rpm'"
+  },
+  {
+    "name": "app.rate-limit.authenticated-rpm",
+    "type": "java.lang.String",
+    "description": "A description for 'app.rate-limit.authenticated-rpm'"
+  },
+  {
+    "name": "app.rate-limit.window-seconds",
+    "type": "java.lang.String",
+    "description": "A description for 'app.rate-limit.window-seconds'"
+  },
+  {
+    "name": "app.security.encryption-key",
+    "type": "java.lang.String",
+    "description": "A description for 'app.security.encryption-key'"
+  },
+  {
+    "name": "app.trusted-proxies",
+    "type": "java.lang.String",
+    "description": "A description for 'app.trusted-proxies'"
+  },
+  {
+    "name": "app.test.mode",
+    "type": "java.lang.String",
+    "description": "A description for 'app.test.mode'"
+  },
+  {
+    "name": "app.security.trusted-proxies",
+    "type": "java.lang.String",
+    "description": "A description for 'app.security.trusted-proxies'"
+  }
+]}

@@ -55,8 +55,7 @@ public class ProductController {
   public ResponseEntity<List<ProductResponse>> getNextProducts(
       @RequestParam Long lastId, @RequestParam(defaultValue = "20") int limit) {
     Long safeLastId = Objects.requireNonNull(lastId);
-    Long tenantId = Objects.requireNonNull(TenantContext.getTenantId());
-    return ResponseEntity.ok(productService.getNextProducts(tenantId, safeLastId, limit));
+    return ResponseEntity.ok(productService.getNextProducts(safeLastId, limit));
   }
 
   @PostMapping

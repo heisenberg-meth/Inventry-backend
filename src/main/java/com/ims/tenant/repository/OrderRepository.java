@@ -23,17 +23,15 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
   @Query("SELECT o FROM Order o WHERE o.id = :id")
   java.util.Optional<Order> lockById(@Param("id") Long id);
 
-  @Query("SELECT o FROM Order o WHERE o.type = :type AND o.tenantId = :tenantId AND o.createdAt >= :from AND o.createdAt <= :to")
+  @Query("SELECT o FROM Order o WHERE o.type = :type AND o.createdAt >= :from AND o.createdAt <= :to")
   Page<Order> findByTypeAndDateRange(
       @Param("type") String type, 
-      @Param("tenantId") Long tenantId, 
       @Param("from") LocalDateTime from, 
       @Param("to") LocalDateTime to, 
       Pageable pageable);
 
-  @Query("SELECT o FROM Order o WHERE o.tenantId = :tenantId AND o.createdAt >= :from AND o.createdAt <= :to")
-  Page<Order> findByTenantIdAndDateRange(
-      @Param("tenantId") Long tenantId, 
+  @Query("SELECT o FROM Order o WHERE o.createdAt >= :from AND o.createdAt <= :to")
+  Page<Order> findByDateRange(
       @Param("from") LocalDateTime from, 
       @Param("to") LocalDateTime to, 
       Pageable pageable);
@@ -57,30 +55,27 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
   @Query(
       "SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o "
-          + "WHERE o.type = :type AND o.tenantId = :tenantId AND o.createdAt >= :from AND o.createdAt <= :to")
+          + "WHERE o.type = :type AND o.createdAt >= :from AND o.createdAt <= :to")
   @NonNull
   BigDecimal sumAmountByTypeAndDateRange(
       @Param("type") @NonNull String type,
-      @Param("tenantId") @NonNull Long tenantId,
       @Param("from") @NonNull LocalDateTime from,
       @Param("to") @NonNull LocalDateTime to);
 
   @Query(
       "SELECT COALESCE(SUM(o.taxAmount), 0) FROM Order o "
-          + "WHERE o.type = :type AND o.tenantId = :tenantId AND o.createdAt >= :from AND o.createdAt <= :to")
+          + "WHERE o.type = :type AND o.createdAt >= :from AND o.createdAt <= :to")
   @NonNull
   BigDecimal sumTaxAmountByTypeAndDateRange(
       @Param("type") @NonNull String type,
-      @Param("tenantId") @NonNull Long tenantId,
       @Param("from") @NonNull LocalDateTime from,
       @Param("to") @NonNull LocalDateTime to);
 
   @Query(
       "SELECT COUNT(o) FROM Order o "
-          + "WHERE o.type = :type AND o.tenantId = :tenantId AND o.createdAt >= :from AND o.createdAt <= :to")
+          + "WHERE o.type = :type AND o.createdAt >= :from AND o.createdAt <= :to")
   long countByTypeAndDateRange(
       @Param("type") @NonNull String type,
-      @Param("tenantId") @NonNull Long tenantId,
       @Param("from") @NonNull LocalDateTime from,
       @Param("to") @NonNull LocalDateTime to);
 
@@ -89,24 +84,20 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
       SELECT YEAR(o.createdAt) as year, MONTH(o.createdAt) as month, SUM(o.totalAmount) as revenue
       FROM Order o
       WHERE o.type = :type
-        AND o.tenantId = :tenantId
         AND o.createdAt >= :from
       GROUP BY YEAR(o.createdAt), MONTH(o.createdAt)
       ORDER BY YEAR(o.createdAt), MONTH(o.createdAt)
       """)
   List<MonthlyRevenue> getMonthlyRevenue(
       @Param("type") String type,
-      @Param("tenantId") Long tenantId,
       @Param("from") LocalDateTime from);
 
   @Query(
       """
       SELECT o.status as status, COUNT(o) as count
       FROM Order o
-      WHERE o.tenantId = :tenantId
-        AND o.createdAt >= :from
+      WHERE o.createdAt >= :from
       GROUP BY o.status
       """)
-  List<OrderStatusStat> getOrderStatusStats(
-      @Param("tenantId") Long tenantId, @Param("from") LocalDateTime from);
+  List<OrderStatusStat> getOrderStatusStats(@Param("from") LocalDateTime from);
 }

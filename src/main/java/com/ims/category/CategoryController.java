@@ -36,8 +36,7 @@ public class CategoryController {
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "List categories")
   public ResponseEntity<PagedResponse<CategoryResponse>> list(Pageable pageable) {
-    long tenantId = TenantContext.requireTenantId();
-    return ResponseEntity.ok(categoryService.getCategories(tenantId, pageable));
+    return ResponseEntity.ok(categoryService.getCategories(pageable));
   }
 
   @PostMapping

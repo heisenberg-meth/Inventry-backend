@@ -64,7 +64,7 @@ public class ProductService {
     }
 
     Page<ProductResponse> page = productRepository
-        .findAllWithDetails(tenantId, pageable)
+        .findAllWithDetails(pageable)
         .map(this::toResponse);
     return new PagedResponse<>(
         page.getContent(),
@@ -75,10 +75,10 @@ public class ProductService {
   }
 
   public List<ProductResponse> getNextProducts(
-      Long tenantId, @Nullable Long lastId, int limit) {
+      @Nullable Long lastId, int limit) {
     securityContextAccessor.requireTenantId();
     Pageable pageable = PageRequest.of(0, Math.min(limit, MAX_PAGE_SIZE));
-    List<ProductResponse> list = productRepository.findNextProducts(Objects.requireNonNull(tenantId), lastId != null ? lastId : 0L, pageable)
+    List<ProductResponse> list = productRepository.findNextProducts(lastId != null ? lastId : 0L, pageable)
         .stream()
         .map(this::toResponse)
         .collect(Collectors.toList());
@@ -89,9 +89,9 @@ public class ProductService {
   @Cacheable(value = "products", key = "'id:' + #id", cacheResolver = "tenantAwareCacheResolver")
   public ProductResponse getProductById(Long id) {
     Objects.requireNonNull(id, "product id required");
-    Long tenantId = securityContextAccessor.requireTenantId();
+    securityContextAccessor.requireTenantId();
     ProductResponse response = productRepository
-        .findByIdWithDetails(id, tenantId)
+        .findByIdWithDetails(id)
         .map(view -> toResponse(Objects.requireNonNull(view)))
         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
@@ -99,8 +99,8 @@ public class ProductService {
   }
 
   public Optional<Product> findByIdWithLock(Long id) {
-    Long tenantId = securityContextAccessor.requireTenantId();
-    return productRepository.findByIdWithLock(id, tenantId);
+    securityContextAccessor.requireTenantId();
+    return productRepository.findByIdWithLock(id);
   }
 
   @Transactional
@@ -119,7 +119,7 @@ public class ProductService {
           .findById(tenantId)
           .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
       if (tenant.getMaxProducts() != null) {
-        long currentCount = productRepository.countActiveByTenant(tenantId);
+        long currentCount = productRepository.countActiveByTenant();
         if (currentCount >= tenant.getMaxProducts()) {
           throw new IllegalArgumentException(
               "Product limit reached for your plan (" + tenant.getMaxProducts() + ")");
@@ -354,11 +354,10 @@ public class ProductService {
         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
     Product original = Objects.requireNonNull(tmpOriginal);
 
-    Long tenantId = Objects.requireNonNull(original.getTenantId());
     Product clone = Objects.requireNonNull(
         Product.builder()
             .name(Objects.requireNonNull(original.getName()) + " (Copy)")
-            .sku(Objects.requireNonNull(generateUniqueSku(original.getSku(), tenantId)))
+            .sku(Objects.requireNonNull(generateUniqueSku(original.getSku())))
             .barcode("COPY-" + java.util.UUID.randomUUID().toString().substring(0, 8)) // Barcode should be unique
             .categoryId(original.getCategoryId())
             .unit(original.getUnit())
@@ -380,14 +379,14 @@ public class ProductService {
     ProductResponse fallback = toResponse(Objects.requireNonNull(savedProduct));
 
     ProductResponse result = productRepository
-        .findByIdWithDetails(savedProduct.getId(), tenantId)
+        .findByIdWithDetails(savedProduct.getId())
         .map(this::toResponse)
         .orElse(fallback);
 
     return Objects.requireNonNull(result);
   }
 
-  private @Nullable String generateUniqueSku(@Nullable String originalSku, Long tenantId) {
+  private @Nullable String generateUniqueSku(@Nullable String originalSku) {
     if (originalSku == null) {
       return null;
     }
@@ -395,16 +394,16 @@ public class ProductService {
     String baseSku = originalSku.replaceAll("-COPY(-\\d+)?$", "");
     String newSku = baseSku + "-COPY";
     int counter = 1;
-    while (productRepository.existsBySkuAndTenantId(newSku, tenantId)) {
+    while (productRepository.existsBySku(newSku)) {
       newSku = baseSku + "-COPY-" + counter++;
     }
     return newSku;
   }
 
   public List<ProductResponse> getLowStockProducts() {
-    Long tenantId = securityContextAccessor.requireTenantId();
+    securityContextAccessor.requireTenantId();
 
-    List<ProductResponse> list = Objects.requireNonNull(productRepository.findLowStockByTenant(tenantId)).stream()
+    List<ProductResponse> list = Objects.requireNonNull(productRepository.findLowStockByTenant()).stream()
         .map(this::toResponse)
         .collect(Collectors.toList());
 
@@ -447,8 +446,8 @@ public class ProductService {
   @Transactional(readOnly = true)
   @RequiresPermission("export_products")
   public String exportProductsAsCsv() {
-    Long tenantId = securityContextAccessor.requireTenantId();
-    var products = productRepository.findExportData(tenantId);
+    securityContextAccessor.requireTenantId();
+    var products = productRepository.findExportData();
 
     var data =
         products.stream()

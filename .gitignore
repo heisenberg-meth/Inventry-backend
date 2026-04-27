@@ -49,3 +49,5 @@ scripts/generate-secret.sh
 .windsurf/*
 .zencoder/*
 skills-lock.json
+.git-rewrite/
+.git-rewrite/*
