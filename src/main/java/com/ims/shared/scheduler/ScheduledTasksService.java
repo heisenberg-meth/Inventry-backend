@@ -37,7 +37,7 @@ public class ScheduledTasksService {
   private final UserRepository userRepository;
   private final NotificationService notificationService;
 
-  /** 
+  /**
    * Checks for low stock across ALL tenants in a single pass.
    * Optimized to use streaming to keep memory footprint O(1).
    */
@@ -46,7 +46,7 @@ public class ScheduledTasksService {
   @Transactional
   public void checkLowStock() {
     log.info("Scheduled Task: Checking low stock across all tenants (Optimized)");
-    
+
     try (Stream<Product> lowStockStream = productRepository.streamAllLowStockGlobal()) {
       lowStockStream.forEach(this::processLowStockProduct);
     }
@@ -54,9 +54,8 @@ public class ScheduledTasksService {
 
   private void processLowStockProduct(Product p) {
     Long tenantId = p.getTenantId();
-    // Check if alert already exists to avoid duplication
-    if (alertRepository.findByTypeAndResourceIdAndIsDismissedFalse("LOW_STOCK", p.getId()).isEmpty()) {
-      TenantContext.runWithTenant(tenantId, () -> {
+    TenantContext.runWithTenant(tenantId, () -> {
+      if (alertRepository.findByTypeAndResourceIdAndIsDismissedFalse("LOW_STOCK", p.getId()).isEmpty()) {
         Alert alert = Alert.builder()
             .tenantId(tenantId)
             .type("LOW_STOCK")
@@ -75,8 +74,8 @@ public class ScheduledTasksService {
               "LOW_STOCK",
               p.getId());
         });
-      });
-    }
+      }
+    });
   }
 
   /**
@@ -87,7 +86,7 @@ public class ScheduledTasksService {
   @Transactional
   public void checkOverdueInvoices() {
     log.info("Scheduled Task: Checking overdue invoices (Optimized)");
-    
+
     try (Stream<Invoice> overdueStream = invoiceRepository.streamAllOverdueGlobal(
         InvoiceStatus.PAID, Objects.requireNonNull(LocalDate.now()))) {
       overdueStream.forEach(this::processOverdueInvoice);
@@ -96,8 +95,8 @@ public class ScheduledTasksService {
 
   private void processOverdueInvoice(Invoice inv) {
     Long tenantId = Objects.requireNonNull(inv.getTenantId());
-    if (alertRepository.findByTypeAndResourceIdAndIsDismissedFalse("OVERDUE_INVOICE", inv.getId()).isEmpty()) {
-      TenantContext.runWithTenant(tenantId, () -> {
+    TenantContext.runWithTenant(tenantId, () -> {
+      if (alertRepository.findByTypeAndResourceIdAndIsDismissedFalse("OVERDUE_INVOICE", inv.getId()).isEmpty()) {
         Alert alert = Alert.builder()
             .tenantId(tenantId)
             .type("OVERDUE_INVOICE")
@@ -106,8 +105,8 @@ public class ScheduledTasksService {
             .resourceId(inv.getId())
             .build();
         alertRepository.save(alert);
-      });
-    }
+      }
+    });
   }
 
   /**

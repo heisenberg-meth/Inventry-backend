@@ -90,7 +90,7 @@ public class UserService {
     var tenant = Objects.requireNonNull(tmpTenant);
 
     if (tenant.getMaxUsers() != null) {
-      long currentCount = userRepository.countActiveByTenantId(tenantId);
+      long currentCount = userRepository.countActive();
       if (currentCount >= tenant.getMaxUsers()) {
         throw new IllegalArgumentException(
             "User limit reached for your plan (" + tenant.getMaxUsers() + ")");
