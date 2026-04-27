@@ -45,7 +45,6 @@ public class TenantSupportController {
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(
             supportService.createTicket(
-                Objects.requireNonNull(auth.getTenantId()),
                 Objects.requireNonNull(auth.getUserId()),
                 request));
   }
@@ -54,18 +53,16 @@ public class TenantSupportController {
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "List my tenant tickets")
   public ResponseEntity<Page<SupportTicket>> listTickets(Pageable pageable) {
-    JwtAuthDetails auth = getAuthDetails();
     return ResponseEntity.ok(
-        supportService.listTenantTickets(Objects.requireNonNull(auth.getTenantId()), pageable));
+        supportService.listTenantTickets(pageable));
   }
 
   @GetMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "Get ticket details")
   public ResponseEntity<Map<String, Object>> getTicketDetails(@PathVariable Long id) {
-    JwtAuthDetails auth = getAuthDetails();
     return ResponseEntity.ok(
-        supportService.getTenantTicketDetails(Objects.requireNonNull(auth.getTenantId()), id));
+        supportService.getTenantTicketDetails(id));
   }
 
   @PostMapping("/{id}/messages")
@@ -84,9 +81,8 @@ public class TenantSupportController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Close ticket")
   public ResponseEntity<SupportTicket> closeTicket(@PathVariable Long id) {
-    JwtAuthDetails auth = getAuthDetails();
     return ResponseEntity.ok(
-        supportService.closeTicketByTenant(Objects.requireNonNull(auth.getTenantId()), id));
+        supportService.closeTicketByTenant(id));
   }
 
   private JwtAuthDetails getAuthDetails() {

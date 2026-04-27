@@ -1,7 +1,6 @@
 package com.ims.tenant.service;
 
 import com.ims.product.ProductRepository;
-import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.repository.OrderRepository;
 import java.util.Objects;
 import java.time.LocalDateTime;
@@ -24,10 +23,6 @@ public class TenantAnalyticsService {
   private static final int ORDER_STATUS_WINDOW_MONTHS = 6;
   private static final int TOP_PRODUCTS_LIMIT = 5;
   private static final int PERCENT_MULTIPLIER = 100;
-
-  /**
-   * Placeholder weight applied to current stock to produce a "top product" score.
-   */
   private static final int PLACEHOLDER_TOP_PRODUCT_VALUE_MULTIPLIER = 100;
 
   @org.springframework.beans.factory.annotation.Value("${feature.ai.enabled:false}")
@@ -38,7 +33,6 @@ public class TenantAnalyticsService {
   private final ReportService reportService;
 
   public List<Map<String, Object>> getRevenueTrend() {
-    Long tenantId = TenantContext.getTenantId();
     LocalDateTime from = LocalDateTime.now()
         .minusMonths(REVENUE_TREND_WINDOW_MONTHS)
         .withDayOfMonth(1)
@@ -46,11 +40,10 @@ public class TenantAnalyticsService {
         .withMinute(0);
 
     return Objects.requireNonNull(
-        orderRepository.getMonthlyRevenue("SALE", tenantId, from).stream()
+        orderRepository.getMonthlyRevenue("SALE", from).stream()
             .map(
                 r -> {
-                  String monthName =
-                      Month.of(r.getMonth()).getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
+                  String monthName = Month.of(r.getMonth()).getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
                   Map<String, Object> map = new LinkedHashMap<>();
                   map.put("month", monthName + " " + r.getYear());
                   map.put("revenue", r.getRevenue());
@@ -63,25 +56,22 @@ public class TenantAnalyticsService {
     return Objects.requireNonNull(
         productRepository
             .findTopStock(
-                TenantContext.requireTenantId(),
                 org.springframework.data.domain.PageRequest.of(0, TOP_PRODUCTS_LIMIT))
             .getContent()
             .stream()
             .map(
-                p ->
-                    Map.<String, Object>of(
-                        "name",
-                        p.getName(),
-                        "value",
-                        p.getStock() * PLACEHOLDER_TOP_PRODUCT_VALUE_MULTIPLIER))
+                p -> Map.<String, Object>of(
+                    "name",
+                    p.getName(),
+                    "value",
+                    p.getStock() * PLACEHOLDER_TOP_PRODUCT_VALUE_MULTIPLIER))
             .collect(Collectors.toList()));
   }
 
   public List<Map<String, Object>> getOrderStatusStats() {
-    Long tenantId = TenantContext.getTenantId();
     LocalDateTime from = LocalDateTime.now().minusMonths(ORDER_STATUS_WINDOW_MONTHS);
 
-    var stats = orderRepository.getOrderStatusStats(tenantId, from);
+    var stats = orderRepository.getOrderStatusStats(from);
     long total = stats.stream().mapToLong(com.ims.tenant.dto.OrderStatusStat::getCount).sum();
 
     if (total == 0) {

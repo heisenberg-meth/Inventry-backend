@@ -207,8 +207,14 @@ public abstract class BaseIntegrationTest {
    * Helper to get or create a role for a tenant.
    */
   protected Role getOrCreateRole(@NonNull String name, @NonNull Long tenantId) {
-    return roleRepository.findByNameAndTenantId(name, tenantId)
-        .orElseGet(() -> roleRepository.save(Role.builder().name(name).tenantId(tenantId).build()));
+    Long previous = TenantContext.getTenantId();
+    TenantContext.setTenantId(tenantId);
+    try {
+      return roleRepository.findByName(name)
+          .orElseGet(() -> roleRepository.save(Role.builder().name(name).tenantId(tenantId).build()));
+    } finally {
+      TenantContext.setTenantId(previous);
+    }
   }
 
   protected void verifyUser(String email) {

@@ -51,7 +51,8 @@ public class WebhookService {
   private final com.ims.shared.metrics.BusinessMetrics businessMetrics;
 
   public List<Webhook> getMyWebhooks() {
-    return webhookRepository.findByTenantId(TenantContext.requireTenantId());
+    TenantContext.assertTenantPresent();
+    return webhookRepository.findAll();
   }
 
   @Transactional
@@ -113,7 +114,15 @@ public class WebhookService {
    */
   @Transactional
   public void processOutboxEntry(WebhookOutbox entry) {
-    List<Webhook> webhooks = webhookRepository.findByTenantId(entry.getTenantId());
+    Long tenantId = entry.getTenantId();
+    List<Webhook> webhooks;
+    Long previousTenantId = TenantContext.getTenantId();
+    TenantContext.setTenantId(tenantId);
+    try {
+      webhooks = webhookRepository.findAll();
+    } finally {
+      TenantContext.setTenantId(previousTenantId);
+    }
     boolean atLeastOneSent = false;
 
     for (Webhook webhook : webhooks) {

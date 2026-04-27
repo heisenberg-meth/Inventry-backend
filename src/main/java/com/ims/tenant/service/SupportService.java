@@ -38,11 +38,11 @@ public class SupportService {
 
   @Transactional
   public SupportTicket createTicket(
-      Long tenantId, Long userId, CreateTicketRequest request) {
+      Long userId, CreateTicketRequest request) {
+    Long tenantId = com.ims.shared.auth.TenantContext.requireTenantId();
 
     SupportTicket initialTicket =
         SupportTicket.builder()
-            .tenantId(tenantId)
             .createdBy(userId)
             .title(request.getTitle())
             .description(request.getDescription())
@@ -60,16 +60,17 @@ public class SupportService {
   }
 
   @Transactional(readOnly = true)
-  public Page<SupportTicket> listTenantTickets(Long tenantId, Pageable pageable) {
-    return Objects.requireNonNull(ticketRepository.findByTenantId(tenantId, pageable));
+  public Page<SupportTicket> listTenantTickets(Pageable pageable) {
+    com.ims.shared.auth.TenantContext.assertTenantPresent();
+    return Objects.requireNonNull(ticketRepository.findAll(pageable));
   }
 
   @Transactional(readOnly = true)
-  public Map<String, Object> getTenantTicketDetails(
-      Long tenantId, Long ticketId) {
+  public Map<String, Object> getTenantTicketDetails(Long ticketId) {
+    com.ims.shared.auth.TenantContext.assertTenantPresent();
     SupportTicket ticket =
         ticketRepository
-            .findByIdAndTenantId(ticketId, tenantId)
+            .findById(ticketId)
             .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
 
     List<SupportMessage> messages = messageRepository.findByTicketIdOrderByCreatedAtAsc(ticketId);
@@ -81,10 +82,11 @@ public class SupportService {
   }
 
   @Transactional
-  public SupportTicket closeTicketByTenant(Long tenantId, Long ticketId) {
+  public SupportTicket closeTicketByTenant(Long ticketId) {
+    com.ims.shared.auth.TenantContext.assertTenantPresent();
     SupportTicket ticket =
         ticketRepository
-            .findByIdAndTenantId(ticketId, tenantId)
+            .findById(ticketId)
             .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
 
     ticket.setStatus(SupportTicketStatus.CLOSED);

@@ -47,7 +47,7 @@ public class TenantInitializationService {
       seedDefaultRoles(tenantId);
 
       // 2. Resolve ADMIN role for the owner
-      Role adminRole = roleRepository.findByNameAndTenantId(UserRole.ADMIN.name(), tenantId)
+      Role adminRole = roleRepository.findByName(UserRole.ADMIN.name())
           .orElseThrow(() -> new IllegalStateException("ADMIN role not seeded for tenant"));
       user.setRole(Objects.requireNonNull(adminRole));
 
@@ -114,7 +114,7 @@ public class TenantInitializationService {
 
   private void seedDefaultRoles(Long tenantId) {
     for (UserRole roleName : new UserRole[]{UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF}) {
-      if (roleRepository.findByNameAndTenantId(roleName.name(), tenantId).isEmpty()) {
+      if (roleRepository.findByName(roleName.name()).isEmpty()) {
         Role role = Role.builder()
             .name(Objects.requireNonNull(roleName.name()))
             .description("Default " + roleName.name() + " role")

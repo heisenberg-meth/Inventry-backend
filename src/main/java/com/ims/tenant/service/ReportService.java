@@ -61,10 +61,10 @@ public class ReportService {
     LocalDateTime toDt = Objects.requireNonNull(to, "to date required").atTime(LocalTime.MAX);
 
     BigDecimal totalSpent = orderRepository.sumAmountByTypeAndDateRange(
-        "PURCHASE", tenantId, Objects.requireNonNull(fromDt), Objects.requireNonNull(toDt));
+        "PURCHASE", Objects.requireNonNull(fromDt), Objects.requireNonNull(toDt));
 
     long totalOrders = orderRepository.countByTypeAndDateRange(
-        "PURCHASE", tenantId, Objects.requireNonNull(fromDt), Objects.requireNonNull(toDt));
+        "PURCHASE", Objects.requireNonNull(fromDt), Objects.requireNonNull(toDt));
     BigDecimal avgOrderValue = totalOrders > 0
         ? totalSpent.divide(BigDecimal.valueOf(totalOrders), 2, RoundingMode.HALF_UP)
         : BigDecimal.ZERO;
@@ -131,19 +131,19 @@ public class ReportService {
       dashboard.put("expiring_soon_count", expiringSoon);
     }
 
-    dashboard.put("category_distribution", getCategoryDistribution(tenantId));
+    dashboard.put("category_distribution", getCategoryDistribution());
     dashboard.put("cached_at", Objects.requireNonNull(LocalDateTime.now()).toString());
 
     return dashboard;
   }
 
-  public BigDecimal getInventoryValuation(Long tenantId) {
-    return productRepository.getTotalInventoryValue(tenantId);
+  public BigDecimal getInventoryValuation() {
+    return productRepository.getTotalInventoryValue();
   }
 
-  public List<Map<String, Object>> getCategoryDistribution(Long tenantId) {
+  public List<Map<String, Object>> getCategoryDistribution() {
     return Objects.requireNonNull(
-        productRepository.getCategoryDistribution(tenantId).stream()
+        productRepository.getCategoryDistribution().stream()
             .map(
                 c -> {
                   Map<String, Object> item = new LinkedHashMap<>();
@@ -156,10 +156,9 @@ public class ReportService {
 
   @Cacheable(value = "reports", key = "'stock-report'", cacheResolver = "tenantAwareCacheResolver")
   public List<Map<String, Object>> getStockReport(@Nullable String filter) {
-    Long tenantId = securityContextAccessor.requireTenantId();
 
     // Use optimized projection to avoid N+1 and memory bloat
-    var products = productRepository.findStockReportView(tenantId);
+    var products = productRepository.findStockReportView();
     List<Map<String, Object>> report = new ArrayList<>();
     int thresholdDays = getExpiryThreshold();
 
@@ -225,10 +224,10 @@ public class ReportService {
     LocalDateTime toDt = Objects.requireNonNull(to, "to date required").atTime(LocalTime.MAX);
 
     BigDecimal totalRevenue = orderRepository.sumAmountByTypeAndDateRange(
-        "SALE", tenantId, Objects.requireNonNull(fromDt), Objects.requireNonNull(toDt));
+        "SALE", Objects.requireNonNull(fromDt), Objects.requireNonNull(toDt));
 
     long totalOrders = orderRepository.countByTypeAndDateRange(
-        "SALE", tenantId, Objects.requireNonNull(fromDt), Objects.requireNonNull(toDt));
+        "SALE", Objects.requireNonNull(fromDt), Objects.requireNonNull(toDt));
     BigDecimal avgOrderValue = totalOrders > 0
         ? totalRevenue.divide(BigDecimal.valueOf(totalOrders), 2, RoundingMode.HALF_UP)
         : BigDecimal.ZERO;
@@ -254,10 +253,10 @@ public class ReportService {
     LocalDateTime toDt = Objects.requireNonNull(to, "to date required").atTime(LocalTime.MAX);
 
     BigDecimal salesRevenue = orderRepository.sumAmountByTypeAndDateRange(
-        "SALE", tenantId, Objects.requireNonNull(fromDt), Objects.requireNonNull(toDt));
+        "SALE", Objects.requireNonNull(fromDt), Objects.requireNonNull(toDt));
 
     BigDecimal purchaseCost = orderRepository.sumAmountByTypeAndDateRange(
-        "PURCHASE", tenantId, Objects.requireNonNull(fromDt), Objects.requireNonNull(toDt));
+        "PURCHASE", Objects.requireNonNull(fromDt), Objects.requireNonNull(toDt));
     BigDecimal profit = salesRevenue.subtract(purchaseCost);
 
     Map<String, Object> report = new LinkedHashMap<>();
@@ -286,10 +285,10 @@ public class ReportService {
     LocalDateTime toDt = Objects.requireNonNull(to, "to date required").atTime(LocalTime.MAX);
 
     BigDecimal totalSalesTax = orderRepository.sumTaxAmountByTypeAndDateRange(
-        "SALE", tenantId, Objects.requireNonNull(fromDt), Objects.requireNonNull(toDt));
+        "SALE", Objects.requireNonNull(fromDt), Objects.requireNonNull(toDt));
 
     BigDecimal totalPurchaseTax = orderRepository.sumTaxAmountByTypeAndDateRange(
-        "PURCHASE", tenantId, Objects.requireNonNull(fromDt), Objects.requireNonNull(toDt));
+        "PURCHASE", Objects.requireNonNull(fromDt), Objects.requireNonNull(toDt));
 
     Map<String, Object> gst = new LinkedHashMap<>();
     gst.put("period", Map.of("from", from, "to", to));
@@ -303,7 +302,7 @@ public class ReportService {
   public List<Map<String, Object>> getAlerts() {
     return Objects.requireNonNull(
         alertRepository
-            .findByTenantIdAndIsDismissedFalse(securityContextAccessor.requireTenantId())
+            .findAllByIsDismissedFalse()
             .stream()
             .map(
                 a -> {
@@ -325,11 +324,9 @@ public class ReportService {
         .findById(id)
         .ifPresent(
             a -> {
-              if (Objects.equals(a.getTenantId(), TenantContext.requireTenantId())) {
-                a.setIsDismissed(true);
-                a.setDismissedAt(Objects.requireNonNull(LocalDateTime.now()));
-                alertRepository.save(a);
-              }
+              a.setIsDismissed(true);
+              a.setDismissedAt(Objects.requireNonNull(LocalDateTime.now()));
+              alertRepository.save(a);
             });
   }
 

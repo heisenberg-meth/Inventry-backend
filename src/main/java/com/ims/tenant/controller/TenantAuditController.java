@@ -23,14 +23,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class TenantAuditController {
 
   private final AuditLogService auditLogService;
-  private final com.ims.shared.auth.SecurityContextAccessor securityContext;
 
   @GetMapping
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Get activity logs for current tenant")
   public ResponseEntity<Page<AuditLogResponse>> getTenantLogs(Pageable pageable) {
-    Long tenantId = securityContext.requireTenantId();
-    return ResponseEntity.ok(auditLogService.getTenantLogsAsDto(tenantId, Objects.requireNonNull(pageable)));
+    return ResponseEntity.ok(auditLogService.getTenantLogsAsDto(Objects.requireNonNull(pageable)));
   }
 
 }

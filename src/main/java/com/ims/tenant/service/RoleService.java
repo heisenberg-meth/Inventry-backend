@@ -28,21 +28,21 @@ public class RoleService {
   private final AuditLogService auditLogService;
 
   @Transactional(readOnly = true)
-  public List<Role> findByTenant(Long tenantId) {
-    return Objects.requireNonNull(roleRepository.findByTenantIdOrderByNameAsc(tenantId));
+  public List<Role> findAll() {
+    return Objects.requireNonNull(roleRepository.findAllByOrderByNameAsc());
   }
 
   @Transactional(readOnly = true)
-  public Role findOne(Long tenantId, Long roleId) {
+  public Role findOne(Long roleId) {
     return Objects.requireNonNull(
         roleRepository
-            .findByIdAndTenantId(roleId, tenantId)
+            .findById(roleId)
             .orElseThrow(() -> new EntityNotFoundException("Role not found")));
   }
 
   @Transactional
-  public Role create(Long tenantId, CreateRoleRequest request) {
-    if (roleRepository.findByNameAndTenantId(request.getName(), tenantId).isPresent()) {
+  public Role create(CreateRoleRequest request) {
+    if (roleRepository.findByName(request.getName()).isPresent()) {
       throw new IllegalArgumentException("Role already exists: " + request.getName());
     }
 
@@ -58,10 +58,10 @@ public class RoleService {
   @Transactional
   @CacheEvict(value = "permissions", allEntries = true, cacheResolver = "tenantAwareCacheResolver")
   public Role assignPermissions(
-      Long tenantId, Long roleId, AssignPermissionsRequest request) {
+      Long roleId, AssignPermissionsRequest request) {
 
     Role role = roleRepository
-        .findByIdAndTenantId(roleId, tenantId)
+        .findById(roleId)
         .orElseThrow(() -> new EntityNotFoundException("Role not found"));
 
     List<Permission> permissions = permissionRepository.findByIdIn(request.getPermissionIds());

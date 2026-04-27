@@ -3,7 +3,6 @@ package com.ims.product;
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.response.PagedResponse;
 import com.ims.dto.response.ProductResponse;
-import com.ims.shared.auth.TenantContext;
 import com.ims.shared.rbac.RequiresPermission;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;

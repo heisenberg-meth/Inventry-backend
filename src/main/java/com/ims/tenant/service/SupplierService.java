@@ -124,12 +124,11 @@ public class SupplierService {
   }
 
   public Map<String, Object> getSupplierLedger(Long id) {
-    Long tenantId = TenantContext.requireTenantId();
     Supplier supplier = getById(id);
 
     List<com.ims.model.Order> orders = orderRepository.findBySupplierId(id, Pageable.unpaged()).getContent();
-    List<com.ims.model.Invoice> invoices = invoiceRepository.findBySupplierId(id, tenantId);
-    List<com.ims.model.Payment> payments = paymentRepository.findBySupplierId(id, tenantId);
+    List<com.ims.model.Invoice> invoices = invoiceRepository.findBySupplierId(id);
+    List<com.ims.model.Payment> payments = paymentRepository.findBySupplierId(id);
 
     return Objects.requireNonNull(
         Map.of(

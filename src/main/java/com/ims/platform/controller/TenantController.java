@@ -127,7 +127,7 @@ public class TenantController {
   @Operation(summary = "Get audit logs for a specific tenant")
   public ResponseEntity<Page<com.ims.dto.response.AuditLogResponse>> getTenantAuditLogs(
       @PathVariable long id, @NonNull Pageable pageable) {
-    return ResponseEntity.ok(auditLogService.getTenantLogs(id, pageable));
+    return ResponseEntity.ok(auditLogService.getLogsForTenant(id, pageable));
   }
 
   @GetMapping("/{id}/users")

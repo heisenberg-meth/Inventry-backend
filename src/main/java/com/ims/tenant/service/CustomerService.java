@@ -93,12 +93,11 @@ public class CustomerService {
   }
 
   public Map<String, Object> getCustomerLedger(Long id) {
-    Long tenantId = com.ims.shared.auth.TenantContext.requireTenantId();
     Customer customer = getById(id);
 
     List<Order> orders = orderRepository.findByCustomerId(id, Pageable.unpaged()).getContent();
-    List<Invoice> invoices = invoiceRepository.findByCustomerId(id, tenantId);
-    List<Payment> payments = paymentRepository.findByCustomerId(id, tenantId);
+    List<Invoice> invoices = invoiceRepository.findByCustomerId(id);
+    List<Payment> payments = paymentRepository.findByCustomerId(id);
 
     return Objects.requireNonNull(
         Map.of(
