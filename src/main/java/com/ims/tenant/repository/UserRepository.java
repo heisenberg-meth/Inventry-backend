@@ -14,7 +14,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-  Optional<User> findByEmailAndTenantId(String email, Long tenantId);
+  Optional<User> findByEmail(String email);
 
   /**
    * Optimized detail fetch with JOIN FETCH for roles and permissions.
@@ -25,15 +25,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
       LEFT JOIN FETCH u.role r
       LEFT JOIN FETCH r.permissions
       LEFT JOIN FETCH u.customPermissions
-      WHERE u.id = :id AND u.tenantId = :tenantId
+      WHERE u.id = :id
       """)
-  Optional<User> findByIdWithFullDetails(@Param("id") Long id, @Param("tenantId") Long tenantId);
+  Optional<User> findByIdWithFullDetails(@Param("id") Long id);
 
   /**
    * Legacy method maintained for compatibility during migration.
    */
-  @Query("SELECT u FROM User u LEFT JOIN FETCH u.customPermissions WHERE u.id = :id AND (u.tenantId = :tenantId OR (:tenantId IS NULL AND u.tenantId IS NULL))")
-  Optional<User> findByIdWithPermissions(@Param("id") Long id, @Param("tenantId") Long tenantId);
+  @Query("SELECT u FROM User u LEFT JOIN FETCH u.customPermissions WHERE u.id = :id")
+  Optional<User> findByIdWithPermissions(@Param("id") Long id);
 
   @Query(value = "SELECT * FROM users WHERE email = :email", nativeQuery = true)
   Optional<User> findByEmailGlobal(@Param("email") String email);
@@ -43,12 +43,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
   // findById is inherited
 
-  Optional<User> findByIdAndTenantIdIsNull(Long id);
+  @Query(value = "SELECT * FROM users WHERE id = :id AND tenant_id IS NULL", nativeQuery = true)
+  Optional<User> findByIdAndTenantIdIsNull(@Param("id") Long id);
 
+  @Query(value = "SELECT * FROM users WHERE tenant_id IS NULL", nativeQuery = true)
   Page<User> findByTenantIdIsNull(Pageable pageable);
 
-  @Query("SELECT COUNT(u) FROM User u WHERE u.tenantId = :tenantId AND u.isActive = true")
-  long countActive(@Param("tenantId") Long tenantId);
+  @Query("SELECT COUNT(u) FROM User u WHERE u.isActive = true")
+  long countActive();
 
   @Query("SELECT COUNT(u) FROM User u WHERE u.isActive = true")
   long countActiveGlobal();
@@ -58,7 +60,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
       nativeQuery = true)
   long countActiveByTenantId(@Param("tenantId") Long tenantId);
 
-  boolean existsByEmailAndTenantId(String email, Long tenantId);
+  boolean existsByEmail(String email);
 
   @Query("SELECT COUNT(u) > 0 FROM User u WHERE u.email = :email")
   boolean existsByEmailGlobal(@Param("email") String email);
@@ -76,9 +78,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
              u.isActive as isActive, u.createdAt as createdAt
       FROM User u
       LEFT JOIN u.role r
-      WHERE u.tenantId = :tenantId AND u.scope = 'TENANT'
+      WHERE u.scope = 'TENANT'
       """)
-  Page<UserSummaryView> findSummariesByTenantId(@Param("tenantId") Long tenantId, Pageable pageable);
+  Page<UserSummaryView> findSummaries(Pageable pageable);
 
   @Query(
       value = "SELECT u.* FROM users u JOIN roles r ON u.role_id = r.id WHERE u.tenant_id = :tenantId AND r.name = :role LIMIT 1",
@@ -123,10 +125,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
       UPDATE User u
       SET u.resetToken = null,
           u.resetTokenExpiry = null
-      WHERE u.tenantId = :tenantId AND u.resetTokenExpiry < :now
+      WHERE u.resetTokenExpiry < :now
       """)
-  int clearExpiredResetTokens(
-      @Param("tenantId") Long tenantId, @Param("now") LocalDateTime now);
+  int clearExpiredResetTokens(@Param("now") LocalDateTime now);
 
   @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
   @Query(

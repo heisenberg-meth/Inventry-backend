@@ -77,7 +77,6 @@ public class ExportService {
      */
     @Transactional(readOnly = true)
     public void exportOrdersCsv(HttpServletResponse response, String type, java.time.LocalDateTime from, java.time.LocalDateTime to) throws IOException {
-        Long tenantId = TenantContext.requireTenantId();
         
         response.setContentType("text/csv");
         response.setHeader("Content-Disposition", "attachment; filename=orders_" + (type != null ? type : "all") + ".csv");

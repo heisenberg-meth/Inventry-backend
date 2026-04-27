@@ -106,11 +106,17 @@ public class PaymentGatewayService {
           payload.path("payload").path("payment").path("entity").path("id").asText();
 
       // 1. Locate and validate payment record
-      Payment payment =
-          paymentRepository
-              .findByGatewayTransactionIdAndTenantId(gatewayOrderId, tenantId)
-              .orElseThrow(
-                  () -> new EntityNotFoundException("Payment not found for order: " + gatewayOrderId));
+      Long previousTenantId = TenantContext.getTenantId();
+      TenantContext.setTenantId(tenantId);
+      Payment payment;
+      try {
+        payment = paymentRepository
+            .findByGatewayTransactionId(gatewayOrderId)
+            .orElseThrow(
+                () -> new EntityNotFoundException("Payment not found for order: " + gatewayOrderId));
+      } finally {
+        TenantContext.setTenantId(previousTenantId);
+      }
 
       if (PaymentStatus.PAID.equals(payment.getStatus())) {
         log.info("Payment {} already processed, skipping state update", gatewayOrderId);

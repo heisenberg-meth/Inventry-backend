@@ -57,7 +57,6 @@ public class ProductService {
 
   @Cacheable(value = "products", key = "'list'", cacheResolver = "tenantAwareCacheResolver")
   public PagedResponse<ProductResponse> getProducts(Pageable pageable) {
-    Long tenantId = securityContextAccessor.requireTenantId();
 
     if (pageable.getPageSize() > MAX_PAGE_SIZE) {
       pageable = PageRequest.of(pageable.getPageNumber(), MAX_PAGE_SIZE, pageable.getSort());
