@@ -17,6 +17,11 @@ public class EmailService {
   @Value("${APP_FRONTEND_URL:http://localhost:3000}")
   private String frontendUrl;
 
+  @org.springframework.scheduling.annotation.Async
+  @org.springframework.retry.annotation.Retryable(
+      retryFor = org.springframework.mail.MailException.class,
+      maxAttempts = 3,
+      backoff = @org.springframework.retry.annotation.Backoff(delay = 2000, multiplier = 2))
   public void sendPasswordResetEmail(String to, String rawToken) {
     String resetLink = frontendUrl + "/reset-password?token=" + rawToken;
 
@@ -28,15 +33,15 @@ public class EmailService {
             + resetLink
             + "\n\nThis link will expire in 15 minutes.");
 
-    try {
-      mailSender.send(message);
-      log.info("Password reset email sent to: {}", to);
-    } catch (Exception e) {
-      log.error("Failed to send password reset email to: {}", to, e);
-      // In a real app, you might want to retry or throw a custom exception
-    }
+    mailSender.send(message);
+    log.info("Password reset email sent to: {}", to);
   }
 
+  @org.springframework.scheduling.annotation.Async
+  @org.springframework.retry.annotation.Retryable(
+      retryFor = org.springframework.mail.MailException.class,
+      maxAttempts = 3,
+      backoff = @org.springframework.retry.annotation.Backoff(delay = 2000, multiplier = 2))
   public void sendVerificationEmail(String to, String token) {
     String verificationLink = frontendUrl + "/verify-email?token=" + token + "&email=" + to;
 
@@ -45,11 +50,13 @@ public class EmailService {
     message.setSubject("Email Verification");
     message.setText("Please verify your email by clicking the link below:\n" + verificationLink);
 
-    try {
-      mailSender.send(message);
-      log.info("Verification email sent to: {}", to);
-    } catch (Exception e) {
-      log.error("Failed to send verification email to: {}", to, e);
-    }
+    mailSender.send(message);
+    log.info("Verification email sent to: {}", to);
+  }
+
+  @org.springframework.retry.annotation.Recover
+  public void recoverEmailFailure(org.springframework.mail.MailException ex, String to, String token) {
+    log.error("All retries failed for email to {}: {}", to, ex.getMessage());
+    // In a production app, we could persist this to a failed_emails table
   }
 }

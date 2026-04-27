@@ -17,16 +17,16 @@ spring:
     properties:
       hibernate:
         jdbc:
-          batch_size: 50
-        default_batch_fetch_size: 50
-        order_inserts: true
-        order_updates: true
-        batch_versioned_data: true
+          "[batch_size]": 50
+        "[default_batch_fetch_size]": 50
+        "[order_inserts]": true
+        "[order_updates]": true
+        "[batch_versioned_data]": true
         cache:
-          use_second_level_cache: true
-          use_query_cache: true
-          region.factory_class: org.redisson.hibernate.RedissonRegionFactory
-          redisson.config: classpath:redisson-l2.yaml
+          "[use_second_level_cache]": true
+          "[use_query_cache]": true
+          "[region.factory_class]": org.redisson.hibernate.RedissonRegionFactory
+          "[redisson.config]": classpath:redisson-l2.yaml
     show-sql: false
     open-in-view: false
 
@@ -43,7 +43,7 @@ spring:
       repositories:
         enabled: false
       host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
+      port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD}
       timeout: 3000ms
       lettuce:
@@ -52,16 +52,18 @@ spring:
           max-idle: 5
 
   mail:
-    host: ${SPRING_MAIL_HOST:localhost}
-    port: ${SPRING_MAIL_PORT:1025}
-    username: ${SPRING_MAIL_USERNAME:}
-    password: ${SPRING_MAIL_PASSWORD:}
-    properties:
-      mail:
-        smtp:
-          auth: ${SPRING_MAIL_SMTP_AUTH:false}
-          starttls:
-            enable: ${SPRING_MAIL_STARTTLS:false}
+     host: ${SPRING_MAIL_HOST:localhost}
+     port: ${SPRING_MAIL_PORT:1025}
+     username: ${SPRING_MAIL_USERNAME:}
+     password: ${SPRING_MAIL_PASSWORD:}
+     properties:
+       mail:
+         smtp:
+           auth: ${SPRING_MAIL_SMTP_AUTH:false}
+           starttls:
+             enable: ${SPRING_MAIL_STARTTLS:false}
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
 
 app:
   jwt:
@@ -81,13 +83,8 @@ app:
     authenticated-rpm: ${APP_RATE_LIMIT_AUTHENTICATED_RPM:500}
     window-seconds: ${APP_RATE_LIMIT_WINDOW_SECONDS:60}
   security:
-    encryption-key: ${APP_ENCRYPTION_KEY:12345678901234567890123456789012} # Must be 32 bytes
-    trusted-proxies:
-      - 127.0.0.1
-      - ::1
-      - 10.0.0.0/8
-      - 172.16.0.0/12
-      - 192.168.0.0/16
+    encryption-key: ${APP_ENCRYPTION_KEY} # Must be 32 bytes
+    trusted-proxies: ${APP_TRUSTED_PROXIES:127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
 
 management:
   health:
@@ -103,22 +100,21 @@ management:
       probes:
         enabled: true
     prometheus:
-      enabled: true
-  metrics:
-    export:
-      prometheus:
+      access: unrestricted
+  prometheus:
+    metrics:
+      export:
         enabled: true
+  metrics:
     tags:
       application: ${spring.application.name:ims-backend}
-  lifecycle:
-    timeout-per-shutdown-phase: 30s
 
 springdoc:
   api-docs:
     enabled: false
+    path: /api-docs
   swagger-ui:
     enabled: false
-  path: /api-docs
 
 server:
   port: ${PORT:8080}
@@ -136,13 +132,13 @@ server:
 
 logging:
   level:
-    com.ims: INFO
-    org.springframework.security: INFO
-    org.springdoc: DEBUG
-    org.springframework.web: DEBUG
-    org.hibernate.SQL: OFF
-    org.hibernate.type.descriptor.sql: OFF
-    org.hibernate.orm.jdbc.bind: OFF
+    "[com.ims]": INFO
+    "[org.springframework.security]": INFO
+    "[org.springdoc]": DEBUG
+    "[org.springframework.web]": INFO
+    "[org.hibernate.SQL]": OFF
+    "[org.hibernate.type.descriptor.sql]": OFF
+    "[org.hibernate.orm.jdbc.bind]": OFF
 
 resilience4j:
   ratelimiter:
