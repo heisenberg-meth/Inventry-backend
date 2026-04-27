@@ -1,20 +1,22 @@
 package com.ims.config;
 
 import java.util.Map;
-import org.hibernate.cfg.AvailableSettings;
-import org.hibernate.context.spi.CurrentTenantIdentifierResolver;
+import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.orm.jpa.HibernatePropertiesCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 
 @Configuration
+@RequiredArgsConstructor
 public class HibernateConfig {
 
+  private final TenantLeakInterceptor tenantLeakInterceptor;
+
   @Bean
-  public HibernatePropertiesCustomizer hibernatePropertiesCustomizer(
-      CurrentTenantIdentifierResolver<?> tenantResolver) {
-    return (Map<String, Object> hibernateProperties) -> {
-      hibernateProperties.put(AvailableSettings.MULTI_TENANT_IDENTIFIER_RESOLVER, tenantResolver);
-    };
+  @Profile("test")
+  public HibernatePropertiesCustomizer hibernatePropertiesCustomizer() {
+    return (Map<String, Object> hibernateProperties) -> 
+        hibernateProperties.put("hibernate.session_factory.statement_inspector", tenantLeakInterceptor);
   }
 }

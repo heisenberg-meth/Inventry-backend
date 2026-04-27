@@ -49,7 +49,7 @@ public class SignupService {
         : generateWorkspaceSlug(businessName);
     workspaceSlug = ensureUniqueWorkspaceSlug(workspaceSlug);
 
-    if (userRepository.findByEmail(normalizedEmail).isPresent()) {
+    if (userRepository.findByEmailGlobal(normalizedEmail).isPresent()) {
       throw new IllegalArgumentException("Email already registered");
     }
 

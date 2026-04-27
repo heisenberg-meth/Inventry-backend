@@ -31,6 +31,7 @@ public class StockTransactionService {
     private final WarehouseProductRepository warehouseProductRepository;
     private final TransferOrderRepository transferOrderRepository;
     private final com.ims.product.ProductRepository productRepository;
+    private final com.ims.shared.lock.DistributedLockService lockService;
 
     private void checkWarehouseType() {
         Long tenantId = TenantContext.getTenantId();
@@ -55,30 +56,37 @@ public class StockTransactionService {
         if (qty <= 0)
             throw new IllegalArgumentException("Quantity must be positive");
 
-        int updated = productRepository.incrementStock(productId, qty, Objects.requireNonNull(LocalDateTime.now()));
-        if (updated == 0) {
-            throw new EntityNotFoundException("Product not found: " + productId);
+        String lockKey = "product:stock:" + productId;
+        boolean locked = lockService.withLock(lockKey, java.time.Duration.ofSeconds(10), java.time.Duration.ofSeconds(5), () -> {
+            int updated = productRepository.incrementStock(productId, qty, Objects.requireNonNull(LocalDateTime.now()));
+            if (updated == 0) {
+                throw new EntityNotFoundException("Product not found: " + productId);
+            }
+
+            Product product = productRepository
+                    .findById(productId)
+                    .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+
+            int newStock = product.getStock();
+            int previousStock = newStock - qty;
+
+            StockMovement tmpMovement = StockMovement.builder()
+                    .productId(productId)
+                    .movementType("IN")
+                    .quantity(qty)
+                    .previousStock(previousStock)
+                    .newStock(newStock)
+                    .notes(notes)
+                    .createdBy(userId)
+                    .build();
+            stockMovementRepository.save(Objects.requireNonNull(tmpMovement));
+
+            log.info("Stock IN: product={} qty={} {}→{}", productId, qty, previousStock, newStock);
+        });
+
+        if (!locked) {
+            throw new RuntimeException("Could not acquire lock for stock adjustment. Please try again.");
         }
-
-        Product product = productRepository
-                .findById(productId)
-                .orElseThrow(() -> new EntityNotFoundException("Product not found"));
-
-        int newStock = product.getStock();
-        int previousStock = newStock - qty;
-
-        StockMovement tmpMovement = StockMovement.builder()
-                .productId(productId)
-                .movementType("IN")
-                .quantity(qty)
-                .previousStock(previousStock)
-                .newStock(newStock)
-                .notes(notes)
-                .createdBy(userId)
-                .build();
-        stockMovementRepository.save(Objects.requireNonNull(tmpMovement));
-
-        log.info("Stock IN: product={} qty={} {}→{}", productId, qty, previousStock, newStock);
     }
 
     @Transactional
@@ -94,37 +102,44 @@ public class StockTransactionService {
         if (qty <= 0)
             throw new IllegalArgumentException("Quantity must be positive");
 
-        int updated = productRepository.decrementStockIfAvailable(productId, qty, Objects.requireNonNull(LocalDateTime.now()));
-        if (updated == 0) {
-            // Either product not found or insufficient stock
-            Product product = Objects.requireNonNull(productRepository
+        String lockKey = "product:stock:" + productId;
+        boolean locked = lockService.withLock(lockKey, java.time.Duration.ofSeconds(10), java.time.Duration.ofSeconds(5), () -> {
+            int updated = productRepository.decrementStockIfAvailable(productId, qty, Objects.requireNonNull(LocalDateTime.now()));
+            if (updated == 0) {
+                // Either product not found or insufficient stock
+                Product product = Objects.requireNonNull(productRepository
+                        .findById(productId)
+                        .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId)));
+                throw new InsufficientStockException(
+                        "Insufficient stock. Requested: " + qty + ", Available: " + product.getStock(),
+                        product.getStock(),
+                        qty);
+            }
+
+            Product product = productRepository
                     .findById(productId)
-                    .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId)));
-            throw new InsufficientStockException(
-                    "Insufficient stock. Requested: " + qty + ", Available: " + product.getStock(),
-                    product.getStock(),
-                    qty);
+                    .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+
+            int newStock = product.getStock();
+            int previousStock = newStock + qty;
+
+            StockMovement tmpMovement = StockMovement.builder()
+                    .productId(productId)
+                    .movementType("OUT")
+                    .quantity(qty)
+                    .previousStock(previousStock)
+                    .newStock(newStock)
+                    .notes(notes)
+                    .createdBy(userId)
+                    .build();
+            stockMovementRepository.save(Objects.requireNonNull(tmpMovement));
+
+            log.info("Stock OUT: product={} qty={} {}→{}", productId, qty, previousStock, newStock);
+        });
+
+        if (!locked) {
+            throw new RuntimeException("Could not acquire lock for stock adjustment. Please try again.");
         }
-
-        Product product = productRepository
-                .findById(productId)
-                .orElseThrow(() -> new EntityNotFoundException("Product not found"));
-
-        int newStock = product.getStock();
-        int previousStock = newStock + qty;
-
-        StockMovement tmpMovement = StockMovement.builder()
-                .productId(productId)
-                .movementType("OUT")
-                .quantity(qty)
-                .previousStock(previousStock)
-                .newStock(newStock)
-                .notes(notes)
-                .createdBy(userId)
-                .build();
-        stockMovementRepository.save(Objects.requireNonNull(tmpMovement));
-
-        log.info("Stock OUT: product={} qty={} {}→{}", productId, qty, previousStock, newStock);
     }
 
     @Transactional
@@ -140,39 +155,46 @@ public class StockTransactionService {
         if (qty == 0)
             return;
 
-        int updated = productRepository.adjustStockIfValid(productId, qty, Objects.requireNonNull(LocalDateTime.now()));
-        if (updated == 0) {
-            Product product = Objects.requireNonNull(productRepository
+        String lockKey = "product:stock:" + productId;
+        boolean locked = lockService.withLock(lockKey, java.time.Duration.ofSeconds(10), java.time.Duration.ofSeconds(5), () -> {
+            int updated = productRepository.adjustStockIfValid(productId, qty, Objects.requireNonNull(LocalDateTime.now()));
+            if (updated == 0) {
+                Product product = Objects.requireNonNull(productRepository
+                        .findById(productId)
+                        .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId)));
+                throw new InsufficientStockException(
+                        "Adjustment would result in negative stock. Current: "
+                                + product.getStock()
+                                + ", Adjustment: "
+                                + qty,
+                        product.getStock(),
+                        Math.abs(qty));
+            }
+
+            Product product = productRepository
                     .findById(productId)
-                    .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId)));
-            throw new InsufficientStockException(
-                    "Adjustment would result in negative stock. Current: "
-                            + product.getStock()
-                            + ", Adjustment: "
-                            + qty,
-                    product.getStock(),
-                    Math.abs(qty));
+                    .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+
+            int newStock = product.getStock();
+            int previousStock = newStock - qty;
+
+            StockMovement tmpMovement = StockMovement.builder()
+                    .productId(productId)
+                    .movementType("ADJUSTMENT")
+                    .quantity(qty)
+                    .previousStock(previousStock)
+                    .newStock(newStock)
+                    .notes(notes)
+                    .createdBy(userId)
+                    .build();
+            stockMovementRepository.save(Objects.requireNonNull(tmpMovement));
+
+            log.info("Stock ADJUST: product={} qty={} {}→{}", productId, qty, previousStock, newStock);
+        });
+
+        if (!locked) {
+            throw new RuntimeException("Could not acquire lock for stock adjustment. Please try again.");
         }
-
-        Product product = productRepository
-                .findById(productId)
-                .orElseThrow(() -> new EntityNotFoundException("Product not found"));
-
-        int newStock = product.getStock();
-        int previousStock = newStock - qty;
-
-        StockMovement tmpMovement = StockMovement.builder()
-                .productId(productId)
-                .movementType("ADJUSTMENT")
-                .quantity(qty)
-                .previousStock(previousStock)
-                .newStock(newStock)
-                .notes(notes)
-                .createdBy(userId)
-                .build();
-        stockMovementRepository.save(Objects.requireNonNull(tmpMovement));
-
-        log.info("Stock ADJUST: product={} qty={} {}→{}", productId, qty, previousStock, newStock);
     }
 
     @Transactional

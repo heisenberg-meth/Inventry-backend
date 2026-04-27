@@ -33,7 +33,7 @@ public class PlatformInviteService {
   public @NonNull PlatformInvite createInvite(@NonNull String email, @NonNull String role) {
     Objects.requireNonNull(email, "email required");
     Objects.requireNonNull(role, "role required");
-    if (userRepository.findByEmailUnfiltered(email).isPresent()) {
+    if (userRepository.findByEmailGlobal(email).isPresent()) {
       throw new IllegalArgumentException("User with this email already exists");
     }
 

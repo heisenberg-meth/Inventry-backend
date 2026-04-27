@@ -68,7 +68,7 @@ public class DataSeeder implements CommandLineRunner {
         });
 
     String adminEmail = "admin@platform.com";
-    if (userRepository.findByEmailUnfiltered(adminEmail).isEmpty()) {
+    if (userRepository.findByEmailGlobal(adminEmail).isEmpty()) {
       User admin =
           Objects.requireNonNull(
               User.builder()

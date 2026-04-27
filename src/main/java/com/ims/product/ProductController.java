@@ -5,7 +5,6 @@ import com.ims.dto.response.PagedResponse;
 import com.ims.dto.response.ProductResponse;
 import com.ims.shared.auth.TenantContext;
 import com.ims.shared.rbac.RequiresPermission;
-import com.ims.shared.rbac.RequiresRole;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -13,8 +12,6 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Objects;
 import java.util.Map;
-import java.util.LinkedHashMap;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
@@ -40,12 +37,10 @@ public class ProductController {
 
   private final ProductService productService;
   private final ProductImportService importService;
-  private final com.ims.shared.utils.CsvExportService csvExportService;
-  private final ProductRepository productRepository;
   private final BarcodeGeneratorService barcodeService;
 
   @GetMapping
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @RequiresPermission("view_products")
   @Operation(summary = "List products", description = "Paginated")
   public ResponseEntity<PagedResponse<ProductResponse>> getProducts(Pageable pageable) {
     Pageable safePageable = Objects.requireNonNull(pageable);
@@ -53,7 +48,7 @@ public class ProductController {
   }
 
   @GetMapping("/next")
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @RequiresPermission("view_products")
   @Operation(
       summary = "List products (Cursor pagination)",
       description = "High performance, no offset")
@@ -65,7 +60,7 @@ public class ProductController {
   }
 
   @PostMapping
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresPermission("create_product")
   @Operation(summary = "Create product")
   public ResponseEntity<ProductResponse> createProduct(
       @Valid @RequestBody CreateProductRequest request) {
@@ -74,14 +69,14 @@ public class ProductController {
   }
 
   @GetMapping("/{id}")
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @RequiresPermission("view_products")
   @Operation(summary = "Get product detail")
   public ResponseEntity<ProductResponse> getProduct(@PathVariable long id) {
     return ResponseEntity.ok(productService.getProductById(id));
   }
 
   @PutMapping("/{id}")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresPermission("update_product")
   @Operation(summary = "Update product")
   public ResponseEntity<ProductResponse> updateProduct(
       @PathVariable long id, @Valid @RequestBody CreateProductRequest request) {
@@ -90,7 +85,7 @@ public class ProductController {
   }
 
   @PostMapping("/{id}/duplicate")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresPermission("create_product")
   @Operation(summary = "Clone a product")
   public ResponseEntity<ProductResponse> duplicateProduct(@PathVariable long id) {
     return ResponseEntity.status(HttpStatus.CREATED).body(productService.duplicateProduct(id));
@@ -105,14 +100,14 @@ public class ProductController {
   }
 
   @GetMapping("/low-stock")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresPermission("view_inventory")
   @Operation(summary = "Items below reorder level")
   public ResponseEntity<List<ProductResponse>> getLowStock() {
     return ResponseEntity.ok(productService.getLowStockProducts());
   }
 
   @GetMapping("/expiring")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresPermission("view_inventory")
   @Operation(summary = "Pharmacy: products expiring within N days")
   public ResponseEntity<List<ProductResponse>> getExpiring(
       @RequestParam(required = false) Integer days) {
@@ -120,7 +115,7 @@ public class ProductController {
   }
 
   @GetMapping("/search")
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @RequiresPermission("view_products")
   @Operation(summary = "Search by name/SKU/barcode")
   public ResponseEntity<PagedResponse<ProductResponse>> search(
       @RequestParam String q, Pageable pageable) {
@@ -130,7 +125,7 @@ public class ProductController {
   }
 
   @PostMapping("/bulk-import")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresPermission("import_products")
   @Operation(summary = "Bulk import products via CSV")
   public ResponseEntity<Map<String, Object>> bulkImport(
       @RequestParam("file") MultipartFile file,
@@ -140,30 +135,10 @@ public class ProductController {
   }
 
   @GetMapping("/export")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresPermission("export_products")
   @Operation(summary = "Export all products as CSV")
   public ResponseEntity<String> exportProducts() {
-    var products = productRepository.findExportDataByIsActiveTrue();
-
-    var data =
-        products.stream()
-            .map(
-                p -> {
-                  Map<String, Object> map = new LinkedHashMap<>();
-                  map.put("ID", p.getId());
-                  map.put("Name", p.getName());
-                  map.put("SKU", p.getSku());
-                  map.put("Stock", p.getStock());
-                  map.put("Price", p.getSalePrice());
-                  map.put("CategoryID", p.getCategoryId());
-                  return map;
-                })
-            .collect(Collectors.toList());
-
-    String csv =
-        Objects.requireNonNull(
-            csvExportService.exportToCsv(
-                List.of("ID", "Name", "SKU", "Stock", "Price", "CategoryID"), data));
+    String csv = productService.exportProductsAsCsv();
 
     return ResponseEntity.ok()
         .header(
@@ -174,7 +149,7 @@ public class ProductController {
   }
 
   @GetMapping("/{id}/barcode")
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @RequiresPermission("view_products")
   @Operation(summary = "Generate barcode for product")
   public ResponseEntity<byte[]> getBarcode(@PathVariable long id) {
     ProductResponse p = productService.getProductById(id);

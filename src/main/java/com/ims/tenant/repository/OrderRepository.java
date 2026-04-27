@@ -23,6 +23,21 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
   @Query("SELECT o FROM Order o WHERE o.id = :id")
   java.util.Optional<Order> lockById(@Param("id") Long id);
 
+  @Query("SELECT o FROM Order o WHERE o.type = :type AND o.tenantId = :tenantId AND o.createdAt >= :from AND o.createdAt <= :to")
+  Page<Order> findByTypeAndDateRange(
+      @Param("type") String type, 
+      @Param("tenantId") Long tenantId, 
+      @Param("from") LocalDateTime from, 
+      @Param("to") LocalDateTime to, 
+      Pageable pageable);
+
+  @Query("SELECT o FROM Order o WHERE o.tenantId = :tenantId AND o.createdAt >= :from AND o.createdAt <= :to")
+  Page<Order> findByTenantIdAndDateRange(
+      @Param("tenantId") Long tenantId, 
+      @Param("from") LocalDateTime from, 
+      @Param("to") LocalDateTime to, 
+      Pageable pageable);
+
   List<Order> findByReferenceOrderId(Long referenceOrderId);
 
   // findById is inherited

@@ -1,6 +1,7 @@
 package com.ims.shared.webhook;
 
 import com.ims.model.Webhook;
+import com.ims.model.WebhookOutbox;
 import com.ims.shared.auth.TenantContext;
 import com.ims.shared.exception.BadRequestException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
@@ -14,7 +15,6 @@ import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import io.github.resilience4j.retry.annotation.Retry;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -44,9 +44,11 @@ public class WebhookService {
   private static final int IPV6_LINK_LOCAL_SECOND_BYTE_VALUE = 0x80;
 
   private final WebhookRepository webhookRepository;
+  private final WebhookOutboxRepository outboxRepository;
   private final RestTemplate webhookRestTemplate;
   private final com.ims.shared.security.SecretEncryptionService encryptionService;
   private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+  private final com.ims.shared.metrics.BusinessMetrics businessMetrics;
 
   public List<Webhook> getMyWebhooks() {
     return webhookRepository.findByTenantId(TenantContext.requireTenantId());
@@ -80,19 +82,64 @@ public class WebhookService {
             });
   }
 
+  /**
+   * Dispatches an event by saving it to the transactional outbox.
+   * This ensures the event is persisted along with the business change.
+   */
+  @Transactional
   public void dispatch(Long tenantId, String eventType, Object payload) {
-    List<Webhook> webhooks = webhookRepository.findByTenantId(tenantId);
-
-    for (Webhook webhook : webhooks) {
-      if (Boolean.TRUE.equals(webhook.getIsActive())
-          && webhook.getEventTypes().contains(eventType)) {
-        this.sendWebhook(webhook, eventType, tenantId, payload);
-      }
+    try {
+      String jsonPayload = objectMapper.writeValueAsString(payload);
+      
+      WebhookOutbox entry = WebhookOutbox.builder()
+          .tenantId(tenantId)
+          .eventType(eventType)
+          .payload(jsonPayload)
+          .status(WebhookOutbox.OutboxStatus.PENDING)
+          .build();
+          
+      outboxRepository.save(entry);
+      businessMetrics.incrementWebhookEvents();
+      log.debug("Saved webhook event {} to outbox for tenant {}", eventType, tenantId);
+    } catch (Exception e) {
+      log.error("Failed to save webhook to outbox: {}", e.getMessage());
+      // We don't throw here to avoid failing the main transaction if webhook persistence fails,
+      // but in a strict system, you might want to throw to ensure consistency.
     }
   }
 
-  @Async("webhookExecutor")
-  @Retry(name = "webhookRetry", fallbackMethod = "recover")
+  /**
+   * Processes a single outbox entry. Called by the background worker.
+   */
+  @Transactional
+  public void processOutboxEntry(WebhookOutbox entry) {
+    List<Webhook> webhooks = webhookRepository.findByTenantId(entry.getTenantId());
+    boolean atLeastOneSent = false;
+
+    for (Webhook webhook : webhooks) {
+      if (Boolean.TRUE.equals(webhook.getIsActive())
+          && webhook.getEventTypes().contains(entry.getEventType())) {
+        try {
+          this.sendWebhook(webhook, entry.getEventType(), entry.getTenantId(), entry.getPayload());
+          atLeastOneSent = true;
+        } catch (Exception e) {
+          log.error("Failed to send webhook {} for outbox entry {}: {}", webhook.getId(), entry.getId(), e.getMessage());
+        }
+      }
+    }
+
+    if (atLeastOneSent || webhooks.isEmpty()) {
+      entry.setStatus(WebhookOutbox.OutboxStatus.COMPLETED);
+      entry.setProcessedAt(LocalDateTime.now());
+    } else {
+      entry.setStatus(WebhookOutbox.OutboxStatus.FAILED);
+      entry.setRetryCount(entry.getRetryCount() + 1);
+      entry.setNextRetryAt(LocalDateTime.now().plusMinutes((long) Math.pow(2, entry.getRetryCount())));
+    }
+    outboxRepository.save(entry);
+  }
+
+  @Retry(name = "webhookRetry")
   @CircuitBreaker(name = "webhook")
   public void sendWebhook(Webhook webhook, String eventType, Long tenantId, Object payload) {
     try {

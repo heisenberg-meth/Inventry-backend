@@ -16,23 +16,28 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
 
   @Query(
       "SELECT COALESCE(MAX(CAST(SUBSTRING(i.invoiceNumber, LENGTH(i.invoiceNumber) - 3) AS int)), 0) "
-          + "FROM Invoice i")
-  int findMaxSequence();
+          + "FROM Invoice i WHERE i.tenantId = :tenantId")
+  int findMaxSequence(@Param("tenantId") Long tenantId);
 
-  @Query("SELECT COUNT(i) > 0 FROM Invoice i WHERE i.orderId = :orderId")
-  boolean existsByOrderId(@Param("orderId") Long orderId);
-
-  @Query(
-      "SELECT i FROM Invoice i JOIN Order o ON i.orderId = o.id WHERE o.customerId = :customerId")
-  List<Invoice> findByCustomerId(@Param("customerId") Long customerId);
+  @Query("SELECT COUNT(i) > 0 FROM Invoice i WHERE i.orderId = :orderId AND i.tenantId = :tenantId")
+  boolean existsByOrderId(@Param("orderId") Long orderId, @Param("tenantId") Long tenantId);
 
   @Query(
-      "SELECT i FROM Invoice i JOIN Order o ON i.orderId = o.id WHERE o.supplierId = :supplierId")
-  List<Invoice> findBySupplierId(@Param("supplierId") Long supplierId);
+      "SELECT i FROM Invoice i JOIN Order o ON i.orderId = o.id WHERE o.customerId = :customerId AND i.tenantId = :tenantId")
+  List<Invoice> findByCustomerId(@Param("customerId") Long customerId, @Param("tenantId") Long tenantId);
 
-  org.springframework.data.domain.Page<Invoice> findByStatusNotAndDueDateBefore(
-      InvoiceStatus status, LocalDate date, org.springframework.data.domain.Pageable pageable);
+  @Query(
+      "SELECT i FROM Invoice i JOIN Order o ON i.orderId = o.id WHERE o.supplierId = :supplierId AND i.tenantId = :tenantId")
+  List<Invoice> findBySupplierId(@Param("supplierId") Long supplierId, @Param("tenantId") Long tenantId);
+
+  org.springframework.data.domain.Page<Invoice> findByTenantIdAndIsActiveTrue(Long tenantId, org.springframework.data.domain.Pageable pageable);
+
+  org.springframework.data.domain.Page<Invoice> findByTenantIdAndStatusNotAndDueDateBefore(
+      Long tenantId, InvoiceStatus status, LocalDate date, org.springframework.data.domain.Pageable pageable);
+
+  @Query("SELECT i FROM Invoice i WHERE i.tenantId = :tenantId AND i.status <> :status AND i.dueDate < :date")
+  Stream<Invoice> streamOverdue(@Param("tenantId") Long tenantId, @Param("status") InvoiceStatus status, @Param("date") LocalDate date);
 
   @Query("SELECT i FROM Invoice i WHERE i.status <> :status AND i.dueDate < :date")
-  Stream<Invoice> streamAllOverdue(@Param("status") InvoiceStatus status, @Param("date") LocalDate date);
+  Stream<Invoice> streamAllOverdueGlobal(@Param("status") InvoiceStatus status, @Param("date") LocalDate date);
 }

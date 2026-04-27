@@ -2,7 +2,6 @@ package com.ims.tenant.controller;
 
 import com.ims.dto.request.UpdateTenantSettingsRequest;
 import com.ims.dto.response.TenantResponse;
-import com.ims.shared.auth.JwtAuthDetails;
 import com.ims.shared.rbac.RequiresRole;
 import com.ims.tenant.service.TenantSettingsService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -12,7 +11,6 @@ import jakarta.validation.Valid;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -27,12 +25,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class TenantSettingsController {
 
   private final TenantSettingsService tenantSettingsService;
+  private final com.ims.shared.auth.SecurityContextAccessor securityContext;
 
   @GetMapping
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Get tenant configurations (domain, sequence tracking)")
   public ResponseEntity<TenantResponse> getSettings() {
-    Long tenantId = getTenantId();
+    Long tenantId = securityContext.requireTenantId();
     return ResponseEntity.ok(tenantSettingsService.getSettings(tenantId));
   }
 
@@ -41,16 +40,9 @@ public class TenantSettingsController {
   @Operation(summary = "Configure custom workspace slugs and business name")
   public ResponseEntity<TenantResponse> updateSettings(
       @Valid @RequestBody UpdateTenantSettingsRequest request) {
-    Long tenantId = getTenantId();
+    Long tenantId = securityContext.requireTenantId();
     return ResponseEntity.ok(
         tenantSettingsService.updateSettings(tenantId, Objects.requireNonNull(request)));
   }
 
-  private Long getTenantId() {
-    var auth = SecurityContextHolder.getContext().getAuthentication();
-    if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
-      return Objects.requireNonNull(details.getTenantId());
-    }
-    throw new SecurityException("Auth context missing for tenant settings");
-  }
 }

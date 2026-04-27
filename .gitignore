@@ -45,3 +45,7 @@ PRD_Tenant_Onboarding_Hardening.docx
 .m2/repository/org/springframework/boot/spring-boot-starter-parent/3.5.13/spring-boot-starter-parent-3.5.13.pom.lastUpdated
 scripts/check-secrets.sh
 scripts/generate-secret.sh
+.agents/*
+.windsurf/*
+.zencoder/*
+skills-lock.json
