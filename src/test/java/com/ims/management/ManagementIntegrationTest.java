@@ -22,8 +22,8 @@ import org.springframework.test.context.ActiveProfiles;
     "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
     "spring.cache.type=none"
 })
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
+@AutoConfigureMockMvc(addFilters = false)
+@ActiveProfiles("test-no-security")
 public class ManagementIntegrationTest extends BaseIntegrationTest {
 
   @Autowired

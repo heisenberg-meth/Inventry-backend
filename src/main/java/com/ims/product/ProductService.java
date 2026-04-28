@@ -153,7 +153,7 @@ public class ProductService {
                     ? Objects.requireNonNull(request.getReorderLevel()).intValue()
                     : DEFAULT_REORDER_LEVEL)
             .stock(0)
-            .isActive(true)
+            .active(true)
             .build());
 
     product = productRepository.save(product);
@@ -333,7 +333,7 @@ public class ProductService {
         .findById(id)
         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
     Product product = Objects.requireNonNull(tmpProduct);
-    product.setIsActive(false);
+    product.setActive(false);
     product.setUpdatedAt(Objects.requireNonNull(LocalDateTime.now()));
     productRepository.save(product);
 
@@ -364,7 +364,7 @@ public class ProductService {
             .salePrice(original.getSalePrice())
             .stock(0) // Reset stock
             .reorderLevel(original.getReorderLevel())
-            .isActive(true)
+            .active(true)
             .build());
 
     Product savedProduct = Objects.requireNonNull(productRepository.save(clone));
@@ -500,7 +500,7 @@ public class ProductService {
         .salePrice(product.getSalePrice())
         .stock(product.getStock())
         .reorderLevel(product.getReorderLevel())
-        .isActive(product.getIsActive())
+        .isActive(product.isActive())
         .createdAt(product.getCreatedAt());
 
     if (pp != null) {

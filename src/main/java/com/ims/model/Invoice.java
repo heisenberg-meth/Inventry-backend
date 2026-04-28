@@ -19,13 +19,9 @@ import org.hibernate.annotations.TenantId;
 import org.springframework.lang.Nullable;
 
 @Entity
-@Table(
-    name = "invoices",
-    uniqueConstraints = {
-      @UniqueConstraint(
-          name = "unique_invoice_per_tenant",
-          columnNames = {"tenant_id", "invoice_number"})
-    })
+@Table(name = "invoices", uniqueConstraints = {
+    @UniqueConstraint(name = "unique_invoice_per_tenant", columnNames = { "tenant_id", "invoice_number" })
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -73,6 +69,10 @@ public class Invoice {
   @Column(name = "parent_invoice_id")
   @Nullable
   private Long parentInvoiceId;
+
+  @Column(name = "is_active", nullable = false)
+  @Builder.Default
+  private boolean active = true;
 
   @Column(name = "created_at")
   @Builder.Default

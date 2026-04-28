@@ -52,7 +52,7 @@ public class ExportService {
             Page<Product> page;
             
             do {
-                page = productRepository.findAllByIsActiveTrue(PageRequest.of(pageNum, pageSize));
+                page = productRepository.findAllByActiveTrue(PageRequest.of(pageNum, pageSize));
                 for (var product : page.getContent()) {
                     writer.printf("%d,\"%s\",\"%s\",\"%s\",%d,\"%s\",%.2f,%.2f,\"%s\"%n",
                         product.getId(),

@@ -42,23 +42,35 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.lang.NonNull;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.support.TransactionTemplate;
+
+import org.springframework.context.annotation.Import;
+import com.ims.config.TestSecurityConfig;
 
 @SpringBootTest(properties = {
     "spring.autoconfigure.exclude="
         + "org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,"
         + "org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
+
     "spring.task.scheduling.enabled=false",
     "spring.testcontainers.enabled=true",
-    "spring.cache.type=none"
+    "spring.cache.type=none",
+
+    // 🔥 ADD THESE (MANDATORY)
+    "spring.flyway.enabled=false",
+    "spring.jpa.hibernate.ddl-auto=create-drop",
+    "spring.jpa.properties.hibernate.cache.use_second_level_cache=false",
+    "spring.jpa.properties.hibernate.cache.use_query_cache=false",
+    "spring.jpa.properties.hibernate.cache.region.factory_class=org.hibernate.cache.internal.NoCachingRegionFactory"
 })
-@ActiveProfiles("test")
-@AutoConfigureMockMvc
+@ActiveProfiles("test-no-security")
+@AutoConfigureMockMvc(addFilters = false)
 @Testcontainers
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@Import(TestSecurityConfig.class)
 public abstract class BaseIntegrationTest {
 
   @Container
@@ -70,7 +82,7 @@ public abstract class BaseIntegrationTest {
   }
 
   protected static final String TEST_ROOT_PASSWORD = System.getProperty("ims.test.root.password",
-      UUID.randomUUID().toString());
+      "TestPass123!");
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
@@ -290,17 +302,22 @@ public abstract class BaseIntegrationTest {
   }
 
   protected void mockRedisAndCache() {
+
     doReturn(valueOperations).when(redisTemplate).opsForValue();
     doReturn(zSetOperations).when(redisTemplate).opsForZSet();
-    doReturn(1L).when(valueOperations).increment(Objects.requireNonNull(notNull()));
-    doReturn(0L).when(zSetOperations).zCard(Objects.requireNonNull(notNull()));
+
+    doReturn(1L).when(valueOperations).increment(anyString());
+    doReturn(0L).when(zSetOperations).zCard(anyString());
 
     Cache dummyCache = new ConcurrentMapCache("dummy");
 
-    doReturn(Collections.<Cache>singletonList(dummyCache))
+    doReturn(Collections.singletonList(dummyCache))
         .when(tenantAwareCacheResolver)
-        .resolveCaches(Objects.requireNonNull(notNull()));
-    doReturn(dummyCache).when(cacheManager).getCache(Objects.requireNonNull(notNull()));
+        .resolveCaches(any());
+
+    doReturn(dummyCache)
+        .when(cacheManager)
+        .getCache(anyString());
   }
 
   @NonNull

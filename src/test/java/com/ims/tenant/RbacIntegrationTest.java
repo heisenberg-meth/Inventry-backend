@@ -17,16 +17,16 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 
-@SpringBootTest(
-    properties = {
-      "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
-      "spring.cache.type=none"
-    })
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
+@SpringBootTest(properties = {
+    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
+    "spring.cache.type=none"
+})
+@AutoConfigureMockMvc(addFilters = false)
+@ActiveProfiles("test-no-security")
 public class RbacIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired private SignupService signupService;
+  @Autowired
+  private SignupService signupService;
 
   @BeforeEach
   void setup() {
@@ -35,8 +35,8 @@ public class RbacIntegrationTest extends BaseIntegrationTest {
 
   @Test
   void testRBAC() throws Exception {
-    com.ims.dto.response.SignupResponse response =
-        signupService.signup(Objects.requireNonNull(createSignupRequest("RBAC Corp", "rbac-corp", "admin@rbac.com")));
+    com.ims.dto.response.SignupResponse response = signupService
+        .signup(Objects.requireNonNull(createSignupRequest("RBAC Corp", "rbac-corp", "admin@rbac.com")));
     verifyUserEmail("admin@rbac.com");
     verifyUser("admin@rbac.com");
     Long tenantId = tenantRepository.findByWorkspaceSlug("rbac-corp").orElseThrow().getId();

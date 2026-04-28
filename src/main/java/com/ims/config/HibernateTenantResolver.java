@@ -2,7 +2,6 @@ package com.ims.config;
 
 import com.ims.shared.auth.TenantContext;
 import org.hibernate.context.spi.CurrentTenantIdentifierResolver;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
@@ -20,7 +19,6 @@ import org.springframework.stereotype.Component;
  * tenant filter, so this sentinel never affects them.
  */
 @Component
-@Profile("!test")
 public class HibernateTenantResolver implements CurrentTenantIdentifierResolver<Long> {
 
   @Override

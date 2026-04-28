@@ -81,7 +81,7 @@ public class ProductImportService {
 
           Product product = Product.builder()
               .name(name).tenantId(tenantId).salePrice(salePrice).stock(stock).sku(sku)
-              .categoryId(category.getId()).unit("Unit").isActive(true).reorderLevel(DEFAULT_REORDER_LEVEL)
+              .categoryId(category.getId()).unit("Unit").active(true).reorderLevel(DEFAULT_REORDER_LEVEL)
               .build();
 
           if (!dryRun) {

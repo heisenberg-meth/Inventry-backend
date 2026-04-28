@@ -37,7 +37,7 @@ public class JwtUtil {
       @Value("${app.jwt.expiry-seconds}") long expirySeconds,
       @Value("${app.jwt.refresh-expiry-seconds}") long refreshExpirySeconds) {
     byte[] keyBytes;
-    if (isHexString(secret)) {
+    if (isLikelyHexString(secret)) {
       keyBytes = hexStringToByteArray(secret);
     } else {
       keyBytes = secret.getBytes(StandardCharsets.UTF_8);
@@ -47,8 +47,8 @@ public class JwtUtil {
     this.refreshExpirySeconds = refreshExpirySeconds;
   }
 
-  private boolean isHexString(String s) {
-    return s != null && s.length() % 2 == 0 && s.matches("^[0-9a-fA-F]+$");
+  private boolean isLikelyHexString(String s) {
+    return s != null && s.length() >= 64 && s.matches("^[0-9a-fA-F]+$");
   }
 
   public String generateToken(

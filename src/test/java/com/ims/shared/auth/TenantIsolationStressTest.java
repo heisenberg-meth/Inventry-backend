@@ -73,7 +73,7 @@ class TenantIsolationStressTest extends BaseIntegrationTest {
           .tenantId(testTenant1Id)
           .salePrice(BigDecimal.valueOf(100))
           .stock(10)
-          .isActive(true)
+          .active(true)
           .build());
     }
 
@@ -85,7 +85,7 @@ class TenantIsolationStressTest extends BaseIntegrationTest {
           .tenantId(testTenant2Id)
           .salePrice(BigDecimal.valueOf(200))
           .stock(20)
-          .isActive(true)
+          .active(true)
           .build());
     }
     TenantContext.clear();
