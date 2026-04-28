@@ -30,18 +30,20 @@ import org.springframework.test.context.ActiveProfiles;
  * - 2FA (TOTP) setup and backup codes
  * - MFA challenge-response login flow
  */
-@SpringBootTest(
-    properties = {
-      "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
-      "spring.cache.type=none"
-    })
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
+@SpringBootTest(properties = {
+    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
+    "spring.cache.type=none"
+})
+@AutoConfigureMockMvc(addFilters = false)
+@ActiveProfiles("test-no-security")
 public class SecurityHardeningTest extends BaseIntegrationTest {
 
-  @Autowired private SignupService signupService;
-  @Autowired private AuthService authService;
-  @Autowired private TwoFactorAuthService twoFactorAuthService;
+  @Autowired
+  private SignupService signupService;
+  @Autowired
+  private AuthService authService;
+  @Autowired
+  private TwoFactorAuthService twoFactorAuthService;
 
   private String uniqueId;
   private String email;
@@ -103,7 +105,7 @@ public class SecurityHardeningTest extends BaseIntegrationTest {
 
     // Simulate having 2 previous failed attempts
     doReturn("2").when(redisTemplate.opsForValue()).get("auth:failed:" + email);
-    
+
     // Successful login should not throw and should call delete on the counter key
     var response = authService.login(req);
     assertThat(response).isNotNull();

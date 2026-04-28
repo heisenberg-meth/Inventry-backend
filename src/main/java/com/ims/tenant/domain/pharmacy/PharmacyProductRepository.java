@@ -15,11 +15,11 @@ public interface PharmacyProductRepository extends JpaRepository<PharmacyProduct
       "SELECT p.id as id, p.name as name, p.sku as sku, "
           + "pp.batchNumber as batchNumber, pp.expiryDate as expiryDate, pp.manufacturer as manufacturer "
           + "FROM PharmacyProduct pp JOIN pp.product p "
-          + "WHERE pp.expiryDate <= :date AND p.isActive = true")
+          + "WHERE pp.expiryDate <= :date AND p.active = true")
   List<com.ims.product.ProductExpiryView> findExpiring(@Param("date") LocalDate date);
 
   @Query(
       "SELECT COUNT(pp) FROM PharmacyProduct pp JOIN pp.product p "
-          + "WHERE pp.expiryDate <= :date AND p.isActive = true")
+          + "WHERE pp.expiryDate <= :date AND p.active = true")
   long countExpiring(@Param("date") LocalDate date);
 }

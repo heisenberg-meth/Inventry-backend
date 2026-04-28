@@ -27,142 +27,158 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest(properties = {
-        "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
-        "spring.cache.type=none"
+                "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
+                "spring.cache.type=none"
 })
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
+@AutoConfigureMockMvc(addFilters = false)
+@ActiveProfiles("test-no-security")
 public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
 
-    @Autowired
-    private SignupService signupService;
-    @Autowired
-    private CustomerService customerService;
+        @Autowired
+        private SignupService signupService;
+        @Autowired
+        private CustomerService customerService;
 
-    @BeforeEach
-    void setup() {
-        cleanupDatabase();
-        mockRedisAndCache();
-    }
-
-    @Test
-    void testCompleteOrderWorkflow() throws Exception {
-        // 1. Setup Tenant and Data
-        SignupRequest signup = new SignupRequest();
-        signup.setBusinessName("Order Corp");
-        signup.setBusinessType("RETAIL");
-        signup.setOwnerName("Admin");
-        signup.setOwnerEmail("admin@order.com");
-        signup.setPassword("password123");
-        SignupResponse response = signupService.signup(signup);
-        verifyUserEmail("admin@order.com");
-        verifyUser("admin@order.com");
-
-        Long tenantId = Objects.requireNonNull(tenantRepository.findByWorkspaceSlug(Objects.requireNonNull(response.getWorkspaceSlug())).orElseThrow().getId());
-        String token = login("admin@order.com", "password123", Objects.requireNonNull(response.getCompanyCode()), tenantId);
-
-        Customer customer;
-        try {
-            TenantContext.setTenantId(tenantId);
-            com.ims.dto.request.CustomerRequest custReq = new com.ims.dto.request.CustomerRequest();
-            custReq.setName("Test Customer");
-            com.ims.dto.response.CustomerResponse custResponse = customerService.create(custReq);
-            customer = Customer.builder().id(Objects.requireNonNull(custResponse.getId())).name(Objects.requireNonNull(custResponse.getName())).build();
-        } finally {
-            TenantContext.clear();
+        @BeforeEach
+        void setup() {
+                cleanupDatabase();
+                mockRedisAndCache();
         }
 
-        CreateProductRequest createReq = new CreateProductRequest();
-        createReq.setName("Test Product");
-        createReq.setSku("PROD-001");
-        createReq.setSalePrice(new BigDecimal("100.00"));
-        MvcResult prodResult = mockMvc
-                .perform(
-                        post("/api/v1/tenant/products")
-                                .header("Authorization", "Bearer " + token)
-                                .with(tenant(Objects.requireNonNull(String.valueOf(tenantId))))
-                                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
-                                .content(Objects.requireNonNull(objectMapper.writeValueAsString(createReq))))
-                .andExpect(status().isCreated())
-                .andReturn();
-        ProductResponse product = objectMapper.readValue(
-                prodResult.getResponse().getContentAsString(), ProductResponse.class);
+        @Test
+        void testCompleteOrderWorkflow() throws Exception {
+                // 1. Setup Tenant and Data
+                SignupRequest signup = new SignupRequest();
+                signup.setBusinessName("Order Corp");
+                signup.setBusinessType("RETAIL");
+                signup.setOwnerName("Admin");
+                signup.setOwnerEmail("admin@order.com");
+                signup.setPassword("password123");
+                SignupResponse response = signupService.signup(signup);
+                verifyUserEmail("admin@order.com");
+                verifyUser("admin@order.com");
 
-        // 2. Stock In (100 units)
-        mockMvc
-                .perform(
-                        post("/api/v1/tenant/stock/in")
-                                .header("Authorization", "Bearer " + token)
-                                .with(tenant(Objects.requireNonNull(String.valueOf(tenantId))))
-                                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
-                                .content(
-                                        Objects.requireNonNull(
-                                                objectMapper.writeValueAsString(
-                                                        Map.of(
-                                                                "product_id",
-                                                                product.getId(),
-                                                                "quantity",
-                                                                100,
-                                                                "notes",
-                                                                "Initial Stock")))))
-                .andExpect(status().isOk());
+                Long tenantId = Objects.requireNonNull(tenantRepository
+                                .findByWorkspaceSlug(Objects.requireNonNull(response.getWorkspaceSlug())).orElseThrow()
+                                .getId());
+                String token = login("admin@order.com", "password123",
+                                Objects.requireNonNull(response.getCompanyCode()), tenantId);
 
-        verifyStock(token, product.getId(), 100, tenantId);
+                Customer customer;
+                try {
+                        TenantContext.setTenantId(tenantId);
+                        com.ims.dto.request.CustomerRequest custReq = new com.ims.dto.request.CustomerRequest();
+                        custReq.setName("Test Customer");
+                        com.ims.dto.response.CustomerResponse custResponse = customerService.create(custReq);
+                        customer = Customer.builder().id(Objects.requireNonNull(custResponse.getId()))
+                                        .name(Objects.requireNonNull(custResponse.getName())).build();
+                } finally {
+                        TenantContext.clear();
+                }
 
-        // 3. Create Sales Order (Status -> PENDING)
-        Map<String, Object> orderReq = Map.of(
-                "customer_id", customer.getId(),
-                "items",
-                List.of(
-                        Map.of("product_id", product.getId(), "quantity", 10, "unit_price", 100.00)));
+                CreateProductRequest createReq = new CreateProductRequest();
+                createReq.setName("Test Product");
+                createReq.setSku("PROD-001");
+                createReq.setSalePrice(new BigDecimal("100.00"));
+                MvcResult prodResult = mockMvc
+                                .perform(
+                                                post("/api/v1/tenant/products")
+                                                                .header("Authorization", "Bearer " + token)
+                                                                .with(tenant(Objects.requireNonNull(
+                                                                                String.valueOf(tenantId))))
+                                                                .contentType(Objects.requireNonNull(
+                                                                                MediaType.APPLICATION_JSON))
+                                                                .content(Objects.requireNonNull(objectMapper
+                                                                                .writeValueAsString(createReq))))
+                                .andExpect(status().isCreated())
+                                .andReturn();
+                ProductResponse product = objectMapper.readValue(
+                                prodResult.getResponse().getContentAsString(), ProductResponse.class);
 
-        MvcResult orderResult = mockMvc
-                .perform(
-                        post("/api/v1/tenant/orders/sale")
-                                .header("Authorization", "Bearer " + token)
-                                .with(tenant(Objects.requireNonNull(String.valueOf(tenantId))))
-                                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
-                                .content(Objects.requireNonNull(objectMapper.writeValueAsString(orderReq))))
-                .andExpect(status().isCreated())
-                .andReturn();
+                // 2. Stock In (100 units)
+                mockMvc
+                                .perform(
+                                                post("/api/v1/tenant/stock/in")
+                                                                .header("Authorization", "Bearer " + token)
+                                                                .with(tenant(Objects.requireNonNull(
+                                                                                String.valueOf(tenantId))))
+                                                                .contentType(Objects.requireNonNull(
+                                                                                MediaType.APPLICATION_JSON))
+                                                                .content(
+                                                                                Objects.requireNonNull(
+                                                                                                objectMapper.writeValueAsString(
+                                                                                                                Map.of(
+                                                                                                                                "product_id",
+                                                                                                                                product.getId(),
+                                                                                                                                "quantity",
+                                                                                                                                100,
+                                                                                                                                "notes",
+                                                                                                                                "Initial Stock")))))
+                                .andExpect(status().isOk());
 
-        Map<String, Object> orderResponse = objectMapper.readValue(
-                orderResult.getResponse().getContentAsString(),
-                new TypeReference<Map<String, Object>>() {
-                });
-        Long orderId = Long.valueOf(orderResponse.get("id").toString());
+                verifyStock(token, product.getId(), 100, tenantId);
 
-        // 4. Confirm Order (Status -> CONFIRMED, stock 100 -> 90)
-        mockMvc
-                .perform(
-                        post("/api/v1/tenant/orders/" + orderId + "/confirm")
-                                .header("Authorization", "Bearer " + token)
-                                .with(tenant(Objects.requireNonNull(String.valueOf(tenantId)))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("CONFIRMED"));
+                // 3. Create Sales Order (Status -> PENDING)
+                Map<String, Object> orderReq = Map.of(
+                                "customer_id", customer.getId(),
+                                "items",
+                                List.of(
+                                                Map.of("product_id", product.getId(), "quantity", 10, "unit_price",
+                                                                100.00)));
 
-        verifyStock(token, product.getId(), 90, tenantId);
+                MvcResult orderResult = mockMvc
+                                .perform(
+                                                post("/api/v1/tenant/orders/sale")
+                                                                .header("Authorization", "Bearer " + token)
+                                                                .with(tenant(Objects.requireNonNull(
+                                                                                String.valueOf(tenantId))))
+                                                                .contentType(Objects.requireNonNull(
+                                                                                MediaType.APPLICATION_JSON))
+                                                                .content(Objects.requireNonNull(objectMapper
+                                                                                .writeValueAsString(orderReq))))
+                                .andExpect(status().isCreated())
+                                .andReturn();
 
-        // 5. Cancel Order (Status -> CANCELLED, stock 90 -> 100)
-        mockMvc
-                .perform(
-                        post("/api/v1/tenant/orders/" + orderId + "/cancel")
-                                .header("Authorization", "Bearer " + token)
-                                .with(tenant(Objects.requireNonNull(String.valueOf(tenantId)))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("CANCELLED"));
+                Map<String, Object> orderResponse = objectMapper.readValue(
+                                orderResult.getResponse().getContentAsString(),
+                                new TypeReference<Map<String, Object>>() {
+                                });
+                Long orderId = Long.valueOf(orderResponse.get("id").toString());
 
-        verifyStock(token, product.getId(), 100, tenantId);
-    }
+                // 4. Confirm Order (Status -> CONFIRMED, stock 100 -> 90)
+                mockMvc
+                                .perform(
+                                                post("/api/v1/tenant/orders/" + orderId + "/confirm")
+                                                                .header("Authorization", "Bearer " + token)
+                                                                .with(tenant(Objects.requireNonNull(
+                                                                                String.valueOf(tenantId)))))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.status").value("CONFIRMED"));
 
-    private void verifyStock(String token, Long productId, int expected, Long tenantId)
-            throws Exception {
-        mockMvc
-                .perform(
-                        get("/api/v1/tenant/products/" + productId)
-                                .header("Authorization", "Bearer " + token)
-                                .with(tenant(Objects.requireNonNull(String.valueOf(tenantId)))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.stock").value(expected));
-    }
+                verifyStock(token, product.getId(), 90, tenantId);
+
+                // 5. Cancel Order (Status -> CANCELLED, stock 90 -> 100)
+                mockMvc
+                                .perform(
+                                                post("/api/v1/tenant/orders/" + orderId + "/cancel")
+                                                                .header("Authorization", "Bearer " + token)
+                                                                .with(tenant(Objects.requireNonNull(
+                                                                                String.valueOf(tenantId)))))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.status").value("CANCELLED"));
+
+                verifyStock(token, product.getId(), 100, tenantId);
+        }
+
+        private void verifyStock(String token, Long productId, int expected, Long tenantId)
+                        throws Exception {
+                mockMvc
+                                .perform(
+                                                get("/api/v1/tenant/products/" + productId)
+                                                                .header("Authorization", "Bearer " + token)
+                                                                .with(tenant(Objects.requireNonNull(
+                                                                                String.valueOf(tenantId)))))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.stock").value(expected));
+        }
 }

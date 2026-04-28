@@ -254,7 +254,7 @@ public class InvoiceService {
 
   public Page<Invoice> getInvoices(Pageable pageable) {
     TenantContext.assertTenantPresent();
-    return Objects.requireNonNull(invoiceRepository.findAllByIsActiveTrue(pageable));
+    return Objects.requireNonNull(invoiceRepository.findAllByActiveTrue(pageable));
   }
 
   public Page<Invoice> getOverdueInvoices(Pageable pageable) {

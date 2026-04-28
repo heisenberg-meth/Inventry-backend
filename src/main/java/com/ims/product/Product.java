@@ -29,7 +29,12 @@ public class Product {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Version private Long version;
+  @Version
+  private Long version;
+
+  @Column(name = "is_active", nullable = false)
+  @Builder.Default
+  private boolean active = true;
 
   @TenantId
   @Column(name = "tenant_id", nullable = false)
@@ -38,14 +43,17 @@ public class Product {
   @Column(nullable = false)
   private String name;
 
-  @Column private String sku;
+  @Column
+  private String sku;
 
-  @Column private String barcode;
+  @Column
+  private String barcode;
 
   @Column(name = "category_id")
   private Long categoryId;
 
-  @Column private String unit;
+  @Column
+  private String unit;
 
   @Column(name = "purchase_price", precision = 10, scale = 2)
   private BigDecimal purchasePrice;
@@ -53,15 +61,13 @@ public class Product {
   @Column(name = "sale_price", nullable = false, precision = 10, scale = 2)
   private BigDecimal salePrice;
 
-  @Column @Builder.Default private Integer stock = 0;
+  @Column
+  @Builder.Default
+  private Integer stock = 0;
 
   @Column(name = "reorder_level")
   @Builder.Default
   private Integer reorderLevel = DEFAULT_REORDER_LEVEL;
-
-  @Column(name = "is_active")
-  @Builder.Default
-  private Boolean isActive = true;
 
   @Column(name = "created_at")
   @Builder.Default

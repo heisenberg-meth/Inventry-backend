@@ -30,7 +30,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
       "SELECT i FROM Invoice i JOIN Order o ON i.orderId = o.id WHERE o.supplierId = :supplierId")
   List<Invoice> findBySupplierId(@Param("supplierId") Long supplierId);
 
-  org.springframework.data.domain.Page<Invoice> findAllByIsActiveTrue(org.springframework.data.domain.Pageable pageable);
+  org.springframework.data.domain.Page<Invoice> findAllByActiveTrue(org.springframework.data.domain.Pageable pageable);
 
   org.springframework.data.domain.Page<Invoice> findByStatusNotAndDueDateBefore(
       InvoiceStatus status, LocalDate date, org.springframework.data.domain.Pageable pageable);

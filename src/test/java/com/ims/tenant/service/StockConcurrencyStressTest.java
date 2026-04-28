@@ -40,7 +40,7 @@ class StockConcurrencyStressTest extends BaseIntegrationTest {
         .tenantId(testTenant1Id)
         .salePrice(BigDecimal.valueOf(100))
         .stock(INITIAL_STOCK)
-        .isActive(true)
+        .active(true)
         .build());
     productId = p.getId();
     TenantContext.clear();

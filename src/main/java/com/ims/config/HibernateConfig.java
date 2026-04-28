@@ -1,23 +1,25 @@
 package com.ims.config;
 
 import java.util.Map;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.orm.jpa.HibernatePropertiesCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 
 @Configuration
-@Profile("test")
 @RequiredArgsConstructor
 public class HibernateConfig {
 
-  private final TenantLeakInterceptor tenantLeakInterceptor;
+  private final HibernateTenantResolver hibernateTenantResolver;
+  private final Optional<TenantLeakInterceptor> tenantLeakInterceptor;
 
   @Bean
-  @Profile("test")
   public HibernatePropertiesCustomizer hibernatePropertiesCustomizer() {
-    return (Map<String, Object> hibernateProperties) -> 
-        hibernateProperties.put("hibernate.session_factory.statement_inspector", tenantLeakInterceptor);
+    return (Map<String, Object> hibernateProperties) -> {
+        tenantLeakInterceptor.ifPresent(interceptor -> 
+            hibernateProperties.put("hibernate.session_factory.statement_inspector", interceptor));
+        hibernateProperties.put("hibernate.tenant_identifier_resolver", hibernateTenantResolver);
+    };
   }
 }

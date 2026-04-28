@@ -28,19 +28,21 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
-@SpringBootTest(
-    properties = {
-      "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
-      "spring.cache.type=none"
-    })
-@ActiveProfiles("test")
+@SpringBootTest(properties = {
+    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
+    "spring.cache.type=none"
+})
+@ActiveProfiles("test-no-security")
 public class InvoiceConcurrencyTest extends BaseIntegrationTest {
 
-  @Autowired private InvoiceService invoiceService;
+  @Autowired
+  private InvoiceService invoiceService;
 
-  @Autowired private TenantRepository tenantRepository;
+  @Autowired
+  private TenantRepository tenantRepository;
 
-  @Autowired private OrderRepository orderRepository;
+  @Autowired
+  private OrderRepository orderRepository;
 
   private Long tenantId;
   private List<Long> orderIds = new ArrayList<>();
@@ -51,29 +53,27 @@ public class InvoiceConcurrencyTest extends BaseIntegrationTest {
     mockRedisAndCache();
 
     // Create a tenant
-    Tenant tenant =
-        Tenant.builder()
-            .name("Concurrency Corp")
-            .workspaceSlug("concurrency-corp")
-            .companyCode("CONC001")
-            .businessType("RETAIL")
-            .invoiceSequence(0)
-            .build();
+    Tenant tenant = Tenant.builder()
+        .name("Concurrency Corp")
+        .workspaceSlug("concurrency-corp")
+        .companyCode("CONC001")
+        .businessType("RETAIL")
+        .invoiceSequence(0)
+        .build();
     tenant = tenantRepository.save(tenant);
     this.tenantId = tenant.getId();
 
     // Create 10 orders to generate invoices for
     for (int i = 0; i < 10; i++) {
-      Order order =
-          Order.builder()
-              .tenantId(Objects.requireNonNull(tenantId))
-              .type("SALE")
-              .status(com.ims.model.OrderStatus.PENDING)
-              .totalAmount(new BigDecimal("100.00"))
-              .taxAmount(new BigDecimal("10.00"))
-              .discount(Objects.requireNonNull(BigDecimal.ZERO))
-              .createdAt(Objects.requireNonNull(LocalDateTime.now()))
-              .build();
+      Order order = Order.builder()
+          .tenantId(Objects.requireNonNull(tenantId))
+          .type("SALE")
+          .status(com.ims.model.OrderStatus.PENDING)
+          .totalAmount(new BigDecimal("100.00"))
+          .taxAmount(new BigDecimal("10.00"))
+          .discount(Objects.requireNonNull(BigDecimal.ZERO))
+          .createdAt(Objects.requireNonNull(LocalDateTime.now()))
+          .build();
       order = orderRepository.save(order);
       orderIds.add(order.getId());
     }

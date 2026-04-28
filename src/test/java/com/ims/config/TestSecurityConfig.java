@@ -1,16 +1,16 @@
 package com.ims.config;
 
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 
-@Configuration
-@Profile(
-    "test-no-security") // Using a specific profile to avoid conflicting with actual security tests
-// if needed
-public class NoSecurityConfig {
+@TestConfiguration
+@EnableWebSecurity
+@Profile("test-no-security")
+public class TestSecurityConfig {
 
   @Bean
   public SecurityFilterChain testFilterChain(HttpSecurity http) throws Exception {
