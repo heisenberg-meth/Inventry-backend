@@ -49,10 +49,10 @@ public class UserService {
    * This avoids N+1 queries by joining roles at the database level.
    */
   public Page<UserResponse> getUsers(Pageable pageable) {
-    Long tenantId = TenantContext.requireTenantId();
+    TenantContext.assertTenantPresent();
     return Objects.requireNonNull(
         userRepository
-            .findSummariesByTenantId(tenantId, Objects.requireNonNull(pageable))
+            .findSummaries(Objects.requireNonNull(pageable))
             .map(this::toResponseFromView));
   }
 
@@ -60,16 +60,16 @@ public class UserService {
    * Fetches a single user with all role and permission details in a single query.
    */
   public UserResponse getUserById(Long id) {
-    Long tenantId = TenantContext.requireTenantId();
+    TenantContext.assertTenantPresent();
     User tmpUser = userRepository
-        .findByIdWithFullDetails(Objects.requireNonNull(id), tenantId)
+        .findByIdWithFullDetails(Objects.requireNonNull(id))
         .orElseThrow(() -> new EntityNotFoundException("User not found"));
     User user = Objects.requireNonNull(tmpUser);
     return toResponse(user, true);
   }
 
   @Transactional
-  public  UserResponse createUser( CreateUserRequest request) {
+  public UserResponse createUser(CreateUserRequest request) {
     // Validate role is tenant-level only
     if (!VALID_TENANT_ROLES.contains(request.getRole())) {
       throw new IllegalArgumentException("Invalid role. Must be one of: " + VALID_TENANT_ROLES);
@@ -90,27 +90,26 @@ public class UserService {
     var tenant = Objects.requireNonNull(tmpTenant);
 
     if (tenant.getMaxUsers() != null) {
-      long currentCount = userRepository.countActiveByTenantId(tenantId);
+      long currentCount = userRepository.countActive();
       if (currentCount >= tenant.getMaxUsers()) {
         throw new IllegalArgumentException(
             "User limit reached for your plan (" + tenant.getMaxUsers() + ")");
       }
     }
 
-    User user =
-        User.builder()
-            .tenantId(tenantId)
-            .name(request.getName())
-            .email(request.getEmail())
-            .passwordHash(Objects.requireNonNull(passwordEncoder.encode(request.getPassword())))
-            .role(
-                Objects.requireNonNull(
-                    roleRepository
-                        .findByNameAndTenantId(request.getRole(), tenantId)
-                        .orElseThrow(() -> new EntityNotFoundException("Role not found for tenant: " + request.getRole()))))
-            .scope("TENANT")
-            .isActive(true)
-            .build();
+    User user = User.builder()
+        .tenantId(tenantId)
+        .name(request.getName())
+        .email(request.getEmail())
+        .passwordHash(Objects.requireNonNull(passwordEncoder.encode(request.getPassword())))
+        .role(
+            Objects.requireNonNull(
+                roleRepository
+                    .findByName(request.getRole())
+                    .orElseThrow(() -> new EntityNotFoundException("Role not found: " + request.getRole()))))
+        .scope("TENANT")
+        .isActive(true)
+        .build();
 
     User saved = userRepository.save(user);
 
@@ -126,7 +125,7 @@ public class UserService {
 
   @Transactional
   @CacheEvict(value = "permissions", key = "#id", cacheResolver = "tenantAwareCacheResolver")
-  public  UserResponse updateRole( Long id,  String newRole) {
+  public UserResponse updateRole(Long id, String newRole) {
     if (!VALID_TENANT_ROLES.contains(newRole)) {
       throw new IllegalArgumentException("Invalid role. Must be one of: " + VALID_TENANT_ROLES);
     }
@@ -138,10 +137,9 @@ public class UserService {
             .filter(u -> tenantId.equals(u.getTenantId()))
             .orElseThrow(() -> new EntityNotFoundException("User not found")));
 
-    Long tenantId1 = TenantContext.getTenantId();
     Role role = Objects.requireNonNull(
         roleRepository
-            .findByNameAndTenantId(newRole, tenantId1)
+            .findByName(newRole)
             .orElseThrow(() -> new EntityNotFoundException("Role not found: " + newRole)));
 
     user.setRole(role);
@@ -160,13 +158,12 @@ public class UserService {
 
   @Transactional
   @CacheEvict(value = "permissions", key = "#id", cacheResolver = "tenantAwareCacheResolver")
-  public  UserResponse assignPermissions(
-       Long id,  AssignPermissionsRequest request) {
+  public UserResponse assignPermissions(
+      Long id, AssignPermissionsRequest request) {
     Objects.requireNonNull(id, "user id required");
     Objects.requireNonNull(request, "request body required");
-    Long tenantId = TenantContext.requireTenantId();
     User tmpUser = userRepository
-        .findByIdWithFullDetails(id, tenantId)
+        .findByIdWithFullDetails(id)
         .orElseThrow(() -> new EntityNotFoundException("User not found"));
     User user = Objects.requireNonNull(tmpUser);
 
@@ -184,7 +181,7 @@ public class UserService {
   }
 
   @Transactional
-  public void deactivateUser( Long id) {
+  public void deactivateUser(Long id) {
     Long tenantId = TenantContext.requireTenantId();
     User user = Objects.requireNonNull(
         userRepository
@@ -224,7 +221,7 @@ public class UserService {
    * Optimized to use already loaded relationships (Role, Permissions) from JOIN
    * FETCH.
    */
-  private  UserResponse toResponse( User user, boolean includePermissions) {
+  private UserResponse toResponse(User user, boolean includePermissions) {
     List<String> permissions = null;
 
     if (includePermissions) {

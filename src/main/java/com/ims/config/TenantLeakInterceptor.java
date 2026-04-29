@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
  * In 'test' profile, it ensures that any query hitting a multi-tenant table
  * MUST contain a 'tenant_id' filter.
  */
-@Profile("!test")
+@Profile("test")
 @Slf4j
 @Component
 public class TenantLeakInterceptor implements StatementInspector {

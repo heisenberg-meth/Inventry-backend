@@ -28,30 +28,26 @@ import org.springframework.web.bind.annotation.RestController;
 public class RoleController {
 
   private final RoleService roleService;
-  private final com.ims.shared.auth.SecurityContextAccessor securityContext;
 
   @GetMapping
   @RequiresRole({"ADMIN"})
   @Operation(summary = "List tenant roles")
   public ResponseEntity<List<Role>> listRoles() {
-    Long tenantId = securityContext.requireTenantId();
-    return ResponseEntity.ok(roleService.findByTenant(tenantId));
+    return ResponseEntity.ok(roleService.findAll());
   }
 
   @GetMapping("/{id}")
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Get role details with permissions")
   public ResponseEntity<Role> getRole(@PathVariable long id) {
-    Long tenantId = securityContext.requireTenantId();
-    return ResponseEntity.ok(roleService.findOne(tenantId, id));
+    return ResponseEntity.ok(roleService.findOne(id));
   }
 
   @PostMapping
   @RequiresRole({"ADMIN"})
   @Operation(summary = "Create a new role")
   public ResponseEntity<Role> createRole(@Valid @RequestBody CreateRoleRequest request) {
-    Long tenantId = securityContext.requireTenantId();
-    return ResponseEntity.status(HttpStatus.CREATED).body(roleService.create(tenantId, request));
+    return ResponseEntity.status(HttpStatus.CREATED).body(roleService.create(request));
   }
 
   @PostMapping("/{id}/permissions")
@@ -59,8 +55,7 @@ public class RoleController {
   @Operation(summary = "Assign permissions to role")
   public ResponseEntity<Role> assignPermissions(
       @PathVariable long id, @Valid @RequestBody AssignPermissionsRequest request) {
-    Long tenantId = securityContext.requireTenantId();
-    return ResponseEntity.ok(roleService.assignPermissions(tenantId, id, request));
+    return ResponseEntity.ok(roleService.assignPermissions(id, request));
   }
 
 }

@@ -32,15 +32,15 @@ public class SupplierService {
   private final com.ims.shared.audit.AuditLogService auditLogService;
 
   public Page<com.ims.dto.response.SupplierResponse> getSuppliers(Pageable pageable) {
-    Long tenantId = TenantContext.requireTenantId();
-    return Objects.requireNonNull(supplierRepository.findByTenantId(tenantId, pageable).map(this::toResponse));
+    TenantContext.assertTenantPresent();
+    return Objects.requireNonNull(supplierRepository.findAll(pageable).map(this::toResponse));
   }
 
   public Supplier getById(Long id) {
-    Long tenantId = TenantContext.requireTenantId();
+    TenantContext.assertTenantPresent();
     return Objects.requireNonNull(
         supplierRepository
-            .findByIdAndTenantId(id, tenantId)
+            .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Supplier not found")));
   }
 
@@ -124,12 +124,11 @@ public class SupplierService {
   }
 
   public Map<String, Object> getSupplierLedger(Long id) {
-    Long tenantId = TenantContext.requireTenantId();
     Supplier supplier = getById(id);
 
     List<com.ims.model.Order> orders = orderRepository.findBySupplierId(id, Pageable.unpaged()).getContent();
-    List<com.ims.model.Invoice> invoices = invoiceRepository.findBySupplierId(id, tenantId);
-    List<com.ims.model.Payment> payments = paymentRepository.findBySupplierId(id, tenantId);
+    List<com.ims.model.Invoice> invoices = invoiceRepository.findBySupplierId(id);
+    List<com.ims.model.Payment> payments = paymentRepository.findBySupplierId(id);
 
     return Objects.requireNonNull(
         Map.of(

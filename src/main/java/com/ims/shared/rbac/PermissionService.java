@@ -35,7 +35,7 @@ public class PermissionService {
 
     User user =
         userRepository
-            .findByIdWithPermissions(userId, tenantId)
+            .findByIdWithPermissions(userId)
             .orElseThrow(() -> new AccessDeniedException("User not found"));
 
     Set<String> permissions = new HashSet<>();
@@ -44,7 +44,7 @@ public class PermissionService {
     if (user.getRole() != null) {
       Optional<Role> roleOpt =
           tenantId != null
-              ? roleRepository.findByNameAndTenantIdWithPermissions(user.getRole().getName(), tenantId)
+              ? roleRepository.findByNameWithPermissions(user.getRole().getName())
               : roleRepository.findByNameAndTenantIdIsNullWithPermissions(user.getRole().getName());
 
       roleOpt.ifPresent(

@@ -24,17 +24,18 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
-@SpringBootTest(
-    properties = {
-      "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
-      "spring.cache.type=none"
-    })
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
+@SpringBootTest(properties = {
+    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
+    "spring.cache.type=none"
+})
+@AutoConfigureMockMvc(addFilters = false)
+@ActiveProfiles("test-no-security")
 public class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired private SignupService signupService;
-  @Autowired private StockService stockService;
+  @Autowired
+  private SignupService signupService;
+  @Autowired
+  private StockService stockService;
 
   private long productId;
   private long userId;
@@ -55,27 +56,24 @@ public class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
     verifyUserEmail("admin@conc.com");
 
     // Query directly via JDBC to avoid transaction lag or cache issues in setup
-    tenantId =
-        Objects.requireNonNull(
-            jdbcTemplate.queryForObject(
-                "SELECT id FROM tenants WHERE workspace_slug = 'conc-corp'", Long.class));
-    userId =
-        Objects.requireNonNull(
-            jdbcTemplate.queryForObject(
-                "SELECT id FROM users WHERE email = 'admin@conc.com'", Long.class));
+    tenantId = Objects.requireNonNull(
+        jdbcTemplate.queryForObject(
+            "SELECT id FROM tenants WHERE workspace_slug = 'conc-corp'", Long.class));
+    userId = Objects.requireNonNull(
+        jdbcTemplate.queryForObject(
+            "SELECT id FROM users WHERE email = 'admin@conc.com'", Long.class));
     verifyUser("admin@conc.com");
 
     TenantContext.setTenantId(tenantId);
-    Product product =
-        Product.builder()
-            .tenantId(tenantId)
-            .name("Concurrency Test Product")
-            .sku("CONC-001")
-            .salePrice(Objects.requireNonNull(BigDecimal.valueOf(10.0)))
-            .stock(100)
-            .reorderLevel(10)
-            .isActive(true)
-            .build();
+    Product product = Product.builder()
+        .tenantId(tenantId)
+        .name("Concurrency Test Product")
+        .sku("CONC-001")
+        .salePrice(Objects.requireNonNull(BigDecimal.valueOf(10.0)))
+        .stock(100)
+        .reorderLevel(10)
+        .active(true)
+        .build();
     product = productRepository.save(Objects.requireNonNull(product));
     productId = product.getId();
     TenantContext.clear();

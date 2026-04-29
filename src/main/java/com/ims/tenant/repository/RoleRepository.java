@@ -11,20 +11,17 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface RoleRepository extends JpaRepository<Role, Long> {
 
-  List<Role> findByTenantIdOrderByNameAsc(Long tenantId);
+  List<Role> findAllByOrderByNameAsc();
 
-  Optional<Role> findByIdAndTenantId(Long id, Long tenantId);
-
-  Optional<Role> findByNameAndTenantId(String name, Long tenantId);
+  Optional<Role> findByName(String name);
 
   @Query(
-      "SELECT r FROM Role r LEFT JOIN FETCH r.permissions WHERE r.name = :name AND r.tenantId = :tenantId")
-  Optional<Role> findByNameAndTenantIdWithPermissions(
-      @Param("name") String name, @Param("tenantId") Long tenantId);
+      "SELECT r FROM Role r LEFT JOIN FETCH r.permissions WHERE r.name = :name")
+  Optional<Role> findByNameWithPermissions(@Param("name") String name);
 
-  Optional<Role> findByNameAndTenantIdIsNull(String name);
+  @Query(value = "SELECT * FROM roles WHERE name = :name AND tenant_id IS NULL", nativeQuery = true)
+  Optional<Role> findByNameAndTenantIdIsNull(@Param("name") String name);
 
-  @Query(
-      "SELECT r FROM Role r LEFT JOIN FETCH r.permissions WHERE r.name = :name AND r.tenantId IS NULL")
+  @Query(value = "SELECT r.* FROM roles r WHERE r.name = :name AND r.tenant_id IS NULL", nativeQuery = true)
   Optional<Role> findByNameAndTenantIdIsNullWithPermissions(@Param("name") String name);
 }

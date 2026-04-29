@@ -32,15 +32,14 @@ public class AuditLogService {
       impersonatedBy = detailsObj.getImpersonatedBy();
     }
 
-    AuditLog auditEntry =
-        Objects.requireNonNull(
-            AuditLog.builder()
-                .tenantId(tenantId)
-                .userId(userId)
-                .action(Objects.requireNonNull(action.name()))
-                .details(Objects.requireNonNull(details))
-                .impersonatedBy(impersonatedBy)
-                .build());
+    AuditLog auditEntry = Objects.requireNonNull(
+        AuditLog.builder()
+            .tenantId(tenantId)
+            .userId(userId)
+            .action(Objects.requireNonNull(action.name()))
+            .details(Objects.requireNonNull(details))
+            .impersonatedBy(impersonatedBy)
+            .build());
 
     auditLogRepository.save(auditEntry);
   }
@@ -66,14 +65,13 @@ public class AuditLogService {
       log(a, tenantId, userId, details);
     } catch (IllegalArgumentException e) {
       log.warn("Legacy log called with non-enum value: {}. Logging as string.", action);
-      AuditLog auditEntry =
-          Objects.requireNonNull(
-              AuditLog.builder()
-                  .tenantId(tenantId)
-                  .userId(userId)
-                  .action(action)
-                  .details(details)
-                  .build());
+      AuditLog auditEntry = Objects.requireNonNull(
+          AuditLog.builder()
+              .tenantId(tenantId)
+              .userId(userId)
+              .action(action)
+              .details(details)
+              .build());
       auditLogRepository.save(auditEntry);
     }
   }
@@ -94,14 +92,15 @@ public class AuditLogService {
       tenantId = TenantContext.getTenantId();
     }
 
-    String fullDetails =
-        String.format(
-            "[%s:%s] %s", resource.name(), resourceId != null ? resourceId : "N/A", details);
-    log(action, tenantId != null ? tenantId : TenantContext.PLATFORM_TENANT_ID, userId != null ? userId : TenantContext.PLATFORM_TENANT_ID, Objects.requireNonNull(fullDetails));
+    String fullDetails = String.format(
+        "[%s:%s] %s", resource.name(), resourceId != null ? resourceId : "N/A", details);
+    log(action, tenantId != null ? tenantId : TenantContext.PLATFORM_TENANT_ID,
+        userId != null ? userId : TenantContext.PLATFORM_TENANT_ID, Objects.requireNonNull(fullDetails));
   }
 
   /**
-   * @deprecated Use {@link #logAudit(AuditAction, AuditResource, Long, String)} instead.
+   * @deprecated Use {@link #logAudit(AuditAction, AuditResource, Long, String)}
+   *             instead.
    */
   @Deprecated
   public void logAudit(String action, String resource, Long resourceId, String details) {
@@ -124,28 +123,39 @@ public class AuditLogService {
       Pageable pageable) {
     var logs = auditLogRepository.findAll(pageable);
 
-    // Unmask for ROOT when support mode is explicitly enabled
-    if (isSystemAdmin() && systemConfigService.isSupportModeEnabled()) {
-      return logs.map(this::toDto); // full data visible for support investigation
-    }
-    return logs.map(this::toMaskedDto); // everyone else gets masked
-  }
-
-  public Page<AuditLogResponse> getTenantLogs(
-      Long tenantId, org.springframework.data.domain.Pageable pageable) {
-    var logs = auditLogRepository.findByTenantId(tenantId, pageable);
-
-    // Unmask for ROOT when support mode is explicitly enabled
     if (isSystemAdmin() && systemConfigService.isSupportModeEnabled()) {
       return logs.map(this::toDto);
     }
     return logs.map(this::toMaskedDto);
   }
 
-  public Page<AuditLogResponse>
-      getTenantLogsAsDto(
-          Long tenantId, org.springframework.data.domain.Pageable pageable) {
-    var logs = auditLogRepository.findByTenantId(tenantId, pageable);
+  public Page<AuditLogResponse> getTenantLogs(Pageable pageable) {
+    TenantContext.assertTenantPresent();
+    var logs = auditLogRepository.findAll(pageable);
+
+    if (isSystemAdmin() && systemConfigService.isSupportModeEnabled()) {
+      return logs.map(this::toDto);
+    }
+    return logs.map(this::toMaskedDto);
+  }
+
+  public Page<AuditLogResponse> getLogsForTenant(Long tenantId, Pageable pageable) {
+    Long previousTenantId = TenantContext.getTenantId();
+    TenantContext.setTenantId(tenantId);
+    try {
+      var logs = auditLogRepository.findAll(pageable);
+      if (isSystemAdmin() && systemConfigService.isSupportModeEnabled()) {
+        return logs.map(this::toDto);
+      }
+      return logs.map(this::toMaskedDto);
+    } finally {
+      TenantContext.setTenantId(previousTenantId);
+    }
+  }
+
+  public Page<AuditLogResponse> getTenantLogsAsDto(Pageable pageable) {
+    TenantContext.assertTenantPresent();
+    var logs = auditLogRepository.findAll(pageable);
     return logs.map(this::toMaskedDto);
   }
 

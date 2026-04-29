@@ -21,15 +21,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 
-@SpringBootTest(
-    properties = {
-      "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
-      "spring.cache.type=none"
-    })
-@ActiveProfiles("test")
+@SpringBootTest(properties = {
+    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
+    "spring.cache.type=none"
+})
+@ActiveProfiles("test-no-security")
 public class StockAuditIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired private StockService stockService;
+  @Autowired
+  private StockService stockService;
 
   private Long product1Id;
   private Long product2Id;
@@ -43,57 +43,53 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
 
     // Tenant 1
     TenantContext.setTenantId(testTenant1Id);
-    User u1 =
-        User.builder()
-            .tenantId(testTenant1Id)
-            .email("u1@t1.com")
-            .name("U1")
-            .passwordHash("p")
-            .role(Objects.requireNonNull(getOrCreateRole(Objects.requireNonNull(UserRole.ADMIN.name()), testTenant1Id)))
-            .scope("TENANT")
-            .isVerified(true)
-            .build();
+    User u1 = User.builder()
+        .tenantId(testTenant1Id)
+        .email("u1@t1.com")
+        .name("U1")
+        .passwordHash("p")
+        .role(Objects.requireNonNull(getOrCreateRole(Objects.requireNonNull(UserRole.ADMIN.name()), testTenant1Id)))
+        .scope("TENANT")
+        .isVerified(true)
+        .build();
     u1 = userRepository.save(Objects.requireNonNull(u1));
     user1Id = u1.getId();
 
-    Product p1 =
-        Product.builder()
-            .tenantId(testTenant1Id)
-            .name("T1 Product")
-            .sku("T1-PROD")
-            .salePrice(Objects.requireNonNull(BigDecimal.valueOf(10.0)))
-            .stock(50)
-            .reorderLevel(5)
-            .isActive(true)
-            .build();
+    Product p1 = Product.builder()
+        .tenantId(testTenant1Id)
+        .name("T1 Product")
+        .sku("T1-PROD")
+        .salePrice(Objects.requireNonNull(BigDecimal.valueOf(10.0)))
+        .stock(50)
+        .reorderLevel(5)
+        .active(true)
+        .build();
     p1 = productRepository.save(Objects.requireNonNull(p1));
     product1Id = p1.getId();
 
     // Tenant 2
     TenantContext.setTenantId(testTenant2Id);
-    User u2 =
-        User.builder()
-            .tenantId(testTenant2Id)
-            .email("u2@t2.com")
-            .name("U2")
-            .passwordHash("p")
-            .role(Objects.requireNonNull(getOrCreateRole(Objects.requireNonNull(UserRole.ADMIN.name()), testTenant2Id)))
-            .scope("TENANT")
-            .isVerified(true)
-            .build();
+    User u2 = User.builder()
+        .tenantId(testTenant2Id)
+        .email("u2@t2.com")
+        .name("U2")
+        .passwordHash("p")
+        .role(Objects.requireNonNull(getOrCreateRole(Objects.requireNonNull(UserRole.ADMIN.name()), testTenant2Id)))
+        .scope("TENANT")
+        .isVerified(true)
+        .build();
     u2 = userRepository.save(Objects.requireNonNull(u2));
     user2Id = u2.getId();
 
-    Product p2 =
-        Product.builder()
-            .tenantId(testTenant2Id)
-            .name("T2 Product")
-            .sku("T2-PROD")
-            .salePrice(Objects.requireNonNull(BigDecimal.valueOf(20.0)))
-            .stock(100)
-            .reorderLevel(10)
-            .isActive(true)
-            .build();
+    Product p2 = Product.builder()
+        .tenantId(testTenant2Id)
+        .name("T2 Product")
+        .sku("T2-PROD")
+        .salePrice(Objects.requireNonNull(BigDecimal.valueOf(20.0)))
+        .stock(100)
+        .reorderLevel(10)
+        .active(true)
+        .build();
     p2 = productRepository.save(Objects.requireNonNull(p2));
     product2Id = p2.getId();
 
@@ -172,13 +168,13 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
     // Stock out 46 -> stock is 4 (Low Stock!)
     stockService.stockOut(Objects.requireNonNull(product1Id), 46, "Big sale", Objects.requireNonNull(user1Id));
 
-    var lowStock = productRepository.findLowStock(testTenant1Id);
+    var lowStock = productRepository.findLowStock();
     assertThat(lowStock).hasSize(1);
     assertThat(lowStock.get(0).getId()).isEqualTo(product1Id);
 
     // Stock in 10 -> stock is 14 (Not low stock anymore)
     stockService.stockIn(Objects.requireNonNull(product1Id), 10, "Restock", Objects.requireNonNull(user1Id));
-    lowStock = productRepository.findLowStock(testTenant1Id);
+    lowStock = productRepository.findLowStock();
     assertThat(lowStock).isEmpty();
   }
 }

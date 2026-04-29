@@ -42,7 +42,7 @@ public class ProductImportService {
     Long tenantId = securityContextAccessor.requireTenantId();
 
     Map<String, Category> categoryCache = new HashMap<>();
-    categoryRepository.findByTenantId(tenantId, null).forEach(cat -> 
+    categoryRepository.findAll().forEach(cat -> 
         categoryCache.put(cat.getName().toLowerCase(), cat));
 
     List<Product> chunk = new ArrayList<>();
@@ -81,7 +81,7 @@ public class ProductImportService {
 
           Product product = Product.builder()
               .name(name).tenantId(tenantId).salePrice(salePrice).stock(stock).sku(sku)
-              .categoryId(category.getId()).unit("Unit").isActive(true).reorderLevel(DEFAULT_REORDER_LEVEL)
+              .categoryId(category.getId()).unit("Unit").active(true).reorderLevel(DEFAULT_REORDER_LEVEL)
               .build();
 
           if (!dryRun) {

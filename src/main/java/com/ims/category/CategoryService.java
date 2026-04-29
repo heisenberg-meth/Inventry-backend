@@ -30,10 +30,10 @@ public class CategoryService {
   private final AuditLogService auditLogService;
 
   public PagedResponse<CategoryResponse> getCategories(
-      Long tenantId, Pageable pageable) {
+      Pageable pageable) {
     TenantContext.assertTenantPresent();
 
-    Page<CategoryResponse> page = categoryRepository.findByTenantId(tenantId, pageable).map(this::toResponse);
+    Page<CategoryResponse> page = categoryRepository.findAll(pageable).map(this::toResponse);
     return new PagedResponse<>(
         page.getContent(),
         page.getTotalElements(),
@@ -44,10 +44,9 @@ public class CategoryService {
 
   public Category getById(Long id) {
     TenantContext.assertTenantPresent();
-    Long tenantId = TenantContext.requireTenantId();
     return Objects.requireNonNull(
         categoryRepository
-            .findByIdAndTenantId(id, tenantId)
+            .findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Category not found")));
   }
 
@@ -55,13 +54,12 @@ public class CategoryService {
   public Category create(CategoryRequest request) {
     String name = Objects.requireNonNull(request.getName());
 
-    if (categoryRepository.existsByNameIgnoreCaseAndTenantId(name, TenantContext.requireTenantId())) {
+    if (categoryRepository.existsByNameIgnoreCase(name)) {
       throw new IllegalArgumentException("Category with this name already exists");
     }
 
     Category category = Objects.requireNonNull(
         Category.builder()
-            .tenantId(TenantContext.requireTenantId())
             .name(name)
             .description(request.getDescription())
             .taxRate(Objects.requireNonNull(request.getTaxRate() != null ? request.getTaxRate() : BigDecimal.ZERO))
@@ -83,12 +81,11 @@ public class CategoryService {
 
     Category category = getById(id);
     TenantContext.assertTenantPresent();
-    Long tenantId = TenantContext.requireTenantId();
 
     String name = Objects.requireNonNull(request.getName());
 
     if (!category.getName().equalsIgnoreCase(name)
-        && categoryRepository.existsByNameIgnoreCaseAndTenantId(name, tenantId)) {
+        && categoryRepository.existsByNameIgnoreCase(name)) {
       throw new IllegalArgumentException("Category with this name already exists");
     }
 

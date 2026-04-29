@@ -3,7 +3,6 @@ package com.ims.product;
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.response.PagedResponse;
 import com.ims.dto.response.ProductResponse;
-import com.ims.shared.auth.TenantContext;
 import com.ims.shared.rbac.RequiresPermission;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -55,8 +54,7 @@ public class ProductController {
   public ResponseEntity<List<ProductResponse>> getNextProducts(
       @RequestParam Long lastId, @RequestParam(defaultValue = "20") int limit) {
     Long safeLastId = Objects.requireNonNull(lastId);
-    Long tenantId = Objects.requireNonNull(TenantContext.getTenantId());
-    return ResponseEntity.ok(productService.getNextProducts(tenantId, safeLastId, limit));
+    return ResponseEntity.ok(productService.getNextProducts(safeLastId, limit));
   }
 
   @PostMapping

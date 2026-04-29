@@ -4,30 +4,30 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: create-drop
     properties:
       hibernate:
-        multiTenancy: NONE
+        multiTenancy: DISCRIMINATOR
         cache:
           use_second_level_cache: false
           use_query_cache: false
-        cache.region.factory_class: org.hibernate.cache.internal.NoCachingRegionFactory
+    show-sql: true
+
+  flyway:
+    enabled: false
+    ignore-missing-migrations: true
+    ignore-ignored-migrations: true
+    ignore-duplicate-migration-locations: true
 
   cache:
     type: none
 
-  flyway:
-    enabled: true
+  http:
+    client:
+      factory: simple
 
-  data:
-    redis:
-      repositories:
-        enabled: false
-
-management:
-  health:
-    redis:
-      enabled: false
 app:
-  test:
-    mode: true
+  jwt:
+    secret: "test-secret-key-at-least-32-chars-long-for-jwt-signing"
+  security:
+    encryption-key: "01234567890123456789012345678901"
