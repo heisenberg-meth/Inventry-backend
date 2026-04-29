@@ -1,6 +1,6 @@
 app:
   security:
-    encryption-key: "MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI="
+    encryption-key: "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
 
   jwt:
     secret: test-secret-that-is-at-least-32-chars-long-for-hmac

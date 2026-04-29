@@ -2,6 +2,8 @@ package com.ims.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -14,7 +16,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.TenantId;
-import org.springframework.lang.Nullable;
 
 @Entity
 @Table(name = "orders")
@@ -27,7 +28,6 @@ public class Order {
   @Id
   @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "order_seq")
   @SequenceGenerator(name = "order_seq", sequenceName = "orders_id_seq", allocationSize = 50)
-  @Nullable
   private Long id;
 
   @TenantId
@@ -41,17 +41,15 @@ public class Order {
   @Builder.Default
   private String currency = "INR";
 
-  @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+  @Enumerated(EnumType.STRING)
   @Column(nullable = false)
   @Builder.Default
   private OrderStatus status = OrderStatus.PENDING;
 
   @Column(name = "customer_id")
-  @Nullable
   private Long customerId;
 
   @Column(name = "supplier_id")
-  @Nullable
   private Long supplierId;
 
   @Column(name = "total_amount", precision = 12, scale = 2)
@@ -65,14 +63,12 @@ public class Order {
   private BigDecimal discount = BigDecimal.ZERO;
 
   @Column
-  @Nullable
   private String notes;
 
   @Column(name = "created_by")
   private Long createdBy;
 
   @Column(name = "reference_order_id")
-  @Nullable
   private Long referenceOrderId;
 
   @Column(name = "created_at")

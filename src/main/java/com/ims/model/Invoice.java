@@ -16,7 +16,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.TenantId;
-import org.springframework.lang.Nullable;
 
 @Entity
 @Table(name = "invoices", uniqueConstraints = {
@@ -30,7 +29,6 @@ public class Invoice {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Nullable
   private Long id;
 
   @TenantId
@@ -38,7 +36,6 @@ public class Invoice {
   private Long tenantId;
 
   @Column(name = "order_id")
-  @Nullable
   private Long orderId;
 
   @Column(name = "invoice_number", nullable = false)
@@ -63,11 +60,9 @@ public class Invoice {
   private LocalDate dueDate;
 
   @Column(name = "paid_at")
-  @Nullable
   private LocalDateTime paidAt;
 
   @Column(name = "parent_invoice_id")
-  @Nullable
   private Long parentInvoiceId;
 
   @Column(name = "is_active", nullable = false)

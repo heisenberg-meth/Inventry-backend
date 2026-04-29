@@ -15,11 +15,14 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.lang.Nullable;
 import org.hibernate.annotations.TenantId;
+import org.hibernate.annotations.Cache;
+import jakarta.persistence.Cacheable;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 
 @Entity
 @Table(name = "categories")
-@jakarta.persistence.Cacheable
-@org.hibernate.annotations.Cache(usage = org.hibernate.annotations.CacheConcurrencyStrategy.READ_WRITE)
+@Cacheable
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
 @Getter
 @Setter
 @NoArgsConstructor

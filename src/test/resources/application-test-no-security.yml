@@ -1,5 +1,5 @@
 app:
   security:
-    encryption-key: "MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=" # 44 chars Base64 -> 32 bytes
+    encryption-key: "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
   jwt:
     secret: "this-is-a-proper-32-byte-secret-key-123456"

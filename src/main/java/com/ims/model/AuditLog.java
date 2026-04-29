@@ -12,7 +12,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.Immutable;
-import org.springframework.lang.Nullable;
 
 @Entity
 @Immutable
@@ -40,7 +39,6 @@ public class AuditLog {
   private String details;
 
   @Column(name = "impersonated_by")
-  @Nullable
   private Long impersonatedBy;
 
   @Column(name = "created_at")

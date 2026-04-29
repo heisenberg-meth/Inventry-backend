@@ -5,6 +5,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
+import org.apache.hc.client5.http.config.ConnectionConfig;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.core5.util.Timeout;
 import org.apache.hc.core5.util.TimeValue;
@@ -27,8 +28,8 @@ public class WebhookConfig {
 
   @Bean
   public RestTemplate webhookRestTemplate() {
-    org.apache.hc.client5.http.config.ConnectionConfig connectionConfig =
-        org.apache.hc.client5.http.config.ConnectionConfig.custom()
+    ConnectionConfig connectionConfig =
+        ConnectionConfig.custom()
             .setConnectTimeout(Timeout.ofMilliseconds(CONNECT_TIMEOUT_MS))
             .setSocketTimeout(Timeout.ofMilliseconds(READ_TIMEOUT_MS))
             .build();

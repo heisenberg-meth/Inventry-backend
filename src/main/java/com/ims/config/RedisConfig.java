@@ -24,10 +24,11 @@ import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSeriali
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.data.web.config.EnableSpringDataWebSupport;
-import org.springframework.lang.NonNull;
+import org.springframework.data.redis.serializer.RedisSerializer;
+import org.springframework.context.annotation.Profile;
 
 @Configuration
-@org.springframework.context.annotation.Profile("!test")
+@Profile("!test")
 @EnableCaching
 @EnableSpringDataWebSupport(
     pageSerializationMode = EnableSpringDataWebSupport.PageSerializationMode.VIA_DTO)
@@ -67,9 +68,8 @@ public class RedisConfig {
     return new CacheResolver() {
 
       @Override
-      @NonNull
       public Collection<? extends Cache> resolveCaches(
-          @NonNull CacheOperationInvocationContext<?> context) {
+          CacheOperationInvocationContext<?> context) {
         Long tenantId = TenantContext.getTenantId();
         Collection<String> cacheNames = context.getOperation().getCacheNames();
 
@@ -112,16 +112,13 @@ public class RedisConfig {
     ObjectMapper mapper = new ObjectMapper();
     mapper.registerModule(new JavaTimeModule());
 
-    // Polymorphic typing is removed for security (RCE risk).
-    // DTOs should be plain Pojos with Jackson annotations if needed.
-
     return Objects.requireNonNull(new GenericJackson2JsonRedisSerializer(mapper));
   }
 
   private RedisCacheConfiguration ttl(Duration duration) {
     Duration d = Objects.requireNonNull(duration);
 
-    org.springframework.data.redis.serializer.RedisSerializer<Object> serializer =
+    RedisSerializer<Object> serializer =
         Objects.requireNonNull(jsonSerializer());
 
     return Objects.requireNonNull(

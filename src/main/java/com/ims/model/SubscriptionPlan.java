@@ -2,6 +2,8 @@ package com.ims.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -21,7 +23,6 @@ import lombok.NoArgsConstructor;
 @Builder
 public class SubscriptionPlan {
 
-  /** Default billing-cycle length (days) used when a plan does not specify one. */
   private static final int DEFAULT_DURATION_DAYS = 30;
 
   @Id
@@ -56,7 +57,7 @@ public class SubscriptionPlan {
   private Integer maxProducts = 0;
 
   @Column
-  @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+  @Enumerated(EnumType.STRING)
   @Builder.Default
   private SubscriptionPlanStatus status = SubscriptionPlanStatus.ACTIVE;
 

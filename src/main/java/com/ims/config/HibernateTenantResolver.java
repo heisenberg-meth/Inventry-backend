@@ -24,8 +24,6 @@ public class HibernateTenantResolver implements CurrentTenantIdentifierResolver<
   @Override
   public Long resolveCurrentTenantIdentifier() {
     Long tenantId = TenantContext.getTenantId();
-    // Use the explicit platform identifier if no tenant is set.
-    // This allows startup probes and platform operations to proceed safely.
     return tenantId != null ? tenantId : TenantContext.PLATFORM_TENANT_ID;
   }
 

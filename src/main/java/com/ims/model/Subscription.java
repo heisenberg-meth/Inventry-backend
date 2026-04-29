@@ -2,6 +2,8 @@ package com.ims.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -31,7 +33,7 @@ public class Subscription {
   private String plan;
 
   @Column(nullable = false)
-  @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+  @Enumerated(EnumType.STRING)
   private SubscriptionStatus status;
 
   @Column(name = "start_date", nullable = false)
