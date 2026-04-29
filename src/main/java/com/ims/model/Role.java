@@ -38,7 +38,7 @@ public class Role {
   @Column private String description;
 
   @TenantId
-  @Column(name = "tenant_id")
+  @Column(name = "tenant_id", nullable = true)
   private Long tenantId;
 
   @ManyToMany(fetch = jakarta.persistence.FetchType.LAZY)

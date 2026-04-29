@@ -67,7 +67,7 @@ spring:
 
 app:
   jwt:
-    secret: ${JWT_SECRET}
+    secret: ${JWT_SECRET:}
     expiry-seconds: ${JWT_EXPIRY_SECONDS:86400}
     refresh-expiry-seconds: ${JWT_REFRESH_EXPIRY_SECONDS:604800}
 
@@ -83,7 +83,7 @@ app:
     authenticated-rpm: ${APP_RATE_LIMIT_AUTHENTICATED_RPM:500}
     window-seconds: ${APP_RATE_LIMIT_WINDOW_SECONDS:60}
   security:
-    encryption-key: ${APP_ENCRYPTION_KEY} # Must be 32 bytes
+    encryption-key: ${APP_ENCRYPTION_KEY:} # Must be 32 bytes
     trusted-proxies: ${APP_TRUSTED_PROXIES:127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
 
 management:

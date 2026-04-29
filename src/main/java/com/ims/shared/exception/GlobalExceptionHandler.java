@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -19,6 +20,14 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     private static final String TRACE_ID_KEY = "traceId";
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiError> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+        HttpStatus status = ex.getMessage().toLowerCase().contains("not authenticated") 
+            ? HttpStatus.UNAUTHORIZED : HttpStatus.FORBIDDEN;
+        return buildResponse(ex.getMessage(), status == HttpStatus.UNAUTHORIZED ? "UNAUTHORIZED" : "ACCESS_DENIED", 
+            status, request, null);
+    }
 
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ApiError> handleNotFound(EntityNotFoundException ex, HttpServletRequest request) {

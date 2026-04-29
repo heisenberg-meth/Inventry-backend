@@ -16,17 +16,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.lang.NonNull;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 
-@SpringBootTest(properties = {
-        "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
-        "spring.cache.type=none"
-})
 @AutoConfigureMockMvc(addFilters = false)
-
 @ActiveProfiles("test-no-security")
 public class AuthIntegrationTest extends BaseIntegrationTest {
 
@@ -129,7 +122,4 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
         req.setPassword("password123");
         return req;
     }
-
-    @MockitoBean
-    private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 }

@@ -1,0 +1,10 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ims-backend-pdb
+  namespace: ims-namespace
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: ims-backend

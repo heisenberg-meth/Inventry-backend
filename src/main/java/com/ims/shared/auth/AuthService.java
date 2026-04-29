@@ -367,6 +367,7 @@ public class AuthService {
     return Objects.requireNonNull(response);
   }
 
+  @Transactional
   public LoginResponse login(LoginRequest request) {
     User user =
         userRepository

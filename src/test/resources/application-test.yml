@@ -1,33 +1,15 @@
-spring:
-  datasource:
-    driver-class-name: org.postgresql.Driver
-
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
-    properties:
-      hibernate:
-        multiTenancy: DISCRIMINATOR
-        cache:
-          use_second_level_cache: false
-          use_query_cache: false
-    show-sql: true
-
-  flyway:
-    enabled: false
-    ignore-missing-migrations: true
-    ignore-ignored-migrations: true
-    ignore-duplicate-migration-locations: true
-
-  cache:
-    type: none
-
-  http:
-    client:
-      factory: simple
-
 app:
-  jwt:
-    secret: "test-secret-key-at-least-32-chars-long-for-jwt-signing"
   security:
-    encryption-key: "01234567890123456789012345678901"
+    encryption-key: "MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI="
+
+  jwt:
+    secret: test-secret-that-is-at-least-32-chars-long-for-hmac
+    expiry-seconds: 86400
+    refresh-expiry-seconds: 604800
+
+spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: ""
