@@ -34,7 +34,7 @@ build/
 index.html
 .planning/
 New Fix.md
-CLAUDE.md
+CLAUDE.mdrepository/org/springframework/boot/spring-boot-starter-parent/3.4.5/spring-boot-starter-parent-3.4.5.pom.lastUpdated
 IMS_PRD_Complete.docx
 PRD.md
 IMS_PRD_Complete (1).docx
@@ -51,3 +51,5 @@ scripts/generate-secret.sh
 skills-lock.json
 .git-rewrite/
 .git-rewrite/*
+.m2/
+CLAUDE.md

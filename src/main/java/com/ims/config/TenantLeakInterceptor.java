@@ -41,11 +41,8 @@ public class TenantLeakInterceptor implements StatementInspector {
     }
 
     for (String table : MULTI_TENANT_TABLES) {
-      if (lowerSql.contains(table)) {
+      if (lowerSql.matches(".*\\b" + table + "\\b.*")) {
         // Basic check for tenant_id filter.
-        // In a real prod environment, we would use a proper SQL parser (like
-        // JSqlParser),
-        // but for a "Hard Test" interceptor, this string check is highly effective.
         if (!lowerSql.contains("tenant_id")) {
           log.error("🛑 TENANT LEAK DETECTED! Table '{}' accessed without tenant_id filter.", table);
           log.error("SQL: {}", sql);
