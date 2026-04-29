@@ -3,6 +3,7 @@ package com.ims.shared.auth;
 import com.ims.dto.request.SignupRequest;
 import com.ims.dto.response.SignupResponse;
 import com.ims.model.Tenant;
+import com.ims.shared.utils.CompanyCodeGenerator;
 import com.ims.model.TenantStatus;
 import com.ims.model.User;
 import java.util.Objects;
@@ -21,7 +22,7 @@ public class SignupService {
   private final PasswordEncoder passwordEncoder;
   private final TenantInitializationService tenantInitializationService;
   private final TenantPersistenceService tenantPersistenceService;
-  private final com.ims.shared.utils.CompanyCodeGenerator companyCodeGenerator;
+  private final CompanyCodeGenerator companyCodeGenerator;
 
   public SignupService(
       TenantRepository tenantRepository,
@@ -29,7 +30,7 @@ public class SignupService {
       PasswordEncoder passwordEncoder,
       TenantInitializationService tenantInitializationService,
       TenantPersistenceService tenantPersistenceService,
-      com.ims.shared.utils.CompanyCodeGenerator companyCodeGenerator) {
+      CompanyCodeGenerator companyCodeGenerator) {
     this.tenantRepository = tenantRepository;
     this.userRepository = userRepository;
     this.passwordEncoder = passwordEncoder;

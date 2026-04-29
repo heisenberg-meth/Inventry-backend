@@ -12,7 +12,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.TenantId;
-import org.springframework.lang.Nullable;
 
 @Entity
 @Table(name = "api_keys")
@@ -37,7 +36,6 @@ public class ApiKey {
     private String name;
 
     @Column(columnDefinition = "TEXT")
-    @Nullable
     private String scopes;
 
     @Column(name = "is_active")
@@ -45,7 +43,6 @@ public class ApiKey {
     private boolean isActive = true;
 
     @Column(name = "expires_at")
-    @Nullable
     private LocalDateTime expiresAt;
 
     @Column(name = "created_at", nullable = false)
@@ -53,6 +50,5 @@ public class ApiKey {
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @Column(name = "last_used_at")
-    @Nullable
     private LocalDateTime lastUsedAt;
 }

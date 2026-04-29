@@ -1,7 +1,9 @@
 package com.ims.model;
 
+import jakarta.persistence.Cacheable;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -16,12 +18,14 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.annotations.TenantId;
 
 @Entity
 @Table(name = "roles")
-@jakarta.persistence.Cacheable
-@org.hibernate.annotations.Cache(usage = org.hibernate.annotations.CacheConcurrencyStrategy.READ_WRITE)
+@Cacheable
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -41,7 +45,7 @@ public class Role {
   @Column(name = "tenant_id", nullable = true)
   private Long tenantId;
 
-  @ManyToMany(fetch = jakarta.persistence.FetchType.LAZY)
+  @ManyToMany(fetch = FetchType.LAZY)
   @JoinTable(
       name = "role_permissions",
       joinColumns = @JoinColumn(name = "role_id"),

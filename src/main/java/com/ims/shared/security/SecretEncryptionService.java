@@ -27,22 +27,25 @@ public class SecretEncryptionService {
     }
 
     byte[] keyBytes;
-    try {
-      if (encryptionKey.length() == 64) {
+    if (encryptionKey.length() == 64) {
+      try {
         keyBytes = HexFormat.of().parseHex(encryptionKey);
-      } else {
-        keyBytes = Base64.getDecoder().decode(encryptionKey);
+      } catch (IllegalArgumentException e) {
+        keyBytes = encryptionKey.getBytes(StandardCharsets.UTF_8);
       }
-    } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException(
-          "Encryption key must be a valid Hex (64 chars) or Base64 encoded string.", e);
+    } else {
+      try {
+        keyBytes = Base64.getDecoder().decode(encryptionKey);
+      } catch (IllegalArgumentException e) {
+        keyBytes = encryptionKey.getBytes(StandardCharsets.UTF_8);
+      }
     }
 
     if (keyBytes.length != KEY_SIZE) {
       throw new IllegalArgumentException(
-          "Encryption key must be exactly 32 bytes (256-bit). Provided size: " + keyBytes.length);
+          "Encryption key must be exactly 32 bytes (256-bit) when decoded. Provided size: "
+              + keyBytes.length);
     }
-
     this.keySpec = new SecretKeySpec(keyBytes, "AES");
   }
 
