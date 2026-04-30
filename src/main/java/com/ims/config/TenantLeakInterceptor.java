@@ -1,6 +1,8 @@
 package com.ims.config;
 
 import com.ims.shared.auth.TenantContext;
+import com.ims.shared.exception.TenantIsolationException;
+
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.resource.jdbc.spi.StatementInspector;
 import org.springframework.context.annotation.Profile;
@@ -41,15 +43,12 @@ public class TenantLeakInterceptor implements StatementInspector {
     }
 
     for (String table : MULTI_TENANT_TABLES) {
-      if (lowerSql.contains(table)) {
+      if (lowerSql.matches(".*\\b" + table + "\\b.*")) {
         // Basic check for tenant_id filter.
-        // In a real prod environment, we would use a proper SQL parser (like
-        // JSqlParser),
-        // but for a "Hard Test" interceptor, this string check is highly effective.
         if (!lowerSql.contains("tenant_id")) {
-          log.error("🛑 TENANT LEAK DETECTED! Table '{}' accessed without tenant_id filter.", table);
+          log.error("TENANT LEAK DETECTED! Table '{}' accessed without tenant_id filter.", table);
           log.error("SQL: {}", sql);
-          throw new com.ims.shared.exception.TenantIsolationException(
+          throw new TenantIsolationException(
               "Security Violation: Query hitting multi-tenant table '" + table + "' is missing a tenant_id filter!");
         }
       }

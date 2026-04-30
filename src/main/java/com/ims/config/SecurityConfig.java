@@ -25,10 +25,12 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.core.env.Environment;
+import com.ims.shared.security.IpWhitelistFilter;
 
 @Configuration
 @EnableWebSecurity
-@Profile("!test-no-security")
+@Profile("!test")
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -38,8 +40,8 @@ public class SecurityConfig {
   private final RateLimitFilter rateLimitFilter;
   private final TraceFilter traceFilter;
   private final TenantFilter tenantFilter;
-  private final com.ims.shared.security.IpWhitelistFilter ipWhitelistFilter;
-  private final com.ims.shared.auth.ApiKeyFilter apiKeyFilter;
+  private final IpWhitelistFilter ipWhitelistFilter;
+  private final ApiKeyFilter apiKeyFilter;
 
   @Value("${app.security.allowed-origins:*}")
   private String allowedOrigins;
@@ -67,7 +69,7 @@ public class SecurityConfig {
 
   @Bean
   public SecurityFilterChain securityFilterChain(
-      HttpSecurity http, org.springframework.core.env.Environment env) throws Exception {
+      HttpSecurity http, Environment env) throws Exception {
     boolean isDev = Arrays.asList(env.getActiveProfiles()).contains("dev");
 
     return configureCommon(http)
@@ -131,8 +133,6 @@ public class SecurityConfig {
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
     if (allowedOrigins == null || "*".equals(allowedOrigins)) {
-      // Never use wildcard in production to avoid security risks.
-      // Defailing to local dev for safety if nothing provided.
       configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:5173"));
     } else {
       configuration.setAllowedOrigins(List.of(allowedOrigins.split(",")));

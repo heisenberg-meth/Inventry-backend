@@ -1,0 +1,46 @@
+replicaCount: 2
+
+image:
+  repository: ims-backend
+  pullPolicy: Always
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations: {}
+  hosts:
+    - host: ims.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1024Mi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+config:
+  dbUrl: "jdbc:postgresql://postgres-service:5432/ims_db"
+  dbUser: "ims_user"
+  redisHost: "redis-service"
+  redisPort: 6379
+
+secrets:
+  dbPassword: "change-me"
+  redisPassword: "change-me"
+  jwtSecret: "replace-with-secure-key"
+  encryptionKey: "01234567890123456789012345678901"

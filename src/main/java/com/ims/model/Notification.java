@@ -12,7 +12,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.TenantId;
-import org.springframework.lang.Nullable;
 
 @Entity
 @Table(name = "notifications")
@@ -24,7 +23,6 @@ public class Notification {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Nullable
   private Long id;
 
   @TenantId
@@ -44,7 +42,6 @@ public class Notification {
   private String type;
 
   @Column(name = "resource_id")
-  @Nullable
   private Long resourceId;
 
   @Column(name = "is_read")

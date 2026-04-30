@@ -1,5 +1,6 @@
 package com.ims.model;
 
+import jakarta.persistence.Cacheable;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -10,11 +11,13 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 
 @Entity
 @Table(name = "permissions")
-@jakarta.persistence.Cacheable
-@org.hibernate.annotations.Cache(usage = org.hibernate.annotations.CacheConcurrencyStrategy.READ_ONLY)
+@Cacheable
+@Cache(usage = CacheConcurrencyStrategy.READ_ONLY)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

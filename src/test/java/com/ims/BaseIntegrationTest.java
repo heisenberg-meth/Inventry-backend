@@ -1,6 +1,7 @@
 package com.ims;
 
 import static org.mockito.ArgumentMatchers.*;
+import org.mockito.Mockito;
 import static org.mockito.Mockito.doReturn;
 import com.ims.model.User;
 import com.ims.model.Role;
@@ -38,17 +39,16 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import org.springframework.lang.NonNull;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import org.springframework.context.annotation.Import;
 import com.ims.config.TestSecurityConfig;
+import com.ims.config.TestSecurityBeansConfig;
 
 @SpringBootTest(properties = {
     "spring.autoconfigure.exclude="
@@ -59,38 +59,39 @@ import com.ims.config.TestSecurityConfig;
     "spring.testcontainers.enabled=true",
     "spring.cache.type=none",
 
-    // 🔥 ADD THESE (MANDATORY)
-    "spring.flyway.enabled=false",
-    "spring.jpa.hibernate.ddl-auto=create-drop",
+    // Flyway manages schema
+    "spring.flyway.enabled=true",
+    "spring.jpa.hibernate.ddl-auto=none",
     "spring.jpa.properties.hibernate.cache.use_second_level_cache=false",
     "spring.jpa.properties.hibernate.cache.use_query_cache=false",
     "spring.jpa.properties.hibernate.cache.region.factory_class=org.hibernate.cache.internal.NoCachingRegionFactory"
 })
-@ActiveProfiles("test-no-security")
+@ActiveProfiles("test")
 @AutoConfigureMockMvc(addFilters = false)
-@Testcontainers
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-@Import(TestSecurityConfig.class)
+@Import({TestSecurityConfig.class, TestSecurityBeansConfig.class})
 public abstract class BaseIntegrationTest {
+static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
 
-  @Container
-  @ServiceConnection
-  static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
+static {
+  postgres.start();
+  System.setProperty("app.test.mode", "true");
+  System.setProperty("DOCKER_API_VERSION", "1.40");
+}
 
-  static {
-    System.setProperty("app.test.mode", "true");
-  }
+protected static final String TEST_ROOT_PASSWORD = System.getProperty("ims.test.root.password",
+    "TestPass123!");
 
-  protected static final String TEST_ROOT_PASSWORD = System.getProperty("ims.test.root.password",
-      "TestPass123!");
-
-  @DynamicPropertySource
-  static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add(
-        "app.jwt.secret",
-        () -> UUID.randomUUID().toString() + UUID.randomUUID().toString());
-  }
-
+@DynamicPropertySource
+static void configureProperties(DynamicPropertyRegistry registry) {
+  registry.add("spring.datasource.url", postgres::getJdbcUrl);
+  registry.add("spring.datasource.username", postgres::getUsername);
+  registry.add("spring.datasource.password", postgres::getPassword);
+  registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
+  registry.add(
+      "app.jwt.secret",
+      () -> UUID.randomUUID().toString() + UUID.randomUUID().toString());
+}
   @Autowired
   protected TenantRepository tenantRepository;
   @Autowired
@@ -133,7 +134,7 @@ public abstract class BaseIntegrationTest {
   protected SystemConfigRepository systemConfigRepository;
   @Autowired
   protected JdbcTemplate jdbcTemplate;
-  @Autowired
+  @MockitoSpyBean
   protected PasswordEncoder passwordEncoder;
   @PersistenceContext
   protected EntityManager entityManager;
@@ -197,7 +198,11 @@ public abstract class BaseIntegrationTest {
       throw new IllegalStateException("TEST_ROOT_PASSWORD must be configured for integration tests.");
     }
     mockRedisAndCache();
-  }
+    Mockito.lenient().when(passwordEncoder.encode(anyString()))
+        .thenReturn("$2a$10$dummyhashdummyhashdummyhash");
+    Mockito.lenient().when(passwordEncoder.matches(anyString(), anyString()))
+        .thenReturn(true);
+  };
 
   protected void cleanupDatabase() {
     TenantContext.clear();
@@ -205,15 +210,20 @@ public abstract class BaseIntegrationTest {
     new TransactionTemplate(Objects.requireNonNull(transactionManager))
         .execute(
             status -> {
+              // We use TRUNCATE ONLY for tables that might be partitioned
               jdbcTemplate.execute("TRUNCATE TABLE audit_logs, payments, invoices, order_items, orders, " +
                   "transfer_orders, stock_movements, pharmacy_products, products, categories, " +
                   "user_permissions, users, role_permissions, roles, customers, suppliers, " +
                   "support_attachments, support_messages, support_tickets, subscriptions, " +
                   "subscription_plans, tenants RESTART IDENTITY CASCADE");
 
+              jdbcTemplate.execute("ALTER TABLE roles ALTER COLUMN tenant_id DROP NOT NULL");
+              jdbcTemplate.execute("ALTER TABLE users ALTER COLUMN tenant_id DROP NOT NULL");
+
               // Seed System Tenant
               jdbcTemplate.execute(
-                  "INSERT INTO tenants (name, workspace_slug, business_type, status, plan, company_code) VALUES ('System', 'system', 'SYSTEM', 'ACTIVE', 'PLATFORM', 'SYS001')");
+                  "INSERT INTO tenants (name, workspace_slug, business_type, status, plan, company_code, version) " +
+                  "VALUES ('System', 'system', 'SYSTEM', 'ACTIVE', 'PLATFORM', 'SYS001', 0)");
               systemTenantId = Objects.requireNonNull(
                   jdbcTemplate.queryForObject(
                       "SELECT id FROM tenants WHERE workspace_slug = 'system'", Long.class));
@@ -230,27 +240,37 @@ public abstract class BaseIntegrationTest {
                   jdbcTemplate.queryForObject("SELECT id FROM roles WHERE name = 'ROOT' AND tenant_id IS NULL",
                       Long.class));
 
-              // Seed Root User
+              // Seed Root User - Using systemTenantId to satisfy NOT NULL constraint
               String rootPassHash = passwordEncoder.encode(Objects.requireNonNull(TEST_ROOT_PASSWORD));
-              jdbcTemplate.update(
-                  "INSERT INTO users (name, email, password_hash, role_id, scope, tenant_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                  "Root Admin",
-                  "root@ims.com",
-                  rootPassHash,
-                  rootRoleId,
-                  "PLATFORM",
-                  systemTenantId,
-                  true);
+              
+              org.springframework.jdbc.core.namedparam.MapSqlParameterSource params = new org.springframework.jdbc.core.namedparam.MapSqlParameterSource();
+              params.addValue("name", "Root Admin");
+              params.addValue("email", "root@ims.com");
+              params.addValue("password_hash", rootPassHash);
+              params.addValue("role_id", rootRoleId);
+              params.addValue("scope", "PLATFORM");
+              params.addValue("tenant_id", systemTenantId); // Root user linked to System tenant
+              params.addValue("is_active", true);
+              params.addValue("is_platform_user", true);
+              params.addValue("is_verified", true);
+              params.addValue("two_factor_enabled", false);
+              params.addValue("version", 0);
+
+              new org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate(jdbcTemplate)
+                  .update(
+                      "INSERT INTO users (name, email, password_hash, role_id, scope, tenant_id, is_active, is_platform_user, is_verified, two_factor_enabled, version) " +
+                      "VALUES (:name, :email, :password_hash, :role_id, :scope, :tenant_id, :is_active, :is_platform_user, :is_verified, :two_factor_enabled, :version)",
+                      params);
 
               // Seed common test tenants
               jdbcTemplate.execute(
-                  "INSERT INTO tenants (name, workspace_slug, business_type, status, plan, company_code) VALUES ('Test Tenant 1', 't1', 'RETAIL', 'ACTIVE', 'FREE', 'T1001')");
+                  "INSERT INTO tenants (name, workspace_slug, business_type, status, plan, company_code, version) VALUES ('Test Tenant 1', 't1', 'RETAIL', 'ACTIVE', 'FREE', 'T1001', 0)");
               testTenant1Id = Objects.requireNonNull(
                   jdbcTemplate.queryForObject(
                       "SELECT id FROM tenants WHERE workspace_slug = 't1'", Long.class));
 
               jdbcTemplate.execute(
-                  "INSERT INTO tenants (name, workspace_slug, business_type, status, plan, company_code) VALUES ('Test Tenant 2', 't2', 'RETAIL', 'ACTIVE', 'FREE', 'T2001')");
+                  "INSERT INTO tenants (name, workspace_slug, business_type, status, plan, company_code, version) VALUES ('Test Tenant 2', 't2', 'RETAIL', 'ACTIVE', 'FREE', 'T2001', 0)");
               testTenant2Id = Objects.requireNonNull(
                   jdbcTemplate.queryForObject(
                       "SELECT id FROM tenants WHERE workspace_slug = 't2'", Long.class));

@@ -16,7 +16,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import javax.crypto.SecretKey;
-import org.springframework.beans.factory.annotation.Value;
 
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
@@ -32,10 +31,8 @@ public class JwtUtil {
   private final long expirySeconds;
   private final long refreshExpirySeconds;
 
-  public JwtUtil(
-      @Value("${app.jwt.secret}") String secret,
-      @Value("${app.jwt.expiry-seconds}") long expirySeconds,
-      @Value("${app.jwt.refresh-expiry-seconds}") long refreshExpirySeconds) {
+  public JwtUtil(com.ims.config.AppProperties appProperties) {
+    String secret = appProperties.getJwt().getSecret();
     byte[] keyBytes;
     if (isLikelyHexString(secret)) {
       keyBytes = hexStringToByteArray(secret);
@@ -43,8 +40,8 @@ public class JwtUtil {
       keyBytes = secret.getBytes(StandardCharsets.UTF_8);
     }
     this.key = Keys.hmacShaKeyFor(keyBytes);
-    this.expirySeconds = expirySeconds;
-    this.refreshExpirySeconds = refreshExpirySeconds;
+    this.expirySeconds = appProperties.getJwt().getExpirySeconds();
+    this.refreshExpirySeconds = appProperties.getJwt().getRefreshExpirySeconds();
   }
 
   private boolean isLikelyHexString(String s) {

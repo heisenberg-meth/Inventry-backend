@@ -35,7 +35,7 @@ public class PermissionService {
 
     User user =
         userRepository
-            .findByIdWithPermissions(userId)
+            .findByIdGlobal(userId)
             .orElseThrow(() -> new AccessDeniedException("User not found"));
 
     Set<String> permissions = new HashSet<>();

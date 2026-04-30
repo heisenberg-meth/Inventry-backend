@@ -1,5 +1,6 @@
 package com.ims.dto.request;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -8,7 +9,7 @@ import lombok.Data;
 public class ResetPasswordRequest {
 
   @NotBlank(message = "Email is required")
-  @jakarta.validation.constraints.Email(message = "Invalid email format")
+  @Email(message = "Invalid email format")
   private String email;
 
   @NotBlank(message = "Reset token is required")
