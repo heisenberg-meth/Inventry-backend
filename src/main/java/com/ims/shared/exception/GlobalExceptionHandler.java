@@ -10,7 +10,6 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -49,7 +48,6 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ApiError> handleConflict(IllegalStateException ex, HttpServletRequest request) {
-        // Map builder overwrite attempts or state conflicts to 409
         return buildResponse(ex.getMessage(), "STATE_CONFLICT", HttpStatus.CONFLICT, request, null);
     }
 

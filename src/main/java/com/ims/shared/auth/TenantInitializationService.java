@@ -114,7 +114,7 @@ public class TenantInitializationService {
 
   private void seedDefaultRoles(Long tenantId) {
     for (UserRole roleName : new UserRole[]{UserRole.ADMIN, UserRole.MANAGER, UserRole.STAFF}) {
-      if (roleRepository.findByName(roleName.name()).isEmpty()) {
+      if (roleRepository.findByNameAndTenantId(roleName.name(), tenantId).isEmpty()) {
         Role role = Role.builder()
             .name(Objects.requireNonNull(roleName.name()))
             .description("Default " + roleName.name() + " role")

@@ -13,13 +13,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
-import org.springframework.lang.NonNull;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -41,15 +41,15 @@ public class PlatformUserController {
   @Operation(summary = "Create platform user (ROOT only)")
   @PreAuthorize("hasAuthority('ROLE_ROOT')")
   @ResponseStatus(HttpStatus.CREATED)
-  public @NonNull User createPlatformUser(
-      @Valid @NonNull @RequestBody CreatePlatformUserRequest request) {
+  public User createPlatformUser(
+      @Valid @RequestBody CreatePlatformUserRequest request) {
     return Objects.requireNonNull(platformUserService.createPlatformUser(request));
   }
 
   @Operation(summary = "List platform users (ROOT, PLATFORM_ADMIN)")
   @GetMapping
   @PreAuthorize("hasAnyAuthority('ROLE_ROOT', 'ROLE_PLATFORM_ADMIN')")
-  public @NonNull Page<User> getPlatformUsers(@NonNull Pageable pageable) {
+  public Page<User> getPlatformUsers(Pageable pageable) {
     return Objects.requireNonNull(platformUserService.getPlatformUsers(pageable));
   }
 
@@ -61,18 +61,18 @@ public class PlatformUserController {
   }
 
   @Operation(summary = "Update platform user profile (ROOT only)")
-  @org.springframework.web.bind.annotation.PutMapping("/{id}")
+  @PutMapping("/{id}")
   @PreAuthorize("hasAuthority('ROLE_ROOT')")
-  public @NonNull User updatePlatformUser(
-      @PathVariable long id, @Valid @NonNull @RequestBody CreatePlatformUserRequest request) {
+  public User updatePlatformUser(
+      @PathVariable long id, @Valid @RequestBody CreatePlatformUserRequest request) {
     return Objects.requireNonNull(platformUserService.updatePlatformUser(id, request));
   }
 
   @Operation(summary = "Update platform user role (ROOT only)")
   @PatchMapping("/{id}/role")
   @PreAuthorize("hasAuthority('ROLE_ROOT')")
-  public @NonNull User updateRole(
-      @PathVariable long id, @NonNull @RequestBody Map<String, String> body) {
+  public User updateRole(
+      @PathVariable long id, @RequestBody Map<String, String> body) {
     String role = body.get("role");
     if (role == null) {
       throw new IllegalArgumentException("Role is required");
@@ -100,7 +100,7 @@ public class PlatformUserController {
   @Operation(summary = "Reset platform user password (ROOT only)")
   @PreAuthorize("hasAuthority('ROLE_ROOT')")
   public Map<String, String> resetPassword(
-      @PathVariable long id, @NonNull @RequestBody Map<String, String> body) {
+      @PathVariable long id, @RequestBody Map<String, String> body) {
     String newPassword = body.get("newPassword");
     if (newPassword == null || newPassword.length() < MIN_PASSWORD_LENGTH) {
       throw new IllegalArgumentException(

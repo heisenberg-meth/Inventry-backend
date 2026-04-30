@@ -10,6 +10,7 @@ import com.ims.model.SupportTicketStatus;
 import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditLogService;
 import com.ims.shared.audit.AuditResource;
+import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.repository.SupportMessageRepository;
 import com.ims.tenant.repository.SupportTicketRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -61,13 +62,13 @@ public class SupportService {
 
   @Transactional(readOnly = true)
   public Page<SupportTicket> listTenantTickets(Pageable pageable) {
-    com.ims.shared.auth.TenantContext.assertTenantPresent();
+    TenantContext.assertTenantPresent();
     return Objects.requireNonNull(ticketRepository.findAll(pageable));
   }
 
   @Transactional(readOnly = true)
   public Map<String, Object> getTenantTicketDetails(Long ticketId) {
-    com.ims.shared.auth.TenantContext.assertTenantPresent();
+    TenantContext.assertTenantPresent();
     SupportTicket ticket =
         ticketRepository
             .findById(ticketId)
@@ -83,7 +84,7 @@ public class SupportService {
 
   @Transactional
   public SupportTicket closeTicketByTenant(Long ticketId) {
-    com.ims.shared.auth.TenantContext.assertTenantPresent();
+    TenantContext.assertTenantPresent();
     SupportTicket ticket =
         ticketRepository
             .findById(ticketId)

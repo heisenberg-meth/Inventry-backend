@@ -6,5 +6,4 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface TransferOrderRepository extends JpaRepository<TransferOrder, Long> {
-  // findAll and findById are inherited and automatically filtered by @TenantId
 }

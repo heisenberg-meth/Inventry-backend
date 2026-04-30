@@ -10,7 +10,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,7 +25,7 @@ public class SystemConfigService {
   }
 
   @Cacheable(value = "systemConfig", key = "#key")
-  public String getConfig(@NonNull String key, String defaultValue) {
+  public String getConfig(String key, String defaultValue) {
     return systemConfigRepository
         .findById(Objects.requireNonNull(key))
         .map(SystemConfig::getValue)
@@ -35,11 +34,10 @@ public class SystemConfigService {
 
   @Transactional
   @CacheEvict(value = "systemConfig", key = "#key")
-  public SystemConfig updateConfig(@NonNull String key, @NonNull String value) {
-    SystemConfig config =
-        systemConfigRepository
-            .findById(Objects.requireNonNull(key))
-            .orElseThrow(() -> new EntityNotFoundException("Config not found: " + key));
+  public SystemConfig updateConfig(String key, String value) {
+    SystemConfig config = systemConfigRepository
+        .findById(Objects.requireNonNull(key))
+        .orElseThrow(() -> new EntityNotFoundException("Config not found: " + key));
     config.setValue(value);
     config.setUpdatedAt(Objects.requireNonNull(LocalDateTime.now()));
     log.info("System config updated: {} = {}", key, value);

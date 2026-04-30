@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,12 +24,11 @@ public class SubscriptionService {
   }
 
   @Transactional
-  public @NonNull Subscription extendSubscription(@NonNull Long id, int days) {
+  public Subscription extendSubscription(Long id, int days) {
     Objects.requireNonNull(id, "subscription id required");
-    Subscription tmpSubscription =
-        subscriptionRepository
-            .findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Subscription not found"));
+    Subscription tmpSubscription = subscriptionRepository
+        .findById(id)
+        .orElseThrow(() -> new EntityNotFoundException("Subscription not found"));
     Subscription subscription = Objects.requireNonNull(tmpSubscription);
 
     subscription.setEndDate(Objects.requireNonNull(Objects.requireNonNull(subscription.getEndDate()).plusDays(days)));

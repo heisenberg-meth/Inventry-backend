@@ -8,9 +8,13 @@ import java.util.stream.Stream;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
+import jakarta.persistence.LockModeType;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
@@ -155,7 +159,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
   Page<Product> findByactiveTrue(Pageable pageable);
 
-  @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("SELECT p FROM Product p WHERE p.id = :productId")
   Optional<Product> findByIdWithLock(@Param("productId") Long productId);
 
@@ -210,18 +214,18 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
       """)
   Page<ProductStockView> findTopStock(Pageable pageable);
 
-  @org.springframework.data.jpa.repository.Modifying
+  @Modifying
   @Query("UPDATE Product p SET p.stock = p.stock + :qty, p.updatedAt = :now WHERE p.id = :productId")
   int incrementStock(
       @Param("productId") Long productId, @Param("qty") int qty, @Param("now") LocalDateTime now);
 
-  @org.springframework.data.jpa.repository.Modifying
+  @Modifying
   @Query(
       "UPDATE Product p SET p.stock = p.stock - :qty, p.updatedAt = :now WHERE p.id = :productId AND p.stock >= :qty")
   int decrementStockIfAvailable(
       @Param("productId") Long productId, @Param("qty") int qty, @Param("now") LocalDateTime now);
 
-  @org.springframework.data.jpa.repository.Modifying
+  @Modifying
   @Query(
       "UPDATE Product p SET p.stock = p.stock + :qty, p.updatedAt = :now WHERE p.id = :productId AND (p.stock + :qty) >= 0")
   int adjustStockIfValid(

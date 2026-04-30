@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,23 +24,22 @@ import org.springframework.web.bind.annotation.RestController;
 @SecurityRequirement(name = "bearerAuth")
 public class SubscriptionController {
 
-  /** Default number of days added to a subscription when the request omits "days". */
   private static final int DEFAULT_EXTENSION_DAYS = 30;
 
   private final SubscriptionService subscriptionService;
 
   @GetMapping
-  @RequiresRole({"ROOT", "PLATFORM_ADMIN"})
+  @RequiresRole({ "ROOT", "PLATFORM_ADMIN" })
   @Operation(summary = "List all active subscriptions")
   public ResponseEntity<List<Subscription>> list() {
     return ResponseEntity.ok(subscriptionService.getActiveSubscriptions());
   }
 
   @PostMapping("/{id}/extend")
-  @RequiresRole({"ROOT"})
+  @RequiresRole({ "ROOT" })
   @Operation(summary = "Extend subscription duration")
   public ResponseEntity<Subscription> extend(
-      @PathVariable @NonNull Long id, @RequestBody Map<String, Integer> body) {
+      @PathVariable Long id, @RequestBody Map<String, Integer> body) {
     int days = body.getOrDefault("days", DEFAULT_EXTENSION_DAYS);
     return ResponseEntity.ok(subscriptionService.extendSubscription(id, days));
   }

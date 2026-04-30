@@ -1,5 +1,6 @@
 package com.ims.shared.outbox;
 
+import java.time.LocalDateTime;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -55,7 +56,7 @@ public class OutboxProcessor {
   @Transactional
   protected void markAsProcessed(OutboxEvent event) {
     event.setProcessed(true);
-    event.setProcessedAt(java.time.LocalDateTime.now());
+    event.setProcessedAt(LocalDateTime.now());
     outboxRepository.save(event);
   }
 

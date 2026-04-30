@@ -10,7 +10,6 @@ import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ScanOptions;
-import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -21,24 +20,25 @@ public class CacheService {
   private final RedisTemplate<String, Object> redisTemplate;
   private static final int SCAN_BATCH_SIZE = 500;
 
-  public Object get(@NonNull String key) {
+  public Object get(String key) {
     return redisTemplate.opsForValue().get(key);
   }
 
-  public void set(@NonNull String key, @NonNull Object value, long ttl, @NonNull TimeUnit unit) {
+  public void set(String key, Object value, long ttl, TimeUnit unit) {
     redisTemplate.opsForValue().set(key, value, ttl, unit);
   }
 
-  public void evict(@NonNull String key) {
+  public void evict(String key) {
     redisTemplate.delete(key);
   }
 
   /**
    * Non-blocking eviction of keys matching a pattern.
    * Uses SCAN instead of KEYS to avoid blocking the Redis event loop.
-   * Implements batching and pipelining to minimize memory pressure and network roundtrips.
+   * Implements batching and pipelining to minimize memory pressure and network
+   * roundtrips.
    */
-  public void evictByPattern(@NonNull String pattern) {
+  public void evictByPattern(String pattern) {
     redisTemplate.execute((RedisCallback<Void>) connection -> {
       ScanOptions options = ScanOptions.scanOptions()
           .match(pattern)

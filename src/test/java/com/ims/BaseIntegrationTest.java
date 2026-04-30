@@ -5,13 +5,29 @@ import org.mockito.Mockito;
 import static org.mockito.Mockito.doReturn;
 import com.ims.model.User;
 import com.ims.model.Role;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.category.CategoryRepository;
-import com.ims.platform.repository.*;
 import com.ims.product.ProductRepository;
 import com.ims.shared.audit.AuditLogRepository;
 import com.ims.shared.auth.AuthService;
 import com.ims.shared.auth.TenantContext;
-import com.ims.tenant.repository.*;
+import com.ims.tenant.repository.StockMovementRepository;
+import com.ims.tenant.repository.SupportAttachmentRepository;
+import com.ims.tenant.repository.SupportMessageRepository;
+import com.ims.tenant.repository.TransferOrderRepository;
+import com.ims.tenant.repository.OrderItemRepository;
+import com.ims.tenant.repository.CustomerRepository;
+import com.ims.tenant.repository.InvoiceRepository;
+import com.ims.tenant.repository.OrderRepository;
+import com.ims.tenant.repository.SupplierRepository;
+import com.ims.tenant.repository.PaymentRepository;
+import com.ims.tenant.repository.RoleRepository;
+import com.ims.tenant.repository.SupportTicketRepository;
+import com.ims.tenant.repository.UserRepository;
+import com.ims.platform.repository.TenantRepository;
+import com.ims.platform.repository.SubscriptionRepository;
+import com.ims.platform.repository.SubscriptionPlanRepository;
+import com.ims.platform.repository.SystemConfigRepository;
 import jakarta.persistence.EntityManager;
 import com.ims.dto.response.LoginResponse;
 import com.ims.dto.request.LoginRequest;
@@ -25,27 +41,32 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.http.MediaType;
 import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.cache.concurrent.ConcurrentMapCache;
+import org.springframework.cache.interceptor.CacheResolver;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.springframework.lang.NonNull;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-
 import org.springframework.context.annotation.Import;
 import com.ims.config.TestSecurityConfig;
 import com.ims.config.TestSecurityBeansConfig;
@@ -69,29 +90,30 @@ import com.ims.config.TestSecurityBeansConfig;
 @ActiveProfiles("test")
 @AutoConfigureMockMvc(addFilters = false)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-@Import({TestSecurityConfig.class, TestSecurityBeansConfig.class})
+@Import({ TestSecurityConfig.class, TestSecurityBeansConfig.class })
 public abstract class BaseIntegrationTest {
-static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
+  static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
 
-static {
-  postgres.start();
-  System.setProperty("app.test.mode", "true");
-  System.setProperty("DOCKER_API_VERSION", "1.40");
-}
+  static {
+    postgres.start();
+    System.setProperty("app.test.mode", "true");
+    System.setProperty("DOCKER_API_VERSION", "1.40");
+  }
 
-protected static final String TEST_ROOT_PASSWORD = System.getProperty("ims.test.root.password",
-    "TestPass123!");
+  protected static final String TEST_ROOT_PASSWORD = System.getProperty("ims.test.root.password",
+      "TestPass123!");
 
-@DynamicPropertySource
-static void configureProperties(DynamicPropertyRegistry registry) {
-  registry.add("spring.datasource.url", postgres::getJdbcUrl);
-  registry.add("spring.datasource.username", postgres::getUsername);
-  registry.add("spring.datasource.password", postgres::getPassword);
-  registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
-  registry.add(
-      "app.jwt.secret",
-      () -> UUID.randomUUID().toString() + UUID.randomUUID().toString());
-}
+  @DynamicPropertySource
+  static void configureProperties(DynamicPropertyRegistry registry) {
+    registry.add("spring.datasource.url", postgres::getJdbcUrl);
+    registry.add("spring.datasource.username", postgres::getUsername);
+    registry.add("spring.datasource.password", postgres::getPassword);
+    registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
+    registry.add(
+        "app.jwt.secret",
+        () -> UUID.randomUUID().toString() + UUID.randomUUID().toString());
+  }
+
   @Autowired
   protected TenantRepository tenantRepository;
   @Autowired
@@ -156,12 +178,12 @@ static void configureProperties(DynamicPropertyRegistry registry) {
   }
 
   @Autowired
-  protected org.springframework.test.web.servlet.MockMvc mockMvc;
+  protected MockMvc mockMvc;
   @Autowired
-  protected com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+  protected ObjectMapper objectMapper;
 
   @Autowired
-  protected org.springframework.transaction.PlatformTransactionManager transactionManager;
+  protected PlatformTransactionManager transactionManager;
 
   @Autowired
   protected AuthService authService;
@@ -172,13 +194,13 @@ static void configureProperties(DynamicPropertyRegistry registry) {
   @MockitoBean
   protected ZSetOperations<String, Object> zSetOperations;
   @MockitoBean
-  protected org.springframework.cache.CacheManager cacheManager;
+  protected CacheManager cacheManager;
 
   @MockitoBean(name = "tenantAwareCacheResolver")
-  protected org.springframework.cache.interceptor.CacheResolver tenantAwareCacheResolver;
+  protected CacheResolver tenantAwareCacheResolver;
 
   @MockitoBean
-  protected org.springframework.mail.javamail.JavaMailSender javaMailSender;
+  protected JavaMailSender javaMailSender;
   protected long systemTenantId;
   protected long testTenant1Id;
   protected long testTenant2Id;
@@ -223,7 +245,7 @@ static void configureProperties(DynamicPropertyRegistry registry) {
               // Seed System Tenant
               jdbcTemplate.execute(
                   "INSERT INTO tenants (name, workspace_slug, business_type, status, plan, company_code, version) " +
-                  "VALUES ('System', 'system', 'SYSTEM', 'ACTIVE', 'PLATFORM', 'SYS001', 0)");
+                      "VALUES ('System', 'system', 'SYSTEM', 'ACTIVE', 'PLATFORM', 'SYS001', 0)");
               systemTenantId = Objects.requireNonNull(
                   jdbcTemplate.queryForObject(
                       "SELECT id FROM tenants WHERE workspace_slug = 'system'", Long.class));
@@ -242,8 +264,8 @@ static void configureProperties(DynamicPropertyRegistry registry) {
 
               // Seed Root User - Using systemTenantId to satisfy NOT NULL constraint
               String rootPassHash = passwordEncoder.encode(Objects.requireNonNull(TEST_ROOT_PASSWORD));
-              
-              org.springframework.jdbc.core.namedparam.MapSqlParameterSource params = new org.springframework.jdbc.core.namedparam.MapSqlParameterSource();
+
+              MapSqlParameterSource params = new MapSqlParameterSource();
               params.addValue("name", "Root Admin");
               params.addValue("email", "root@ims.com");
               params.addValue("password_hash", rootPassHash);
@@ -256,10 +278,11 @@ static void configureProperties(DynamicPropertyRegistry registry) {
               params.addValue("two_factor_enabled", false);
               params.addValue("version", 0);
 
-              new org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate(jdbcTemplate)
+              new NamedParameterJdbcTemplate(jdbcTemplate)
                   .update(
-                      "INSERT INTO users (name, email, password_hash, role_id, scope, tenant_id, is_active, is_platform_user, is_verified, two_factor_enabled, version) " +
-                      "VALUES (:name, :email, :password_hash, :role_id, :scope, :tenant_id, :is_active, :is_platform_user, :is_verified, :two_factor_enabled, :version)",
+                      "INSERT INTO users (name, email, password_hash, role_id, scope, tenant_id, is_active, is_platform_user, is_verified, two_factor_enabled, version) "
+                          +
+                          "VALUES (:name, :email, :password_hash, :role_id, :scope, :tenant_id, :is_active, :is_platform_user, :is_verified, :two_factor_enabled, :version)",
                       params);
 
               // Seed common test tenants
@@ -284,7 +307,7 @@ static void configureProperties(DynamicPropertyRegistry registry) {
   /**
    * Helper to get or create a role for a tenant.
    */
-  protected Role getOrCreateRole(@NonNull String name, @NonNull Long tenantId) {
+  protected Role getOrCreateRole(String name, Long tenantId) {
     Long previous = TenantContext.getTenantId();
     TenantContext.setTenantId(tenantId);
     try {
@@ -340,11 +363,10 @@ static void configureProperties(DynamicPropertyRegistry registry) {
         .getCache(anyString());
   }
 
-  @NonNull
-  protected String login(@NonNull String email, @NonNull String password, @NonNull String workspace,
-      @NonNull Long tenantId)
+  protected String login(String email, String password, String workspace,
+      Long tenantId)
       throws Exception {
-    LoginRequest loginRequest = new com.ims.dto.request.LoginRequest();
+    LoginRequest loginRequest = new LoginRequest();
     loginRequest.setEmail(email);
     loginRequest.setPassword(password);
 
@@ -369,13 +391,12 @@ static void configureProperties(DynamicPropertyRegistry registry) {
         .andReturn();
 
     String responseJson = result.getResponse().getContentAsString();
-    LoginResponse response = objectMapper.readValue(responseJson, com.ims.dto.response.LoginResponse.class);
+    LoginResponse response = objectMapper.readValue(responseJson, LoginResponse.class);
     return Objects.requireNonNull(response.getAccessToken());
   }
 
-  @NonNull
   protected RequestPostProcessor tenant(
-      @NonNull Object tenantId) {
+      Object tenantId) {
     return request -> {
       request.addHeader("X-Tenant-ID", Objects.requireNonNull(String.valueOf(tenantId)));
       return request;

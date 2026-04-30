@@ -1,9 +1,13 @@
 package com.ims.shared.webhook;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.model.Webhook;
 import com.ims.model.WebhookOutbox;
 import com.ims.shared.auth.TenantContext;
 import com.ims.shared.exception.BadRequestException;
+import com.ims.shared.metrics.BusinessMetrics;
+import com.ims.shared.security.SecretEncryptionService;
+import com.ims.shared.util.CryptoUtils;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import java.net.InetAddress;
 import java.net.URI;
@@ -15,16 +19,20 @@ import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import io.github.resilience4j.retry.annotation.Retry;
+import org.springframework.http.MediaType;
+import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.http.HttpEntity;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class WebhookService {
 
-  // RFC 1918 / RFC 3927 / RFC 4193 / RFC 4291 address-range constants used by isPrivateIp()
+  // RFC 1918 / RFC 3927 / RFC 4193 / RFC 4291 address-range constants used by
+  // isPrivateIp()
   private static final int IPV4_OCTETS = 4;
   private static final int IPV6_OCTETS = 16;
   private static final int UNSIGNED_BYTE_MASK = 0xFF;
@@ -46,9 +54,9 @@ public class WebhookService {
   private final WebhookRepository webhookRepository;
   private final WebhookOutboxRepository outboxRepository;
   private final RestTemplate webhookRestTemplate;
-  private final com.ims.shared.security.SecretEncryptionService encryptionService;
-  private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
-  private final com.ims.shared.metrics.BusinessMetrics businessMetrics;
+  private final SecretEncryptionService encryptionService;
+  private final ObjectMapper objectMapper;
+  private final BusinessMetrics businessMetrics;
 
   public List<Webhook> getMyWebhooks() {
     TenantContext.assertTenantPresent();
@@ -59,15 +67,14 @@ public class WebhookService {
   public Webhook createWebhook(String url, String eventTypes, String secret) {
     URI normalizedUri = validateAndNormalize(url);
 
-    Webhook webhook =
-        Objects.requireNonNull(
-            Webhook.builder()
-                .tenantId(TenantContext.requireTenantId())
-                .url(Objects.requireNonNull(normalizedUri.toString()))
-                .eventTypes(Objects.requireNonNull(eventTypes))
-                .secret(Objects.requireNonNull(encryptionService.encrypt(secret)))
-                .isActive(true)
-                .build());
+    Webhook webhook = Objects.requireNonNull(
+        Webhook.builder()
+            .tenantId(TenantContext.requireTenantId())
+            .url(Objects.requireNonNull(normalizedUri.toString()))
+            .eventTypes(Objects.requireNonNull(eventTypes))
+            .secret(Objects.requireNonNull(encryptionService.encrypt(secret)))
+            .isActive(true)
+            .build());
     return webhookRepository.save(webhook);
   }
 
@@ -91,20 +98,21 @@ public class WebhookService {
   public void dispatch(Long tenantId, String eventType, Object payload) {
     try {
       String jsonPayload = objectMapper.writeValueAsString(payload);
-      
+
       WebhookOutbox entry = WebhookOutbox.builder()
           .tenantId(tenantId)
           .eventType(eventType)
           .payload(jsonPayload)
           .status(WebhookOutbox.OutboxStatus.PENDING)
           .build();
-          
+
       outboxRepository.save(entry);
       businessMetrics.incrementWebhookEvents();
       log.debug("Saved webhook event {} to outbox for tenant {}", eventType, tenantId);
     } catch (Exception e) {
       log.error("Failed to save webhook to outbox: {}", e.getMessage());
-      // We don't throw here to avoid failing the main transaction if webhook persistence fails,
+      // We don't throw here to avoid failing the main transaction if webhook
+      // persistence fails,
       // but in a strict system, you might want to throw to ensure consistency.
     }
   }
@@ -132,7 +140,8 @@ public class WebhookService {
           this.sendWebhook(webhook, entry.getEventType(), entry.getTenantId(), entry.getPayload());
           atLeastOneSent = true;
         } catch (Exception e) {
-          log.error("Failed to send webhook {} for outbox entry {}: {}", webhook.getId(), entry.getId(), e.getMessage());
+          log.error("Failed to send webhook {} for outbox entry {}: {}", webhook.getId(), entry.getId(),
+              e.getMessage());
         }
       }
     }
@@ -155,23 +164,22 @@ public class WebhookService {
       validateAndNormalize(webhook.getUrl());
 
       String timestamp = LocalDateTime.now().toString();
-      Map<String, Object> body =
-          Map.of(
-              "version", "v1",
-              "event", eventType,
-              "tenant_id", tenantId,
-              "timestamp", timestamp,
-              "data", payload);
+      Map<String, Object> body = Map.of(
+          "version", "v1",
+          "event", eventType,
+          "tenant_id", tenantId,
+          "timestamp", timestamp,
+          "data", payload);
 
       String jsonPayload = objectMapper.writeValueAsString(body);
       String decryptedSecret = encryptionService.decrypt(webhook.getSecret());
 
-      org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
-      headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
-      headers.set("X-IMS-Signature", com.ims.shared.util.CryptoUtils.hmacSha256(jsonPayload, decryptedSecret));
+      HttpHeaders headers = new HttpHeaders();
+      headers.setContentType(MediaType.APPLICATION_JSON);
+      headers.set("X-IMS-Signature", CryptoUtils.hmacSha256(jsonPayload, decryptedSecret));
       headers.set("X-IMS-Timestamp", timestamp);
 
-      org.springframework.http.HttpEntity<String> entity = new org.springframework.http.HttpEntity<>(jsonPayload, headers);
+      HttpEntity<String> entity = new HttpEntity<>(jsonPayload, headers);
 
       webhookRestTemplate.postForEntity(
           Objects.requireNonNull(webhook.getUrl()), entity, String.class);

@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.request.SignupRequest;
+import com.ims.dto.response.SignupResponse;
 import com.ims.shared.auth.SignupService;
 import java.math.BigDecimal;
 import java.util.Objects;
@@ -35,7 +36,7 @@ public class RbacIntegrationTest extends BaseIntegrationTest {
 
   @Test
   void testRBAC() throws Exception {
-    com.ims.dto.response.SignupResponse response = signupService
+    SignupResponse response = signupService
         .signup(Objects.requireNonNull(createSignupRequest("RBAC Corp", "rbac-corp", "admin@rbac.com")));
     verifyUserEmail("admin@rbac.com");
     verifyUser("admin@rbac.com");

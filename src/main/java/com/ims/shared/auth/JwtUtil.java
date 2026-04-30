@@ -1,5 +1,6 @@
 package com.ims.shared.auth;
 
+import com.ims.config.AppProperties;
 import com.ims.model.UserRole;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -16,8 +17,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import javax.crypto.SecretKey;
-
-import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -31,7 +30,7 @@ public class JwtUtil {
   private final long expirySeconds;
   private final long refreshExpirySeconds;
 
-  public JwtUtil(com.ims.config.AppProperties appProperties) {
+  public JwtUtil(AppProperties appProperties) {
     String secret = appProperties.getJwt().getSecret();
     byte[] keyBytes;
     if (isLikelyHexString(secret)) {
@@ -79,8 +78,8 @@ public class JwtUtil {
       boolean isPlatformUser,
       Collection<String> permissions,
       boolean impersonation,
-      @Nullable Long impersonatedBy,
-      @Nullable String sessionId,
+      Long impersonatedBy,
+      String sessionId,
       long customExpirySeconds) {
     Objects.requireNonNull(userId, "user id required");
     Objects.requireNonNull(scope, "scope required");
@@ -149,8 +148,8 @@ public class JwtUtil {
       boolean isPlatformUser,
       Collection<String> permissions,
       boolean impersonation,
-      @Nullable Long impersonatedBy,
-      @Nullable String sessionId,
+      Long impersonatedBy,
+      String sessionId,
       long customExpirySeconds) {
     Objects.requireNonNull(userId, "user id required");
     Objects.requireNonNull(scope, "scope required");
@@ -187,7 +186,7 @@ public class JwtUtil {
             .compact());
   }
 
-  public boolean validateToken(@Nullable String token) {
+  public boolean validateToken(String token) {
     if (token == null || token.isBlank()) {
       return false;
     }
@@ -245,11 +244,11 @@ public class JwtUtil {
     return val != null && val;
   }
 
-  public @Nullable Long extractImpersonatedBy(String token) {
+  public Long extractImpersonatedBy(String token) {
     return extractAllClaims(Objects.requireNonNull(token)).get("impersonated_by", Long.class);
   }
 
-  public @Nullable String extractSessionId(String token) {
+  public String extractSessionId(String token) {
     return extractAllClaims(Objects.requireNonNull(token)).get("sid", String.class);
   }
 

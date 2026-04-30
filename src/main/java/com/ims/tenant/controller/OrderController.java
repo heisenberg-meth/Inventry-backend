@@ -15,7 +15,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.lang.Nullable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -38,7 +37,7 @@ public class OrderController {
   @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
   @Operation(summary = "List all orders")
   public ResponseEntity<Page<Order>> getOrders(
-      @RequestParam(required = false) @Nullable String type, Pageable pageable) {
+      @RequestParam(required = false) String type, Pageable pageable) {
     if (type != null) {
       return ResponseEntity.ok(orderService.getOrdersByType(Objects.requireNonNull(type), Objects.requireNonNull(pageable)));
     }

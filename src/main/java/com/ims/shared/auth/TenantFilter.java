@@ -6,7 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.lang.NonNull;
+import org.jboss.logging.MDC;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -16,9 +16,9 @@ public class TenantFilter extends OncePerRequestFilter {
 
   @Override
   protected void doFilterInternal(
-      @NonNull HttpServletRequest request,
-      @NonNull HttpServletResponse response,
-      @NonNull FilterChain filterChain)
+      HttpServletRequest request,
+      HttpServletResponse response,
+      FilterChain filterChain)
       throws ServletException, IOException {
 
     if (TenantContext.getTenantId() != null) {
@@ -31,17 +31,17 @@ public class TenantFilter extends OncePerRequestFilter {
       if (tenantHeader != null && !tenantHeader.isBlank()) {
         Long tenantId = Long.parseLong(tenantHeader);
         TenantContext.setTenantId(tenantId);
-        org.slf4j.MDC.put("tenantId", String.valueOf(tenantId));
+        MDC.put("tenantId", String.valueOf(tenantId));
       }
       filterChain.doFilter(request, response);
     } finally {
       TenantContext.clear();
-      org.slf4j.MDC.remove("tenantId");
+      MDC.remove("tenantId");
     }
   }
 
   @Override
-  protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
+  protected boolean shouldNotFilter(HttpServletRequest request) {
     String path = request.getRequestURI();
     return "/actuator/health".equals(path) || path.equals("/api/v1/actuator/health");
   }

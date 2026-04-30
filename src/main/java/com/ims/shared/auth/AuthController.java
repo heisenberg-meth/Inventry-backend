@@ -3,6 +3,7 @@ package com.ims.shared.auth;
 import com.ims.dto.request.ChangePasswordRequest;
 import com.ims.dto.request.ForgotPasswordRequest;
 import com.ims.dto.request.LoginRequest;
+import com.ims.dto.request.MfaRequest;
 import com.ims.dto.request.ResetPasswordRequest;
 import com.ims.dto.response.LoginResponse;
 import com.ims.shared.exception.UnauthorizedException;
@@ -196,7 +197,7 @@ public class AuthController {
 
   @PostMapping("/2fa/verify")
   @Operation(summary = "Verify MFA code during login challenge")
-  public ResponseEntity<LoginResponse> verifyMfa(@Valid @RequestBody com.ims.dto.request.MfaRequest request) {
+  public ResponseEntity<LoginResponse> verifyMfa(@Valid @RequestBody MfaRequest request) {
     return ResponseEntity.ok(authService.verifyMfa(request));
   }
 

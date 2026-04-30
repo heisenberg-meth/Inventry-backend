@@ -32,7 +32,6 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.lang.NonNull;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,17 +56,16 @@ public class TenantService {
   private final SubscriptionPlanRepository subscriptionPlanRepository;
   private final com.ims.shared.utils.CompanyCodeGenerator companyCodeGenerator;
 
-  public Page<TenantResponse> getAllTenants(@NonNull Pageable pageable) {
+  public Page<TenantResponse> getAllTenants(Pageable pageable) {
     Page<Tenant> tenants = tenantRepository.findAll(Objects.requireNonNull(pageable));
     return tenants.map(t -> toResponse(Objects.requireNonNull(t)));
   }
 
   @Cacheable(value = "tenant", key = "#id")
-  public TenantResponse getTenantById(@NonNull Long id) {
-    Tenant tmpTenant =
-        tenantRepository
-            .findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
+  public TenantResponse getTenantById(Long id) {
+    Tenant tmpTenant = tenantRepository
+        .findById(id)
+        .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
     Tenant tenant = Objects.requireNonNull(tmpTenant);
     return toResponse(tenant);
   }
@@ -83,7 +81,7 @@ public class TenantService {
   }
 
   @Transactional
-  public TenantResponse createTenant(@NonNull CreateTenantRequest request) {
+  public TenantResponse createTenant(CreateTenantRequest request) {
     if (request.getWorkspaceSlug() != null
         && tenantRepository.existsByWorkspaceSlug(request.getWorkspaceSlug())) {
       throw new IllegalArgumentException("Workspace slug already taken");
@@ -126,11 +124,10 @@ public class TenantService {
 
   @Transactional
   @CacheEvict(value = "tenant", key = "#id")
-  public TenantResponse updateTenant(@NonNull Long id, @NonNull CreateTenantRequest request) {
-    Tenant tmpTenant =
-        tenantRepository
-            .findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
+  public TenantResponse updateTenant(Long id, CreateTenantRequest request) {
+    Tenant tmpTenant = tenantRepository
+        .findById(id)
+        .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
     Tenant tenant = Objects.requireNonNull(tmpTenant);
 
     if (request.getName() != null) {
@@ -156,11 +153,10 @@ public class TenantService {
 
   @Transactional
   @CacheEvict(value = "tenant", key = "#id")
-  public void deactivateTenant(@NonNull Long id) {
-    Tenant tmpTenant =
-        tenantRepository
-            .findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
+  public void deactivateTenant(Long id) {
+    Tenant tmpTenant = tenantRepository
+        .findById(id)
+        .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
     Tenant tenant = Objects.requireNonNull(tmpTenant);
     tenant.setStatus(TenantStatus.INACTIVE);
     tenantRepository.save(tenant);
@@ -169,34 +165,34 @@ public class TenantService {
 
   @Transactional
   @CacheEvict(value = "tenant", key = "#id")
-  public Map<String, String> suspendTenant(@NonNull Long id) {
-    Tenant tmpTenant =
-        tenantRepository
-            .findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
+  public Map<String, String> suspendTenant(Long id) {
+    Tenant tmpTenant = tenantRepository
+        .findById(id)
+        .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
     Tenant tenant = Objects.requireNonNull(tmpTenant);
     tenant.setStatus(TenantStatus.SUSPENDED);
     tenantRepository.save(tenant);
 
     auditLogService.log(
-        AuditAction.UPDATE_TENANT_STATUS, id, com.ims.shared.auth.TenantContext.PLATFORM_TENANT_ID, "Tenant suspended: " + tenant.getName());
+        AuditAction.UPDATE_TENANT_STATUS, id, com.ims.shared.auth.TenantContext.PLATFORM_TENANT_ID,
+        "Tenant suspended: " + tenant.getName());
     log.info("Tenant suspended: id={}", id);
     return Map.of("message", "Tenant suspended successfully", "status", "SUSPENDED");
   }
 
   @Transactional
   @CacheEvict(value = "tenant", key = "#id")
-  public Map<String, String> activateTenant(@NonNull Long id) {
-    Tenant tmpTenant =
-        tenantRepository
-            .findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
+  public Map<String, String> activateTenant(Long id) {
+    Tenant tmpTenant = tenantRepository
+        .findById(id)
+        .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
     Tenant tenant = Objects.requireNonNull(tmpTenant);
     tenant.setStatus(TenantStatus.ACTIVE);
     tenantRepository.save(tenant);
 
     auditLogService.log(
-        AuditAction.UPDATE_TENANT_STATUS, id, com.ims.shared.auth.TenantContext.PLATFORM_TENANT_ID, "Tenant activated: " + tenant.getName());
+        AuditAction.UPDATE_TENANT_STATUS, id, com.ims.shared.auth.TenantContext.PLATFORM_TENANT_ID,
+        "Tenant activated: " + tenant.getName());
     log.info("Tenant activated: id={}", id);
     return Map.of("message", "Tenant activated successfully", "status", "ACTIVE");
   }
@@ -204,7 +200,7 @@ public class TenantService {
   /** List users belonging to a specific tenant with optional search. */
   @Transactional(readOnly = true)
   public Page<UserResponse> getTenantUsers(
-      @NonNull Long tenantId, String search, @NonNull Pageable pageable) {
+      Long tenantId, String search, Pageable pageable) {
     if (!tenantRepository.existsById(tenantId)) {
       throw new EntityNotFoundException("Tenant not found with id: " + tenantId);
     }
@@ -221,7 +217,7 @@ public class TenantService {
 
   /** Reset a tenant user's password (by platform admin). */
   @Transactional
-  public Map<String, String> resetTenantUserPassword(@NonNull Long userId, String newPassword) {
+  public Map<String, String> resetTenantUserPassword(Long userId, String newPassword) {
     User user = userRepository
         .findByIdGlobal(userId)
         .orElseThrow(() -> new EntityNotFoundException("User not found"));
@@ -258,11 +254,10 @@ public class TenantService {
   @Transactional
   @CacheEvict(value = "tenant", key = "#tenantId")
   public Map<String, Object> assignPlan(
-      @NonNull Long tenantId, @NonNull AssignPlanRequest request) {
-    Tenant tmpTenant =
-        tenantRepository
-            .findById(tenantId)
-            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+      Long tenantId, AssignPlanRequest request) {
+    Tenant tmpTenant = tenantRepository
+        .findById(tenantId)
+        .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
     Tenant tenant = Objects.requireNonNull(tmpTenant);
 
     SubscriptionPlan tmpPlan = subscriptionPlanRepository
@@ -328,7 +323,7 @@ public class TenantService {
   }
 
   /** Get tenant subscription info. */
-  public Map<String, Object> getSubscription(@NonNull Long tenantId) {
+  public Map<String, Object> getSubscription(Long tenantId) {
     Tenant tmpTenant = tenantRepository
         .findById(Objects.requireNonNull(tenantId))
         .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
@@ -352,7 +347,7 @@ public class TenantService {
 
   @Transactional
   public UserResponse createTenantUser(
-      @NonNull Long tenantId, @NonNull CreateTenantUserRequest request) {
+      Long tenantId, CreateTenantUserRequest request) {
     if (!tenantRepository.existsById(tenantId)) {
       throw new EntityNotFoundException("Tenant not found with id: " + tenantId);
     }
@@ -362,21 +357,19 @@ public class TenantService {
       throw new IllegalArgumentException("Email already in use");
     }
 
-    User user =
-        Objects.requireNonNull(
-            User.builder()
-                .name(request.getUsername())
-                .email(email)
-                .passwordHash(Objects.requireNonNull(passwordEncoder.encode(request.getPassword())))
-                .role(UserRole.valueOf(request.getRole()))
-                .scope(request.getScope())
-                .isActive(true)
-                .build());
+    User user = Objects.requireNonNull(
+        User.builder()
+            .name(request.getUsername())
+            .email(email)
+            .passwordHash(Objects.requireNonNull(passwordEncoder.encode(request.getPassword())))
+            .role(UserRole.valueOf(request.getRole()))
+            .scope(request.getScope())
+            .isActive(true)
+            .build());
 
-    Tenant tmpTenant =
-        tenantRepository
-            .findById(tenantId)
-            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+    Tenant tmpTenant = tenantRepository
+        .findById(tenantId)
+        .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
     Tenant tenant = Objects.requireNonNull(tmpTenant);
 
     if (tenant.getMaxUsers() != null) {
@@ -400,11 +393,10 @@ public class TenantService {
   }
 
   @Transactional
-  public void hardDeleteTenantUser(@NonNull Long tenantId, @NonNull Long userId) {
-    User tmpUser =
-        userRepository
-            .findByIdGlobal(userId)
-            .orElseThrow(() -> new EntityNotFoundException("User not found"));
+  public void hardDeleteTenantUser(Long tenantId, Long userId) {
+    User tmpUser = userRepository
+        .findByIdGlobal(userId)
+        .orElseThrow(() -> new EntityNotFoundException("User not found"));
     User user = Objects.requireNonNull(tmpUser);
 
     if (!Objects.equals(user.getTenantId(), tenantId)) {
@@ -421,7 +413,7 @@ public class TenantService {
         "Platform admin hard-deleted user: " + user.getEmail());
   }
 
-  private TenantResponse toResponse(@NonNull Tenant tenant) {
+  private TenantResponse toResponse(Tenant tenant) {
     return TenantResponse.builder()
         .id(tenant.getId())
         .name(tenant.getName())
@@ -435,7 +427,7 @@ public class TenantService {
         .build();
   }
 
-  private UserResponse toUserResponse(@NonNull User user) {
+  private UserResponse toUserResponse(User user) {
     return UserResponse.builder()
         .id(user.getId())
         .name(user.getName())

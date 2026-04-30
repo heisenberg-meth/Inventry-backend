@@ -8,10 +8,13 @@ import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.request.SignupRequest;
 import com.ims.dto.response.ProductResponse;
+import com.ims.dto.response.SignupResponse;
 import com.ims.shared.auth.SignupService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Objects;
+
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,7 +50,7 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
         signup.setOwnerName("Admin");
         signup.setOwnerEmail("admin@pharmacy.com");
         signup.setPassword("password123");
-        com.ims.dto.response.SignupResponse response = signupService.signup(signup);
+        SignupResponse response = signupService.signup(signup);
         verifyUserEmail("admin@pharmacy.com");
         verifyUser("admin@pharmacy.com");
         Long tId = Objects.requireNonNull(tenantRepository.findByWorkspaceSlug("pharmacy-corp").orElseThrow().getId());
@@ -89,7 +92,7 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
                                 .with(tenant(Objects.requireNonNull(String.valueOf(tId)))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()",
-                        Objects.requireNonNull(org.hamcrest.Matchers.<Integer>greaterThanOrEqualTo(1))));
+                        Objects.requireNonNull(Matchers.<Integer>greaterThanOrEqualTo(1))));
     }
 
     @Test
@@ -101,7 +104,7 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
         signup.setOwnerName("Admin");
         signup.setOwnerEmail("admin@expired.com");
         signup.setPassword("password123");
-        com.ims.dto.response.SignupResponse response = signupService.signup(signup);
+        SignupResponse response = signupService.signup(signup);
         verifyUserEmail("admin@expired.com");
         verifyUser("admin@expired.com");
 
@@ -157,7 +160,7 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
         signup.setOwnerName("Admin");
         signup.setOwnerEmail("admin@missing.com");
         signup.setPassword("password123");
-        com.ims.dto.response.SignupResponse response = signupService.signup(signup);
+        SignupResponse response = signupService.signup(signup);
         verifyUserEmail("admin@missing.com");
         verifyUser("admin@missing.com");
 

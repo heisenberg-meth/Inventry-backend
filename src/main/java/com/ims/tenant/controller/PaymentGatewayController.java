@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.shared.exception.UnauthorizedException;
 import com.ims.shared.payment.PaymentGatewayService;
 import com.ims.shared.rbac.RequiresRole;
+import com.ims.shared.util.CryptoUtils;
 import com.ims.tenant.service.TenantSecretService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -16,7 +17,6 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.lang.Nullable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -79,8 +79,8 @@ public class PaymentGatewayController {
       }
 
       // 5. Verify signature
-      String expectedSig = com.ims.shared.util.CryptoUtils.hmacSha256(rawBody, webhookSecret);
-      if (!com.ims.shared.util.CryptoUtils.constantTimeEquals(receivedSig, expectedSig)) {
+      String expectedSig = CryptoUtils.hmacSha256(rawBody, webhookSecret);
+      if (!CryptoUtils.constantTimeEquals(receivedSig, expectedSig)) {
         throw new UnauthorizedException("Invalid webhook signature");
       }
 
@@ -123,7 +123,6 @@ public class PaymentGatewayController {
     }
   }
 
-  @Nullable
   private Long extractTenantId(JsonNode root) {
     // Try to find tenant_id in notes (common practice)
     JsonNode notes = root.path("payload").path("payment").path("entity").path("notes");

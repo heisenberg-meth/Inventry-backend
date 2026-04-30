@@ -2,6 +2,8 @@ package com.ims.product;
 
 import com.ims.category.Category;
 import com.ims.category.CategoryRepository;
+import com.ims.shared.auth.SecurityContextAccessor;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
@@ -31,7 +33,7 @@ public class ProductImportService {
 
   private final ProductRepository productRepository;
   private final CategoryRepository categoryRepository;
-  private final com.ims.shared.auth.SecurityContextAccessor securityContextAccessor;
+  private final SecurityContextAccessor securityContextAccessor;
 
   private static final int BATCH_SIZE = 100;
 

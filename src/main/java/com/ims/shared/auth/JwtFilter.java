@@ -16,7 +16,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -35,9 +34,9 @@ public class JwtFilter extends OncePerRequestFilter {
 
   @Override
   protected void doFilterInternal(
-      @NonNull HttpServletRequest request,
-      @NonNull HttpServletResponse response,
-      @NonNull FilterChain chain)
+      HttpServletRequest request,
+      HttpServletResponse response,
+      FilterChain chain)
       throws ServletException, IOException {
     String authHeader = request.getHeader("Authorization");
 
@@ -81,19 +80,19 @@ public class JwtFilter extends OncePerRequestFilter {
 
       String safeToken = Objects.requireNonNull(token);
       final Long userId = jwtUtil.extractUserId(safeToken);
-      
+
       // Check global user revocation
       String revokedAtStr = (String) redisTemplate.opsForValue().get("user:revoked-at:" + userId);
       if (revokedAtStr != null) {
-          long revokedAt = Long.parseLong(revokedAtStr);
-          long issuedAt = jwtUtil.extractIssuedAt(safeToken).getTime();
-          if (issuedAt < revokedAt) {
-              log.warn("Token for user {} rejected due to global session invalidation", userId);
-              response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-              response.setContentType("application/json");
-              response.getWriter().write("{\"error\":\"Your session has been terminated. Please log in again.\"}");
-              return;
-          }
+        long revokedAt = Long.parseLong(revokedAtStr);
+        long issuedAt = jwtUtil.extractIssuedAt(safeToken).getTime();
+        if (issuedAt < revokedAt) {
+          log.warn("Token for user {} rejected due to global session invalidation", userId);
+          response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+          response.setContentType("application/json");
+          response.getWriter().write("{\"error\":\"Your session has been terminated. Please log in again.\"}");
+          return;
+        }
       }
 
       final Long tenantId = Objects.requireNonNull(
@@ -104,15 +103,15 @@ public class JwtFilter extends OncePerRequestFilter {
       // Check global tenant revocation (e.g. suspension)
       String tenantRevokedAtStr = (String) redisTemplate.opsForValue().get("tenant:revoked-at:" + tenantId);
       if (tenantRevokedAtStr != null) {
-          long revokedAt = Long.parseLong(tenantRevokedAtStr);
-          long issuedAt = jwtUtil.extractIssuedAt(safeToken).getTime();
-          if (issuedAt < revokedAt) {
-              log.warn("Token for tenant {} rejected due to global suspension", tenantId);
-              response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-              response.setContentType("application/json");
-              response.getWriter().write("{\"error\":\"This account has been suspended. Please contact support.\"}");
-              return;
-          }
+        long revokedAt = Long.parseLong(tenantRevokedAtStr);
+        long issuedAt = jwtUtil.extractIssuedAt(safeToken).getTime();
+        if (issuedAt < revokedAt) {
+          log.warn("Token for tenant {} rejected due to global suspension", tenantId);
+          response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+          response.setContentType("application/json");
+          response.getWriter().write("{\"error\":\"This account has been suspended. Please contact support.\"}");
+          return;
+        }
       }
 
       TenantContext.setTenantId(tenantId);
@@ -180,7 +179,7 @@ public class JwtFilter extends OncePerRequestFilter {
   }
 
   @Override
-  protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
+  protected boolean shouldNotFilter(HttpServletRequest request) {
     String path = request.getRequestURI();
     // Only bypass for health check. Other actuator/swagger paths need auth in prod.
     return "/actuator/health".equals(path)

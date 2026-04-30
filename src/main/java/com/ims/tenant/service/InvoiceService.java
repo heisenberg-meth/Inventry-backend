@@ -31,7 +31,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.thymeleaf.context.Context;
@@ -133,7 +132,7 @@ public class InvoiceService {
   }
 
   @Transactional
-  public Invoice createCreditNote(Order returnOrder, @Nullable Long parentInvoiceId) {
+  public Invoice createCreditNote(Order returnOrder, Long parentInvoiceId) {
     // Use CN prefix in place of the invoice's "INV-" prefix.
     String invoiceNumber = "CN-" + incrementAndGetInvoiceNumber().substring(INVOICE_PREFIX_LENGTH);
 
@@ -164,11 +163,12 @@ public class InvoiceService {
 
   private String incrementAndGetInvoiceNumber() {
     Long tenantId = TenantContext.requireTenantId();
-    
-    // PESSIMISTIC LOCK: Ensure no other thread can increment the sequence for this tenant simultaneously
+
+    // PESSIMISTIC LOCK: Ensure no other thread can increment the sequence for this
+    // tenant simultaneously
     Tenant tenant = tenantRepository.lockById(tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Tenant not found: " + tenantId));
-    
+
     int newSequence = tenant.getInvoiceSequence() + 1;
     tenant.setInvoiceSequence(newSequence);
     tenantRepository.saveAndFlush(tenant);

@@ -1,7 +1,6 @@
 package com.ims.shared.auth;
 
 import org.springframework.core.MethodParameter;
-import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
@@ -18,9 +17,9 @@ public class TenantArgumentResolver implements HandlerMethodArgumentResolver {
 
     @Override
     public Object resolveArgument(MethodParameter parameter,
-            @Nullable ModelAndViewContainer mavContainer,
+            ModelAndViewContainer mavContainer,
             NativeWebRequest webRequest,
-            @Nullable WebDataBinderFactory binderFactory) throws Exception {
+            WebDataBinderFactory binderFactory) throws Exception {
         return TenantContext.requireTenantId();
     }
 }

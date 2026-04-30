@@ -2,6 +2,7 @@ package com.ims.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -20,7 +21,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.TenantId;
-import org.springframework.lang.Nullable;
 
 @Entity
 @Table(name = "users")
@@ -84,16 +84,13 @@ public class User {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @org.springframework.lang.Nullable
   private Long id;
 
   @Version
-  @org.springframework.lang.Nullable
   private Long version;
 
   @TenantId
   @Column(name = "tenant_id")
-  @org.springframework.lang.Nullable
   private Long tenantId;
 
   @Column(nullable = false)
@@ -102,7 +99,7 @@ public class User {
   @Column(nullable = false, unique = true)
   private String email;
 
-  @Column @org.springframework.lang.Nullable private String phone;
+  @Column private String phone;
 
   @Column(name = "password_hash", nullable = false)
   private String passwordHash;
@@ -111,9 +108,10 @@ public class User {
    * Proper relational mapping for the user's role.
    * Fetch type is LAZY to avoid over-fetching in list contexts.
    */
-  @ManyToOne(fetch = jakarta.persistence.FetchType.LAZY)
+  @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "role_id")
   private Role role;
+
 
   @Column(nullable = false)
   @Builder.Default
@@ -127,7 +125,7 @@ public class User {
    * Custom permissions assigned directly to the user.
    * Fetch type is LAZY to prevent N+1 queries during list fetching.
    */
-  @ManyToMany(fetch = jakarta.persistence.FetchType.LAZY)
+  @ManyToMany(fetch = FetchType.LAZY)
   @JoinTable(
       name = "user_permissions",
       joinColumns = @JoinColumn(name = "user_id"),
@@ -144,23 +142,18 @@ public class User {
   private Boolean isVerified = false;
 
   @Column(name = "reset_token")
-  @Nullable
   private String resetToken;
 
   @Column(name = "reset_token_expiry")
-  @Nullable
   private LocalDateTime resetTokenExpiry;
 
   @Column(name = "verification_token")
-  @Nullable
   private String verificationToken;
 
   @Column(name = "verification_token_expiry")
-  @Nullable
   private LocalDateTime verificationTokenExpiry;
 
   @Column(name = "last_login")
-  @Nullable
   private LocalDateTime lastLogin;
 
   @Column(name = "two_factor_enabled")
@@ -168,11 +161,9 @@ public class User {
   private boolean twoFactorEnabled = false;
 
   @Column(name = "two_factor_secret")
-  @Nullable
   private String twoFactorSecret;
 
   @Column(name = "backup_codes", columnDefinition = "TEXT")
-  @Nullable
   private String backupCodes;
 
   @Column(name = "created_at")

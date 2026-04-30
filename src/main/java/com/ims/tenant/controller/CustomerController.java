@@ -1,10 +1,17 @@
 package com.ims.tenant.controller;
 
+import com.ims.dto.request.CustomerRequest;
+import com.ims.dto.response.CustomerResponse;
 import com.ims.shared.rbac.RequiresRole;
+import com.ims.shared.utils.CsvExportService;
+import com.ims.tenant.repository.CustomerRepository;
+import com.ims.tenant.service.CustomerImportService;
 import com.ims.tenant.service.CustomerService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+
 import java.util.Objects;
 import java.util.Map;
 import java.util.LinkedHashMap;
@@ -13,6 +20,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -34,14 +42,14 @@ import org.springframework.web.multipart.MultipartFile;
 public class CustomerController {
 
   private final CustomerService customerService;
-  private final com.ims.tenant.service.CustomerImportService importService;
-  private final com.ims.shared.utils.CsvExportService csvExportService;
-  private final com.ims.tenant.repository.CustomerRepository customerRepository;
+  private final CustomerImportService importService;
+  private final CsvExportService csvExportService;
+  private final CustomerRepository customerRepository;
 
   @GetMapping
   @RequiresRole({ "ADMIN", "MANAGER" })
   @Operation(summary = "List customers")
-  public ResponseEntity<Page<com.ims.dto.response.CustomerResponse>> list(
+  public ResponseEntity<Page<CustomerResponse>> list(
       Pageable pageable) {
     return ResponseEntity.ok(Objects.requireNonNull(customerService.getCustomers(pageable)));
   }
@@ -49,8 +57,8 @@ public class CustomerController {
   @PostMapping
   @RequiresRole({ "ADMIN", "MANAGER" })
   @Operation(summary = "Create customer")
-  public ResponseEntity<com.ims.dto.response.CustomerResponse> create(
-      @jakarta.validation.Valid @RequestBody com.ims.dto.request.CustomerRequest request) {
+  public ResponseEntity<CustomerResponse> create(
+      @Valid @RequestBody CustomerRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(Objects.requireNonNull(customerService.create(request)));
   }
@@ -58,16 +66,16 @@ public class CustomerController {
   @GetMapping("/{id}")
   @RequiresRole({ "ADMIN", "MANAGER" })
   @Operation(summary = "Get customer")
-  public ResponseEntity<com.ims.dto.response.CustomerResponse> get(@PathVariable long id) {
+  public ResponseEntity<CustomerResponse> get(@PathVariable long id) {
     return ResponseEntity.ok(Objects.requireNonNull(customerService.getCustomerResponseById(id)));
   }
 
   @PutMapping("/{id}")
   @RequiresRole({ "ADMIN", "MANAGER" })
   @Operation(summary = "Update customer")
-  public ResponseEntity<com.ims.dto.response.CustomerResponse> update(
+  public ResponseEntity<CustomerResponse> update(
       @PathVariable long id,
-      @jakarta.validation.Valid @RequestBody com.ims.dto.request.CustomerRequest request) {
+      @Valid @RequestBody CustomerRequest request) {
     return ResponseEntity.ok(Objects.requireNonNull(customerService.update(id, request)));
   }
 
@@ -117,9 +125,9 @@ public class CustomerController {
         List.of("ID", "Name", "Phone", "Email", "Address", "GSTIN"), data);
     return ResponseEntity.ok()
         .header(
-            org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+            HttpHeaders.CONTENT_DISPOSITION,
             "attachment; filename=customers.csv")
-        .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "text/csv")
+        .header(HttpHeaders.CONTENT_TYPE, "text/csv")
         .body(csv);
   }
 }

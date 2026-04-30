@@ -1,9 +1,16 @@
 package com.ims.tenant.service;
 
+import com.ims.dto.request.SupplierRequest;
+import com.ims.dto.response.SupplierResponse;
+import com.ims.model.Invoice;
+import com.ims.model.Order;
+import com.ims.model.Payment;
 import com.ims.model.Supplier;
 import com.ims.shared.audit.AuditAction;
+import com.ims.shared.audit.AuditLogService;
 import com.ims.shared.audit.AuditResource;
 import com.ims.shared.auth.TenantContext;
+import com.ims.shared.exception.TenantContextException;
 import com.ims.shared.rbac.RequiresPermission;
 import com.ims.tenant.repository.InvoiceRepository;
 import com.ims.tenant.repository.OrderRepository;
@@ -29,9 +36,9 @@ public class SupplierService {
   private final OrderRepository orderRepository;
   private final InvoiceRepository invoiceRepository;
   private final PaymentRepository paymentRepository;
-  private final com.ims.shared.audit.AuditLogService auditLogService;
+  private final AuditLogService auditLogService;
 
-  public Page<com.ims.dto.response.SupplierResponse> getSuppliers(Pageable pageable) {
+  public Page<SupplierResponse> getSuppliers(Pageable pageable) {
     TenantContext.assertTenantPresent();
     return Objects.requireNonNull(supplierRepository.findAll(pageable).map(this::toResponse));
   }
@@ -44,16 +51,16 @@ public class SupplierService {
             .orElseThrow(() -> new EntityNotFoundException("Supplier not found")));
   }
 
-  public com.ims.dto.response.SupplierResponse getSupplierResponseById(Long id) {
+  public SupplierResponse getSupplierResponseById(Long id) {
     return Objects.requireNonNull(toResponse(getById(id)));
   }
 
   @Transactional
-  public com.ims.dto.response.SupplierResponse create(
-      com.ims.dto.request.SupplierRequest request) {
+  public SupplierResponse create(
+      SupplierRequest request) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
+      throw new TenantContextException("Tenant context is missing");
     }
 
     Supplier supplier = new Supplier();
@@ -74,11 +81,11 @@ public class SupplierService {
   }
 
   @Transactional
-  public com.ims.dto.response.SupplierResponse update(
-      Long id, com.ims.dto.request.SupplierRequest updates) {
+  public SupplierResponse update(
+      Long id, SupplierRequest updates) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
+      throw new TenantContextException("Tenant context is missing");
     }
 
     Supplier supplier = getById(id);
@@ -113,7 +120,7 @@ public class SupplierService {
   public void delete(Long id) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
+      throw new TenantContextException("Tenant context is missing");
     }
 
     Supplier supplier = getById(id);
@@ -126,9 +133,9 @@ public class SupplierService {
   public Map<String, Object> getSupplierLedger(Long id) {
     Supplier supplier = getById(id);
 
-    List<com.ims.model.Order> orders = orderRepository.findBySupplierId(id, Pageable.unpaged()).getContent();
-    List<com.ims.model.Invoice> invoices = invoiceRepository.findBySupplierId(id);
-    List<com.ims.model.Payment> payments = paymentRepository.findBySupplierId(id);
+    List<Order> orders = orderRepository.findBySupplierId(id, Pageable.unpaged()).getContent();
+    List<Invoice> invoices = invoiceRepository.findBySupplierId(id);
+    List<Payment> payments = paymentRepository.findBySupplierId(id);
 
     return Objects.requireNonNull(
         Map.of(
@@ -138,9 +145,9 @@ public class SupplierService {
             "payments", payments));
   }
 
-  private com.ims.dto.response.SupplierResponse toResponse(Supplier supplier) {
+  private SupplierResponse toResponse(Supplier supplier) {
     return Objects.requireNonNull(
-        com.ims.dto.response.SupplierResponse.builder()
+        SupplierResponse.builder()
             .id(supplier.getId())
             .name(supplier.getName())
             .phone(supplier.getPhone())

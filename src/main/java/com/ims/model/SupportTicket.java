@@ -2,6 +2,8 @@ package com.ims.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -39,7 +41,7 @@ public class SupportTicket {
   @Column @Builder.Default private String priority = "MEDIUM";
 
   @Column
-  @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+  @Enumerated(EnumType.STRING)
   @Builder.Default
   private SupportTicketStatus status = SupportTicketStatus.OPEN;
 

@@ -12,8 +12,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.AssertTrue;
-import org.springframework.lang.Nullable;
-
 
 @Data
 @NoArgsConstructor
@@ -33,13 +31,11 @@ public class OrderItemRequest {
   @DecimalMin(value = "0.0", message = "Unit price cannot be negative")
   private BigDecimal unitPrice;
 
-  @Nullable
   private BigDecimal discount;
-  @Nullable
   private BigDecimal taxRate;
 
   @AssertTrue(message = "Discount cannot exceed unit price")
   public boolean isValidDiscount() {
-      return discount == null || unitPrice == null || discount.compareTo(unitPrice) <= 0;
+    return discount == null || unitPrice == null || discount.compareTo(unitPrice) <= 0;
   }
 }

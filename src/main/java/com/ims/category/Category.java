@@ -13,7 +13,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.springframework.lang.Nullable;
 import org.hibernate.annotations.TenantId;
 import org.hibernate.annotations.Cache;
 import jakarta.persistence.Cacheable;
@@ -32,7 +31,6 @@ public class Category {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Nullable
   private Long id;
 
   @TenantId
@@ -43,7 +41,6 @@ public class Category {
   private String name;
 
   @Column
-  @Nullable
   private String description;
 
   @Column(name = "tax_rate")

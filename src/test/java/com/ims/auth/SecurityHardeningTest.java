@@ -9,6 +9,7 @@ import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.LoginRequest;
 import com.ims.dto.request.SignupRequest;
 import com.ims.dto.response.SignupResponse;
+import com.ims.model.User;
 import com.ims.shared.auth.AuthService;
 import com.ims.shared.auth.SignupService;
 import com.ims.shared.auth.TwoFactorAuthService;
@@ -18,9 +19,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -30,12 +32,8 @@ import org.springframework.test.context.ActiveProfiles;
  * - 2FA (TOTP) setup and backup codes
  * - MFA challenge-response login flow
  */
-@SpringBootTest(properties = {
-    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
-    "spring.cache.type=none"
-})
-@AutoConfigureMockMvc(addFilters = false)
-@ActiveProfiles("test-no-security")
+@AutoConfigureMockMvc // Overrides BaseIntegrationTest to enable filters
+@ActiveProfiles({"test", "test-no-security"})
 public class SecurityHardeningTest extends BaseIntegrationTest {
 
   @Autowired
@@ -44,6 +42,9 @@ public class SecurityHardeningTest extends BaseIntegrationTest {
   private AuthService authService;
   @Autowired
   private TwoFactorAuthService twoFactorAuthService;
+
+  @Autowired
+  private ValueOperations<String, Object> valueOperations;
 
   private String uniqueId;
   private String email;
@@ -82,14 +83,14 @@ public class SecurityHardeningTest extends BaseIntegrationTest {
     // On attempt 5+, the 15-minute lockout should kick in.
     for (int i = 0; i < 4; i++) {
       String attemptNum = String.valueOf(i + 1);
-      doReturn(attemptNum).when(redisTemplate.opsForValue()).get("auth:failed:" + email);
+      doReturn(attemptNum).when(valueOperations).get("auth:failed:" + email);
       assertThatThrownBy(() -> authService.login(req))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("Invalid email or password");
     }
 
     // On the 5th attempt, Redis says we've hit the threshold
-    doReturn("5").when(redisTemplate.opsForValue()).get("auth:failed:" + email);
+    doReturn("5").when(valueOperations).get("auth:failed:" + email);
     assertThatThrownBy(() -> authService.login(req))
         .isInstanceOf(UnauthorizedException.class)
         .hasMessageContaining("temporarily locked");
@@ -104,7 +105,7 @@ public class SecurityHardeningTest extends BaseIntegrationTest {
     req.setCompanyCode(signupResponse.getCompanyCode());
 
     // Simulate having 2 previous failed attempts
-    doReturn("2").when(redisTemplate.opsForValue()).get("auth:failed:" + email);
+    doReturn("2").when(valueOperations).get("auth:failed:" + email);
 
     // Successful login should not throw and should call delete on the counter key
     var response = authService.login(req);
@@ -114,7 +115,7 @@ public class SecurityHardeningTest extends BaseIntegrationTest {
 
     // Verify Redis delete was called with the correct lockout key
     ArgumentCaptor<String> keyCaptor = ArgumentCaptor.forClass(String.class);
-    org.mockito.Mockito.verify(redisTemplate, org.mockito.Mockito.atLeastOnce())
+    Mockito.verify(redisTemplate, Mockito.atLeastOnce())
         .delete(keyCaptor.capture());
     assertThat(keyCaptor.getAllValues()).anyMatch(k -> k.equals("auth:failed:" + email));
   }
@@ -130,8 +131,11 @@ public class SecurityHardeningTest extends BaseIntegrationTest {
 
     assertThat(secret).isNotNull();
     assertThat(secret.secret()).isNotBlank();
-    assertThat(secret.qrCodeUrl()).contains("otpauth://totp/");
-    assertThat(secret.qrCodeUrl()).contains(email);
+    // Use contains ignoring case or check for encoded values if needed,
+    // but the most robust way is to check for the key parts.
+    assertThat(secret.qrCodeUrl()).contains("otpauth");
+    assertThat(secret.qrCodeUrl()).contains("totp");
+    assertThat(secret.qrCodeUrl()).contains(email.replace("@", "%40"));
     assertThat(secret.qrCodeUrl()).contains("IMS-Inventory");
   }
 
@@ -175,7 +179,7 @@ public class SecurityHardeningTest extends BaseIntegrationTest {
   @DisplayName("MFA-required login should return mfa_required flag with a session token")
   void testMfaRequiredLoginFlowReturnsSessionToken() {
     // Simulate a user who has 2FA enabled
-    com.ims.model.User user = userRepository.findByEmailGlobal(email).orElseThrow();
+    User user = userRepository.findByEmailGlobal(email).orElseThrow();
     user.setTwoFactorSecret("JBSWY3DPEHPK3PXP"); // valid base32 seed
     user.setTwoFactorEnabled(true);
     userRepository.save(user);

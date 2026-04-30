@@ -16,7 +16,6 @@ import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,7 +27,10 @@ public class PaymentGatewayService {
   /** Length of the short hex fragment appended to generated gateway order IDs. */
   private static final int ORDER_ID_SUFFIX_LENGTH = 8;
 
-  /** Razorpay reports payment amounts in paise; we divide by 100 to get the rupee value. */
+  /**
+   * Razorpay reports payment amounts in paise; we divide by 100 to get the rupee
+   * value.
+   */
   private static final BigDecimal PAISE_PER_RUPEE = new BigDecimal(100);
 
   private final PaymentRepository paymentRepository;
@@ -37,27 +39,25 @@ public class PaymentGatewayService {
 
   @Transactional
   public Map<String, Object> initiatePayment(
-      @NonNull Long invoiceId, @NonNull BigDecimal amount, @NonNull Long userId) {
+      Long invoiceId, BigDecimal amount, Long userId) {
     Long tenantId = TenantContext.requireTenantId();
     invoiceRepository
         .findById(invoiceId)
         .filter(inv -> tenantId.equals(inv.getTenantId()))
         .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
 
-    String gatewayOrderId =
-        "order_" + UUID.randomUUID().toString().substring(0, ORDER_ID_SUFFIX_LENGTH);
+    String gatewayOrderId = "order_" + UUID.randomUUID().toString().substring(0, ORDER_ID_SUFFIX_LENGTH);
 
-    Payment payment =
-        Objects.requireNonNull(
-            Payment.builder()
-                .tenantId(TenantContext.requireTenantId())
-                .invoiceId(invoiceId)
-                .amount(amount)
-                .paymentMode("GATEWAY")
-                .gatewayTransactionId(gatewayOrderId)
-                .status(PaymentStatus.PENDING)
-                .createdBy(userId)
-                .build());
+    Payment payment = Objects.requireNonNull(
+        Payment.builder()
+            .tenantId(TenantContext.requireTenantId())
+            .invoiceId(invoiceId)
+            .amount(amount)
+            .paymentMode("GATEWAY")
+            .gatewayTransactionId(gatewayOrderId)
+            .status(PaymentStatus.PENDING)
+            .createdBy(userId)
+            .build());
 
     paymentRepository.save(payment);
 
@@ -83,27 +83,22 @@ public class PaymentGatewayService {
   public void processWebhook(Long tenantId, String eventId, String eventType, JsonNode payload) {
     log.info("Processing validated payment gateway webhook: {} for tenant {}", eventType, tenantId);
 
-    PaymentGatewayLog pgLog =
-        Objects.requireNonNull(
-            PaymentGatewayLog.builder()
-                .tenantId(Objects.requireNonNull(tenantId))
-                .eventId(Objects.requireNonNull(eventId))
-                .eventType(Objects.requireNonNull(eventType))
-                .rawPayload(Objects.requireNonNull(payload.toString()))
-                .build());
+    PaymentGatewayLog pgLog = Objects.requireNonNull(
+        PaymentGatewayLog.builder()
+            .tenantId(Objects.requireNonNull(tenantId))
+            .eventId(Objects.requireNonNull(eventId))
+            .eventType(Objects.requireNonNull(eventType))
+            .rawPayload(Objects.requireNonNull(payload.toString()))
+            .build());
     logRepository.save(pgLog);
 
     if ("payment.captured".equals(eventType)) {
-      String gatewayOrderId =
-          payload.path("payload").path("payment").path("entity").path("order_id").asText();
-      BigDecimal amount =
-          new BigDecimal(
-                  payload.path("payload").path("payment").path("entity").path("amount").asLong())
-              .divide(PAISE_PER_RUPEE); // Razorpay reports amount in paise
-      String currency =
-          payload.path("payload").path("payment").path("entity").path("currency").asText();
-      String gatewayPaymentId =
-          payload.path("payload").path("payment").path("entity").path("id").asText();
+      String gatewayOrderId = payload.path("payload").path("payment").path("entity").path("order_id").asText();
+      BigDecimal amount = new BigDecimal(
+          payload.path("payload").path("payment").path("entity").path("amount").asLong())
+          .divide(PAISE_PER_RUPEE); // Razorpay reports amount in paise
+      String currency = payload.path("payload").path("payment").path("entity").path("currency").asText();
+      String gatewayPaymentId = payload.path("payload").path("payment").path("entity").path("id").asText();
 
       // 1. Locate and validate payment record
       Long previousTenantId = TenantContext.getTenantId();

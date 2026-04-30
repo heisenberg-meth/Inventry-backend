@@ -16,6 +16,8 @@ import com.ims.tenant.repository.RoleRepository;
 import com.ims.tenant.repository.UserRepository;
 import com.ims.tenant.repository.UserSummaryView;
 import jakarta.persistence.EntityNotFoundException;
+
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -239,7 +241,7 @@ public class UserService {
       allPermissions.addAll(
           user.getCustomPermissions().stream().map(Permission::getKey).collect(Collectors.toSet()));
 
-      permissions = new java.util.ArrayList<>(allPermissions);
+      permissions = new ArrayList<>(allPermissions);
     }
 
     return Objects.requireNonNull(

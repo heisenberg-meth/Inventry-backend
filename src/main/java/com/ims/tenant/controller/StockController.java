@@ -11,6 +11,7 @@ import com.ims.tenant.service.StockService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
@@ -41,7 +42,7 @@ public class StockController {
   @RequiresRole({ "ADMIN", "MANAGER" })
   @Operation(summary = "Transfer stock between locations")
   public ResponseEntity<TransferOrder> transfer(
-      @RequestBody @jakarta.validation.Valid TransferOrderRequest body) {
+      @RequestBody @Valid TransferOrderRequest body) {
     Long userId = extractUserId();
     TransferOrder result = Objects.requireNonNull(transferOrderService.createTransfer(body, userId));
     return ResponseEntity.ok(result);

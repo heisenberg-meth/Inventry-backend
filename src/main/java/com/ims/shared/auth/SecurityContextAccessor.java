@@ -1,5 +1,6 @@
 package com.ims.shared.auth;
 
+import com.ims.shared.exception.TenantContextException;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -20,7 +21,7 @@ public class SecurityContextAccessor {
    */
   public Long requireTenantId() {
     return getTenantId()
-        .orElseThrow(() -> new com.ims.shared.exception.TenantContextException("Tenant context missing from security context"));
+        .orElseThrow(() -> new TenantContextException("Tenant context missing from security context"));
   }
 
   /**

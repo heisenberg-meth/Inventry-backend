@@ -6,7 +6,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.CreateProductRequest;
+import com.ims.dto.request.CustomerRequest;
 import com.ims.dto.request.SignupRequest;
+import com.ims.dto.response.CustomerResponse;
 import com.ims.dto.response.ProductResponse;
 import com.ims.dto.response.SignupResponse;
 import com.ims.model.Customer;
@@ -67,9 +69,9 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
                 Customer customer;
                 try {
                         TenantContext.setTenantId(tenantId);
-                        com.ims.dto.request.CustomerRequest custReq = new com.ims.dto.request.CustomerRequest();
+                        CustomerRequest custReq = new CustomerRequest();
                         custReq.setName("Test Customer");
-                        com.ims.dto.response.CustomerResponse custResponse = customerService.create(custReq);
+                        CustomerResponse custResponse = customerService.create(custReq);
                         customer = Customer.builder().id(Objects.requireNonNull(custResponse.getId()))
                                         .name(Objects.requireNonNull(custResponse.getName())).build();
                 } finally {

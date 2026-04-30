@@ -1,7 +1,5 @@
 package com.ims.shared.auth;
-
-import org.springframework.lang.NonNull;
-import org.springframework.lang.Nullable;
+import com.ims.shared.exception.TenantContextException;
 
 public class TenantContext {
   /**
@@ -9,16 +7,14 @@ public class TenantContext {
    * platform admin,
    * background maintenance). Use with extreme caution.
    */
-  @NonNull
   public static final Long PLATFORM_TENANT_ID = -1L;
 
   private static final ThreadLocal<Long> TENANT = new ThreadLocal<>();
 
-  public static void setTenantId(@Nullable Long tenantId) {
+  public static void setTenantId(Long tenantId) {
     TENANT.set(tenantId);
   }
 
-  @Nullable
   public static Long getTenantId() {
     return TENANT.get();
   }
@@ -46,7 +42,7 @@ public class TenantContext {
   public static void assertTenantPresent() {
     Long tenantId = getTenantId();
     if (tenantId == null) {
-      throw new com.ims.shared.exception.TenantContextException("Tenant missing at service layer");
+      throw new TenantContextException("Tenant missing at service layer");
     }
   }
 

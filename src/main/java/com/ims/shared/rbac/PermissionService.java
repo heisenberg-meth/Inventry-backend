@@ -33,19 +33,15 @@ public class PermissionService {
   public Set<String> getUserPermissions(Long userId, Long tenantId) {
     log.info("Fetching permissions from DB for user: {}", userId);
 
-    User user =
-        userRepository
-            .findByIdGlobal(userId)
-            .orElseThrow(() -> new AccessDeniedException("User not found"));
-
     Set<String> permissions = new HashSet<>();
 
     // 1. Get permissions from Role
-    if (user.getRole() != null) {
+    String roleName = userRepository.findRoleNameByUserId(userId).orElse(null);
+    if (roleName != null) {
       Optional<Role> roleOpt =
           tenantId != null
-              ? roleRepository.findByNameWithPermissions(user.getRole().getName())
-              : roleRepository.findByNameAndTenantIdIsNullWithPermissions(user.getRole().getName());
+              ? roleRepository.findByNameWithPermissions(roleName)
+              : roleRepository.findByNameAndTenantIdIsNullWithPermissions(roleName);
 
       roleOpt.ifPresent(
           role ->
@@ -56,6 +52,11 @@ public class PermissionService {
     }
 
     // 2. Get custom permissions
+    User user =
+        userRepository
+            .findByIdGlobal(userId)
+            .orElseThrow(() -> new AccessDeniedException("User not found"));
+            
     permissions.addAll(
         user.getCustomPermissions().stream().map(Permission::getKey).collect(Collectors.toSet()));
 

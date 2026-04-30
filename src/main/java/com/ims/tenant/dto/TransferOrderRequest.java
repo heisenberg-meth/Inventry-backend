@@ -10,7 +10,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.lang.Nullable;
 
 @Data
 @NoArgsConstructor
@@ -33,6 +32,5 @@ public class TransferOrderRequest {
   @Min(value = 1, message = "Quantity must be at least 1")
   private Integer quantity;
 
-  @Nullable
   private String notes;
 }

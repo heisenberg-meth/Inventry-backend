@@ -3,9 +3,11 @@ package com.ims.shared.auth;
 import com.ims.dto.request.ChangePasswordRequest;
 import com.ims.dto.request.ForgotPasswordRequest;
 import com.ims.dto.request.LoginRequest;
+import com.ims.dto.request.MfaRequest;
 import com.ims.dto.request.ResetPasswordRequest;
 import com.ims.dto.response.LoginResponse;
 import com.ims.model.Tenant;
+import com.ims.model.TenantStatus;
 import com.ims.model.User;
 import com.ims.model.UserRole;
 import com.ims.platform.repository.TenantRepository;
@@ -13,7 +15,10 @@ import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditLogService;
 import com.ims.shared.audit.AuditResource;
 import com.ims.shared.email.EmailService;
+import com.ims.shared.exception.UnauthorizedAccessException;
 import com.ims.shared.exception.UnauthorizedException;
+import com.ims.shared.metrics.BusinessMetrics;
+import com.ims.shared.rbac.PermissionService;
 import com.ims.tenant.repository.UserRepository;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import jakarta.persistence.EntityNotFoundException;
@@ -61,9 +66,9 @@ public class AuthService {
   private final RedisTemplate<String, Object> redisTemplate;
   private final AuditLogService auditLogService;
   private final EmailService emailService;
-  private final com.ims.shared.rbac.PermissionService permissionService;
+  private final PermissionService permissionService;
   private final TwoFactorAuthService twoFactorAuthService;
-  private final com.ims.shared.metrics.BusinessMetrics businessMetrics;
+  private final BusinessMetrics businessMetrics;
 
   private static final String MFA_SESSION_PREFIX = "mfa:session:";
   private static final String MFA_SETUP_PREFIX = "mfa:setup:";
@@ -162,7 +167,7 @@ public class AuthService {
   public LoginResponse impersonateTenant(Long tenantId) {
     var auth = SecurityContextHolder.getContext().getAuthentication();
     if (auth == null) {
-      throw new com.ims.shared.exception.UnauthorizedAccessException("Authentication required");
+      throw new UnauthorizedAccessException("Authentication required");
     }
 
     Long rootUserId = Objects.requireNonNull((Long) auth.getPrincipal());
@@ -179,13 +184,13 @@ public class AuthService {
             .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
     auditLogService.logAudit(
-        com.ims.shared.audit.AuditAction.ROOT_IMPERSONATION_START,
-        com.ims.shared.audit.AuditResource.TENANT,
+        AuditAction.ROOT_IMPERSONATION_START,
+        AuditResource.TENANT,
         safeTenantId,
         String.format("ROOT user %d started impersonation for tenant %d", rootUserId, safeTenantId));
 
-    if (com.ims.model.TenantStatus.SUSPENDED.equals(tenant.getStatus())
-        || com.ims.model.TenantStatus.INACTIVE.equals(tenant.getStatus())) {
+    if (TenantStatus.SUSPENDED.equals(tenant.getStatus())
+        || TenantStatus.INACTIVE.equals(tenant.getStatus())) {
       throw new IllegalStateException("Cannot impersonate a " + tenant.getStatus() + " tenant");
     }
 
@@ -300,7 +305,7 @@ public class AuthService {
     int attempts = attemptsStr != null ? Integer.parseInt(attemptsStr) : 0;
 
     if (attempts >= MAX_FAILED_ATTEMPTS) {
-        throw new com.ims.shared.exception.UnauthorizedException("Account is temporarily locked due to multiple failed attempts. Please try again in " + LOCKOUT_DURATION_MINUTES + " minutes.");
+        throw new UnauthorizedException("Account is temporarily locked due to multiple failed attempts. Please try again in " + LOCKOUT_DURATION_MINUTES + " minutes.");
     }
 
     if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
@@ -322,7 +327,8 @@ public class AuthService {
     Set<String> permissions = permissionService.getUserPermissions(user.getId(), null);
 
     String scope = Objects.requireNonNull(user.getScope());
-    UserRole roleEnum = user.getRole() != null ? UserRole.valueOf(user.getRole().getName()) : null;
+    String roleName = userRepository.findRoleNameByUserId(user.getId()).orElse(null);
+    UserRole roleEnum = roleName != null ? UserRole.valueOf(roleName) : null;
     
     String accessToken =
         Objects.requireNonNull(
@@ -359,7 +365,7 @@ public class AuthService {
                     .name(user.getName())
                     .email(user.getEmail())
                     .phone(user.getPhone())
-                    .role(user.getRole() != null ? user.getRole().getName() : null)
+                    .role(roleName)
                     .scope(user.getScope())
                     .isPlatformUser(true)
                     .build())
@@ -367,7 +373,7 @@ public class AuthService {
     return Objects.requireNonNull(response);
   }
 
-  @Transactional
+  @RateLimiter(name = "login")
   public LoginResponse login(LoginRequest request) {
     User user =
         userRepository
@@ -379,7 +385,7 @@ public class AuthService {
     int attempts = attemptsStr != null ? Integer.parseInt(attemptsStr) : 0;
 
     if (attempts >= MAX_FAILED_ATTEMPTS) {
-        throw new com.ims.shared.exception.UnauthorizedException("Account is temporarily locked due to multiple failed attempts. Please try again in " + LOCKOUT_DURATION_MINUTES + " minutes.");
+        throw new UnauthorizedException("Account is temporarily locked due to multiple failed attempts. Please try again in " + LOCKOUT_DURATION_MINUTES + " minutes.");
     }
 
     if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
@@ -397,6 +403,11 @@ public class AuthService {
     if ("TENANT".equals(user.getScope()) && !Boolean.TRUE.equals(user.getIsVerified())) {
       throw new IllegalArgumentException(
           "Email not verified. Please verify your email before logging in.");
+    }
+
+    Long userTenantId = user.getTenantId();
+    if (userTenantId != null) {
+      TenantContext.setTenantId(userTenantId);
     }
 
     String companyCode = request.getCompanyCode();
@@ -457,7 +468,8 @@ public class AuthService {
             .build();
     }
 
-    UserRole roleEnum = user.getRole() != null ? UserRole.valueOf(user.getRole().getName()) : null;
+    String roleName = userRepository.findRoleNameByUserId(user.getId()).orElse(null);
+    UserRole roleEnum = roleName != null ? UserRole.valueOf(roleName) : null;
 
     String accessToken =
         Objects.requireNonNull(
@@ -491,7 +503,7 @@ public class AuthService {
                     .name(user.getName())
                     .email(user.getEmail())
                     .phone(user.getPhone())
-                    .role(user.getRole() != null ? user.getRole().getName() : null)
+                    .role(roleName)
                     .scope(user.getScope())
                     .isPlatformUser(Boolean.TRUE.equals(user.getIsPlatformUser()))
                     .build());
@@ -526,7 +538,7 @@ public class AuthService {
     log.info(
         "Login successful: user={} role={} tenant={}",
         user.getEmail(),
-        user.getRole() != null ? user.getRole().getName() : "NONE",
+        roleName != null ? roleName : "NONE",
         safeTenantId);
 
     LoginResponse response = responseBuilder.build();
@@ -618,7 +630,8 @@ public class AuthService {
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     String scope = Objects.requireNonNull(impersonation ? "TENANT" : user.getScope());
-    UserRole roleEnum = impersonation ? UserRole.ADMIN : (user.getRole() != null ? UserRole.valueOf(user.getRole().getName()) : null);
+    String roleName = userRepository.findRoleNameByUserId(user.getId()).orElse(null);
+    UserRole roleEnum = impersonation ? UserRole.ADMIN : (roleName != null ? UserRole.valueOf(roleName) : null);
     
     String businessType = null;
     Long rawTenantId = user.getTenantId();
@@ -682,7 +695,7 @@ public class AuthService {
                     .name(user.getName())
                     .email(user.getEmail())
                     .phone(user.getPhone())
-                    .role(user.getRole() != null ? user.getRole().getName() : null)
+                    .role(roleName)
                     .scope(user.getScope())
                     .isPlatformUser(Boolean.TRUE.equals(user.getIsPlatformUser()))
                     .build());
@@ -896,7 +909,7 @@ public class AuthService {
   }
 
   @Transactional
-  public LoginResponse verifyMfa(com.ims.dto.request.MfaRequest request) {
+  public LoginResponse verifyMfa(MfaRequest request) {
     String mfaToken = request.getMfaToken();
     Long userId = (Long) redisTemplate.opsForValue().get(MFA_SESSION_PREFIX + mfaToken);
     
@@ -944,7 +957,8 @@ public class AuthService {
       }
       
       Set<String> permissions = permissionService.getUserPermissions(user.getId(), safeTenantId);
-      UserRole roleEnum = user.getRole() != null ? UserRole.valueOf(user.getRole().getName()) : null;
+      String roleName = userRepository.findRoleNameByUserId(user.getId()).orElse(null);
+    UserRole roleEnum = roleName != null ? UserRole.valueOf(roleName) : null;
 
       String accessToken = jwtUtil.generateToken(user.getId(), safeTenantId != null ? safeTenantId : TenantContext.PLATFORM_TENANT_ID, roleEnum, scope, businessType != null ? businessType : "NONE", Boolean.TRUE.equals(user.getIsPlatformUser()), permissions);
       String refreshToken = jwtUtil.generateRefreshToken(user.getId(), safeTenantId != null ? safeTenantId : TenantContext.PLATFORM_TENANT_ID, roleEnum, scope, businessType != null ? businessType : "NONE", Boolean.TRUE.equals(user.getIsPlatformUser()), permissions);
@@ -958,7 +972,7 @@ public class AuthService {
               .name(user.getName())
               .email(user.getEmail())
               .phone(user.getPhone())
-              .role(user.getRole() != null ? user.getRole().getName() : null)
+              .role(roleName)
               .scope(user.getScope())
               .isPlatformUser(Boolean.TRUE.equals(user.getIsPlatformUser()))
               .build());

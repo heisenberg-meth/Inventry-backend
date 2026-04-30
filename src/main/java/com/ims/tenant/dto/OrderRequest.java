@@ -21,19 +21,14 @@ import jakarta.validation.constraints.Size;
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 @JsonIgnoreProperties(ignoreUnknown = false)
 public class OrderRequest {
-  @org.springframework.lang.Nullable
   private Long supplierId;
 
-  @org.springframework.lang.Nullable
   private Long customerId;
 
-  @org.springframework.lang.Nullable
   private String notes;
 
-  @org.springframework.lang.Nullable
   private BigDecimal discountTotal;
 
-  @org.springframework.lang.Nullable
   private BigDecimal grandTotal;
 
   @NotNull(message = "Order items are required")
