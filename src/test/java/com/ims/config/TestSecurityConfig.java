@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -36,6 +37,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
  */
 @TestConfiguration
 @EnableWebSecurity
+@EnableAspectJAutoProxy
 @Import(TestSecurityBeansConfig.class)
 public class TestSecurityConfig {
 

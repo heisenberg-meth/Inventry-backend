@@ -72,7 +72,13 @@ public class SignupService {
         .gstin(request.getGstin())
         .build();
 
-    Tenant tenant = tenantPersistenceService.saveTenant(newTenant);
+    Tenant tenant;
+    try {
+      tenant = tenantPersistenceService.saveTenant(newTenant);
+    } catch (org.springframework.dao.DataIntegrityViolationException e) {
+      log.warn("Workspace slug or company code collision for: {}", workspaceSlug);
+      throw new IllegalArgumentException("Workspace URL or Company Code already taken, please try again.");
+    }
     Long tenantId = tenant.getId();
     String tenantName = tenant.getName();
 
