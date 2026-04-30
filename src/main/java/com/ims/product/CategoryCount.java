@@ -5,5 +5,6 @@ package com.ims.product;
  */
 public interface CategoryCount {
   String getCategoryName();
+
   Long getProductCount();
 }

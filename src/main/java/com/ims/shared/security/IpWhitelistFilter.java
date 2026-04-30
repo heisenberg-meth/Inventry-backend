@@ -27,7 +27,7 @@ public class IpWhitelistFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        
+
         Long tenantId = TenantContext.getTenantId();
         if (tenantId == null) {
             filterChain.doFilter(request, response);
@@ -60,7 +60,8 @@ public class IpWhitelistFilter extends OncePerRequestFilter {
             log.warn("Blocked request to tenant {} from unauthorized IP: {}", tenantId, clientIp);
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             response.setContentType("application/json");
-            response.getWriter().write("{\"status\": 403, \"error\": \"FORBIDDEN\", \"message\": \"Access from your IP address is restricted by the workspace administrator.\"}");
+            response.getWriter().write(
+                    "{\"status\": 403, \"error\": \"FORBIDDEN\", \"message\": \"Access from your IP address is restricted by the workspace administrator.\"}");
             return;
         }
 

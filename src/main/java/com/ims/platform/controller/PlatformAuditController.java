@@ -25,10 +25,8 @@ public class PlatformAuditController {
   private final AuditLogService auditLogService;
 
   @GetMapping("/logs")
-  @RequiresRole({"ROOT", "PLATFORM_ADMIN"})
-  @Operation(
-      summary = "View aggregated audit logs",
-      description = "Shows combined logs across all tenants for platform monitoring")
+  @RequiresRole({ "ROOT", "PLATFORM_ADMIN" })
+  @Operation(summary = "View aggregated audit logs", description = "Shows combined logs across all tenants for platform monitoring")
   public ResponseEntity<Page<AuditLogResponse>> getAggregatedLogs(Pageable pageable) {
     return ResponseEntity.ok(auditLogService.getAllLogs(Objects.requireNonNull(pageable)));
   }

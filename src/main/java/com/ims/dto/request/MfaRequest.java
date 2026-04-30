@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 public class MfaRequest {
     @NotBlank(message = "MFA token is required")
     private String mfaToken;
-    
+
     @NotBlank(message = "Verification code is required")
     private String code;
 }

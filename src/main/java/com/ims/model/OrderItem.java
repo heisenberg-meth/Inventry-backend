@@ -23,10 +23,7 @@ public class OrderItem {
 
   @Id
   @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "order_item_seq")
-  @SequenceGenerator(
-      name = "order_item_seq",
-      sequenceName = "order_items_id_seq",
-      allocationSize = 50)
+  @SequenceGenerator(name = "order_item_seq", sequenceName = "order_items_id_seq", allocationSize = 50)
   private Long id;
 
   @Column(name = "order_id", nullable = false)

@@ -29,7 +29,8 @@ public class AnalyticsRefreshService {
             log.info("Successfully refreshed tenant_summary_stats.");
         } catch (Exception e) {
             log.error("Failed to refresh materialized view. Falling back to non-concurrent refresh.", e);
-            // Fallback if CONCURRENTLY fails (e.g., if no unique index exists yet, though we created one)
+            // Fallback if CONCURRENTLY fails (e.g., if no unique index exists yet, though
+            // we created one)
             jdbcTemplate.execute("REFRESH MATERIALIZED VIEW tenant_summary_stats");
         }
     }

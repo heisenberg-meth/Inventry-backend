@@ -37,6 +37,5 @@ public class OrderRequest {
   @Valid
   private List<OrderItemRequest> items;
 
-  @org.springframework.lang.Nullable
   private Long originalOrderId; // for returns
 }

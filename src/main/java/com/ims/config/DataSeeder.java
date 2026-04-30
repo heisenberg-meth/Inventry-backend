@@ -41,7 +41,8 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     if (!activeProfile.contains("dev") && !activeProfile.contains("test")) {
-      throw new IllegalStateException("DataSeeder is active but the profile is NOT dev/test. Security breach prevention triggered.");
+      throw new IllegalStateException(
+          "DataSeeder is active but the profile is NOT dev/test. Security breach prevention triggered.");
     }
   }
 
@@ -70,17 +71,16 @@ public class DataSeeder implements CommandLineRunner {
 
     String adminEmail = "admin@platform.com";
     if (userRepository.findByEmailGlobal(adminEmail).isEmpty()) {
-      User admin =
-          Objects.requireNonNull(
-              User.builder()
-                  .name("Platform Admin")
-                  .email(adminEmail)
-                  .passwordHash(Objects.requireNonNull(passwordEncoder.encode(platformAdminPassword)))
-                  .role(Objects.requireNonNull(platformAdminRole))
-                  .scope("PLATFORM")
-                  .isPlatformUser(true)
-                  .isActive(true)
-                  .build());
+      User admin = Objects.requireNonNull(
+          User.builder()
+              .name("Platform Admin")
+              .email(adminEmail)
+              .passwordHash(Objects.requireNonNull(passwordEncoder.encode(platformAdminPassword)))
+              .role(Objects.requireNonNull(platformAdminRole))
+              .scope("PLATFORM")
+              .isPlatformUser(true)
+              .isActive(true)
+              .build());
       userRepository.save(admin);
       log.info("Platform Admin seeded: {}", adminEmail);
     }

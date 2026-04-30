@@ -28,9 +28,8 @@ public class PlatformAnalyticsService {
 
   public Map<String, Object> getRevenueAnalytics() {
     var activeSubscriptions = subscriptionRepository.findByStatus(SubscriptionStatus.ACTIVE);
-    var plans =
-        subscriptionPlanRepository.findAll().stream()
-            .collect(Collectors.toMap(com.ims.model.SubscriptionPlan::getName, p -> p));
+    var plans = subscriptionPlanRepository.findAll().stream()
+        .collect(Collectors.toMap(com.ims.model.SubscriptionPlan::getName, p -> p));
 
     BigDecimal mrr = BigDecimal.ZERO;
     for (var sub : activeSubscriptions) {
@@ -53,11 +52,10 @@ public class PlatformAnalyticsService {
     var tenants = tenantRepository.findAll();
 
     // Simplified trend: grouped by month of creation
-    var trend =
-        tenants.stream()
-            .collect(
-                Collectors.groupingBy(
-                    t -> t.getCreatedAt().getMonth().name(), Collectors.counting()));
+    var trend = tenants.stream()
+        .collect(
+            Collectors.groupingBy(
+                t -> t.getCreatedAt().getMonth().name(), Collectors.counting()));
 
     Map<String, Object> analytics = new LinkedHashMap<>();
     analytics.put("total_tenants", tenants.size());

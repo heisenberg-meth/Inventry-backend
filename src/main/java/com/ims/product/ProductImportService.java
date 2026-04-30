@@ -44,8 +44,7 @@ public class ProductImportService {
     Long tenantId = securityContextAccessor.requireTenantId();
 
     Map<String, Category> categoryCache = new HashMap<>();
-    categoryRepository.findAll().forEach(cat -> 
-        categoryCache.put(cat.getName().toLowerCase(), cat));
+    categoryRepository.findAll().forEach(cat -> categoryCache.put(cat.getName().toLowerCase(), cat));
 
     List<Product> chunk = new ArrayList<>();
     int successCount = 0;
@@ -75,7 +74,9 @@ public class ProductImportService {
           int stock = Integer.parseInt(data[2].trim());
 
           String rawSku = data.length > MIN_COLUMNS_FOR_SKU ? data[COL_SKU_INDEX].trim() : null;
-          String sku = (rawSku == null || rawSku.isBlank()) ? "SKU-" + java.util.UUID.randomUUID().toString().substring(0, 8) : rawSku;
+          String sku = (rawSku == null || rawSku.isBlank())
+              ? "SKU-" + java.util.UUID.randomUUID().toString().substring(0, 8)
+              : rawSku;
           String categoryName = data.length > MIN_COLUMNS_FOR_CATEGORY ? data[COL_CATEGORY_INDEX].trim() : "General";
 
           // Find or create category in a separate transaction if needed
@@ -115,8 +116,7 @@ public class ProductImportService {
         "success_count", successCount,
         "fail_count", failCount,
         "errors", errors,
-        "status", status
-    );
+        "status", status);
   }
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)

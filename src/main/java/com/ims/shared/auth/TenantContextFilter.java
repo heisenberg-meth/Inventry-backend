@@ -15,8 +15,8 @@ public class TenantContextFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain chain)
+            HttpServletResponse response,
+            FilterChain chain)
             throws ServletException, IOException {
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();

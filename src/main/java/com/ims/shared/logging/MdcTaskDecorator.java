@@ -8,7 +8,7 @@ import com.ims.shared.auth.TenantContext;
 public class MdcTaskDecorator implements TaskDecorator {
 
   @Override
-  public Runnable decorate( Runnable runnable) {
+  public Runnable decorate(Runnable runnable) {
     Map<String, String> contextMap = MDC.getCopyOfContextMap();
     Long tenantId = TenantContext.getTenantId();
     return () -> {

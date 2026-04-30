@@ -13,23 +13,23 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class SwaggerConfig {
 
-  @Bean
-  public OpenAPI openApi() {
-    return new OpenAPI()
-        .info(
-            new Info()
-                .title("IMS — Inventory Management System API")
-                .version("v1")
-                .description("Multi-tenant SaaS Inventory Platform"))
-        .servers(List.of(new Server().url("https://inventry-backend-3zc8.onrender.com")))
-        .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
-        .components(
-            new Components()
-                .addSecuritySchemes(
-                    "bearerAuth",
-                    new SecurityScheme()
-                        .type(SecurityScheme.Type.HTTP)
-                        .scheme("bearer")
-                        .bearerFormat("JWT")));
-  }
+    @Bean
+    public OpenAPI openApi() {
+        return new OpenAPI()
+                .info(
+                        new Info()
+                                .title("IMS — Inventory Management System API")
+                                .version("v1")
+                                .description("Multi-tenant SaaS Inventory Platform"))
+                .servers(List.of(new Server().url("https://inventry-backend-3zc8.onrender.com")))
+                .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
+                .components(
+                        new Components()
+                                .addSecuritySchemes(
+                                        "bearerAuth",
+                                        new SecurityScheme()
+                                                .type(SecurityScheme.Type.HTTP)
+                                                .scheme("bearer")
+                                                .bearerFormat("JWT")));
+    }
 }

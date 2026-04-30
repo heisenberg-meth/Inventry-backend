@@ -20,17 +20,17 @@ public class WebhookOutboxWorker {
 
     /**
      * Processes pending outbox entries every 10 seconds.
-     * Uses ShedLock to prevent multiple instances from processing the same entries in a cluster.
+     * Uses ShedLock to prevent multiple instances from processing the same entries
+     * in a cluster.
      */
     @Scheduled(fixedDelay = 10000)
     @SchedulerLock(name = "processWebhookOutbox", lockAtMostFor = "1m", lockAtLeastFor = "5s")
     public void processOutbox() {
         log.trace("Polling webhook outbox for pending entries...");
-        
+
         List<WebhookOutbox> pendingEntries = outboxRepository.findPendingForProcessing(
-            LocalDateTime.now(), 
-            PageRequest.of(0, 100)
-        );
+                LocalDateTime.now(),
+                PageRequest.of(0, 100));
 
         if (pendingEntries.isEmpty()) {
             return;
@@ -40,10 +40,11 @@ public class WebhookOutboxWorker {
 
         for (WebhookOutbox entry : pendingEntries) {
             try {
-                // Mark as processing to avoid concurrent pick-up if ShedLock was somehow bypassed or for visibility
+                // Mark as processing to avoid concurrent pick-up if ShedLock was somehow
+                // bypassed or for visibility
                 entry.setStatus(WebhookOutbox.OutboxStatus.PROCESSING);
                 outboxRepository.save(entry);
-                
+
                 webhookService.processOutboxEntry(entry);
             } catch (Exception e) {
                 log.error("Critical failure processing outbox entry {}: {}", entry.getId(), e.getMessage());

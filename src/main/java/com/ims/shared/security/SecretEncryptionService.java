@@ -50,7 +50,8 @@ public class SecretEncryptionService {
   }
 
   public String encrypt(String plaintext) {
-    if (plaintext == null) return null;
+    if (plaintext == null)
+      return null;
 
     try {
       Cipher cipher = Cipher.getInstance(ALGORITHM);
@@ -76,7 +77,8 @@ public class SecretEncryptionService {
   }
 
   public String decrypt(String encrypted) {
-    if (encrypted == null) return null;
+    if (encrypted == null)
+      return null;
 
     try {
       byte[] combined = Base64.getDecoder().decode(encrypted);
@@ -104,4 +106,3 @@ public class SecretEncryptionService {
     }
   }
 }
-

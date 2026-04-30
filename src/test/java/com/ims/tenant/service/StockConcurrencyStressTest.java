@@ -23,7 +23,8 @@ import org.springframework.beans.factory.annotation.Autowired;
  */
 class StockConcurrencyStressTest extends BaseIntegrationTest {
 
-  @Autowired private StockService stockService;
+  @Autowired
+  private StockService stockService;
 
   private Long productId;
   private final int INITIAL_STOCK = 10;
@@ -33,7 +34,7 @@ class StockConcurrencyStressTest extends BaseIntegrationTest {
   void setup() {
     cleanupDatabase();
     TenantContext.setTenantId(testTenant1Id);
-    
+
     Product p = productRepository.save(Product.builder()
         .name("Race-Condition-Product")
         .sku("RACE-001")
@@ -50,7 +51,7 @@ class StockConcurrencyStressTest extends BaseIntegrationTest {
   void testConcurrentStockReduction() throws InterruptedException {
     ExecutorService executor = Executors.newFixedThreadPool(THREAD_COUNT);
     CountDownLatch latch = new CountDownLatch(THREAD_COUNT);
-    
+
     AtomicInteger successCount = new AtomicInteger(0);
     AtomicInteger failureCount = new AtomicInteger(0);
     List<String> errors = new ArrayList<>();
@@ -87,14 +88,15 @@ class StockConcurrencyStressTest extends BaseIntegrationTest {
     System.out.println("Success Count: " + successCount.get());
     System.out.println("Failure Count (Insufficient): " + failureCount.get());
     System.out.println("Final Stock: " + finalProduct.getStock());
-    
+
     if (!errors.isEmpty()) {
       System.out.println("Unexpected Errors: " + errors);
     }
 
     assertEquals(0, errors.size(), "Should have no unexpected errors (only InsufficientStockException allowed)");
     assertEquals(INITIAL_STOCK, successCount.get(), "Should only allow successful reduction up to initial stock");
-    assertEquals(THREAD_COUNT - INITIAL_STOCK, failureCount.get(), "Remaining threads should fail with InsufficientStockException");
+    assertEquals(THREAD_COUNT - INITIAL_STOCK, failureCount.get(),
+        "Remaining threads should fail with InsufficientStockException");
     assertEquals(0, finalProduct.getStock(), "Final stock must be exactly zero");
   }
 }

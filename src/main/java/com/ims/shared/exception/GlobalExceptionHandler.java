@@ -22,10 +22,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiError> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
-        HttpStatus status = ex.getMessage().toLowerCase().contains("not authenticated") 
-            ? HttpStatus.UNAUTHORIZED : HttpStatus.FORBIDDEN;
-        return buildResponse(ex.getMessage(), status == HttpStatus.UNAUTHORIZED ? "UNAUTHORIZED" : "ACCESS_DENIED", 
-            status, request, null);
+        HttpStatus status = ex.getMessage().toLowerCase().contains("not authenticated")
+                ? HttpStatus.UNAUTHORIZED
+                : HttpStatus.FORBIDDEN;
+        return buildResponse(ex.getMessage(), status == HttpStatus.UNAUTHORIZED ? "UNAUTHORIZED" : "ACCESS_DENIED",
+                status, request, null);
     }
 
     @ExceptionHandler(EntityNotFoundException.class)
@@ -54,22 +55,21 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
         Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getFieldErrors().forEach(error -> 
-            errors.put(error.getField(), error.getDefaultMessage())
-        );
+        ex.getBindingResult().getFieldErrors()
+                .forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
         return buildResponse("Validation failed", "VALIDATION_ERROR", HttpStatus.BAD_REQUEST, request, errors);
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleGeneric(Exception ex, HttpServletRequest request) {
         log.error("Unhandled exception occurred: traceId={}", MDC.get(TRACE_ID_KEY), ex);
-        return buildResponse("An unexpected error occurred. Please contact support.", 
-            "INTERNAL_SERVER_ERROR", HttpStatus.INTERNAL_SERVER_ERROR, request, null);
+        return buildResponse("An unexpected error occurred. Please contact support.",
+                "INTERNAL_SERVER_ERROR", HttpStatus.INTERNAL_SERVER_ERROR, request, null);
     }
 
     private ResponseEntity<ApiError> buildResponse(
             String message, String code, HttpStatus status, HttpServletRequest request, Map<String, String> errors) {
-        
+
         ApiError error = ApiError.builder()
                 .message(message)
                 .code(code)

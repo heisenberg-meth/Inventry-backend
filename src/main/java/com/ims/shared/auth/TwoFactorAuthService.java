@@ -19,19 +19,21 @@ public class TwoFactorAuthService {
 
     /**
      * Generates a new TOTP secret key for a user.
+     * 
      * @return The secret key details including the shared secret and QR code URL.
      */
     public TwoFactorSecret generateNewSecret(String email) {
         final GoogleAuthenticatorKey key = googleAuthenticator.createCredentials();
         String otpAuthUrl = GoogleAuthenticatorQRGenerator.getOtpAuthURL("IMS-Inventory", email, key);
-        
+
         return new TwoFactorSecret(key.getKey(), otpAuthUrl);
     }
 
     /**
      * Verifies a TOTP code against a secret.
+     * 
      * @param secret The shared secret
-     * @param code The 6-digit code provided by the user
+     * @param code   The 6-digit code provided by the user
      * @return true if valid, false otherwise
      */
     public boolean verifyCode(String secret, int code) {
@@ -40,6 +42,7 @@ public class TwoFactorAuthService {
 
     /**
      * Generates a set of backup codes for emergency recovery.
+     * 
      * @return List of random backup codes
      */
     public List<String> generateBackupCodes() {
@@ -50,5 +53,6 @@ public class TwoFactorAuthService {
         return codes;
     }
 
-    public record TwoFactorSecret(String secret, String qrCodeUrl) {}
+    public record TwoFactorSecret(String secret, String qrCodeUrl) {
+    }
 }

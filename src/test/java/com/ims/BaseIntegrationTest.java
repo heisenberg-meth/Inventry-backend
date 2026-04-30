@@ -58,6 +58,9 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -221,10 +224,33 @@ public abstract class BaseIntegrationTest {
     }
     mockRedisAndCache();
     Mockito.lenient().when(passwordEncoder.encode(anyString()))
-        .thenReturn("$2a$10$dummyhashdummyhashdummyhash");
+        .thenReturn("$2a$10$dummyhashdummyhash");
     Mockito.lenient().when(passwordEncoder.matches(anyString(), anyString()))
         .thenReturn(true);
-  };
+  }
+
+  protected void setupRootAuthentication() {
+    if (systemTenantId == 0) {
+      return; // Not initialized yet
+    }
+    // Set up ROOT with all common roles for testing
+    java.util.List<SimpleGrantedAuthority> authorities = java.util.Arrays.asList(
+        new SimpleGrantedAuthority("ROLE_ROOT"),
+        new SimpleGrantedAuthority("ROLE_ADMIN"),
+        new SimpleGrantedAuthority("ROLE_MANAGER"),
+        new SimpleGrantedAuthority("ROLE_STAFF")
+    );
+
+    com.ims.shared.auth.JwtAuthDetails details =
+        new com.ims.shared.auth.JwtAuthDetails(
+            1L, systemTenantId, "ROOT", "PLATFORM", "SYSTEM", false,
+            java.util.Collections.emptySet(), false, null);
+
+    UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+        1L, details, authorities);
+    SecurityContextHolder.getContext().setAuthentication(auth);
+    TenantContext.setTenantId(systemTenantId);
+  }
 
   protected void cleanupDatabase() {
     TenantContext.clear();
@@ -300,6 +326,7 @@ public abstract class BaseIntegrationTest {
 
               entityManager.clear();
               TenantContext.clear();
+              setupRootAuthentication();
               return null;
             });
   }
@@ -399,6 +426,9 @@ public abstract class BaseIntegrationTest {
       Object tenantId) {
     return request -> {
       request.addHeader("X-Tenant-ID", Objects.requireNonNull(String.valueOf(tenantId)));
+      // Also set TenantContext directly for Hibernate multi-tenancy
+      Long tid = Long.parseLong(String.valueOf(tenantId));
+      TenantContext.setTenantId(tid);
       return request;
     };
   }

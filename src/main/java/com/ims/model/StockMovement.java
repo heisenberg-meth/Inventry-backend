@@ -50,7 +50,8 @@ public class StockMovement {
   @Column(name = "reference_type")
   private String referenceType;
 
-  @Column private String notes;
+  @Column
+  private String notes;
 
   @Column(name = "created_by")
   private Long createdBy;

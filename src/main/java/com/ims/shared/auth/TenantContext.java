@@ -1,4 +1,5 @@
 package com.ims.shared.auth;
+
 import com.ims.shared.exception.TenantContextException;
 
 public class TenantContext {

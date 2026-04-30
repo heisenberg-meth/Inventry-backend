@@ -11,12 +11,11 @@ class TenantBuilderTest {
   void shouldThrowExceptionOnDuplicateStatus() {
     Tenant.TenantBuilder builder = Tenant.builder().name("Test Tenant").status(TenantStatus.ACTIVE);
 
-    IllegalStateException exception =
-        assertThrows(
-            IllegalStateException.class,
-            () -> {
-              builder.status(TenantStatus.INACTIVE);
-            });
+    IllegalStateException exception = assertThrows(
+        IllegalStateException.class,
+        () -> {
+          builder.status(TenantStatus.INACTIVE);
+        });
 
     assertEquals("Status already set to: ACTIVE", exception.getMessage());
   }

@@ -17,9 +17,9 @@ public class HibernateConfig {
   @Bean
   public HibernatePropertiesCustomizer hibernatePropertiesCustomizer() {
     return (Map<String, Object> hibernateProperties) -> {
-        tenantLeakInterceptor.ifPresent(interceptor -> 
-            hibernateProperties.put("hibernate.session_factory.statement_inspector", interceptor));
-        hibernateProperties.put("hibernate.tenant_identifier_resolver", hibernateTenantResolver);
+      tenantLeakInterceptor.ifPresent(
+          interceptor -> hibernateProperties.put("hibernate.session_factory.statement_inspector", interceptor));
+      hibernateProperties.put("hibernate.tenant_identifier_resolver", hibernateTenantResolver);
     };
   }
 }

@@ -13,7 +13,8 @@ import java.io.IOException;
 import java.util.UUID;
 
 /**
- * Filter to add a unique Trace ID and Tenant ID to every request's logging context.
+ * Filter to add a unique Trace ID and Tenant ID to every request's logging
+ * context.
  * This ensures that all logs for a single request can be correlated easily.
  */
 @Component
@@ -41,7 +42,7 @@ public class MdcLogFilter extends OncePerRequestFilter {
             if (tenantId != null) {
                 MDC.put(TENANT_ID_KEY, tenantId);
             }
-            
+
             // Add trace ID to response headers for client-side correlation
             response.setHeader(TRACE_HEADER, traceId);
 

@@ -8,8 +8,10 @@ import org.springframework.web.filter.ForwardedHeaderFilter;
 public class FilterConfig {
 
   /**
-   * Extracts and validates headers from trusted proxies (X-Forwarded-For, X-Forwarded-Proto). Works
-   * in tandem with RateLimitFilter to ensure rate limits are applied to the true client IP.
+   * Extracts and validates headers from trusted proxies (X-Forwarded-For,
+   * X-Forwarded-Proto). Works
+   * in tandem with RateLimitFilter to ensure rate limits are applied to the true
+   * client IP.
    */
   @Bean
   public ForwardedHeaderFilter forwardedHeaderFilter() {

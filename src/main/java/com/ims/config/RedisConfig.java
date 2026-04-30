@@ -30,8 +30,7 @@ import org.springframework.context.annotation.Profile;
 @Configuration
 @Profile("!test")
 @EnableCaching
-@EnableSpringDataWebSupport(
-    pageSerializationMode = EnableSpringDataWebSupport.PageSerializationMode.VIA_DTO)
+@EnableSpringDataWebSupport(pageSerializationMode = EnableSpringDataWebSupport.PageSerializationMode.VIA_DTO)
 public class RedisConfig {
 
   private static final int TTL_PRODUCTS_MINUTES = 15;
@@ -52,8 +51,7 @@ public class RedisConfig {
     configs.put("tenant", ttl(Objects.requireNonNull(Duration.ofHours(TTL_TENANT_HOURS))));
     configs.put("permissions", ttl(Objects.requireNonNull(Duration.ofMinutes(TTL_PERMISSIONS_MINUTES))));
 
-    RedisCacheConfiguration tmp =
-        ttl(Objects.requireNonNull(Duration.ofMinutes(TTL_DEFAULT_MINUTES)));
+    RedisCacheConfiguration tmp = ttl(Objects.requireNonNull(Duration.ofMinutes(TTL_DEFAULT_MINUTES)));
 
     RedisCacheConfiguration defaultConfig = Objects.requireNonNull(tmp);
 
@@ -73,24 +71,22 @@ public class RedisConfig {
         Long tenantId = TenantContext.getTenantId();
         Collection<String> cacheNames = context.getOperation().getCacheNames();
 
-        String tenantSuffix =
-            Objects.requireNonNull(tenantId != null ? tenantId.toString() : "default");
+        String tenantSuffix = Objects.requireNonNull(tenantId != null ? tenantId.toString() : "default");
 
-        Collection<? extends Cache> result =
-            cacheNames.stream()
-                .map(name -> Objects.requireNonNull(name) + ":" + tenantSuffix)
-                .map(
-                    cacheName -> {
-                      Cache cache = cacheManager.getCache(Objects.requireNonNull(cacheName));
-                      if (cache == null) {
-                        String[] parts = Objects.requireNonNull(cacheName.split(":"));
-                        String baseName = Objects.requireNonNull(parts[0]);
-                        return cacheManager.getCache(baseName);
-                      }
-                      return cache;
-                    })
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+        Collection<? extends Cache> result = cacheNames.stream()
+            .map(name -> Objects.requireNonNull(name) + ":" + tenantSuffix)
+            .map(
+                cacheName -> {
+                  Cache cache = cacheManager.getCache(Objects.requireNonNull(cacheName));
+                  if (cache == null) {
+                    String[] parts = Objects.requireNonNull(cacheName.split(":"));
+                    String baseName = Objects.requireNonNull(parts[0]);
+                    return cacheManager.getCache(baseName);
+                  }
+                  return cache;
+                })
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList());
 
         return Objects.requireNonNull(result);
       }
@@ -118,8 +114,7 @@ public class RedisConfig {
   private RedisCacheConfiguration ttl(Duration duration) {
     Duration d = Objects.requireNonNull(duration);
 
-    RedisSerializer<Object> serializer =
-        Objects.requireNonNull(jsonSerializer());
+    RedisSerializer<Object> serializer = Objects.requireNonNull(jsonSerializer());
 
     return Objects.requireNonNull(
         RedisCacheConfiguration.defaultCacheConfig()

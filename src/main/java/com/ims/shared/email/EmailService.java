@@ -23,10 +23,7 @@ public class EmailService {
   private String frontendUrl;
 
   @Async
-  @Retryable(
-      retryFor = MailException.class,
-      maxAttempts = 3,
-      backoff = @Backoff(delay = 2000, multiplier = 2))
+  @Retryable(retryFor = MailException.class, maxAttempts = 3, backoff = @Backoff(delay = 2000, multiplier = 2))
   public void sendPasswordResetEmail(String to, String rawToken) {
     String resetLink = frontendUrl + "/reset-password?token=" + rawToken;
 
@@ -43,10 +40,7 @@ public class EmailService {
   }
 
   @Async
-  @Retryable(
-      retryFor = MailException.class,
-      maxAttempts = 3,
-      backoff = @Backoff(delay = 2000, multiplier = 2))
+  @Retryable(retryFor = MailException.class, maxAttempts = 3, backoff = @Backoff(delay = 2000, multiplier = 2))
   public void sendVerificationEmail(String to, String token) {
     String verificationLink = frontendUrl + "/verify-email?token=" + token + "&email=" + to;
 

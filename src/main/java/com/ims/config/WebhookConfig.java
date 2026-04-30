@@ -1,4 +1,5 @@
 package com.ims.config;
+
 import com.ims.shared.logging.MdcTaskDecorator;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
@@ -28,31 +29,28 @@ public class WebhookConfig {
 
   @Bean
   public RestTemplate webhookRestTemplate() {
-    ConnectionConfig connectionConfig =
-        ConnectionConfig.custom()
-            .setConnectTimeout(Timeout.ofMilliseconds(CONNECT_TIMEOUT_MS))
-            .setSocketTimeout(Timeout.ofMilliseconds(READ_TIMEOUT_MS))
-            .build();
+    ConnectionConfig connectionConfig = ConnectionConfig.custom()
+        .setConnectTimeout(Timeout.ofMilliseconds(CONNECT_TIMEOUT_MS))
+        .setSocketTimeout(Timeout.ofMilliseconds(READ_TIMEOUT_MS))
+        .build();
 
     PoolingHttpClientConnectionManager connManager = new PoolingHttpClientConnectionManager();
     connManager.setMaxTotal(MAX_TOTAL_CONNECTIONS);
     connManager.setDefaultMaxPerRoute(MAX_PER_ROUTE);
     connManager.setDefaultConnectionConfig(connectionConfig);
 
-    RequestConfig requestConfig =
-        RequestConfig.custom()
-            .setResponseTimeout(Timeout.ofMilliseconds(READ_TIMEOUT_MS))
-            .build();
+    RequestConfig requestConfig = RequestConfig.custom()
+        .setResponseTimeout(Timeout.ofMilliseconds(READ_TIMEOUT_MS))
+        .build();
 
-    CloseableHttpClient httpClient =
-        HttpClients.custom()
-            .setConnectionManager(connManager)
-            .setDefaultRequestConfig(requestConfig)
-            .evictIdleConnections(TimeValue.of(30, TimeUnit.SECONDS))
-            .build();
+    CloseableHttpClient httpClient = HttpClients.custom()
+        .setConnectionManager(connManager)
+        .setDefaultRequestConfig(requestConfig)
+        .evictIdleConnections(TimeValue.of(30, TimeUnit.SECONDS))
+        .build();
 
-    HttpComponentsClientHttpRequestFactory factory =
-        new HttpComponentsClientHttpRequestFactory(java.util.Objects.requireNonNull(httpClient));
+    HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory(
+        java.util.Objects.requireNonNull(httpClient));
 
     return new RestTemplate(factory);
   }

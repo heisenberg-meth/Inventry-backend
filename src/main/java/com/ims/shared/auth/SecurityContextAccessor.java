@@ -17,7 +17,8 @@ public class SecurityContextAccessor {
 
   /**
    * Retrieves the current tenant ID from the security context.
-   * Throws an exception if not found, as most service operations require a tenant.
+   * Throws an exception if not found, as most service operations require a
+   * tenant.
    */
   public Long requireTenantId() {
     return getTenantId()
@@ -39,7 +40,8 @@ public class SecurityContextAccessor {
   }
 
   /**
-   * Retrieves the business type of the current tenant (e.g., PHARMACY, WAREHOUSE).
+   * Retrieves the business type of the current tenant (e.g., PHARMACY,
+   * WAREHOUSE).
    */
   public Optional<String> getBusinessType() {
     return getDetails().map(JwtAuthDetails::getBusinessType);

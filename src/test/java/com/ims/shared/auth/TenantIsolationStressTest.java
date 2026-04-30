@@ -35,7 +35,8 @@ class TenantIsolationStressTest extends BaseIntegrationTest {
   void setup() throws Exception {
     cleanupDatabase();
 
-    // Setup Tenant 1
+    // Setup Tenant 1 - Set context first
+    TenantContext.setTenantId(testTenant1Id);
     String pass = passwordEncoder.encode("password");
     Role adminRole1 = getOrCreateRole("ADMIN", testTenant1Id);
     userRepository.save(User.builder()
@@ -50,7 +51,8 @@ class TenantIsolationStressTest extends BaseIntegrationTest {
         .build());
     token1 = login("admin1@t1.com", "password", "T1001", testTenant1Id);
 
-    // Setup Tenant 2
+    // Set context for Tenant 2
+    TenantContext.setTenantId(testTenant2Id);
     Role adminRole2 = getOrCreateRole("ADMIN", testTenant2Id);
     userRepository.save(User.builder()
         .name("Admin 2")
@@ -64,8 +66,7 @@ class TenantIsolationStressTest extends BaseIntegrationTest {
         .build());
     token2 = login("admin2@t2.com", "password", "T2001", testTenant2Id);
 
-    // Create unique products for each tenant
-    TenantContext.setTenantId(testTenant1Id);
+    // Create unique products for each tenant - context already set
     for (int i = 0; i < 5; i++) {
       productRepository.save(Product.builder()
           .name("T1-Product-" + i)
@@ -77,7 +78,6 @@ class TenantIsolationStressTest extends BaseIntegrationTest {
           .build());
     }
 
-    TenantContext.setTenantId(testTenant2Id);
     for (int i = 0; i < 5; i++) {
       productRepository.save(Product.builder()
           .name("T2-Product-" + i)
@@ -109,12 +109,12 @@ class TenantIsolationStressTest extends BaseIntegrationTest {
             String forbiddenPrefix = useTenant1 ? "T2-" : "T1-";
 
             String resultJson = mockMvc.perform(get("/api/v1/tenant/products")
-                    .header("Authorization", "Bearer " + currentToken)
-                    .contentType(MediaType.APPLICATION_JSON))
+                .header("Authorization", "Bearer " + currentToken)
+                .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
-            PagedResponse<ProductResponse> response = objectMapper.readValue(resultJson, 
+            PagedResponse<ProductResponse> response = objectMapper.readValue(resultJson,
                 objectMapper.getTypeFactory().constructParametricType(PagedResponse.class, ProductResponse.class));
 
             for (ProductResponse p : response.getContent()) {
@@ -137,6 +137,7 @@ class TenantIsolationStressTest extends BaseIntegrationTest {
 
     System.out.println("Stress test completed. Total requests: " + totalRequests.get());
     assertTrue(totalRequests.get() > 0, "No requests were executed");
-    assertTrue(leaksDetected.get() == 0, "DATA LEAK DETECTED! " + leaksDetected.get() + " cross-tenant items found in responses.");
+    assertTrue(leaksDetected.get() == 0,
+        "DATA LEAK DETECTED! " + leaksDetected.get() + " cross-tenant items found in responses.");
   }
 }

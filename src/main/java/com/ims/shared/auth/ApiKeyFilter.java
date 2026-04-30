@@ -49,11 +49,12 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         String keyHash = hashKey(apiKey);
         Optional<ApiKey> keyOpt = apiKeyRepository.findByKeyHash(keyHash);
 
-        if (keyOpt.isEmpty() || !keyOpt.get().isActive() || 
-            (keyOpt.get().getExpiresAt() != null && keyOpt.get().getExpiresAt().isBefore(LocalDateTime.now()))) {
+        if (keyOpt.isEmpty() || !keyOpt.get().isActive() ||
+                (keyOpt.get().getExpiresAt() != null && keyOpt.get().getExpiresAt().isBefore(LocalDateTime.now()))) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
-            response.getWriter().write("{\"status\": 401, \"error\": \"UNAUTHORIZED\", \"message\": \"Invalid or expired API Key\"}");
+            response.getWriter().write(
+                    "{\"status\": 401, \"error\": \"UNAUTHORIZED\", \"message\": \"Invalid or expired API Key\"}");
             return;
         }
 
@@ -63,29 +64,27 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         Set<String> permissions = Set.of();
         if (key.getScopes() != null && !key.getScopes().isBlank()) {
             permissions = Arrays.stream(key.getScopes().split(","))
-                .map(String::trim)
-                .collect(Collectors.toSet());
+                    .map(String::trim)
+                    .collect(Collectors.toSet());
         }
 
         List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_API_USER"));
-        
+
         UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-            "API_KEY_" + key.getId(),
-            null,
-            authorities
-        );
+                "API_KEY_" + key.getId(),
+                null,
+                authorities);
 
         auth.setDetails(new JwtAuthDetails(
-            null, // No specific user ID
-            key.getTenantId(),
-            "API_USER",
-            "TENANT",
-            "API", // Generic business type for API keys
-            false,
-            permissions,
-            false,
-            null
-        ));
+                null, // No specific user ID
+                key.getTenantId(),
+                "API_USER",
+                "TENANT",
+                "API", // Generic business type for API keys
+                false,
+                permissions,
+                false,
+                null));
 
         TenantContext.setTenantId(key.getTenantId());
         SecurityContextHolder.getContext().setAuthentication(auth);

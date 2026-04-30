@@ -53,9 +53,11 @@ public class Payment {
   @Builder.Default
   private PaymentStatus status = PaymentStatus.PENDING;
 
-  @Column private String reference;
+  @Column
+  private String reference;
 
-  @Column private String notes;
+  @Column
+  private String notes;
 
   @Column(name = "created_by")
   private Long createdBy;

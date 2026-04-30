@@ -12,8 +12,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -30,6 +32,8 @@ import com.ims.shared.security.IpWhitelistFilter;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
+@EnableAspectJAutoProxy
 @Profile("!test")
 @RequiredArgsConstructor
 public class SecurityConfig {
@@ -47,24 +51,24 @@ public class SecurityConfig {
   private String allowedOrigins;
 
   private static final String[] AUTH_WHITELIST = {
-    "/api/v1/auth/login",
-    "/api/v1/auth/signup",
-    "/api/v1/auth/refresh",
-    "/api/v1/auth/forgot-password",
-    "/api/v1/auth/reset-password",
-    "/api/v1/auth/verify-email",
-    "/api/v1/auth/resend-verification",
-    "/api/v1/auth/check-email",
-    "/api/v1/auth/check-slug",
-    "/api/v1/auth/check-company-code",
-    "/api/v1/platform/auth/login",
-    "/api/v1/platform/invites/accept",
-    "/api/v1/platform/invites/complete",
-    "/api/v1/tenant/payments/gateway/webhook"
+      "/api/v1/auth/login",
+      "/api/v1/auth/signup",
+      "/api/v1/auth/refresh",
+      "/api/v1/auth/forgot-password",
+      "/api/v1/auth/reset-password",
+      "/api/v1/auth/verify-email",
+      "/api/v1/auth/resend-verification",
+      "/api/v1/auth/check-email",
+      "/api/v1/auth/check-slug",
+      "/api/v1/auth/check-company-code",
+      "/api/v1/platform/auth/login",
+      "/api/v1/platform/invites/accept",
+      "/api/v1/platform/invites/complete",
+      "/api/v1/tenant/payments/gateway/webhook"
   };
 
   private static final String[] SWAGGER_WHITELIST = {
-    "/swagger-ui/**", "/swagger-ui.html", "/api-docs/**", "/v3/api-docs/**"
+      "/swagger-ui/**", "/swagger-ui.html", "/api-docs/**", "/v3/api-docs/**"
   };
 
   @Bean
@@ -99,43 +103,43 @@ public class SecurityConfig {
         .sessionManagement(
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .headers(
-            headers ->
-                headers
-                    .frameOptions(frame -> frame.deny())
-                    .xssProtection(
-                        xss ->
-                            xss.headerValue(
-                                org.springframework.security.web.header.writers
-                                    .XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
-                    .contentTypeOptions(Objects.requireNonNull(org.springframework.security.config.Customizer.withDefaults()))
-                    .contentSecurityPolicy(
-                        csp ->
-                            csp.policyDirectives(
-                                "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; object-src 'none';"))
-                    .httpStrictTransportSecurity(
-                        hsts -> hsts.includeSubDomains(true).preload(true).maxAgeInSeconds(HSTS_MAX_AGE_SECONDS)))
+            headers -> headers
+                .frameOptions(frame -> frame.deny())
+                .xssProtection(
+                    xss -> xss.headerValue(
+                        org.springframework.security.web.header.writers.XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
+                .contentTypeOptions(
+                    Objects.requireNonNull(org.springframework.security.config.Customizer.withDefaults()))
+                .contentSecurityPolicy(
+                    csp -> csp.policyDirectives(
+                        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; object-src 'none';"))
+                .httpStrictTransportSecurity(
+                    hsts -> hsts.includeSubDomains(true).preload(true).maxAgeInSeconds(HSTS_MAX_AGE_SECONDS)))
         .exceptionHandling(
             ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+        .addFilterBefore(ipWhitelistFilter, TraceFilter.class)
         .addFilterBefore(traceFilter, UsernamePasswordAuthenticationFilter.class)
         .addFilterAfter(rateLimitFilter, TraceFilter.class)
         .addFilterAfter(apiKeyFilter, RateLimitFilter.class)
-        .addFilterAfter(jwtFilter, ApiKeyFilter.class)
-        .addFilterAfter(tenantFilter, JwtFilter.class)
-        .addFilterAfter(ipWhitelistFilter, TenantFilter.class);
+        .addFilterBefore(tenantFilter, JwtFilter.class)
+        .addFilterAfter(jwtFilter, ApiKeyFilter.class);
   }
 
   @Bean
   public PasswordEncoder passwordEncoder() {
-    return new BCryptPasswordEncoder();
+    return new BCryptPasswordEncoder(12);
   }
 
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
-    if (allowedOrigins == null || "*".equals(allowedOrigins)) {
+    if ("*".equals(allowedOrigins)) {
+      throw new IllegalStateException("Wildcard '*' allowed-origins is invalid with allow-credentials=true");
+    }
+    if (allowedOrigins == null || allowedOrigins.isBlank()) {
       configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:5173"));
     } else {
-      configuration.setAllowedOrigins(List.of(allowedOrigins.split(",")));
+      configuration.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
     }
     configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     configuration.setAllowCredentials(true);

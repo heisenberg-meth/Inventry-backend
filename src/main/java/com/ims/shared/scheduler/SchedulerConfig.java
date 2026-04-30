@@ -18,10 +18,9 @@ public class SchedulerConfig {
     @Bean
     public LockProvider lockProvider(DataSource dataSource) {
         return new JdbcTemplateLockProvider(
-            JdbcTemplateLockProvider.Configuration.builder()
-                .withJdbcTemplate(new JdbcTemplate(Objects.requireNonNull(dataSource)))
-                .usingDbTime() // Works on Postgres
-                .build()
-        );
+                JdbcTemplateLockProvider.Configuration.builder()
+                        .withJdbcTemplate(new JdbcTemplate(Objects.requireNonNull(dataSource)))
+                        .usingDbTime() // Works on Postgres
+                        .build());
     }
 }

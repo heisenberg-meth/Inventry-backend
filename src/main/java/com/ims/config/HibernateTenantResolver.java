@@ -5,17 +5,27 @@ import org.hibernate.context.spi.CurrentTenantIdentifierResolver;
 import org.springframework.stereotype.Component;
 
 /**
- * Resolves the current tenant identifier for Hibernate when a tenant-filtered query runs.
+ * Resolves the current tenant identifier for Hibernate when a tenant-filtered
+ * query runs.
  *
- * <p>Returns a sentinel ({@code 0L}) when no {@link TenantContext} is set — this is intentional.
- * Spring Data JPA validates derived queries (e.g. {@code findByTenantId}) at startup by opening a
- * SessionFactory probe, which calls this resolver before any HTTP request has set a tenant. We do
- * not want to fail bean creation in that case. The {@code 0L} sentinel will not match any real
- * tenant row, so any genuinely-tenant-leaky query at runtime returns no rows rather than crashing
+ * <p>
+ * Returns a sentinel ({@code 0L}) when no {@link TenantContext} is set — this
+ * is intentional.
+ * Spring Data JPA validates derived queries (e.g. {@code findByTenantId}) at
+ * startup by opening a
+ * SessionFactory probe, which calls this resolver before any HTTP request has
+ * set a tenant. We do
+ * not want to fail bean creation in that case. The {@code 0L} sentinel will not
+ * match any real
+ * tenant row, so any genuinely-tenant-leaky query at runtime returns no rows
+ * rather than crashing
  * the application.
  *
- * <p>Public endpoints (signup, login, verify-email) intentionally run without a tenant. They use
- * {@code findByEmailGlobal} or {@code findByCompanyCode} repository methods that bypass the
+ * <p>
+ * Public endpoints (signup, login, verify-email) intentionally run without a
+ * tenant. They use
+ * {@code findByEmailGlobal} or {@code findByCompanyCode} repository methods
+ * that bypass the
  * tenant filter, so this sentinel never affects them.
  */
 @Component

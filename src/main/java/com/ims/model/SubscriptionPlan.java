@@ -36,7 +36,9 @@ public class SubscriptionPlan {
   @Builder.Default
   private BigDecimal price = BigDecimal.ZERO;
 
-  @Column @Builder.Default private String currency = "INR";
+  @Column
+  @Builder.Default
+  private String currency = "INR";
 
   @Column(name = "billing_cycle", nullable = false)
   private String billingCycle;
@@ -61,7 +63,9 @@ public class SubscriptionPlan {
   @Builder.Default
   private SubscriptionPlanStatus status = SubscriptionPlanStatus.ACTIVE;
 
-  @Column @Builder.Default private Integer version = 1;
+  @Column
+  @Builder.Default
+  private Integer version = 1;
 
   @Column(name = "updated_by")
   private Long updatedBy;
