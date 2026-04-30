@@ -5,6 +5,7 @@ import com.ims.dto.request.CreateTicketRequest;
 import com.ims.model.SupportMessage;
 import com.ims.model.SupportTicket;
 import com.ims.shared.auth.JwtAuthDetails;
+import com.ims.shared.exception.UnauthorizedAccessException;
 import com.ims.shared.rbac.RequiresRole;
 import com.ims.tenant.service.SupportService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -90,6 +91,6 @@ public class TenantSupportController {
     if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
       return details;
     }
-    throw new com.ims.shared.exception.UnauthorizedAccessException("User not authenticated");
+    throw new UnauthorizedAccessException("User not authenticated");
   }
 }

@@ -44,7 +44,7 @@ public class PaymentService {
 
     Payment payment =
         Payment.builder()
-            .tenantId(com.ims.shared.auth.TenantContext.requireTenantId())
+            .tenantId(TenantContext.requireTenantId())
             .invoiceId(invoiceId)
             .amount(amount)
             .paymentMode(mode)

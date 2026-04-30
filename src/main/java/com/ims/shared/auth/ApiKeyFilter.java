@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.security.MessageDigest;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.List;
@@ -19,6 +20,8 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+
+import com.ims.model.ApiKey;
 
 @Component
 @Slf4j
@@ -44,17 +47,17 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         }
 
         String keyHash = hashKey(apiKey);
-        Optional<com.ims.model.ApiKey> keyOpt = apiKeyRepository.findByKeyHash(keyHash);
+        Optional<ApiKey> keyOpt = apiKeyRepository.findByKeyHash(keyHash);
 
         if (keyOpt.isEmpty() || !keyOpt.get().isActive() || 
-            (keyOpt.get().getExpiresAt() != null && keyOpt.get().getExpiresAt().isBefore(java.time.LocalDateTime.now()))) {
+            (keyOpt.get().getExpiresAt() != null && keyOpt.get().getExpiresAt().isBefore(LocalDateTime.now()))) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
             response.getWriter().write("{\"status\": 401, \"error\": \"UNAUTHORIZED\", \"message\": \"Invalid or expired API Key\"}");
             return;
         }
 
-        com.ims.model.ApiKey key = keyOpt.get();
+        ApiKey key = keyOpt.get();
 
         // Set Security Context
         Set<String> permissions = Set.of();

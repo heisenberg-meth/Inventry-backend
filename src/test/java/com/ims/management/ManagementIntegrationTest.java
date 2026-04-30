@@ -4,10 +4,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.CreateUserRequest;
 import com.ims.dto.request.SignupRequest;
+import com.ims.dto.response.SignupResponse;
+import com.ims.shared.auth.SignupService;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,7 +17,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import java.util.Objects;
-import org.springframework.lang.NonNull;
 import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest(properties = {
@@ -27,7 +28,7 @@ import org.springframework.test.context.ActiveProfiles;
 public class ManagementIntegrationTest extends BaseIntegrationTest {
 
   @Autowired
-  private com.ims.shared.auth.SignupService signupService;
+  private SignupService signupService;
 
   @BeforeEach
   void setup() {
@@ -59,7 +60,7 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
   void testTenantAdminFlow() throws Exception {
     // 1. Signup Tenant 1
     SignupRequest t1Signup = createSignupRequest("Tenant 1", "t1-mgt", "admin-mgt1@t1.com");
-    com.ims.dto.response.SignupResponse response = signupService.signup(Objects.requireNonNull(t1Signup));
+    SignupResponse response = signupService.signup(Objects.requireNonNull(t1Signup));
     verifyUserEmail("admin-mgt1@t1.com");
     verifyUser("admin-mgt1@t1.com");
 
@@ -97,7 +98,7 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
   @Test
   void testIsolationBetweenTenants() throws Exception {
     // 1. Signup Tenant 1
-    com.ims.dto.response.SignupResponse r1 = signupService
+    SignupResponse r1 = signupService
         .signup(Objects.requireNonNull(createSignupRequest("Tenant 1-Iso", "t1-iso", "admin-iso1@t1.com")));
     verifyUserEmail("admin-iso1@t1.com");
     verifyUser("admin-iso1@t1.com");
@@ -105,7 +106,7 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
     String t1Token = login("admin-iso1@t1.com", "password123", Objects.requireNonNull(r1.getCompanyCode()), t1Id);
 
     // 2. Signup Tenant 2
-    com.ims.dto.response.SignupResponse r2 = signupService
+    SignupResponse r2 = signupService
         .signup(Objects.requireNonNull(createSignupRequest("Tenant 2-Iso", "t2-iso", "admin-iso2@t2.com")));
     verifyUserEmail("admin-iso2@t2.com");
     verifyUser("admin-iso2@t2.com");
@@ -126,7 +127,7 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
   @Test
   void testRBACEnforcement() throws Exception {
     // 1. Signup Tenant 1
-    com.ims.dto.response.SignupResponse r1 = signupService
+    SignupResponse r1 = signupService
         .signup(Objects.requireNonNull(createSignupRequest("Tenant 1-RBAC", "t1-rbac", "admin-rbac1@t1.com")));
     verifyUserEmail("admin-rbac1@t1.com");
     verifyUser("admin-rbac1@t1.com");
@@ -142,8 +143,8 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
         .andExpect(status().isForbidden());
   }
 
-  private SignupRequest createSignupRequest(@NonNull String name, @NonNull String workspaceSlug,
-      @NonNull String email) {
+  private SignupRequest createSignupRequest(String name, String workspaceSlug,
+      String email) {
     SignupRequest req = new SignupRequest();
     req.setBusinessName(Objects.requireNonNull(name));
     req.setBusinessType("Retail");

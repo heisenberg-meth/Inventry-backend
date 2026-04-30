@@ -56,11 +56,7 @@ public class MaintenanceService {
         
         log.info("Log archival completed.");
     }
-
-    /**
-     * Securely purges all data for a specific tenant.
-     * MUST be called only by PLATFORM administrators.
-     */
+    
     @Transactional
     public void purgeTenant(Long tenantId) {
         log.warn("PERMANENTLY PURGING ALL DATA FOR TENANT: {}", tenantId);

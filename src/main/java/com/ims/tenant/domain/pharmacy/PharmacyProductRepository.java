@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import com.ims.product.ProductExpiryView;
 
 @Repository
 public interface PharmacyProductRepository extends JpaRepository<PharmacyProduct, Long> {
@@ -16,7 +17,7 @@ public interface PharmacyProductRepository extends JpaRepository<PharmacyProduct
           + "pp.batchNumber as batchNumber, pp.expiryDate as expiryDate, pp.manufacturer as manufacturer "
           + "FROM PharmacyProduct pp JOIN pp.product p "
           + "WHERE pp.expiryDate <= :date AND p.active = true")
-  List<com.ims.product.ProductExpiryView> findExpiring(@Param("date") LocalDate date);
+  List<ProductExpiryView> findExpiring(@Param("date") LocalDate date);
 
   @Query(
       "SELECT COUNT(pp) FROM PharmacyProduct pp JOIN pp.product p "

@@ -2,6 +2,7 @@ package com.ims.tenant.controller;
 
 import com.ims.dto.request.UpdateTenantSettingsRequest;
 import com.ims.dto.response.TenantResponse;
+import com.ims.shared.auth.SecurityContextAccessor;
 import com.ims.shared.rbac.RequiresRole;
 import com.ims.tenant.service.TenantSettingsService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class TenantSettingsController {
 
   private final TenantSettingsService tenantSettingsService;
-  private final com.ims.shared.auth.SecurityContextAccessor securityContext;
+  private final SecurityContextAccessor securityContext;
 
   @GetMapping
   @RequiresRole({"ADMIN"})

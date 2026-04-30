@@ -5,6 +5,7 @@ import com.ims.model.StockMovement;
 import com.ims.model.TransferOrder;
 import com.ims.platform.service.TenantService;
 import com.ims.shared.auth.TenantContext;
+import com.ims.shared.exception.TenantContextException;
 import com.ims.tenant.domain.warehouse.WarehouseProduct;
 import com.ims.tenant.repository.StockMovementRepository;
 import com.ims.tenant.repository.TransferOrderRepository;
@@ -32,7 +33,7 @@ public class StockService {
   private void checkWarehouseType() {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      throw new com.ims.shared.exception.TenantContextException("No tenant context found");
+      throw new TenantContextException("No tenant context found");
     }
     if (!tenantService.isWarehouse(tenantId)) {
       throw new IllegalArgumentException("Only available for WAREHOUSE tenants");
@@ -44,7 +45,7 @@ public class StockService {
        String location,  Pageable pageable) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
+      throw new TenantContextException("Tenant context is missing");
     }
 
     checkWarehouseType();
@@ -54,7 +55,7 @@ public class StockService {
   public Page<TransferOrder> getTransferOrders(Pageable pageable) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
+      throw new TenantContextException("Tenant context is missing");
     }
 
     checkWarehouseType();
@@ -65,7 +66,7 @@ public class StockService {
   public TransferOrder getTransferOrderById(Long id) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
+      throw new TenantContextException("Tenant context is missing");
     }
 
     checkWarehouseType();
@@ -79,7 +80,7 @@ public class StockService {
       Long id, TransferOrderStatusRequest request, Long userId) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
+      throw new TenantContextException("Tenant context is missing");
     }
 
     return stockTransactionService.updateTransferStatus(id, request, userId);
@@ -88,7 +89,7 @@ public class StockService {
   public void stockIn(Long productId, int qty, String notes, Long userId) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
+      throw new TenantContextException("Tenant context is missing");
     }
 
     stockTransactionService.stockInInternal(productId, qty, notes, userId);
@@ -97,7 +98,7 @@ public class StockService {
   public void stockOut(Long productId, int qty, String notes, Long userId) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
+      throw new TenantContextException("Tenant context is missing");
     }
 
     stockTransactionService.stockOutInternal(productId, qty, notes, userId);
@@ -106,7 +107,7 @@ public class StockService {
   public void stockAdjust(Long productId, int qty, String notes, Long userId) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
+      throw new TenantContextException("Tenant context is missing");
     }
 
     stockTransactionService.stockAdjustInternal(productId, qty, notes, userId);
@@ -115,7 +116,7 @@ public class StockService {
   public Page<StockMovement> getMovements(Pageable pageable) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
+      throw new TenantContextException("Tenant context is missing");
     }
 
     return Objects.requireNonNull(stockMovementRepository.findAllByOrderByCreatedAtDesc(pageable));
@@ -125,7 +126,7 @@ public class StockService {
       Long productId, LocalDateTime from, LocalDateTime to, Pageable pageable) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      throw new com.ims.shared.exception.TenantContextException("Tenant context is missing");
+      throw new TenantContextException("Tenant context is missing");
     }
 
     return Objects.requireNonNull(

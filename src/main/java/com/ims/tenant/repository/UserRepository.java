@@ -2,12 +2,16 @@ package com.ims.tenant.repository;
 
 import com.ims.model.User;
 import com.ims.model.UserRole;
+
+import jakarta.transaction.Transactional;
+
 import java.util.Optional;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -35,11 +39,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
   @Query("SELECT u FROM User u LEFT JOIN FETCH u.customPermissions WHERE u.id = :id")
   Optional<User> findByIdWithPermissions(@Param("id") Long id);
 
-  @Query(value = "SELECT * FROM users WHERE email = :email", nativeQuery = true)
+  @Query(value = "SELECT u.* FROM users u WHERE u.email = :email", nativeQuery = true)
   Optional<User> findByEmailGlobal(@Param("email") String email);
 
   @Query(value = "SELECT * FROM users WHERE id = :id", nativeQuery = true)
   Optional<User> findByIdGlobal(@Param("id") Long id);
+
+  @Query(value = "SELECT r.name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = :userId", nativeQuery = true)
+  Optional<String> findRoleNameByUserId(@Param("userId") Long userId);
 
   // findById is inherited
 
@@ -106,8 +113,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
   Page<User> findByTenantIdAndSearch(
       @Param("tenantId") Long tenantId, @Param("search") String search, Pageable pageable);
 
-  @org.springframework.transaction.annotation.Transactional
-  @org.springframework.data.jpa.repository.Modifying
+  @Transactional
+  @Modifying
   @Query("UPDATE User u SET u.lastLogin = :lastLogin WHERE u.id = :id")
   void updateLastLogin(@Param("id") Long id, @Param("lastLogin") LocalDateTime lastLogin);
 
@@ -119,7 +126,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
   List<User> findByResetTokenIsNotNullAndResetTokenExpiryBefore(
       LocalDateTime now);
 
-  @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+  @Modifying(clearAutomatically = true)
   @Query(
       """
       UPDATE User u
@@ -129,7 +136,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
       """)
   int clearExpiredResetTokens(@Param("now") LocalDateTime now);
 
-  @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+  @Modifying(clearAutomatically = true)
   @Query(
       """
       UPDATE User u

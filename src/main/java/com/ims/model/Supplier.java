@@ -12,7 +12,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.TenantId;
-import org.springframework.lang.Nullable;
 
 @Entity
 @Table(name = "suppliers")
@@ -24,7 +23,6 @@ public class Supplier {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Nullable
   private Long id;
 
   @TenantId
@@ -35,19 +33,15 @@ public class Supplier {
   private String name;
 
   @Column
-  @Nullable
   private String phone;
 
   @Column
-  @Nullable
   private String email;
 
   @Column
-  @Nullable
   private String address;
 
   @Column
-  @Nullable
   private String gstin;
 
   @Column(name = "created_at")

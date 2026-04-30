@@ -6,6 +6,8 @@ import com.ims.model.Customer;
 import com.ims.model.Invoice;
 import com.ims.model.Order;
 import com.ims.model.Payment;
+import com.ims.shared.auth.TenantContext;
+import com.ims.shared.exception.TenantContextException;
 import com.ims.tenant.repository.CustomerRepository;
 import com.ims.tenant.repository.InvoiceRepository;
 import com.ims.tenant.repository.OrderRepository;
@@ -30,12 +32,12 @@ public class CustomerService {
   private final PaymentRepository paymentRepository;
 
   public Page<CustomerResponse> getCustomers(Pageable pageable) {
-    com.ims.shared.auth.TenantContext.assertTenantPresent();
+    TenantContext.assertTenantPresent();
     return customerRepository.findAll(pageable).map(this::toResponse);
   }
 
   public Customer getById(Long id) {
-    com.ims.shared.auth.TenantContext.assertTenantPresent();
+    TenantContext.assertTenantPresent();
     return Objects.requireNonNull(
         customerRepository
             .findById(id)
@@ -48,9 +50,9 @@ public class CustomerService {
 
   @Transactional
   public CustomerResponse create(CustomerRequest request) {
-    Long tenantId = com.ims.shared.auth.TenantContext.getTenantId();
+    Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      throw new com.ims.shared.exception.TenantContextException("Tenant context missing");
+      throw new TenantContextException("Tenant context missing");
     }
 
     Customer customer = new Customer();
