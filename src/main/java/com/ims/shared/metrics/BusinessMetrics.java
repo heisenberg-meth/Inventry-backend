@@ -25,7 +25,7 @@ public class BusinessMetrics {
         this.purchasesTotal = Counter.builder("ims.orders.purchases.total")
                 .description("Total number of purchase orders")
                 .register(registry);
-        
+
         this.webhookEventsTotal = Counter.builder("ims.webhooks.events.total")
                 .description("Total number of webhook events generated")
                 .register(registry);

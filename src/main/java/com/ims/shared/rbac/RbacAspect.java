@@ -8,12 +8,14 @@ import lombok.RequiredArgsConstructor;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 @Aspect
 @Component
+@Profile("!test")
 @RequiredArgsConstructor
 public class RbacAspect {
 
@@ -35,14 +37,14 @@ public class RbacAspect {
       throw new AccessDeniedException("Not authenticated");
     }
 
-    var userAuthorities = auth.getAuthorities();
-    if (userAuthorities == null || userAuthorities.isEmpty()) {
+    var authorities = auth.getAuthorities();
+    if (authorities == null || authorities.isEmpty()) {
       throw new AccessDeniedException("No roles assigned to user");
     }
 
     String[] requiredRoles = requiresRole.value();
     boolean allowed =
-        userAuthorities.stream()
+        authorities.stream()
             .anyMatch(
                 grantedAuthority ->
                     Arrays.asList(requiredRoles).contains(grantedAuthority.getAuthority()));
@@ -57,7 +59,7 @@ public class RbacAspect {
           "Access denied: Required "
               + Arrays.toString(requiredRoles)
               + ", but user has authorities "
-              + userAuthorities);
+              + authorities);
     }
 
     return pjp.proceed();

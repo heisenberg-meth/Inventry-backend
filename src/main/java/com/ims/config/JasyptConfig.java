@@ -18,14 +18,15 @@ public class JasyptConfig {
     public StringEncryptor stringEncryptor() {
         PooledPBEStringEncryptor encryptor = new PooledPBEStringEncryptor();
         SimpleStringPBEConfig config = new SimpleStringPBEConfig();
-        
+
         // Use an environment variable for the master password.
-        // If not set, use a fallback for dev/tests (though environment variables are preferred).
+        // If not set, use a fallback for dev/tests (though environment variables are
+        // preferred).
         String password = System.getenv("JASYPT_ENCRYPTOR_PASSWORD");
         if (password == null || password.isBlank()) {
-            password = "dev-secret-key-change-me"; 
+            password = "dev-secret-key-change-me";
         }
-        
+
         config.setPassword(password);
         config.setAlgorithm("PBEWITHHMACSHA512ANDAES_256");
         config.setKeyObtentionIterations("1000");
@@ -35,7 +36,7 @@ public class JasyptConfig {
         config.setIvGeneratorClassName("org.jasypt.iv.RandomIvGenerator");
         config.setStringOutputType("base64");
         encryptor.setConfig(config);
-        
+
         return encryptor;
     }
 }

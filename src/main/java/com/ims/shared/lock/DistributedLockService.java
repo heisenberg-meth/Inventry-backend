@@ -17,6 +17,7 @@ public class DistributedLockService {
 
     /**
      * Tries to acquire a lock.
+     * 
      * @param lockKey Unique key for the lock
      * @param timeout Duration before the lock automatically expires (safety net)
      * @return true if lock was acquired, false otherwise
@@ -33,6 +34,7 @@ public class DistributedLockService {
 
     /**
      * Releases a lock.
+     * 
      * @param lockKey Unique key for the lock
      */
     public void releaseLock(String lockKey) {
@@ -43,10 +45,11 @@ public class DistributedLockService {
 
     /**
      * Executes a task within a distributed lock.
-     * @param lockKey Unique key for the lock
-     * @param timeout Safety timeout for the lock
+     * 
+     * @param lockKey  Unique key for the lock
+     * @param timeout  Safety timeout for the lock
      * @param waitTime Maximum time to wait for the lock
-     * @param task Task to execute
+     * @param task     Task to execute
      * @return true if task was executed, false if lock could not be acquired
      */
     public boolean withLock(String lockKey, Duration timeout, Duration waitTime, Runnable task) {

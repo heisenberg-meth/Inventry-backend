@@ -8,10 +8,16 @@ import java.time.LocalDate;
  */
 public interface ProductReportView {
     Long getId();
+
     String getName();
+
     String getSku();
+
     Integer getStock();
+
     Integer getReorderLevel();
+
     String getUnit();
+
     LocalDate getExpiryDate();
 }

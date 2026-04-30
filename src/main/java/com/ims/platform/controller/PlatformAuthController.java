@@ -24,9 +24,7 @@ public class PlatformAuthController {
   private final AuthService authService;
 
   @PostMapping("/login")
-  @Operation(
-      summary = "Platform Admin Login",
-      description = "Authenticate with email/password, NO companyCode required")
+  @Operation(summary = "Platform Admin Login", description = "Authenticate with email/password, NO companyCode required")
   public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
     log.info("Platform login attempt: email={}", request.getEmail());
     LoginResponse response = authService.platformLogin(request);

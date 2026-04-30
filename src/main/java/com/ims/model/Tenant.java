@@ -23,14 +23,18 @@ import lombok.NoArgsConstructor;
 @Builder
 public class Tenant {
 
-  /** Default number of days before expiry at which pharmacy tenants raise stock alerts. */
+  /**
+   * Default number of days before expiry at which pharmacy tenants raise stock
+   * alerts.
+   */
   private static final int DEFAULT_EXPIRY_THRESHOLD_DAYS = 30;
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Version private Long version;
+  @Version
+  private Long version;
 
   @Column(nullable = false)
   private String name;
@@ -44,7 +48,9 @@ public class Tenant {
   @Column(name = "business_type", nullable = false)
   private String businessType;
 
-  @Column @Builder.Default private String plan = "FREE";
+  @Column
+  @Builder.Default
+  private String plan = "FREE";
 
   @Column
   @Enumerated(EnumType.STRING)
@@ -65,9 +71,11 @@ public class Tenant {
   @Builder.Default
   private Integer expiryThresholdDays = DEFAULT_EXPIRY_THRESHOLD_DAYS;
 
-  @Column private String address;
+  @Column
+  private String address;
 
-  @Column private String gstin;
+  @Column
+  private String gstin;
 
   @Column(name = "webhook_secret")
   private String webhookSecret;
@@ -110,13 +118,13 @@ public class Tenant {
 
     public Tenant build() {
       TenantStatus finalStatus = statusSet ? statusValue : TenantStatus.PENDING;
-      return new Tenant(id, version, name, workspaceSlug, companyCode, businessType, 
-          plan != null ? plan : "FREE", 
-          finalStatus, 
-          invoiceSequence != null ? invoiceSequence : 0, 
-          maxProducts, maxUsers, 
-          expiryThresholdDays != null ? expiryThresholdDays : DEFAULT_EXPIRY_THRESHOLD_DAYS, 
-          address, gstin, webhookSecret, ipWhitelist, 
+      return new Tenant(id, version, name, workspaceSlug, companyCode, businessType,
+          plan != null ? plan : "FREE",
+          finalStatus,
+          invoiceSequence != null ? invoiceSequence : 0,
+          maxProducts, maxUsers,
+          expiryThresholdDays != null ? expiryThresholdDays : DEFAULT_EXPIRY_THRESHOLD_DAYS,
+          address, gstin, webhookSecret, ipWhitelist,
           createdAt != null ? createdAt : LocalDateTime.now());
     }
   }

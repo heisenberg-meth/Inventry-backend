@@ -7,7 +7,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Generic DTO for paginated responses. Replaces Spring Data Page to avoid serialization/casting
+ * Generic DTO for paginated responses. Replaces Spring Data Page to avoid
+ * serialization/casting
  * issues in cache.
  */
 @Data

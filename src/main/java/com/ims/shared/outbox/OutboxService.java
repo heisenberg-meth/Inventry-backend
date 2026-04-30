@@ -28,7 +28,7 @@ public class OutboxService {
           .createdAt(LocalDateTime.now())
           .processed(false)
           .build();
-      
+
       outboxRepository.save(event);
       log.debug("Saved outbox event: {} for {}/{}", eventType, aggregateType, aggregateId);
     } catch (Exception e) {
