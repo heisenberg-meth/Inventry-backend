@@ -97,13 +97,11 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             LEFT JOIN pharmacy_products pp ON pp.product_id = p.id
             LEFT JOIN warehouse_products wp ON wp.product_id = p.id
             WHERE p.tenant_id = :tenantId AND p.is_active = true
-            AND to_tsvector('english', COALESCE(p.name, '') || ' ' || COALESCE(p.sku, '') || ' ' || COALESCE(p.barcode, ''))
-            @@ plainto_tsquery(:query)
+            AND p.search_vector @@ plainto_tsquery(:query)
             """, countQuery = """
             SELECT count(*) FROM products p
             WHERE p.tenant_id = :tenantId AND p.is_active = true
-            AND to_tsvector('english', COALESCE(p.name, '') || ' ' || COALESCE(p.sku, '') || ' ' || COALESCE(p.barcode, ''))
-            @@ plainto_tsquery(:query)
+            AND p.search_vector @@ plainto_tsquery(:query)
             """, nativeQuery = true)
     Page<ProductListView> searchFast(
             @Param("tenantId") Long tenantId, @Param("query") String query, Pageable pageable);
