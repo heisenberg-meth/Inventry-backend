@@ -1,10 +1,16 @@
 package com.ims.tenant.controller;
 
+import com.ims.dto.request.SupplierRequest;
+import com.ims.dto.response.SupplierResponse;
 import com.ims.shared.rbac.RequiresRole;
+import com.ims.shared.utils.CsvExportService;
+import com.ims.tenant.repository.SupplierRepository;
+import com.ims.tenant.service.SupplierImportService;
 import com.ims.tenant.service.SupplierService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import java.util.Objects;
 import java.util.Map;
 import java.util.LinkedHashMap;
@@ -13,6 +19,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -22,7 +29,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/tenant/suppliers")
@@ -32,14 +41,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class SupplierController {
 
   private final SupplierService supplierService;
-  private final com.ims.tenant.service.SupplierImportService importService;
-  private final com.ims.shared.utils.CsvExportService csvExportService;
-  private final com.ims.tenant.repository.SupplierRepository supplierRepository;
+  private final SupplierImportService importService;
+  private final CsvExportService csvExportService;
+  private final SupplierRepository supplierRepository;
 
   @GetMapping
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "List suppliers")
-  public ResponseEntity<Page<com.ims.dto.response.SupplierResponse>> list(
+  public ResponseEntity<Page<SupplierResponse>> list(
       Pageable pageable) {
     return ResponseEntity.ok(Objects.requireNonNull(supplierService.getSuppliers(pageable)));
   }
@@ -47,8 +56,8 @@ public class SupplierController {
   @PostMapping
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Create supplier")
-  public ResponseEntity<com.ims.dto.response.SupplierResponse> create(
-      @jakarta.validation.Valid @RequestBody com.ims.dto.request.SupplierRequest request) {
+  public ResponseEntity<SupplierResponse> create(
+      @Valid @RequestBody SupplierRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(Objects.requireNonNull(supplierService.create(request)));
   }
@@ -56,16 +65,16 @@ public class SupplierController {
   @GetMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Get supplier")
-  public ResponseEntity<com.ims.dto.response.SupplierResponse> get(@PathVariable long id) {
+  public ResponseEntity<SupplierResponse> get(@PathVariable long id) {
     return ResponseEntity.ok(Objects.requireNonNull(supplierService.getSupplierResponseById(id)));
   }
 
   @PutMapping("/{id}")
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Update supplier")
-  public ResponseEntity<com.ims.dto.response.SupplierResponse> update(
+  public ResponseEntity<SupplierResponse> update(
       @PathVariable long id,
-      @jakarta.validation.Valid @RequestBody com.ims.dto.request.SupplierRequest request) {
+      @Valid @RequestBody SupplierRequest request) {
     return ResponseEntity.ok(Objects.requireNonNull(supplierService.update(id, request)));
   }
 
@@ -88,9 +97,9 @@ public class SupplierController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Bulk import suppliers via CSV")
   public ResponseEntity<Map<String, Object>> bulkImport(
-      @org.springframework.web.bind.annotation.RequestParam("file")
-          org.springframework.web.multipart.MultipartFile file,
-      @org.springframework.web.bind.annotation.RequestParam(
+      @RequestParam("file")
+          MultipartFile file,
+      @RequestParam(
               value = "dryRun",
               defaultValue = "false")
           boolean dryRun) {
@@ -121,9 +130,9 @@ public class SupplierController {
             List.of("ID", "Name", "Phone", "Email", "Address", "GSTIN"), data);
     return ResponseEntity.ok()
         .header(
-            org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+            HttpHeaders.CONTENT_DISPOSITION,
             "attachment; filename=suppliers.csv")
-        .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "text/csv")
+        .header(HttpHeaders.CONTENT_TYPE, "text/csv")
         .body(csv);
   }
 }

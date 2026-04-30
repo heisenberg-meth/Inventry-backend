@@ -1,6 +1,7 @@
 package com.ims.tenant.service;
 
 import com.ims.product.ProductRepository;
+import com.ims.tenant.dto.OrderStatusStat;
 import com.ims.tenant.repository.OrderRepository;
 import java.util.Objects;
 import java.time.LocalDateTime;
@@ -13,6 +14,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -25,7 +28,7 @@ public class TenantAnalyticsService {
   private static final int PERCENT_MULTIPLIER = 100;
   private static final int PLACEHOLDER_TOP_PRODUCT_VALUE_MULTIPLIER = 100;
 
-  @org.springframework.beans.factory.annotation.Value("${feature.ai.enabled:false}")
+  @Value("${feature.ai.enabled:false}")
   private boolean aiEnabled;
 
   private final OrderRepository orderRepository;
@@ -56,7 +59,7 @@ public class TenantAnalyticsService {
     return Objects.requireNonNull(
         productRepository
             .findTopStock(
-                org.springframework.data.domain.PageRequest.of(0, TOP_PRODUCTS_LIMIT))
+                PageRequest.of(0, TOP_PRODUCTS_LIMIT))
             .getContent()
             .stream()
             .map(
@@ -72,7 +75,7 @@ public class TenantAnalyticsService {
     LocalDateTime from = LocalDateTime.now().minusMonths(ORDER_STATUS_WINDOW_MONTHS);
 
     var stats = orderRepository.getOrderStatusStats(from);
-    long total = stats.stream().mapToLong(com.ims.tenant.dto.OrderStatusStat::getCount).sum();
+    long total = stats.stream().mapToLong(OrderStatusStat::getCount).sum();
 
     if (total == 0) {
       return Objects.requireNonNull(Collections.emptyList());

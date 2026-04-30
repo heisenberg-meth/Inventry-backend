@@ -4,17 +4,24 @@ import com.ims.model.Order;
 import com.ims.model.OrderItem;
 import com.ims.product.Product;
 import com.ims.model.OrderStatus;
+import com.ims.platform.repository.TenantRepository;
 import com.ims.product.ProductRepository;
 import com.ims.shared.audit.AuditAction;
+import com.ims.shared.audit.AuditLogService;
 import com.ims.shared.audit.AuditResource;
 import com.ims.tenant.dto.OrderItemRequest;
 import com.ims.tenant.dto.OrderRequest;
 import com.ims.tenant.repository.CustomerRepository;
 import com.ims.tenant.repository.OrderItemRepository;
 import com.ims.shared.auth.TenantContext;
+import com.ims.shared.metrics.BusinessMetrics;
+import com.ims.shared.outbox.OutboxService;
+import com.ims.shared.pdf.PdfService;
 import com.ims.tenant.repository.OrderRepository;
 import com.ims.tenant.repository.SupplierRepository;
 import com.ims.tenant.domain.pharmacy.PharmacyProduct;
+import com.ims.tenant.domain.pharmacy.PharmacyProductRepository;
+
 import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -47,12 +54,12 @@ public class OrderService {
   private final CustomerRepository customerRepository;
   private final StockService stockService;
   private final InvoiceService invoiceService;
-  private final com.ims.shared.audit.AuditLogService auditLogService;
-  private final com.ims.shared.pdf.PdfService pdfService;
-  private final com.ims.tenant.domain.pharmacy.PharmacyProductRepository pharmacyProductRepository;
-  private final com.ims.platform.repository.TenantRepository tenantRepository;
-  private final com.ims.shared.metrics.BusinessMetrics businessMetrics;
-  private final com.ims.shared.outbox.OutboxService outboxService;
+  private final AuditLogService auditLogService;
+  private final PdfService pdfService;
+  private final PharmacyProductRepository pharmacyProductRepository;
+  private final TenantRepository tenantRepository;
+  private final BusinessMetrics businessMetrics;
+  private final OutboxService outboxService;
 
   private static final int PERCENTAGE_BASE = 100;
 

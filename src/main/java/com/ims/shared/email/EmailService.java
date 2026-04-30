@@ -3,8 +3,13 @@ package com.ims.shared.email;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Recover;
+import org.springframework.retry.annotation.Retryable;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -17,11 +22,11 @@ public class EmailService {
   @Value("${APP_FRONTEND_URL:http://localhost:3000}")
   private String frontendUrl;
 
-  @org.springframework.scheduling.annotation.Async
-  @org.springframework.retry.annotation.Retryable(
-      retryFor = org.springframework.mail.MailException.class,
+  @Async
+  @Retryable(
+      retryFor = MailException.class,
       maxAttempts = 3,
-      backoff = @org.springframework.retry.annotation.Backoff(delay = 2000, multiplier = 2))
+      backoff = @Backoff(delay = 2000, multiplier = 2))
   public void sendPasswordResetEmail(String to, String rawToken) {
     String resetLink = frontendUrl + "/reset-password?token=" + rawToken;
 
@@ -37,11 +42,11 @@ public class EmailService {
     log.info("Password reset email sent to: {}", to);
   }
 
-  @org.springframework.scheduling.annotation.Async
-  @org.springframework.retry.annotation.Retryable(
-      retryFor = org.springframework.mail.MailException.class,
+  @Async
+  @Retryable(
+      retryFor = MailException.class,
       maxAttempts = 3,
-      backoff = @org.springframework.retry.annotation.Backoff(delay = 2000, multiplier = 2))
+      backoff = @Backoff(delay = 2000, multiplier = 2))
   public void sendVerificationEmail(String to, String token) {
     String verificationLink = frontendUrl + "/verify-email?token=" + token + "&email=" + to;
 
@@ -54,8 +59,8 @@ public class EmailService {
     log.info("Verification email sent to: {}", to);
   }
 
-  @org.springframework.retry.annotation.Recover
-  public void recoverEmailFailure(org.springframework.mail.MailException ex, String to, String token) {
+  @Recover
+  public void recoverEmailFailure(MailException ex, String to, String token) {
     log.error("All retries failed for email to {}: {}", to, ex.getMessage());
     // In a production app, we could persist this to a failed_emails table
   }

@@ -7,8 +7,11 @@ import com.ims.model.Tenant;
 import com.ims.platform.repository.TenantRepository;
 import com.ims.platform.service.SystemConfigService;
 import com.ims.shared.audit.AuditAction;
+import com.ims.shared.audit.AuditLogService;
 import com.ims.shared.audit.AuditResource;
+import com.ims.shared.auth.SecurityContextAccessor;
 import com.ims.shared.rbac.RequiresPermission;
+import com.ims.shared.utils.CsvExportService;
 import com.ims.tenant.domain.pharmacy.PharmacyProduct;
 import com.ims.tenant.domain.pharmacy.PharmacyProductRepository;
 import com.ims.tenant.domain.warehouse.WarehouseProduct;
@@ -16,9 +19,12 @@ import com.ims.tenant.service.WarehouseProductRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +34,6 @@ import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,9 +47,9 @@ public class ProductService {
   private final WarehouseProductRepository warehouseProductRepository;
   private final TenantRepository tenantRepository;
   private final SystemConfigService systemConfigService;
-  private final com.ims.shared.audit.AuditLogService auditLogService;
-  private final com.ims.shared.auth.SecurityContextAccessor securityContextAccessor;
-  private final com.ims.shared.utils.CsvExportService csvExportService;
+  private final AuditLogService auditLogService;
+  private final SecurityContextAccessor securityContextAccessor;
+  private final CsvExportService csvExportService;
 
   private static final int DEFAULT_REORDER_LEVEL = 10;
   private static final int MAX_PAGE_SIZE = 100;
@@ -74,7 +79,7 @@ public class ProductService {
   }
 
   public List<ProductResponse> getNextProducts(
-      @Nullable Long lastId, int limit) {
+      Long lastId, int limit) {
     securityContextAccessor.requireTenantId();
     Pageable pageable = PageRequest.of(0, Math.min(limit, MAX_PAGE_SIZE));
     List<ProductResponse> list = productRepository.findNextProducts(lastId != null ? lastId : 0L, pageable)
@@ -357,7 +362,7 @@ public class ProductService {
         Product.builder()
             .name(Objects.requireNonNull(original.getName()) + " (Copy)")
             .sku(Objects.requireNonNull(generateUniqueSku(original.getSku())))
-            .barcode("COPY-" + java.util.UUID.randomUUID().toString().substring(0, 8)) // Barcode should be unique
+            .barcode("COPY-" + UUID.randomUUID().toString().substring(0, 8)) // Barcode should be unique
             .categoryId(original.getCategoryId())
             .unit(original.getUnit())
             .purchasePrice(original.getPurchasePrice())
@@ -385,7 +390,7 @@ public class ProductService {
     return Objects.requireNonNull(result);
   }
 
-  private @Nullable String generateUniqueSku(@Nullable String originalSku) {
+  private String generateUniqueSku(String originalSku) {
     if (originalSku == null) {
       return null;
     }
@@ -409,7 +414,7 @@ public class ProductService {
     return Objects.requireNonNull(list);
   }
 
-  public List<ProductResponse> getExpiringProducts(@Nullable Integer days) {
+  public List<ProductResponse> getExpiringProducts(Integer days) {
     Long tenantId = securityContextAccessor.requireTenantId();
 
     String businessType = securityContextAccessor.getBusinessType().orElse(null);
@@ -448,20 +453,19 @@ public class ProductService {
     securityContextAccessor.requireTenantId();
     var products = productRepository.findExportData();
 
-    var data =
-        products.stream()
-            .map(
-                p -> {
-                  java.util.Map<String, Object> map = new java.util.LinkedHashMap<>();
-                  map.put("ID", p.getId());
-                  map.put("Name", p.getName());
-                  map.put("SKU", p.getSku());
-                  map.put("Stock", p.getStock());
-                  map.put("Price", p.getSalePrice());
-                  map.put("CategoryID", p.getCategoryId());
-                  return map;
-                })
-            .collect(Collectors.toList());
+    var data = products.stream()
+        .map(
+            p -> {
+              Map<String, Object> map = new LinkedHashMap<>();
+              map.put("ID", p.getId());
+              map.put("Name", p.getName());
+              map.put("SKU", p.getSku());
+              map.put("Stock", p.getStock());
+              map.put("Price", p.getSalePrice());
+              map.put("CategoryID", p.getCategoryId());
+              return map;
+            })
+        .collect(Collectors.toList());
 
     return csvExportService.exportToCsv(
         List.of("ID", "Name", "SKU", "Stock", "Price", "CategoryID"), data);
@@ -482,13 +486,12 @@ public class ProductService {
         page.getSize());
   }
 
-
   private ProductResponse toResponse(Product product) {
     return toResponse(Objects.requireNonNull(product), null, null);
   }
 
   private ProductResponse toResponse(
-      Product product, @Nullable PharmacyProduct pp, @Nullable WarehouseProduct wp) {
+      Product product, PharmacyProduct pp, WarehouseProduct wp) {
     ProductResponse.ProductResponseBuilder builder = ProductResponse.builder()
         .id(product.getId())
         .name(product.getName())

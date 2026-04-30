@@ -12,7 +12,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.TenantId;
-import org.springframework.lang.Nullable;
 
 @Entity
 @Table(name = "webhooks")
@@ -24,7 +23,6 @@ public class Webhook {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Nullable
   private Long id;
 
   @TenantId
@@ -35,7 +33,6 @@ public class Webhook {
   private String url;
 
   @Column
-  @Nullable
   private String secret;
 
   @Column(name = "event_types", nullable = false, columnDefinition = "TEXT")

@@ -2,12 +2,11 @@ package com.ims.shared.notification;
 
 import com.ims.model.Notification;
 import com.ims.shared.auth.TenantContext;
+import com.ims.shared.exception.TenantContextException;
 import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.lang.NonNull;
-import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,16 +17,16 @@ public class NotificationService {
 
   private final NotificationRepository notificationRepository;
 
-  public List<Notification> getMyNotifications(@NonNull Long userId) {
+  public List<Notification> getMyNotifications(Long userId) {
     return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
   }
 
-  public List<Notification> getUnreadNotifications(@NonNull Long userId) {
+  public List<Notification> getUnreadNotifications(Long userId) {
     return notificationRepository.findByUserIdAndIsReadFalse(userId);
   }
 
   @Transactional
-  public void markAsRead(@NonNull Long id) {
+  public void markAsRead(Long id) {
     notificationRepository
         .findById(id)
         .ifPresent(
@@ -38,7 +37,7 @@ public class NotificationService {
   }
 
   @Transactional
-  public void markAllAsRead(@NonNull Long userId) {
+  public void markAllAsRead(Long userId) {
     var unread = notificationRepository.findByUserIdAndIsReadFalse(userId);
     unread.forEach(n -> n.setIsRead(true));
     notificationRepository.saveAll(unread);
@@ -46,32 +45,31 @@ public class NotificationService {
 
   @Transactional
   public void createNotification(
-      Long tenantId, Long userId, String title, String message, String type, @Nullable Long resourceId) {
+      Long tenantId, Long userId, String title, String message, String type, Long resourceId) {
     if (tenantId == null || tenantId <= 0) {
       throw new IllegalArgumentException("tenantId is required and must be positive");
     }
 
-    Notification notification =
-        Objects.requireNonNull(
-            Notification.builder()
-                .userId(Objects.requireNonNull(userId))
-                .tenantId(tenantId)
-                .title(Objects.requireNonNull(title))
-                .message(Objects.requireNonNull(message))
-                .type(Objects.requireNonNull(type))
-                .resourceId(resourceId)
-                .build());
+    Notification notification = Objects.requireNonNull(
+        Notification.builder()
+            .userId(Objects.requireNonNull(userId))
+            .tenantId(tenantId)
+            .title(Objects.requireNonNull(title))
+            .message(Objects.requireNonNull(message))
+            .type(Objects.requireNonNull(type))
+            .resourceId(resourceId)
+            .build());
     notificationRepository.save(notification);
     log.debug("Notification created for tenant {} user {}: {}", tenantId, userId, title);
   }
 
   @Transactional
   public void createNotificationForCurrentTenant(
-      Long userId, String title, String message, String type, @Nullable Long resourceId) {
+      Long userId, String title, String message, String type, Long resourceId) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
       log.warn("Tenant context missing in createNotificationForCurrentTenant");
-      throw new com.ims.shared.exception.TenantContextException("Tenant context missing");
+      throw new TenantContextException("Tenant context missing");
     }
     createNotification(tenantId, userId, title, message, type, resourceId);
   }

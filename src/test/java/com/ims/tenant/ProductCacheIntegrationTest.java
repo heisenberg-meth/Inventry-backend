@@ -4,19 +4,23 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.request.SignupRequest;
+import com.ims.dto.response.ProductResponse;
+import com.ims.dto.response.SignupResponse;
 import com.ims.shared.auth.SignupService;
 import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.Objects;
 import org.junit.jupiter.api.BeforeEach;
+import org.springframework.cache.concurrent.ConcurrentMapCache;
+import org.springframework.cache.Cache;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cache.interceptor.CacheOperationInvocationContext;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
@@ -29,7 +33,7 @@ import org.springframework.test.web.servlet.MvcResult;
 @ActiveProfiles("test-no-security")
 public class ProductCacheIntegrationTest extends BaseIntegrationTest {
 
-    private org.springframework.cache.Cache spyCache;
+    private Cache spyCache;
 
     @Autowired
     private SignupService signupService;
@@ -39,12 +43,12 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
         cleanupDatabase();
         mockRedisAndCache();
 
-        spyCache = spy(new org.springframework.cache.concurrent.ConcurrentMapCache("products"));
-        doReturn(Collections.<org.springframework.cache.Cache>singletonList(spyCache))
+        spyCache = spy(new ConcurrentMapCache("products"));
+        doReturn(Collections.<Cache>singletonList(spyCache))
                 .when(tenantAwareCacheResolver)
                 .resolveCaches(
                         Objects.requireNonNull(
-                                any(org.springframework.cache.interceptor.CacheOperationInvocationContext.class)));
+                                any(CacheOperationInvocationContext.class)));
         doReturn(spyCache).when(cacheManager).getCache(Objects.requireNonNull(any(String.class)));
     }
 
@@ -57,7 +61,7 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
         signup.setOwnerName("Admin");
         signup.setOwnerEmail("admin@cache.com");
         signup.setPassword("password123");
-        com.ims.dto.response.SignupResponse response = signupService.signup(signup);
+        SignupResponse response = signupService.signup(signup);
         verifyUserEmail("admin@cache.com");
         verifyUser("admin@cache.com");
         Long tenantId = tenantRepository.findByWorkspaceSlug("cache-corp").orElseThrow().getId();
@@ -79,8 +83,8 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
                 .andExpect(status().isCreated())
                 .andReturn();
 
-        com.ims.dto.response.ProductResponse product = objectMapper.readValue(
-                result.getResponse().getContentAsString(), com.ims.dto.response.ProductResponse.class);
+        ProductResponse product = objectMapper.readValue(
+                result.getResponse().getContentAsString(), ProductResponse.class);
         Long productId = product.getId();
 
         // Reset spy to clear creation-time interactions if any

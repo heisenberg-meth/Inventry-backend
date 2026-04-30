@@ -1,6 +1,7 @@
 package com.ims.tenant.service;
 
 import com.ims.model.Customer;
+import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.repository.CustomerRepository;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -10,6 +11,8 @@ import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -33,7 +36,7 @@ public class CustomerImportService {
     int successCount = 0;
     int failCount = 0;
     List<String> errors = new ArrayList<>();
-    Long tenantId = com.ims.shared.auth.TenantContext.requireTenantId();
+    Long tenantId = TenantContext.requireTenantId();
 
     try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
       String line;
@@ -103,7 +106,7 @@ public class CustomerImportService {
       if (!customers.isEmpty()) {
         try {
           customerRepository.saveAll(customers);
-        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+        } catch (DataIntegrityViolationException e) {
           throw new IllegalStateException("Import failed due to DB constraint", e);
         }
       }

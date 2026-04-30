@@ -3,8 +3,12 @@ package com.ims.platform.controller;
 import com.ims.dto.request.AssignPlanRequest;
 import com.ims.dto.request.CreateTenantRequest;
 import com.ims.dto.request.CreateTenantUserRequest;
+import com.ims.dto.response.AuditLogResponse;
+import com.ims.dto.response.LoginResponse;
 import com.ims.dto.response.TenantResponse;
 import com.ims.dto.response.UserResponse;
+import com.ims.shared.auth.AuthService;
+import com.ims.shared.audit.AuditLogService;
 import com.ims.platform.service.TenantService;
 import com.ims.shared.rbac.RequiresRole;
 import io.swagger.v3.oas.annotations.Operation;
@@ -17,7 +21,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -36,41 +39,41 @@ import org.springframework.web.bind.annotation.RestController;
 public class TenantController {
 
   private final TenantService tenantService;
-  private final com.ims.shared.auth.AuthService authService;
-  private final com.ims.shared.audit.AuditLogService auditLogService;
+  private final AuthService authService;
+  private final AuditLogService auditLogService;
 
   @GetMapping
-  @RequiresRole({"ROOT"})
+  @RequiresRole({ "ROOT" })
   @Operation(summary = "List all tenants", description = "Paginated list of all tenants")
-  public ResponseEntity<Page<TenantResponse>> getAllTenants(@NonNull Pageable pageable) {
+  public ResponseEntity<Page<TenantResponse>> getAllTenants(Pageable pageable) {
     return ResponseEntity.ok(tenantService.getAllTenants(pageable));
   }
 
   @PostMapping
-  @RequiresRole({"ROOT"})
+  @RequiresRole({ "ROOT" })
   @Operation(summary = "Create new tenant")
   public ResponseEntity<TenantResponse> createTenant(
-      @NonNull @Valid @RequestBody CreateTenantRequest request) {
+      @Valid @RequestBody CreateTenantRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED).body(tenantService.createTenant(request));
   }
 
   @GetMapping("/{id}")
-  @RequiresRole({"ROOT"})
+  @RequiresRole({ "ROOT" })
   @Operation(summary = "Get tenant details")
   public ResponseEntity<TenantResponse> getTenant(@PathVariable long id) {
     return ResponseEntity.ok(tenantService.getTenantById(id));
   }
 
   @PatchMapping("/{id}")
-  @RequiresRole({"ROOT"})
+  @RequiresRole({ "ROOT" })
   @Operation(summary = "Update tenant plan/status")
   public ResponseEntity<TenantResponse> updateTenant(
-      @PathVariable long id, @NonNull @RequestBody CreateTenantRequest request) {
+      @PathVariable long id, @RequestBody CreateTenantRequest request) {
     return ResponseEntity.ok(tenantService.updateTenant(id, request));
   }
 
   @DeleteMapping("/{id}")
-  @RequiresRole({"ROOT"})
+  @RequiresRole({ "ROOT" })
   @Operation(summary = "Deactivate tenant (soft delete)")
   public ResponseEntity<Void> deactivateTenant(@PathVariable long id) {
     tenantService.deactivateTenant(id);
@@ -78,21 +81,21 @@ public class TenantController {
   }
 
   @PostMapping("/{id}/suspend")
-  @RequiresRole({"ROOT"})
+  @RequiresRole({ "ROOT" })
   @Operation(summary = "Suspend a tenant")
   public ResponseEntity<Map<String, String>> suspendTenant(@PathVariable long id) {
     return ResponseEntity.ok(tenantService.suspendTenant(id));
   }
 
   @PostMapping("/{id}/activate")
-  @RequiresRole({"ROOT"})
+  @RequiresRole({ "ROOT" })
   @Operation(summary = "Activate tenant")
   public ResponseEntity<Map<String, String>> activate(@PathVariable long id) {
     return ResponseEntity.ok(tenantService.activateTenant(id));
   }
 
   @PatchMapping("/{id}/status")
-  @RequiresRole({"ROOT"})
+  @RequiresRole({ "ROOT" })
   @Operation(summary = "Update tenant status (ACTIVE/SUSPENDED/INACTIVE)")
   public ResponseEntity<Map<String, String>> updateStatus(
       @PathVariable long id, @RequestBody Map<String, String> body) {
@@ -116,32 +119,30 @@ public class TenantController {
   }
 
   @PostMapping("/{id}/impersonate")
-  @RequiresRole({"ROOT"})
+  @RequiresRole({ "ROOT" })
   @Operation(summary = "Impersonate tenant admin")
-  public ResponseEntity<com.ims.dto.response.LoginResponse> impersonate(@PathVariable long id) {
+  public ResponseEntity<LoginResponse> impersonate(@PathVariable long id) {
     return ResponseEntity.ok(authService.impersonateTenant(id));
   }
 
   @GetMapping("/{id}/audit")
-  @RequiresRole({"ROOT", "PLATFORM_ADMIN"})
+  @RequiresRole({ "ROOT", "PLATFORM_ADMIN" })
   @Operation(summary = "Get audit logs for a specific tenant")
-  public ResponseEntity<Page<com.ims.dto.response.AuditLogResponse>> getTenantAuditLogs(
-      @PathVariable long id, @NonNull Pageable pageable) {
+  public ResponseEntity<Page<AuditLogResponse>> getTenantAuditLogs(
+      @PathVariable long id, Pageable pageable) {
     return ResponseEntity.ok(auditLogService.getLogsForTenant(id, pageable));
   }
 
   @GetMapping("/{id}/users")
-  @RequiresRole({"ROOT", "PLATFORM_ADMIN"})
-  @Operation(
-      summary = "List tenant users",
-      description = "List users of a specific tenant with optional search")
+  @RequiresRole({ "ROOT", "PLATFORM_ADMIN" })
+  @Operation(summary = "List tenant users", description = "List users of a specific tenant with optional search")
   public ResponseEntity<Page<UserResponse>> getTenantUsers(
-      @PathVariable long id, @RequestParam(required = false) String q, @NonNull Pageable pageable) {
+      @PathVariable long id, @RequestParam(required = false) String q, Pageable pageable) {
     return ResponseEntity.ok(tenantService.getTenantUsers(id, q, pageable));
   }
 
   @DeleteMapping("/{id}/users/{userId}")
-  @RequiresRole({"ROOT"})
+  @RequiresRole({ "ROOT" })
   @Operation(summary = "Platform hard-delete a tenant user")
   public ResponseEntity<Void> hardDeleteTenantUser(
       @PathVariable long id, @PathVariable long userId) {
@@ -150,7 +151,7 @@ public class TenantController {
   }
 
   @PostMapping("/users/{userId}/reset-password")
-  @RequiresRole({"ROOT", "PLATFORM_ADMIN"})
+  @RequiresRole({ "ROOT", "PLATFORM_ADMIN" })
   @Operation(summary = "Reset a tenant user's password")
   public ResponseEntity<Map<String, String>> resetTenantUserPassword(
       @PathVariable long userId, @RequestBody(required = false) Map<String, String> body) {
@@ -159,25 +160,25 @@ public class TenantController {
   }
 
   @PostMapping("/{id}/assign-plan")
-  @RequiresRole({"ROOT"})
+  @RequiresRole({ "ROOT" })
   @Operation(summary = "Assign a subscription plan to a tenant")
   public ResponseEntity<Map<String, Object>> assignPlan(
-      @PathVariable long id, @NonNull @Valid @RequestBody AssignPlanRequest request) {
+      @PathVariable long id, @Valid @RequestBody AssignPlanRequest request) {
     return ResponseEntity.ok(tenantService.assignPlan(id, request));
   }
 
   @GetMapping("/{id}/subscription")
-  @RequiresRole({"ROOT", "PLATFORM_ADMIN"})
+  @RequiresRole({ "ROOT", "PLATFORM_ADMIN" })
   @Operation(summary = "Get tenant subscription info")
   public ResponseEntity<Map<String, Object>> getSubscription(@PathVariable long id) {
     return ResponseEntity.ok(tenantService.getSubscription(id));
   }
 
   @PostMapping("/{tenantId}/users")
-  @RequiresRole({"ROOT", "PLATFORM_ADMIN"})
+  @RequiresRole({ "ROOT", "PLATFORM_ADMIN" })
   @Operation(summary = "Create tenant admin user")
   public ResponseEntity<UserResponse> createTenantAdmin(
-      @PathVariable long tenantId, @NonNull @Valid @RequestBody CreateTenantUserRequest request) {
+      @PathVariable long tenantId, @Valid @RequestBody CreateTenantUserRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(tenantService.createTenantUser(tenantId, request));
   }

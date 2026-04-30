@@ -6,23 +6,26 @@ import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
+import com.ims.platform.repository.TenantRepository;
+import com.ims.shared.auth.TenantContext;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
-@org.springframework.context.annotation.Profile("!test")
+@Profile("!test")
 public class ExpiryAlertService {
 
   private static final int EXPIRY_THRESHOLD_DAYS = 30;
 
   private final PharmacyProductRepository pharmacyProductRepository;
-  private final com.ims.platform.repository.TenantRepository tenantRepository;
+  private final TenantRepository tenantRepository;
 
   @Scheduled(cron = "0 0 8 * * *")
   public void checkExpiryAlerts() {
-    com.ims.shared.auth.TenantContext.runWithTenant(
-        com.ims.shared.auth.TenantContext.PLATFORM_TENANT_ID,
+    TenantContext.runWithTenant(
+        TenantContext.PLATFORM_TENANT_ID,
         () -> {
           log.info("Scheduled Task: Checking pharmacy expiry alerts across all tenants");
           List<Long> tenantIds = tenantRepository.findAllIds();

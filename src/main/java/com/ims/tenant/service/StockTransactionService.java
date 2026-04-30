@@ -6,12 +6,16 @@ import com.ims.model.TransferOrder;
 import com.ims.model.TransferOrderStatus;
 import com.ims.platform.service.TenantService;
 import com.ims.product.Product;
+import com.ims.product.ProductRepository;
 import com.ims.shared.auth.TenantContext;
 import com.ims.shared.exception.InsufficientStockException;
+import com.ims.shared.exception.TenantContextException;
+import com.ims.shared.lock.DistributedLockService;
 import com.ims.tenant.domain.warehouse.WarehouseProduct;
 import com.ims.tenant.repository.StockMovementRepository;
 import com.ims.tenant.repository.TransferOrderRepository;
 import jakarta.persistence.EntityNotFoundException;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
@@ -30,13 +34,13 @@ public class StockTransactionService {
     private final TenantService tenantService;
     private final WarehouseProductRepository warehouseProductRepository;
     private final TransferOrderRepository transferOrderRepository;
-    private final com.ims.product.ProductRepository productRepository;
-    private final com.ims.shared.lock.DistributedLockService lockService;
+    private final ProductRepository productRepository;
+    private final DistributedLockService lockService;
 
     private void checkWarehouseType() {
         Long tenantId = TenantContext.getTenantId();
         if (tenantId == null) {
-            throw new com.ims.shared.exception.TenantContextException("No tenant context found");
+            throw new TenantContextException("No tenant context found");
         }
         if (!tenantService.isWarehouse(tenantId)) {
             throw new IllegalArgumentException("Only available for WAREHOUSE tenants");
@@ -57,7 +61,7 @@ public class StockTransactionService {
             throw new IllegalArgumentException("Quantity must be positive");
 
         String lockKey = "product:stock:" + productId;
-        boolean locked = lockService.withLock(lockKey, java.time.Duration.ofSeconds(10), java.time.Duration.ofSeconds(5), () -> {
+        boolean locked = lockService.withLock(lockKey, Duration.ofSeconds(10), Duration.ofSeconds(5), () -> {
             int updated = productRepository.incrementStock(productId, qty, Objects.requireNonNull(LocalDateTime.now()));
             if (updated == 0) {
                 throw new EntityNotFoundException("Product not found: " + productId);
@@ -103,7 +107,7 @@ public class StockTransactionService {
             throw new IllegalArgumentException("Quantity must be positive");
 
         String lockKey = "product:stock:" + productId;
-        boolean locked = lockService.withLock(lockKey, java.time.Duration.ofSeconds(10), java.time.Duration.ofSeconds(5), () -> {
+        boolean locked = lockService.withLock(lockKey, Duration.ofSeconds(10), Duration.ofSeconds(5), () -> {
             int updated = productRepository.decrementStockIfAvailable(productId, qty, Objects.requireNonNull(LocalDateTime.now()));
             if (updated == 0) {
                 // Either product not found or insufficient stock
@@ -156,7 +160,7 @@ public class StockTransactionService {
             return;
 
         String lockKey = "product:stock:" + productId;
-        boolean locked = lockService.withLock(lockKey, java.time.Duration.ofSeconds(10), java.time.Duration.ofSeconds(5), () -> {
+        boolean locked = lockService.withLock(lockKey, Duration.ofSeconds(10), Duration.ofSeconds(5), () -> {
             int updated = productRepository.adjustStockIfValid(productId, qty, Objects.requireNonNull(LocalDateTime.now()));
             if (updated == 0) {
                 Product product = Objects.requireNonNull(productRepository

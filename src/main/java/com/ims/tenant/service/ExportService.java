@@ -5,12 +5,16 @@ import com.ims.product.ProductRepository;
 import com.ims.category.Category;
 import com.ims.category.CategoryRepository;
 import com.ims.shared.auth.TenantContext;
+import com.ims.tenant.repository.OrderRepository;
+
 import org.springframework.data.domain.Pageable;
 import java.util.Map;
 import java.util.stream.Collectors;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.time.LocalDateTime;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -24,7 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ExportService {
 
     private final ProductRepository productRepository;
-    private final com.ims.tenant.repository.OrderRepository orderRepository;
+    private final OrderRepository orderRepository;
     private final CategoryRepository categoryRepository;
 
     /**
@@ -76,7 +80,7 @@ public class ExportService {
      * Streams orders for a tenant as a CSV file based on type and date range.
      */
     @Transactional(readOnly = true)
-    public void exportOrdersCsv(HttpServletResponse response, String type, java.time.LocalDateTime from, java.time.LocalDateTime to) throws IOException {
+    public void exportOrdersCsv(HttpServletResponse response, String type, LocalDateTime from, LocalDateTime to) throws IOException {
         
         response.setContentType("text/csv");
         response.setHeader("Content-Disposition", "attachment; filename=orders_" + (type != null ? type : "all") + ".csv");

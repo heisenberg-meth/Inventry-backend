@@ -3,9 +3,15 @@ package com.ims.tenant.service;
 import com.ims.model.Tenant;
 import com.ims.platform.repository.TenantRepository;
 import com.ims.product.ProductRepository;
+import com.ims.shared.auth.SecurityContextAccessor;
 import com.ims.shared.auth.TenantContext;
+import com.ims.shared.exception.TenantContextException;
+import com.ims.shared.notification.AlertRepository;
 import com.ims.tenant.domain.pharmacy.PharmacyProductRepository;
 import com.ims.tenant.repository.OrderRepository;
+
+import jakarta.transaction.Transactional;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -20,8 +26,9 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -33,9 +40,9 @@ public class ReportService {
   private final OrderRepository orderRepository;
   private final PharmacyProductRepository pharmacyProductRepository;
   private final TenantRepository tenantRepository;
-  private final com.ims.shared.notification.AlertRepository alertRepository;
-  private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
-  private final com.ims.shared.auth.SecurityContextAccessor securityContextAccessor;
+  private final AlertRepository alertRepository;
+  private final JdbcTemplate jdbcTemplate;
+  private final SecurityContextAccessor securityContextAccessor;
 
   private static final int DEFAULT_DAYS = 30;
   private static final int PERCENTAGE_BASE = 100;
@@ -54,7 +61,7 @@ public class ReportService {
       LocalDate from, LocalDate to) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      throw new com.ims.shared.exception.TenantContextException("Tenant not resolved from request");
+      throw new TenantContextException("Tenant not resolved from request");
     }
 
     LocalDateTime fromDt = Objects.requireNonNull(from, "from date required").atStartOfDay();
@@ -83,7 +90,7 @@ public class ReportService {
   public Map<String, Object> getDashboard() {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      throw new com.ims.shared.exception.TenantContextException("Tenant not resolved from request");
+      throw new TenantContextException("Tenant not resolved from request");
     }
 
     Map<String, Object> dashboard = new LinkedHashMap<>();
@@ -108,15 +115,15 @@ public class ReportService {
 
       // COMBINED OPTIMIZED QUERY: Fetch all stats in one trip
       String sql = """
-          SELECT
-              (SELECT COUNT(*) FROM products WHERE tenant_id = ? AND is_active = true) as total_products,
-              (SELECT COUNT(*) FROM products WHERE tenant_id = ? AND is_active = true AND stock <= reorder_level) as low_stock_count,
-              (SELECT COUNT(*) FROM products WHERE tenant_id = ? AND is_active = true AND stock = 0) as out_of_stock_count,
-              (SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE tenant_id = ? AND type = 'SALE' AND created_at >= ?) as today_sales_amount,
-              (SELECT COUNT(*) FROM orders WHERE tenant_id = ? AND type = 'SALE' AND created_at >= ?) as today_sales_count,
-              (SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE tenant_id = ? AND type = 'PURCHASE' AND created_at >= ?) as today_purchases_amount,
-              (SELECT COALESCE(SUM(sale_price * stock), 0) FROM products WHERE tenant_id = ? AND is_active = true) as inventory_valuation
-      """;
+              SELECT
+                  (SELECT COUNT(*) FROM products WHERE tenant_id = ? AND is_active = true) as total_products,
+                  (SELECT COUNT(*) FROM products WHERE tenant_id = ? AND is_active = true AND stock <= reorder_level) as low_stock_count,
+                  (SELECT COUNT(*) FROM products WHERE tenant_id = ? AND is_active = true AND stock = 0) as out_of_stock_count,
+                  (SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE tenant_id = ? AND type = 'SALE' AND created_at >= ?) as today_sales_amount,
+                  (SELECT COUNT(*) FROM orders WHERE tenant_id = ? AND type = 'SALE' AND created_at >= ?) as today_sales_count,
+                  (SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE tenant_id = ? AND type = 'PURCHASE' AND created_at >= ?) as today_purchases_amount,
+                  (SELECT COALESCE(SUM(sale_price * stock), 0) FROM products WHERE tenant_id = ? AND is_active = true) as inventory_valuation
+          """;
 
       Map<String, Object> fallbackStats = jdbcTemplate.queryForMap(sql,
           tenantId, tenantId, tenantId, tenantId, todayStart, tenantId, todayStart, tenantId, todayStart, tenantId);
@@ -155,7 +162,7 @@ public class ReportService {
   }
 
   @Cacheable(value = "reports", key = "'stock-report'", cacheResolver = "tenantAwareCacheResolver")
-  public List<Map<String, Object>> getStockReport(@Nullable String filter) {
+  public List<Map<String, Object>> getStockReport(String filter) {
 
     // Use optimized projection to avoid N+1 and memory bloat
     var products = productRepository.findStockReportView();
@@ -217,7 +224,7 @@ public class ReportService {
       LocalDate from, LocalDate to) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      throw new com.ims.shared.exception.TenantContextException("Tenant not resolved from request");
+      throw new TenantContextException("Tenant not resolved from request");
     }
 
     LocalDateTime fromDt = Objects.requireNonNull(from, "from date required").atStartOfDay();
@@ -246,7 +253,7 @@ public class ReportService {
       LocalDate from, LocalDate to) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      throw new com.ims.shared.exception.TenantContextException("Tenant not resolved from request");
+      throw new TenantContextException("Tenant not resolved from request");
     }
 
     LocalDateTime fromDt = Objects.requireNonNull(from, "from date required").atStartOfDay();
@@ -278,7 +285,7 @@ public class ReportService {
   public Map<String, Object> getGstReport(LocalDate from, LocalDate to) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
-      throw new com.ims.shared.exception.TenantContextException("Tenant not resolved from request");
+      throw new TenantContextException("Tenant not resolved from request");
     }
 
     LocalDateTime fromDt = Objects.requireNonNull(from, "from date required").atStartOfDay();
@@ -318,7 +325,7 @@ public class ReportService {
             .collect(Collectors.toList()));
   }
 
-  @org.springframework.transaction.annotation.Transactional
+  @Transactional
   public void dismissAlert(Long id) {
     alertRepository
         .findById(id)
@@ -330,7 +337,7 @@ public class ReportService {
             });
   }
 
-  private int statusPriority(@Nullable String status) {
+  private int statusPriority(String status) {
     if (status == null) {
       return STATUS_PRIORITY_OK;
     }

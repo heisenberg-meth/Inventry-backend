@@ -4,13 +4,15 @@ import com.ims.model.TransferOrder;
 import com.ims.model.TransferOrderStatus;
 import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.repository.TransferOrderRepository;
+
+import jakarta.persistence.EntityNotFoundException;
+
 import com.ims.tenant.dto.TransferOrderRequest;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,8 +24,8 @@ public class TransferOrderService {
   private final TransferOrderRepository transferOrderRepository;
 
   @Transactional
-  public @NonNull TransferOrder createTransfer(
-      @NonNull TransferOrderRequest request, @NonNull Long userId) {
+  public TransferOrder createTransfer(
+      TransferOrderRequest request, Long userId) {
     Long tenantId = TenantContext.requireTenantId();
     long productId = Objects.requireNonNull(request.getProductId());
     String fromLocation = Objects.requireNonNull(request.getFromLocation());
@@ -32,17 +34,16 @@ public class TransferOrderService {
     String notes = Objects.requireNonNull(request.getNotes() != null ? request.getNotes() : "");
 
     // Create transfer order
-    TransferOrder transfer =
-        TransferOrder.builder()
-            .tenantId(tenantId)
-            .productId(productId)
-            .quantity(quantity)
-            .fromLocation(fromLocation)
-            .toLocation(toLocation)
-            .status(TransferOrderStatus.PENDING)
-            .notes(notes)
-            .createdBy(userId)
-            .build();
+    TransferOrder transfer = TransferOrder.builder()
+        .tenantId(tenantId)
+        .productId(productId)
+        .quantity(quantity)
+        .fromLocation(fromLocation)
+        .toLocation(toLocation)
+        .status(TransferOrderStatus.PENDING)
+        .notes(notes)
+        .createdBy(userId)
+        .build();
     TransferOrder saved = transferOrderRepository.save(Objects.requireNonNull(transfer));
     transfer = Objects.requireNonNull(saved);
 
@@ -57,18 +58,17 @@ public class TransferOrderService {
   }
 
   @Transactional(readOnly = true)
-  public @NonNull Page<TransferOrder> getTransfers(@NonNull Pageable pageable) {
+  public Page<TransferOrder> getTransfers(Pageable pageable) {
     return Objects.requireNonNull(transferOrderRepository.findAll(pageable));
   }
 
   @Transactional
-  public @NonNull TransferOrder updateStatus(
-      @NonNull Long id, @NonNull TransferOrderStatus status, @NonNull Long userId) {
-    TransferOrder transfer =
-        transferOrderRepository
-            .findById(id)
-            .orElseThrow(
-                () -> new jakarta.persistence.EntityNotFoundException("Transfer order not found"));
+  public TransferOrder updateStatus(
+      Long id, TransferOrderStatus status, Long userId) {
+    TransferOrder transfer = transferOrderRepository
+        .findById(id)
+        .orElseThrow(
+            () -> new EntityNotFoundException("Transfer order not found"));
 
     TransferOrderStatus oldStatus = transfer.getStatus();
     if (oldStatus == status) {

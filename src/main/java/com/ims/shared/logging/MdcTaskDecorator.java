@@ -3,24 +3,23 @@ package com.ims.shared.logging;
 import java.util.Map;
 import org.slf4j.MDC;
 import org.springframework.core.task.TaskDecorator;
-import org.springframework.lang.NonNull;
+import com.ims.shared.auth.TenantContext;
 
 public class MdcTaskDecorator implements TaskDecorator {
 
   @Override
-  @NonNull
-  public Runnable decorate(@NonNull Runnable runnable) {
+  public Runnable decorate( Runnable runnable) {
     Map<String, String> contextMap = MDC.getCopyOfContextMap();
-    Long tenantId = com.ims.shared.auth.TenantContext.getTenantId();
+    Long tenantId = TenantContext.getTenantId();
     return () -> {
       try {
         if (contextMap != null) {
           MDC.setContextMap(contextMap);
         }
-        com.ims.shared.auth.TenantContext.setTenantId(tenantId);
+        TenantContext.setTenantId(tenantId);
         runnable.run();
       } finally {
-        com.ims.shared.auth.TenantContext.clear();
+        TenantContext.clear();
         MDC.clear();
       }
     };

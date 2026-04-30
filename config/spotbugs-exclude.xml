@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!-- Exclude generated JPA Metamodel classes -->
+    <Match>
+        <Class name="~.*_$" />
+    </Match>
+
+    <!-- Exclude common "May expose internal representation" bugs which are often noisy in DTOs/Entities -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP" />
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2" />
+    </Match>
+
+    <!-- Exclude unused fields in generated classes or classes that use external frameworks extensively -->
+    <Match>
+        <Bug pattern="UUF_UNUSED_PUBLIC_OR_PROTECTED_FIELD" />
+    </Match>
+
+    <!-- Exclude unread fields in generated classes -->
+    <Match>
+        <Bug pattern="URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD" />
+    </Match>
+
+    <!-- Exclude static fields that are not final in Metamodels -->
+    <Match>
+        <Bug pattern="MS_CANNOT_BE_FINAL" />
+        <Class name="~.*_$" />
+    </Match>
+    <Match>
+        <Bug pattern="MS_EXPOSE_REP" />
+        <Class name="~.*_$" />
+    </Match>
+
+    <!-- Exclude serialization warnings for Spring components/DTOs -->
+    <Match>
+        <Bug pattern="SE_BAD_FIELD" />
+    </Match>
+
+    <!-- Exclude noisy null pointer warnings often handled by validation -->
+    <Match>
+        <Bug pattern="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE" />
+    </Match>
+</FindBugsFilter>

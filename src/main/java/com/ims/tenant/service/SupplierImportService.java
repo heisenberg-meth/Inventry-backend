@@ -10,6 +10,8 @@ import java.util.Objects;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -94,7 +96,7 @@ public class SupplierImportService {
       if (!suppliers.isEmpty()) {
         try {
           supplierRepository.saveAll(suppliers);
-        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+        } catch (DataIntegrityViolationException e) {
           throw new IllegalStateException("Import failed due to DB constraint", e);
         }
       }

@@ -2,6 +2,7 @@ package com.ims.tenant.controller;
 
 import com.ims.model.TransferOrder;
 import com.ims.model.TransferOrderStatus;
+import com.ims.shared.auth.CurrentUser;
 import com.ims.shared.rbac.RequiresRole;
 import com.ims.tenant.domain.warehouse.TransferOrderService;
 import com.ims.tenant.dto.TransferOrderRequest;
@@ -9,6 +10,7 @@ import com.ims.tenant.dto.TransferOrderStatusRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -42,8 +44,8 @@ public class TransferOrderController {
   @RequiresRole({"ADMIN", "MANAGER"})
   @Operation(summary = "Create warehouse transfer")
   public ResponseEntity<TransferOrder> create(
-      @jakarta.validation.Valid @RequestBody TransferOrderRequest request,
-      @com.ims.shared.auth.CurrentUser Long userId) {
+      @Valid @RequestBody TransferOrderRequest request,
+      @CurrentUser Long userId) {
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(transferOrderService.createTransfer(request, userId));
   }
@@ -53,8 +55,8 @@ public class TransferOrderController {
   @Operation(summary = "Update transfer status (SHIPPED/RECEIVED/CANCELLED)")
   public ResponseEntity<TransferOrder> updateStatus(
       @PathVariable Long id,
-      @jakarta.validation.Valid @RequestBody TransferOrderStatusRequest body,
-      @com.ims.shared.auth.CurrentUser Long userId) {
+      @Valid @RequestBody TransferOrderStatusRequest body,
+      @CurrentUser Long userId) {
     TransferOrderStatus status = body.getStatus();
     
     return ResponseEntity.ok(transferOrderService.updateStatus(id, status, userId));
