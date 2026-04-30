@@ -25,7 +25,8 @@ public class PermissionService {
   private final RoleRepository roleRepository;
 
   /**
-   * Fetch all permissions for a user, including those from their role and custom permissions.
+   * Fetch all permissions for a user, including those from their role and custom
+   * permissions.
    * Cached for 5 minutes (configured in RedisConfig). Cache key is tenant-aware.
    */
   @Cacheable(value = "permissions", key = "#userId", cacheResolver = "tenantAwareCacheResolver")
@@ -38,25 +39,22 @@ public class PermissionService {
     // 1. Get permissions from Role
     String roleName = userRepository.findRoleNameByUserId(userId).orElse(null);
     if (roleName != null) {
-      Optional<Role> roleOpt =
-          tenantId != null
-              ? roleRepository.findByNameWithPermissions(roleName)
-              : roleRepository.findByNameAndTenantIdIsNullWithPermissions(roleName);
+      Optional<Role> roleOpt = tenantId != null
+          ? roleRepository.findByNameWithPermissions(roleName)
+          : roleRepository.findByNameAndTenantIdIsNullWithPermissions(roleName);
 
       roleOpt.ifPresent(
-          role ->
-              permissions.addAll(
-                  role.getPermissions().stream()
-                      .map(Permission::getKey)
-                      .collect(Collectors.toSet())));
+          role -> permissions.addAll(
+              role.getPermissions().stream()
+                  .map(Permission::getKey)
+                  .collect(Collectors.toSet())));
     }
 
     // 2. Get custom permissions
-    User user =
-        userRepository
-            .findByIdGlobal(userId)
-            .orElseThrow(() -> new AccessDeniedException("User not found"));
-            
+    User user = userRepository
+        .findByIdGlobal(userId)
+        .orElseThrow(() -> new AccessDeniedException("User not found"));
+
     permissions.addAll(
         user.getCustomPermissions().stream().map(Permission::getKey).collect(Collectors.toSet()));
 

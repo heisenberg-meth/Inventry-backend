@@ -57,7 +57,8 @@ public class User {
 
     public UserBuilder role(Role role) {
       if (this.roleSet) {
-        throw new IllegalStateException("Role already set to: " + (this.roleValue != null ? this.roleValue.getName() : "null"));
+        throw new IllegalStateException(
+            "Role already set to: " + (this.roleValue != null ? this.roleValue.getName() : "null"));
       }
       this.roleValue = role;
       this.roleSet = true;
@@ -70,14 +71,14 @@ public class User {
 
     public User build() {
       Role finalRole = roleSet ? roleValue : null;
-      return new User(id, version, tenantId, name, email, phone, passwordHash, finalRole, 
-          scope != null ? scope : "TENANT", 
-          isPlatformUser != null ? isPlatformUser : false, 
-          customPermissions != null ? customPermissions : new HashSet<>(), 
-          isActive != null ? isActive : true, 
-          isVerified != null ? isVerified : false, 
-          resetToken, resetTokenExpiry, verificationToken, verificationTokenExpiry, lastLogin, 
-          twoFactorEnabled, twoFactorSecret, backupCodes, 
+      return new User(id, version, tenantId, name, email, phone, passwordHash, finalRole,
+          scope != null ? scope : "TENANT",
+          isPlatformUser != null ? isPlatformUser : false,
+          customPermissions != null ? customPermissions : new HashSet<>(),
+          isActive != null ? isActive : true,
+          isVerified != null ? isVerified : false,
+          resetToken, resetTokenExpiry, verificationToken, verificationTokenExpiry, lastLogin,
+          twoFactorEnabled, twoFactorSecret, backupCodes,
           createdAt != null ? createdAt : LocalDateTime.now());
     }
   }
@@ -99,7 +100,8 @@ public class User {
   @Column(nullable = false, unique = true)
   private String email;
 
-  @Column private String phone;
+  @Column
+  private String phone;
 
   @Column(name = "password_hash", nullable = false)
   private String passwordHash;
@@ -111,7 +113,6 @@ public class User {
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "role_id")
   private Role role;
-
 
   @Column(nullable = false)
   @Builder.Default
@@ -126,10 +127,7 @@ public class User {
    * Fetch type is LAZY to prevent N+1 queries during list fetching.
    */
   @ManyToMany(fetch = FetchType.LAZY)
-  @JoinTable(
-      name = "user_permissions",
-      joinColumns = @JoinColumn(name = "user_id"),
-      inverseJoinColumns = @JoinColumn(name = "permission_id"))
+  @JoinTable(name = "user_permissions", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "permission_id"))
   @Builder.Default
   private Set<Permission> customPermissions = new HashSet<>();
 

@@ -22,21 +22,21 @@ public class PlatformAnalyticsController {
   private final PlatformAnalyticsService analyticsService;
 
   @GetMapping("/revenue")
-  @RequiresRole({"ROOT"})
+  @RequiresRole({ "ROOT" })
   @Operation(summary = "Get revenue analytics (MRR/ARR)")
   public ResponseEntity<Map<String, Object>> getRevenue() {
     return ResponseEntity.ok(analyticsService.getRevenueAnalytics());
   }
 
   @GetMapping("/tenants")
-  @RequiresRole({"ROOT"})
+  @RequiresRole({ "ROOT" })
   @Operation(summary = "Get tenant growth analytics")
   public ResponseEntity<Map<String, Object>> getTenants() {
     return ResponseEntity.ok(analyticsService.getTenantAnalytics());
   }
 
   @GetMapping("/usage")
-  @RequiresRole({"ROOT"})
+  @RequiresRole({ "ROOT" })
   @Operation(summary = "Get system usage analytics")
   public ResponseEntity<Map<String, Object>> getUsage() {
     return ResponseEntity.ok(analyticsService.getUsageAnalytics());

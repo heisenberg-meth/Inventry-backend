@@ -27,15 +27,14 @@ public class PlatformHealthController {
 
   private static final int DB_CONNECTION_VALIDATE_TIMEOUT_SECONDS = 2;
   private static final long BYTES_PER_KILOBYTE = 1024L;
-  private static final long BYTES_PER_GIGABYTE =
-      BYTES_PER_KILOBYTE * BYTES_PER_KILOBYTE * BYTES_PER_KILOBYTE;
+  private static final long BYTES_PER_GIGABYTE = BYTES_PER_KILOBYTE * BYTES_PER_KILOBYTE * BYTES_PER_KILOBYTE;
   private static final double PERCENT_MULTIPLIER = 100.0;
 
   private final DataSource dataSource;
   private final RedisTemplate<String, Object> redisTemplate;
 
   @GetMapping("/extended")
-  @RequiresRole({"ROOT"})
+  @RequiresRole({ "ROOT" })
   @Operation(summary = "Deep health check", description = "Checks DB, Redis, and Disk space")
   public ResponseEntity<Map<String, Object>> getExtendedHealth() {
     Map<String, Object> health = new LinkedHashMap<>();

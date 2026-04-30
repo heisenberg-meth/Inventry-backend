@@ -25,7 +25,7 @@ public class PlatformStatsController {
   private final UserRepository userRepository;
 
   @GetMapping("/stats")
-  @RequiresRole({"ROOT"})
+  @RequiresRole({ "ROOT" })
   @Operation(summary = "Platform-wide metrics")
   public ResponseEntity<Map<String, Object>> getStats() {
     Map<String, Object> stats = new LinkedHashMap<>();

@@ -48,9 +48,7 @@ public class ProductController {
 
   @GetMapping("/next")
   @RequiresPermission("view_products")
-  @Operation(
-      summary = "List products (Cursor pagination)",
-      description = "High performance, no offset")
+  @Operation(summary = "List products (Cursor pagination)", description = "High performance, no offset")
   public ResponseEntity<List<ProductResponse>> getNextProducts(
       @RequestParam Long lastId, @RequestParam(defaultValue = "20") int limit) {
     Long safeLastId = Objects.requireNonNull(lastId);
@@ -152,9 +150,8 @@ public class ProductController {
   public ResponseEntity<byte[]> getBarcode(@PathVariable long id) {
     ProductResponse p = productService.getProductById(id);
     String barcodeData = p.getBarcode() != null ? p.getBarcode() : p.getSku();
-    byte[] image =
-        Objects.requireNonNull(
-            barcodeService.generateBarcodeImage(Objects.requireNonNull(barcodeData)));
+    byte[] image = Objects.requireNonNull(
+        barcodeService.generateBarcodeImage(Objects.requireNonNull(barcodeData)));
     return ResponseEntity.ok()
         .header(HttpHeaders.CONTENT_TYPE, "image/png")
         .body(image);

@@ -21,7 +21,7 @@ public class SystemHealthIndicator implements HealthIndicator {
         long totalSpace = root.getTotalSpace();
 
         Health.Builder builder = (freeSpace > MIN_DISK_SPACE_BYTES) ? Health.up() : Health.down();
-        
+
         return builder
                 .withDetail("disk_free", freeSpace)
                 .withDetail("disk_total", totalSpace)

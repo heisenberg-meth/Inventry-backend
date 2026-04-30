@@ -8,13 +8,13 @@ import javax.crypto.spec.SecretKeySpec;
 
 public class CryptoUtils {
 
-  private CryptoUtils() {}
+  private CryptoUtils() {
+  }
 
   public static String hmacSha256(String data, String secret) {
     try {
       Mac mac = Mac.getInstance("HmacSHA256");
-      SecretKeySpec keySpec =
-          new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+      SecretKeySpec keySpec = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
       mac.init(keySpec);
       byte[] rawHmac = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
       return bytesToHex(rawHmac);
@@ -28,7 +28,8 @@ public class CryptoUtils {
   }
 
   public static boolean constantTimeEquals(String a, String b) {
-    if (a == null || b == null) return false;
+    if (a == null || b == null)
+      return false;
     return MessageDigest.isEqual(
         a.getBytes(StandardCharsets.UTF_8), b.getBytes(StandardCharsets.UTF_8));
   }

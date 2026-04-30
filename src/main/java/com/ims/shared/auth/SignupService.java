@@ -61,34 +61,32 @@ public class SignupService {
     String companyCode = generateUniqueCompanyCode(businessName);
 
     // 1. Create tenant as PENDING in its own transaction
-    Tenant newTenant =
-        Tenant.builder()
-            .name(businessName)
-            .businessType(request.getBusinessType())
-            .workspaceSlug(workspaceSlug)
-            .companyCode(companyCode)
-            .status(TenantStatus.PENDING)
-            .plan("FREE")
-            .address(request.getAddress())
-            .gstin(request.getGstin())
-            .build();
- 
+    Tenant newTenant = Tenant.builder()
+        .name(businessName)
+        .businessType(request.getBusinessType())
+        .workspaceSlug(workspaceSlug)
+        .companyCode(companyCode)
+        .status(TenantStatus.PENDING)
+        .plan("FREE")
+        .address(request.getAddress())
+        .gstin(request.getGstin())
+        .build();
+
     Tenant tenant = tenantPersistenceService.saveTenant(newTenant);
     Long tenantId = tenant.getId();
     String tenantName = tenant.getName();
 
     try {
       // 2. Create user object (Role is assigned inside initializeTenant)
-      User user =
-          User.builder()
-              .name(request.getOwnerName())
-              .email(Objects.requireNonNull(normalizedEmail))
-              .phone(request.getOwnerPhone())
-              .passwordHash(Objects.requireNonNull(passwordEncoder.encode(request.getPassword())))
-              .scope("TENANT")
-              .isActive(true)
-              .tenantId(tenantId)
-              .build();
+      User user = User.builder()
+          .name(request.getOwnerName())
+          .email(Objects.requireNonNull(normalizedEmail))
+          .phone(request.getOwnerPhone())
+          .passwordHash(Objects.requireNonNull(passwordEncoder.encode(request.getPassword())))
+          .scope("TENANT")
+          .isActive(true)
+          .tenantId(tenantId)
+          .build();
 
       Long previousTenant = TenantContext.getTenantId();
       try {
@@ -107,7 +105,7 @@ public class SignupService {
       tenantPersistenceService.saveTenant(tenant);
 
       log.info("Signup: Completed onboarding for tenant id={} name={}", tenantId, tenantName);
-      
+
       return new SignupResponse(
           "Signup successful",
           tenant.getCompanyCode(),

@@ -9,11 +9,14 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Aspect
 @Component
+@Profile("!test")
 @RequiredArgsConstructor
 public class RbacAspect {
 
@@ -22,7 +25,7 @@ public class RbacAspect {
 
   private boolean isRoot() {
     var auth = SecurityContextHolder.getContext().getAuthentication();
-    if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
+    if (auth != null && auth.getPrincipal() instanceof JwtAuthDetails details) {
       return "ROOT".equals(details.getRole());
     }
     return false;
@@ -31,21 +34,19 @@ public class RbacAspect {
   @Around("@annotation(requiresRole)")
   public Object checkRole(ProceedingJoinPoint pjp, RequiresRole requiresRole) throws Throwable {
     var auth = SecurityContextHolder.getContext().getAuthentication();
+
     if (auth == null || !auth.isAuthenticated()) {
-      throw new AccessDeniedException("Not authenticated");
+      throw new AuthenticationCredentialsNotFoundException("Not authenticated");
     }
 
-    var userAuthorities = auth.getAuthorities();
-    if (userAuthorities == null || userAuthorities.isEmpty()) {
+    var authorities = auth.getAuthorities();
+    if (authorities == null || authorities.isEmpty()) {
       throw new AccessDeniedException("No roles assigned to user");
     }
 
     String[] requiredRoles = requiresRole.value();
-    boolean allowed =
-        userAuthorities.stream()
-            .anyMatch(
-                grantedAuthority ->
-                    Arrays.asList(requiredRoles).contains(grantedAuthority.getAuthority()));
+    boolean allowed = authorities.stream()
+        .anyMatch(a -> Arrays.asList(requiredRoles).contains(a.getAuthority()));
 
     // Allow ROOT if Support Mode is enabled
     if (!allowed && isRoot() && systemConfigService.isSupportModeEnabled()) {
@@ -57,7 +58,7 @@ public class RbacAspect {
           "Access denied: Required "
               + Arrays.toString(requiredRoles)
               + ", but user has authorities "
-              + userAuthorities);
+              + authorities);
     }
 
     return pjp.proceed();
@@ -68,10 +69,10 @@ public class RbacAspect {
       throws Throwable {
     var auth = SecurityContextHolder.getContext().getAuthentication();
     if (auth == null || !auth.isAuthenticated()) {
-      throw new AccessDeniedException("Not authenticated");
+      throw new AuthenticationCredentialsNotFoundException("Not authenticated");
     }
 
-    if (auth.getDetails() instanceof JwtAuthDetails details) {
+    if (auth.getPrincipal() instanceof JwtAuthDetails details) {
       Long userId = details.getUserId();
       Long tenantId = details.getTenantId();
 

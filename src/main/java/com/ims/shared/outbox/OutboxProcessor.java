@@ -24,7 +24,7 @@ public class OutboxProcessor {
   @Scheduled(fixedDelayString = "${app.outbox.poll-interval-ms:5000}")
   public void processOutbox() {
     var pendingEvents = outboxRepository.findPendingEvents(PageRequest.of(0, 20));
-    
+
     if (pendingEvents.isEmpty()) {
       return;
     }

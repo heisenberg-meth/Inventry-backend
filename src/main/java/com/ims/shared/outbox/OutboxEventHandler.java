@@ -6,7 +6,7 @@ public interface OutboxEventHandler {
    * Implementation should be idempotent.
    */
   void handle(OutboxEvent event);
-  
+
   /**
    * The type of event this handler can process (e.g. "ORDER_CREATED").
    */

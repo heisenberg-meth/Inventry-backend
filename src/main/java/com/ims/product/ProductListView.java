@@ -4,7 +4,10 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/** Optimized projection for product listing to reduce DB load and serialization cost. */
+/**
+ * Optimized projection for product listing to reduce DB load and serialization
+ * cost.
+ */
 public interface ProductListView {
   Long getId();
 

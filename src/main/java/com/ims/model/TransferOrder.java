@@ -48,7 +48,8 @@ public class TransferOrder {
   @Builder.Default
   private TransferOrderStatus status = TransferOrderStatus.PENDING;
 
-  @Column private String notes;
+  @Column
+  private String notes;
 
   @Column(name = "created_by")
   private Long createdBy;
