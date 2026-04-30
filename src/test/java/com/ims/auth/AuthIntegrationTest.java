@@ -12,10 +12,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 
-@AutoConfigureMockMvc(addFilters = false)
-@ActiveProfiles("test-no-security")
+@ActiveProfiles("test")
 public class AuthIntegrationTest extends BaseIntegrationTest {
 
   @Autowired
@@ -64,7 +62,7 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
   @Test
   void testUnauthorizedAccess() throws Exception {
     mockMvc.perform(get("/api/v1/tenant/users").with(tenant("1")))
-      .andExpect(status().isUnauthorized());
+        .andExpect(status().isUnauthorized());
   }
 
   private SignupRequest createSignupRequest(String name, String workspaceSlug, String email) {

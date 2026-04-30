@@ -23,10 +23,6 @@ public class TenantContext {
   public static Long requireTenantId() {
     Long tenantId = getTenantId();
     if (tenantId == null) {
-      // Check if we are running in a test environment
-      if ("true".equals(System.getProperty("app.test.mode"))) {
-        return 1L; // Default test tenant ID
-      }
       throw new IllegalStateException("Missing tenant context");
     }
     return tenantId;
