@@ -18,7 +18,6 @@ import org.springframework.cache.concurrent.ConcurrentMapCache;
 import org.springframework.cache.Cache;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cache.interceptor.CacheOperationInvocationContext;
 import org.springframework.http.MediaType;
@@ -29,8 +28,8 @@ import org.springframework.test.web.servlet.MvcResult;
                 "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
                 "spring.cache.type=none"
 })
-@AutoConfigureMockMvc(addFilters = false)
-@ActiveProfiles("test-no-security")
+
+@ActiveProfiles("test")
 public class ProductCacheIntegrationTest extends BaseIntegrationTest {
 
         private Cache spyCache;

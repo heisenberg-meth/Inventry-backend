@@ -1,40 +1,41 @@
 package com.ims;
 
-import static org.mockito.ArgumentMatchers.*;
 import org.mockito.Mockito;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.doReturn;
 import com.ims.model.User;
 import com.ims.model.Role;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ims.category.CategoryRepository;
-import com.ims.product.ProductRepository;
-import com.ims.shared.audit.AuditLogRepository;
 import com.ims.shared.auth.AuthService;
-import com.ims.shared.auth.TenantContext;
-import com.ims.tenant.repository.StockMovementRepository;
-import com.ims.tenant.repository.SupportAttachmentRepository;
-import com.ims.tenant.repository.SupportMessageRepository;
-import com.ims.tenant.repository.TransferOrderRepository;
-import com.ims.tenant.repository.OrderItemRepository;
-import com.ims.tenant.repository.CustomerRepository;
-import com.ims.tenant.repository.InvoiceRepository;
-import com.ims.tenant.repository.OrderRepository;
-import com.ims.tenant.repository.SupplierRepository;
-import com.ims.tenant.repository.PaymentRepository;
-import com.ims.tenant.repository.RoleRepository;
-import com.ims.tenant.repository.SupportTicketRepository;
-import com.ims.tenant.repository.UserRepository;
-import com.ims.platform.repository.TenantRepository;
-import com.ims.platform.repository.SubscriptionRepository;
-import com.ims.platform.repository.SubscriptionPlanRepository;
-import com.ims.platform.repository.SystemConfigRepository;
-import jakarta.persistence.EntityManager;
-import com.ims.dto.response.LoginResponse;
 import com.ims.dto.request.LoginRequest;
+import com.ims.shared.auth.TenantContext;
+import com.ims.config.TestSecurityConfig;
+import com.ims.product.ProductRepository;
+import com.ims.dto.response.LoginResponse;
+import com.ims.category.CategoryRepository;
+import com.ims.shared.audit.AuditLogRepository;
+import com.ims.tenant.repository.UserRepository;
+import com.ims.tenant.repository.RoleRepository;
+import com.ims.tenant.repository.OrderRepository;
+import com.ims.tenant.repository.InvoiceRepository;
+import com.ims.tenant.repository.PaymentRepository;
+import com.ims.tenant.repository.SupplierRepository;
+import com.ims.tenant.repository.CustomerRepository;
+import com.ims.platform.repository.TenantRepository;
+import com.ims.tenant.repository.OrderItemRepository;
+import com.ims.tenant.repository.TransferOrderRepository;
+import com.ims.tenant.repository.SupportTicketRepository;
+import com.ims.tenant.repository.StockMovementRepository;
+import com.ims.platform.repository.SubscriptionRepository;
+import com.ims.tenant.repository.SupportMessageRepository;
+import com.ims.platform.repository.SystemConfigRepository;
+import com.ims.tenant.repository.SupportAttachmentRepository;
+import com.ims.platform.repository.SubscriptionPlanRepository;
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.util.UUID;
 import java.util.Objects;
 import java.util.Collections;
-import java.util.UUID;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -71,8 +72,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.context.annotation.Import;
-import com.ims.config.TestSecurityConfig;
-import com.ims.config.TestSecurityBeansConfig;
 
 @SpringBootTest(properties = {
     "spring.autoconfigure.exclude="
@@ -91,15 +90,14 @@ import com.ims.config.TestSecurityBeansConfig;
     "spring.jpa.properties.hibernate.cache.region.factory_class=org.hibernate.cache.internal.NoCachingRegionFactory"
 })
 @ActiveProfiles("test")
-@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureMockMvc
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-@Import({ TestSecurityConfig.class, TestSecurityBeansConfig.class })
+@Import(TestSecurityConfig.class)
 public abstract class BaseIntegrationTest {
   static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
 
   static {
     postgres.start();
-    System.setProperty("app.test.mode", "true");
     System.setProperty("DOCKER_API_VERSION", "1.40");
   }
 
@@ -238,13 +236,11 @@ public abstract class BaseIntegrationTest {
         new SimpleGrantedAuthority("ROLE_ROOT"),
         new SimpleGrantedAuthority("ROLE_ADMIN"),
         new SimpleGrantedAuthority("ROLE_MANAGER"),
-        new SimpleGrantedAuthority("ROLE_STAFF")
-    );
+        new SimpleGrantedAuthority("ROLE_STAFF"));
 
-    com.ims.shared.auth.JwtAuthDetails details =
-        new com.ims.shared.auth.JwtAuthDetails(
-            1L, systemTenantId, "ROOT", "PLATFORM", "SYSTEM", false,
-            java.util.Collections.emptySet(), false, null);
+    com.ims.shared.auth.JwtAuthDetails details = new com.ims.shared.auth.JwtAuthDetails(
+        1L, systemTenantId, "ROOT", "PLATFORM", "SYSTEM", false,
+        java.util.Collections.emptySet(), false, null);
 
     UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
         1L, details, authorities);
@@ -426,10 +422,28 @@ public abstract class BaseIntegrationTest {
       Object tenantId) {
     return request -> {
       request.addHeader("X-Tenant-ID", Objects.requireNonNull(String.valueOf(tenantId)));
-      // Also set TenantContext directly for Hibernate multi-tenancy
+      // Set TenantContext directly for Hibernate multi-tenancy
       Long tid = Long.parseLong(String.valueOf(tenantId));
       TenantContext.setTenantId(tid);
+
+      // Also set SecurityContext with JwtAuthDetails for code that expects tenant
+      // from security context
+      com.ims.shared.auth.JwtAuthDetails details = new com.ims.shared.auth.JwtAuthDetails(
+          1L, tid, "ROOT", "PLATFORM", "SYSTEM", false,
+          java.util.Collections.emptySet(), false, null);
+
+      UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+          1L, details, java.util.List.of(new SimpleGrantedAuthority("ROLE_ROOT")));
+      auth.setDetails(details); // IMPORTANT: Set details separately!
+
+      // Properly set SecurityContext
+      org.springframework.security.core.context.SecurityContext context = SecurityContextHolder.createEmptyContext();
+      context.setAuthentication(auth);
+      SecurityContextHolder.setContext(context);
+
       return request;
+      //
     };
+
   }
 }

@@ -54,3 +54,6 @@ skills-lock.json
 .m2/
 CLAUDE.md
 test_output.txt
+.m2/
+.m2/*
+.m2/repository/org/springframework/boot/spring-boot-starter-parent/3.5.14/spring-boot-starter-parent-3.5.14.pom.lastUpdated

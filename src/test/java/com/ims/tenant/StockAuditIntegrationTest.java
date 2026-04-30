@@ -25,7 +25,7 @@ import org.springframework.test.context.ActiveProfiles;
     "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
     "spring.cache.type=none"
 })
-@ActiveProfiles("test-no-security")
+@ActiveProfiles("test")
 public class StockAuditIntegrationTest extends BaseIntegrationTest {
 
   @Autowired

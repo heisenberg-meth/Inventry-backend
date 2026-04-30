@@ -32,7 +32,7 @@ import org.springframework.test.context.ActiveProfiles;
     "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
     "spring.cache.type=none"
 })
-@ActiveProfiles("test-no-security")
+@ActiveProfiles("test")
 public class InvoiceConcurrencyTest extends BaseIntegrationTest {
 
   @Autowired

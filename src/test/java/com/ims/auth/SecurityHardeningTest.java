@@ -33,7 +33,7 @@ import org.springframework.test.context.ActiveProfiles;
  * - MFA challenge-response login flow
  */
 @AutoConfigureMockMvc // Overrides BaseIntegrationTest to enable filters
-@ActiveProfiles({ "test", "test-no-security" })
+@ActiveProfiles("test")
 public class SecurityHardeningTest extends BaseIntegrationTest {
 
   @Autowired
