@@ -42,18 +42,17 @@ public class SupportService {
       Long userId, CreateTicketRequest request) {
     Long tenantId = com.ims.shared.auth.TenantContext.requireTenantId();
 
-    SupportTicket initialTicket =
-        SupportTicket.builder()
-            .createdBy(userId)
-            .title(request.getTitle())
-            .description(request.getDescription())
-            .priority(request.getPriority() != null ? request.getPriority() : "MEDIUM")
-            .category(request.getCategory() != null ? request.getCategory() : "GENERAL")
-            .status(SupportTicketStatus.OPEN)
-            .build();
+    SupportTicket initialTicket = SupportTicket.builder()
+        .createdBy(userId)
+        .title(request.getTitle())
+        .description(request.getDescription())
+        .priority(request.getPriority() != null ? request.getPriority() : "MEDIUM")
+        .category(request.getCategory() != null ? request.getCategory() : "GENERAL")
+        .status(SupportTicketStatus.OPEN)
+        .build();
 
     var savedTicket = ticketRepository.save(initialTicket);
-  
+
     auditLogService.log(
         AuditAction.CREATE_TICKET, tenantId, userId, "Created ticket: " + savedTicket.getTitle());
     log.info("Support ticket created: id={}", savedTicket.getId());
@@ -69,10 +68,9 @@ public class SupportService {
   @Transactional(readOnly = true)
   public Map<String, Object> getTenantTicketDetails(Long ticketId) {
     TenantContext.assertTenantPresent();
-    SupportTicket ticket =
-        ticketRepository
-            .findById(ticketId)
-            .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
+    SupportTicket ticket = ticketRepository
+        .findById(ticketId)
+        .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
 
     List<SupportMessage> messages = messageRepository.findByTicketIdOrderByCreatedAtAsc(ticketId);
 
@@ -85,10 +83,9 @@ public class SupportService {
   @Transactional
   public SupportTicket closeTicketByTenant(Long ticketId) {
     TenantContext.assertTenantPresent();
-    SupportTicket ticket =
-        ticketRepository
-            .findById(ticketId)
-            .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
+    SupportTicket ticket = ticketRepository
+        .findById(ticketId)
+        .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
 
     ticket.setStatus(SupportTicketStatus.CLOSED);
     ticket.setUpdatedAt(Objects.requireNonNull(LocalDateTime.now()));
@@ -114,10 +111,9 @@ public class SupportService {
 
   @Transactional(readOnly = true)
   public Map<String, Object> getPlatformTicketDetails(Long ticketId) {
-    SupportTicket ticket =
-        ticketRepository
-            .findById(ticketId)
-            .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
+    SupportTicket ticket = ticketRepository
+        .findById(ticketId)
+        .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
 
     List<SupportMessage> messages = messageRepository.findByTicketIdOrderByCreatedAtAsc(ticketId);
 
@@ -129,10 +125,9 @@ public class SupportService {
 
   @Transactional
   public SupportTicket assignTicket(Long ticketId, AssignTicketRequest request) {
-    SupportTicket ticket =
-        ticketRepository
-            .findById(ticketId)
-            .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
+    SupportTicket ticket = ticketRepository
+        .findById(ticketId)
+        .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
 
     ticket.setAssignedTo(request.getSupportAdminId());
     if (SupportTicketStatus.OPEN.equals(ticket.getStatus())) {
@@ -153,10 +148,9 @@ public class SupportService {
   @Transactional
   public SupportTicket updateStatus(
       Long ticketId, UpdateTicketStatusRequest request) {
-    SupportTicket ticket =
-        ticketRepository
-            .findById(ticketId)
-            .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
+    SupportTicket ticket = ticketRepository
+        .findById(ticketId)
+        .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
 
     ticket.setStatus(request.getStatus());
     ticket.setUpdatedAt(Objects.requireNonNull(LocalDateTime.now()));
@@ -173,10 +167,9 @@ public class SupportService {
 
   @Transactional
   public SupportTicket closeTicketByPlatform(Long ticketId) {
-    SupportTicket ticket =
-        ticketRepository
-            .findById(ticketId)
-            .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
+    SupportTicket ticket = ticketRepository
+        .findById(ticketId)
+        .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
 
     ticket.setStatus(SupportTicketStatus.CLOSED);
     ticket.setUpdatedAt(Objects.requireNonNull(LocalDateTime.now()));
@@ -199,18 +192,16 @@ public class SupportService {
       String senderType,
       AddMessageRequest request) {
 
-    SupportTicket ticket =
-        ticketRepository
-            .findById(ticketId)
-            .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
+    SupportTicket ticket = ticketRepository
+        .findById(ticketId)
+        .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
 
-    SupportMessage message =
-        SupportMessage.builder()
-            .ticketId(ticketId)
-            .senderId(senderId)
-            .senderType(senderType)
-            .message(request.getMessage())
-            .build();
+    SupportMessage message = SupportMessage.builder()
+        .ticketId(ticketId)
+        .senderId(senderId)
+        .senderType(senderType)
+        .message(request.getMessage())
+        .build();
 
     SupportMessage saved = messageRepository.save(message);
 

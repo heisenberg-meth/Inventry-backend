@@ -91,7 +91,7 @@ public class User {
   private Long version;
 
   @TenantId
-  @Column(name = "tenant_id")
+  @Column(name = "tenant_id", nullable = false, updatable = false)
   private Long tenantId;
 
   @Column(nullable = false)

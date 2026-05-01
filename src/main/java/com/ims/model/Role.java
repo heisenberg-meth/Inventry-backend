@@ -43,7 +43,7 @@ public class Role {
   private String description;
 
   @TenantId
-  @Column(name = "tenant_id", nullable = true)
+  @Column(name = "tenant_id", nullable = false, updatable = false)
   private Long tenantId;
 
   @ManyToMany(fetch = FetchType.LAZY)

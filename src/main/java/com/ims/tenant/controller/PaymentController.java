@@ -31,29 +31,28 @@ public class PaymentController {
   private final PaymentService paymentService;
 
   @PostMapping
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @RequiresRole({ "ADMIN", "MANAGER", "STAFF" })
   @Operation(summary = "Record payment against invoice")
   public ResponseEntity<Payment> recordPayment(@Valid @RequestBody PaymentRequest request) {
-    Payment payment =
-        paymentService.recordPayment(
-            Objects.requireNonNull(request.getInvoiceId()),
-            Objects.requireNonNull(request.getAmount()),
-            Objects.requireNonNull(request.getPaymentMode()),
-            Objects.requireNonNull(request.getReference()),
-            Objects.requireNonNull(request.getNotes()),
-            Objects.requireNonNull(request.getUserId()));
+    Payment payment = paymentService.recordPayment(
+        Objects.requireNonNull(request.getInvoiceId()),
+        Objects.requireNonNull(request.getAmount()),
+        Objects.requireNonNull(request.getPaymentMode()),
+        Objects.requireNonNull(request.getReference()),
+        Objects.requireNonNull(request.getNotes()),
+        Objects.requireNonNull(request.getUserId()));
     return ResponseEntity.status(HttpStatus.CREATED).body(payment);
   }
 
   @GetMapping
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresRole({ "ADMIN", "MANAGER" })
   @Operation(summary = "List mappings")
   public ResponseEntity<Page<Payment>> list(Pageable pageable) {
     return ResponseEntity.ok(paymentService.getPayments(pageable));
   }
 
   @GetMapping("/{id}")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresRole({ "ADMIN", "MANAGER" })
   @Operation(summary = "Get payment details")
   public ResponseEntity<Payment> get(@PathVariable Long id) {
     return ResponseEntity.ok(paymentService.getById(id));

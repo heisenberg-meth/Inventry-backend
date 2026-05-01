@@ -61,6 +61,35 @@ public class MaintenanceService {
         log.info("Log archival completed.");
     }
 
+    /**
+     * Cleans up orphaned tenants that are missing required data.
+     * A valid tenant MUST have: at least one user, at least one role,
+     * and at least one subscription (PRD §10.1).
+     * Runs every 5 minutes (PRD §10.2).
+     */
+    @Scheduled(cron = "0 */5 * * * *")
+    @SchedulerLock(name = "cleanup_orphaned_tenants", lockAtMostFor = "30m", lockAtLeastFor = "1m")
+    @Transactional
+    public void cleanupOrphanedTenants() {
+        log.info("Starting orphaned tenant cleanup...");
+
+        String sql = "DELETE FROM tenants t " +
+                "WHERE (" +
+                "  NOT EXISTS (SELECT 1 FROM users u WHERE u.tenant_id = t.id) " +
+                "  OR NOT EXISTS (SELECT 1 FROM subscriptions s WHERE s.tenant_id = t.id) " +
+                "  OR NOT EXISTS (SELECT 1 FROM roles r WHERE r.tenant_id = t.id) " +
+                ") " +
+                "AND t.created_at < NOW() - INTERVAL '10 minutes'";
+
+        int deletedCount = jdbcTemplate.update(sql);
+
+        if (deletedCount > 0) {
+            log.warn("Cleaned up {} orphaned/incomplete tenants.", deletedCount);
+        }
+
+        log.info("Orphaned tenant cleanup completed.");
+    }
+
     @Transactional
     public void purgeTenant(Long tenantId) {
         log.warn("PERMANENTLY PURGING ALL DATA FOR TENANT: {}", tenantId);

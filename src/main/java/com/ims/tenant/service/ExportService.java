@@ -38,37 +38,38 @@ public class ExportService {
     @Transactional(readOnly = true)
     public void exportProductsCsv(HttpServletResponse response) throws IOException {
         Long tenantId = TenantContext.requireTenantId();
-        
+
         response.setContentType("text/csv");
         response.setHeader("Content-Disposition", "attachment; filename=products_" + tenantId + ".csv");
-        
+
         // Fetch all categories for this tenant to provide names in the CSV
         Map<Long, String> categoryMap = categoryRepository.findAll(Pageable.unpaged())
-            .getContent().stream()
-            .collect(Collectors.toMap(Category::getId, Category::getName));
-        
+                .getContent().stream()
+                .collect(Collectors.toMap(Category::getId, Category::getName));
+
         try (PrintWriter writer = response.getWriter()) {
             // Write Header
             writer.println("ID,Name,SKU,Barcode,Stock,Unit,Sale Price,Purchase Price,Category");
-            
+
             int pageNum = 0;
             int pageSize = 500;
             Page<Product> page;
-            
+
             do {
                 page = productRepository.findAllByActiveTrue(PageRequest.of(pageNum, pageSize));
                 for (var product : page.getContent()) {
                     writer.printf("%d,\"%s\",\"%s\",\"%s\",%d,\"%s\",%.2f,%.2f,\"%s\"%n",
-                        product.getId(),
-                        escapeCsv(product.getName()),
-                        escapeCsv(product.getSku()),
-                        escapeCsv(product.getBarcode()),
-                        product.getStock(),
-                        escapeCsv(product.getUnit()),
-                        product.getSalePrice(),
-                        product.getPurchasePrice(),
-                        product.getCategoryId() != null ? escapeCsv(categoryMap.getOrDefault(product.getCategoryId(), "Unknown")) : ""
-                    );
+                            product.getId(),
+                            escapeCsv(product.getName()),
+                            escapeCsv(product.getSku()),
+                            escapeCsv(product.getBarcode()),
+                            product.getStock(),
+                            escapeCsv(product.getUnit()),
+                            product.getSalePrice(),
+                            product.getPurchasePrice(),
+                            product.getCategoryId() != null
+                                    ? escapeCsv(categoryMap.getOrDefault(product.getCategoryId(), "Unknown"))
+                                    : "");
                 }
                 writer.flush(); // Send to browser immediately
                 pageNum++;
@@ -80,18 +81,20 @@ public class ExportService {
      * Streams orders for a tenant as a CSV file based on type and date range.
      */
     @Transactional(readOnly = true)
-    public void exportOrdersCsv(HttpServletResponse response, String type, LocalDateTime from, LocalDateTime to) throws IOException {
-        
+    public void exportOrdersCsv(HttpServletResponse response, String type, LocalDateTime from, LocalDateTime to)
+            throws IOException {
+
         response.setContentType("text/csv");
-        response.setHeader("Content-Disposition", "attachment; filename=orders_" + (type != null ? type : "all") + ".csv");
-        
+        response.setHeader("Content-Disposition",
+                "attachment; filename=orders_" + (type != null ? type : "all") + ".csv");
+
         try (PrintWriter writer = response.getWriter()) {
             writer.println("Order ID,Type,Status,Customer/Supplier,Total Amount,Tax Amount,Created At");
-            
+
             int pageNum = 0;
             int pageSize = 500;
             Page<com.ims.model.Order> page;
-            
+
             do {
                 if (type != null) {
                     page = orderRepository.findByTypeAndDateRange(type, from, to, PageRequest.of(pageNum, pageSize));
@@ -100,18 +103,17 @@ public class ExportService {
                 }
 
                 for (var order : page.getContent()) {
-                    String party = order.getCustomerId() != null ? "Customer:" + order.getCustomerId() : 
-                                  (order.getSupplierId() != null ? "Supplier:" + order.getSupplierId() : "N/A");
-                    
+                    String party = order.getCustomerId() != null ? "Customer:" + order.getCustomerId()
+                            : (order.getSupplierId() != null ? "Supplier:" + order.getSupplierId() : "N/A");
+
                     writer.printf("%d,\"%s\",\"%s\",\"%s\",%.2f,%.2f,\"%s\"%n",
-                        order.getId(),
-                        order.getType(),
-                        order.getStatus(),
-                        party,
-                        order.getTotalAmount(),
-                        order.getTaxAmount(),
-                        order.getCreatedAt()
-                    );
+                            order.getId(),
+                            order.getType(),
+                            order.getStatus(),
+                            party,
+                            order.getTotalAmount(),
+                            order.getTaxAmount(),
+                            order.getCreatedAt());
                 }
                 writer.flush();
                 pageNum++;
@@ -120,7 +122,8 @@ public class ExportService {
     }
 
     private String escapeCsv(String value) {
-        if (value == null) return "";
+        if (value == null)
+            return "";
         return value.replace("\"", "\"\"");
     }
 }

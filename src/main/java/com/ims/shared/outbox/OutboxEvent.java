@@ -28,7 +28,7 @@ public class OutboxEvent {
   private Long id;
 
   @TenantId
-  @Column(name = "tenant_id")
+  @Column(name = "tenant_id", nullable = false, updatable = false)
   private Long tenantId;
 
   @Column(nullable = false)

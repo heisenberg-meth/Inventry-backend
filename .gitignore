@@ -59,3 +59,8 @@ test_output.txt
 .m2/repository/org/springframework/boot/spring-boot-starter-parent/3.5.14/spring-boot-starter-parent-3.5.14.pom.lastUpdated
 1.js
 IMS-PRD-v3-Full.docx
+.~lock.PRD_Tenant_Onboarding_Hardening.docx#
+harden_tenant_id.py
+.gitignore
+harden_tenant_id2.py
+harden.py

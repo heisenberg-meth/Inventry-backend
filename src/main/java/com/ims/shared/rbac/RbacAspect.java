@@ -43,11 +43,9 @@ public class RbacAspect {
     }
 
     String[] requiredRoles = requiresRole.value();
-    boolean allowed =
-        authorities.stream()
-            .anyMatch(
-                grantedAuthority ->
-                    Arrays.asList(requiredRoles).contains(grantedAuthority.getAuthority()));
+    boolean allowed = authorities.stream()
+        .anyMatch(
+            grantedAuthority -> Arrays.asList(requiredRoles).contains(grantedAuthority.getAuthority()));
 
     // Allow ROOT if Support Mode is enabled
     if (!allowed && isRoot() && systemConfigService.isSupportModeEnabled()) {

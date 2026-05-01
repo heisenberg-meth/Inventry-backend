@@ -36,8 +36,7 @@ public class PlatformInviteController {
   @SecurityRequirement(name = "bearerAuth")
   @Operation(summary = "Create platform admin invite")
   public ResponseEntity<PlatformInvite> create(
-      @Valid @RequestBody
-          CreateInviteRequest request) {
+      @Valid @RequestBody CreateInviteRequest request) {
     Objects.requireNonNull(request, "request required");
     String email = Objects.requireNonNull(request.email());
     String roleName = Objects.requireNonNull(request.role().name());
@@ -70,8 +69,7 @@ public class PlatformInviteController {
   @PostMapping("/complete")
   @Operation(summary = "Complete invite and set password")
   public ResponseEntity<Map<String, String>> complete(
-      @Valid @RequestBody
-          CompleteInviteRequest request) {
+      @Valid @RequestBody CompleteInviteRequest request) {
     Objects.requireNonNull(request, "request required");
     String token = Objects.requireNonNull(request.token());
     String password = Objects.requireNonNull(request.password());

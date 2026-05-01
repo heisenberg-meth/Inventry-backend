@@ -38,7 +38,7 @@ public class TenantSupportController {
   private final SupportService supportService;
 
   @PostMapping
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @RequiresRole({ "ADMIN", "MANAGER", "STAFF" })
   @Operation(summary = "Create support ticket")
   public ResponseEntity<SupportTicket> createTicket(
       @Valid @RequestBody CreateTicketRequest request) {
@@ -51,7 +51,7 @@ public class TenantSupportController {
   }
 
   @GetMapping
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @RequiresRole({ "ADMIN", "MANAGER", "STAFF" })
   @Operation(summary = "List my tenant tickets")
   public ResponseEntity<Page<SupportTicket>> listTickets(Pageable pageable) {
     return ResponseEntity.ok(
@@ -59,7 +59,7 @@ public class TenantSupportController {
   }
 
   @GetMapping("/{id}")
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @RequiresRole({ "ADMIN", "MANAGER", "STAFF" })
   @Operation(summary = "Get ticket details")
   public ResponseEntity<Map<String, Object>> getTicketDetails(@PathVariable Long id) {
     return ResponseEntity.ok(
@@ -67,7 +67,7 @@ public class TenantSupportController {
   }
 
   @PostMapping("/{id}/messages")
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @RequiresRole({ "ADMIN", "MANAGER", "STAFF" })
   @Operation(summary = "Add message to ticket")
   public ResponseEntity<SupportMessage> addMessage(
       @PathVariable Long id, @Valid @RequestBody AddMessageRequest request) {
@@ -79,7 +79,7 @@ public class TenantSupportController {
   }
 
   @PatchMapping("/{id}/close")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresRole({ "ADMIN", "MANAGER" })
   @Operation(summary = "Close ticket")
   public ResponseEntity<SupportTicket> closeTicket(@PathVariable Long id) {
     return ResponseEntity.ok(

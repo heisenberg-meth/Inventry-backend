@@ -17,8 +17,7 @@ public interface RoleRepository extends JpaRepository<Role, Long> {
 
   Optional<Role> findByNameAndTenantId(String name, Long tenantId);
 
-  @Query(
-      "SELECT r FROM Role r LEFT JOIN FETCH r.permissions WHERE r.name = :name")
+  @Query("SELECT r FROM Role r LEFT JOIN FETCH r.permissions WHERE r.name = :name")
   Optional<Role> findByNameWithPermissions(@Param("name") String name);
 
   @Query(value = "SELECT * FROM roles WHERE name = :name AND tenant_id IS NULL", nativeQuery = true)

@@ -48,7 +48,7 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
         .email("u1@t1.com")
         .name("U1")
         .passwordHash("p")
-        .role(Objects.requireNonNull(getOrCreateRole(Objects.requireNonNull(UserRole.ADMIN.name()), testTenant1Id)))
+        .role(Objects.requireNonNull(getOrCreateRole(Objects.requireNonNull(UserRole.TENANT_ADMIN.name()), testTenant1Id)))
         .scope("TENANT")
         .isVerified(true)
         .build();
@@ -74,7 +74,7 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
         .email("u2@t2.com")
         .name("U2")
         .passwordHash("p")
-        .role(Objects.requireNonNull(getOrCreateRole(Objects.requireNonNull(UserRole.ADMIN.name()), testTenant2Id)))
+        .role(Objects.requireNonNull(getOrCreateRole(Objects.requireNonNull(UserRole.TENANT_ADMIN.name()), testTenant2Id)))
         .scope("TENANT")
         .isVerified(true)
         .build();

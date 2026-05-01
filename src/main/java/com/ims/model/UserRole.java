@@ -1,9 +1,12 @@
 package com.ims.model;
 
 public enum UserRole {
-  ADMIN,
-  MANAGER,
-  STAFF,
+  TENANT_ADMIN,
+  BUSINESS_MANAGER,
+  SALES_STAFF,
+  INVENTORY_MANAGER,
+  FINANCE_MANAGER,
+  VIEWER,
   PLATFORM_ADMIN,
   SUPPORT_ADMIN,
   ROOT
