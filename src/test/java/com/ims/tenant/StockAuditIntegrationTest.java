@@ -29,10 +29,11 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
   private Long user1Id;
   private Long user2Id;
 
+  @Override
   @BeforeEach
-  void setup() {
+  protected void setUp() throws Exception {
+    super.setUp();
     cleanupDatabase();
-    mockRedisAndCache();
 
     // Tenant 1
     TenantContext.setTenantId(testTenant1Id);
@@ -41,7 +42,8 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
         .email("u1@t1.com")
         .name("U1")
         .passwordHash("p")
-        .role(Objects.requireNonNull(getOrCreateRole(Objects.requireNonNull(UserRole.TENANT_ADMIN.name()), testTenant1Id)))
+        .role(Objects
+            .requireNonNull(getOrCreateRole(Objects.requireNonNull(UserRole.TENANT_ADMIN.name()), testTenant1Id)))
         .scope("TENANT")
         .isVerified(true)
         .build();
@@ -67,7 +69,8 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
         .email("u2@t2.com")
         .name("U2")
         .passwordHash("p")
-        .role(Objects.requireNonNull(getOrCreateRole(Objects.requireNonNull(UserRole.TENANT_ADMIN.name()), testTenant2Id)))
+        .role(Objects
+            .requireNonNull(getOrCreateRole(Objects.requireNonNull(UserRole.TENANT_ADMIN.name()), testTenant2Id)))
         .scope("TENANT")
         .isVerified(true)
         .build();

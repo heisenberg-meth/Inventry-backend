@@ -21,10 +21,11 @@ public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
   @Autowired
   private ObjectMapper objectMapper;
 
+  @Override
   @BeforeEach
-  void setup() {
+  protected void setUp() throws Exception {
+    super.setUp();
     cleanupDatabase();
-    mockRedisAndCache();
   }
 
   @Test

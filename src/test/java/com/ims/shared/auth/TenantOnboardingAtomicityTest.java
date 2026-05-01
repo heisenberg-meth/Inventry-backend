@@ -42,7 +42,7 @@ public class TenantOnboardingAtomicityTest extends BaseIntegrationTest {
 
   @Override
   @BeforeEach
-  protected void setUp() {
+  protected void setUp() throws Exception {
     super.setUp();
     TenantContext.clear();
   }
