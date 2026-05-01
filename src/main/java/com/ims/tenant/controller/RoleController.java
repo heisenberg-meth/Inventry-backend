@@ -30,28 +30,28 @@ public class RoleController {
   private final RoleService roleService;
 
   @GetMapping
-  @RequiresRole({ "ADMIN" })
+  @RequiresRole({ "TENANT_ADMIN" })
   @Operation(summary = "List tenant roles")
   public ResponseEntity<List<Role>> listRoles() {
     return ResponseEntity.ok(roleService.findAll());
   }
 
   @GetMapping("/{id}")
-  @RequiresRole({ "ADMIN" })
+  @RequiresRole({ "TENANT_ADMIN" })
   @Operation(summary = "Get role details with permissions")
   public ResponseEntity<Role> getRole(@PathVariable long id) {
     return ResponseEntity.ok(roleService.findOne(id));
   }
 
   @PostMapping
-  @RequiresRole({ "ADMIN" })
+  @RequiresRole({ "TENANT_ADMIN" })
   @Operation(summary = "Create a new role")
   public ResponseEntity<Role> createRole(@Valid @RequestBody CreateRoleRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED).body(roleService.create(request));
   }
 
   @PostMapping("/{id}/permissions")
-  @RequiresRole({ "ADMIN" })
+  @RequiresRole({ "TENANT_ADMIN" })
   @Operation(summary = "Assign permissions to role")
   public ResponseEntity<Role> assignPermissions(
       @PathVariable long id, @Valid @RequestBody AssignPermissionsRequest request) {

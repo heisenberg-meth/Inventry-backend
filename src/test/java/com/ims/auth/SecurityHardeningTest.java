@@ -21,10 +21,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 
 /**
  * Integration tests covering the security hardening from Chunk 2 & 5:
@@ -32,8 +30,6 @@ import org.springframework.test.context.ActiveProfiles;
  * - 2FA (TOTP) setup and backup codes
  * - MFA challenge-response login flow
  */
-@AutoConfigureMockMvc // Overrides BaseIntegrationTest to enable filters
-@ActiveProfiles("test")
 public class SecurityHardeningTest extends BaseIntegrationTest {
 
   @Autowired

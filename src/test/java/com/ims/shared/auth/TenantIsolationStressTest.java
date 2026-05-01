@@ -38,7 +38,7 @@ class TenantIsolationStressTest extends BaseIntegrationTest {
     // Setup Tenant 1 - Set context first
     TenantContext.setTenantId(testTenant1Id);
     String pass = passwordEncoder.encode("password");
-    Role adminRole1 = getOrCreateRole("ADMIN", testTenant1Id);
+    Role adminRole1 = getOrCreateRole("TENANT_ADMIN", testTenant1Id);
     userRepository.save(User.builder()
         .name("Admin 1")
         .email("admin1@t1.com")
@@ -53,7 +53,7 @@ class TenantIsolationStressTest extends BaseIntegrationTest {
 
     // Set context for Tenant 2
     TenantContext.setTenantId(testTenant2Id);
-    Role adminRole2 = getOrCreateRole("ADMIN", testTenant2Id);
+    Role adminRole2 = getOrCreateRole("TENANT_ADMIN", testTenant2Id);
     userRepository.save(User.builder()
         .name("Admin 2")
         .email("admin2@t2.com")

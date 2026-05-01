@@ -25,7 +25,7 @@ public class TenantAuditController {
   private final AuditLogService auditLogService;
 
   @GetMapping
-  @RequiresRole({ "ADMIN" })
+  @RequiresRole({ "TENANT_ADMIN" })
   @Operation(summary = "Get activity logs for current tenant")
   public ResponseEntity<Page<AuditLogResponse>> getTenantLogs(Pageable pageable) {
     return ResponseEntity.ok(auditLogService.getTenantLogsAsDto(Objects.requireNonNull(pageable)));

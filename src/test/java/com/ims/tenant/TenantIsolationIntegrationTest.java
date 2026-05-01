@@ -7,9 +7,6 @@ import com.ims.category.Category;
 import com.ims.shared.auth.TenantContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.context.ActiveProfiles;
-
-@ActiveProfiles("test")
 public class TenantIsolationIntegrationTest extends BaseIntegrationTest {
 
   @BeforeEach

@@ -1,7 +1,5 @@
 package com.ims.shared.security;
 
-import com.ims.model.Tenant;
-import com.ims.platform.repository.TenantRepository;
 import com.ims.shared.auth.TenantContext;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -12,7 +10,6 @@ import java.util.Arrays;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.web.util.matcher.IpAddressMatcher;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -22,7 +19,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @RequiredArgsConstructor
 public class IpWhitelistFilter extends OncePerRequestFilter {
 
-    private final TenantRepository tenantRepository;
+    private final TenantSecurityService tenantSecurityService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -34,7 +31,7 @@ public class IpWhitelistFilter extends OncePerRequestFilter {
             return;
         }
 
-        String whitelist = getCachedIpWhitelist(tenantId);
+        String whitelist = tenantSecurityService.getCachedIpWhitelist(tenantId);
         if (whitelist == null || whitelist.isBlank()) {
             filterChain.doFilter(request, response);
             return;
@@ -74,11 +71,6 @@ public class IpWhitelistFilter extends OncePerRequestFilter {
             return xff.split(",")[0].trim();
         }
         return request.getRemoteAddr();
-    }
-
-    @Cacheable(value = "tenant", key = "'ip-whitelist:' + #tenantId")
-    public String getCachedIpWhitelist(Long tenantId) {
-        return tenantRepository.findById(tenantId).map(Tenant::getIpWhitelist).orElse(null);
     }
 
     @Override

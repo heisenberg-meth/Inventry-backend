@@ -1,9 +1,8 @@
 package com.ims.model;
 
 public enum SubscriptionStatus {
+  TRIAL,
   ACTIVE,
-  INACTIVE,
   EXPIRED,
-  DEACTIVATED,
-  TRIAL
+  SUSPENDED
 }

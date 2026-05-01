@@ -8,14 +8,12 @@ import lombok.RequiredArgsConstructor;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
-import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 @Aspect
 @Component
-@Profile("!test")
 @RequiredArgsConstructor
 public class RbacAspect {
 
@@ -44,8 +42,15 @@ public class RbacAspect {
 
     String[] requiredRoles = requiresRole.value();
     boolean allowed = authorities.stream()
-        .anyMatch(
-            grantedAuthority -> Arrays.asList(requiredRoles).contains(grantedAuthority.getAuthority()));
+        .anyMatch(grantedAuthority -> {
+          String authority = grantedAuthority.getAuthority();
+          for (String requiredRole : requiredRoles) {
+            if (authority.equals(requiredRole) || authority.equals("ROLE_" + requiredRole)) {
+              return true;
+            }
+          }
+          return false;
+        });
 
     // Allow ROOT if Support Mode is enabled
     if (!allowed && isRoot() && systemConfigService.isSupportModeEnabled()) {

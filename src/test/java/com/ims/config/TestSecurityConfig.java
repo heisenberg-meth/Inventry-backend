@@ -75,99 +75,107 @@ public class TestSecurityConfig {
 
     @Bean
     public OncePerRequestFilter testAuthFilter(UserRepository userRepository) {
-        return new OncePerRequestFilter() {
-            @Override
-            protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-                    FilterChain chain) throws java.io.IOException, jakarta.servlet.ServletException {
+        return new TestAuthFilter(userRepository);
+    }
 
-                // If SecurityContext already has auth (e.g. from @WithMockUser or setUp()),
-                // skip
-                if (SecurityContextHolder.getContext().getAuthentication() != null
-                        && SecurityContextHolder.getContext().getAuthentication().isAuthenticated()) {
-                    ensureTenantContext(request);
-                    chain.doFilter(request, response);
-                    return;
-                }
+    private static class TestAuthFilter extends OncePerRequestFilter {
+        private final UserRepository userRepository;
 
-                Long tenantId = parseTenantId(request);
-                if (tenantId == null) {
-                    // No tenant header and no existing auth — let Spring Security reject as 401
-                    chain.doFilter(request, response);
-                    return;
-                }
+        public TestAuthFilter(UserRepository userRepository) {
+            this.userRepository = userRepository;
+        }
 
-                TenantContext.setTenantId(tenantId);
+        @Override
+        protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+                FilterChain chain) throws java.io.IOException, jakarta.servlet.ServletException {
 
-                try {
-                    User user = findUser(userRepository, tenantId);
-                    if (user != null) {
-                        setAuthentication(user, tenantId);
-                    } else {
-                        setRootAuthentication(tenantId);
-                    }
-                    chain.doFilter(request, response);
-                } finally {
-                    TenantContext.clear();
-                }
+            // If SecurityContext already has auth (e.g. from @WithMockUser or setUp()),
+            // skip
+            if (SecurityContextHolder.getContext().getAuthentication() != null
+                    && SecurityContextHolder.getContext().getAuthentication().isAuthenticated()) {
+                ensureTenantContext(request);
+                chain.doFilter(request, response);
+                return;
             }
 
-            private Long parseTenantId(HttpServletRequest request) {
-                String tenantHeader = request.getHeader("X-Tenant-ID");
-                if (tenantHeader != null && !tenantHeader.isBlank()) {
-                    return Long.parseLong(tenantHeader);
+            Long tenantId = parseTenantId(request);
+            if (tenantId == null) {
+                // No tenant header and no existing auth — let Spring Security reject as 401
+                chain.doFilter(request, response);
+                return;
+            }
+
+            TenantContext.setTenantId(tenantId);
+
+            try {
+                User user = findUser(userRepository, tenantId);
+                if (user != null) {
+                    setAuthentication(user, tenantId);
+                } else {
+                    setRootAuthentication(tenantId);
                 }
-                // Platform endpoints default to tenant 1
-                if (request.getRequestURI().contains("/platform/")) {
-                    return 1L;
+                chain.doFilter(request, response);
+            } finally {
+                TenantContext.clear();
+            }
+        }
+
+        private Long parseTenantId(HttpServletRequest request) {
+            String tenantHeader = request.getHeader("X-Tenant-ID");
+            if (tenantHeader != null && !tenantHeader.isBlank()) {
+                return Long.parseLong(tenantHeader);
+            }
+            // Platform endpoints default to tenant 1
+            if (request.getRequestURI().contains("/platform/")) {
+                return 1L;
+            }
+            return null;
+        }
+
+        private void ensureTenantContext(HttpServletRequest request) {
+            if (TenantContext.getTenantId() == null) {
+                Long tenantId = parseTenantId(request);
+                if (tenantId != null) {
+                    TenantContext.setTenantId(tenantId);
                 }
+            }
+        }
+
+        private User findUser(UserRepository userRepository, Long tenantId) {
+            try {
+                return userRepository.findAll().stream()
+                        .filter(u -> tenantId.equals(u.getTenantId()))
+                        .findFirst()
+                        .orElse(null);
+            } catch (Exception e) {
                 return null;
             }
+        }
 
-            private void ensureTenantContext(HttpServletRequest request) {
-                if (TenantContext.getTenantId() == null) {
-                    Long tenantId = parseTenantId(request);
-                    if (tenantId != null) {
-                        TenantContext.setTenantId(tenantId);
-                    }
-                }
-            }
+        private void setAuthentication(User user, Long tenantId) {
+            List<SimpleGrantedAuthority> authorities = user.getRole().getPermissions().stream()
+                    .map(p -> new SimpleGrantedAuthority("ROLE_" + p.getKey()))
+                    .collect(Collectors.toList());
+            authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().getName()));
 
-            private User findUser(UserRepository userRepository, Long tenantId) {
-                try {
-                    return userRepository.findAll().stream()
-                            .filter(u -> tenantId.equals(u.getTenantId()))
-                            .findFirst()
-                            .orElse(null);
-                } catch (Exception e) {
-                    return null;
-                }
-            }
+            JwtAuthDetails details = new JwtAuthDetails(
+                    user.getId(), tenantId, user.getRole().getName(), user.getScope(), "RETAIL", false,
+                    user.getRole().getPermissions().stream().map(p -> p.getKey()).collect(Collectors.toSet()),
+                    false, null);
 
-            private void setAuthentication(User user, Long tenantId) {
-                List<SimpleGrantedAuthority> authorities = user.getRole().getPermissions().stream()
-                        .map(p -> new SimpleGrantedAuthority("ROLE_" + p.getKey()))
-                        .collect(Collectors.toList());
-                authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().getName()));
+            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                    user.getId(), details, authorities);
+            SecurityContextHolder.getContext().setAuthentication(auth);
+        }
 
-                JwtAuthDetails details = new JwtAuthDetails(
-                        user.getId(), tenantId, user.getRole().getName(), user.getScope(), "RETAIL", false,
-                        user.getRole().getPermissions().stream().map(p -> p.getKey()).collect(Collectors.toSet()),
-                        false, null);
+        private void setRootAuthentication(Long tenantId) {
+            JwtAuthDetails details = new JwtAuthDetails(
+                    1L, tenantId, "ROOT", "PLATFORM", "SYSTEM", false,
+                    Collections.emptySet(), false, null);
 
-                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                        user.getId(), details, authorities);
-                SecurityContextHolder.getContext().setAuthentication(auth);
-            }
-
-            private void setRootAuthentication(Long tenantId) {
-                JwtAuthDetails details = new JwtAuthDetails(
-                        1L, tenantId, "ROOT", "PLATFORM", "SYSTEM", false,
-                        Collections.emptySet(), false, null);
-
-                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                        1L, details, List.of(new SimpleGrantedAuthority("ROLE_ROOT")));
-                SecurityContextHolder.getContext().setAuthentication(auth);
-            }
-        };
+            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                    1L, details, List.of(new SimpleGrantedAuthority("ROLE_ROOT")));
+            SecurityContextHolder.getContext().setAuthentication(auth);
+        }
     }
 }
