@@ -29,15 +29,14 @@ public class ExpiryAlertService {
         () -> {
           log.info("Scheduled Task: Checking pharmacy expiry alerts across all tenants");
           List<Long> tenantIds = tenantRepository.findAllIds();
-          int[] totalExpiring = {0};
+          int[] totalExpiring = { 0 };
 
           for (Long tenantId : tenantIds) {
             com.ims.shared.auth.TenantContext.runWithTenant(
                 Objects.requireNonNull(tenantId),
                 () -> {
                   LocalDate threshold = LocalDate.now().plusDays(EXPIRY_THRESHOLD_DAYS);
-                  List<PharmacyProduct> expiring =
-                      pharmacyProductRepository.findByExpiryDateBefore(threshold);
+                  List<PharmacyProduct> expiring = pharmacyProductRepository.findByExpiryDateBefore(threshold);
 
                   for (PharmacyProduct pp : expiring) {
                     log.warn(

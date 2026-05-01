@@ -28,15 +28,11 @@ public class SaleController {
   private final OrderService orderService;
 
   @PostMapping
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
-  @Operation(
-      summary = "Record a sale with billing",
-      description = "Creates a sales order and automatically generates an invoice")
+  @RequiresRole({ "ADMIN", "MANAGER", "STAFF" })
+  @Operation(summary = "Record a sale with billing", description = "Creates a sales order and automatically generates an invoice")
   public ResponseEntity<Order> createSale(@Valid @RequestBody OrderRequest request) {
-    Long userId =
-        (Long)
-            Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication())
-                .getPrincipal();
+    Long userId = (Long) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication())
+        .getPrincipal();
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(orderService.createSalesOrder(Objects.requireNonNull(request), Objects.requireNonNull(userId)));
   }

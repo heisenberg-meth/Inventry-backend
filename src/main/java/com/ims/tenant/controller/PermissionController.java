@@ -23,7 +23,7 @@ public class PermissionController {
   private final PermissionRepository permissionRepository;
 
   @GetMapping
-  @RequiresRole({"ADMIN"})
+  @RequiresRole({ "ADMIN" })
   @Operation(summary = "List all available permissions")
   public ResponseEntity<List<Permission>> listPermissions() {
     return ResponseEntity.ok(permissionRepository.findAllByOrderByKeyAsc());

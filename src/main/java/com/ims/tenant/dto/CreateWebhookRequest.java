@@ -14,10 +14,7 @@ import org.hibernate.validator.constraints.URL;
 public class CreateWebhookRequest {
 
   @NotBlank(message = "URL is required")
-  @URL(
-      protocol = "http",
-      regexp = "^(http|https)://.*$",
-      message = "Invalid URL format. Only http/https allowed")
+  @URL(protocol = "http", regexp = "^(http|https)://.*$", message = "Invalid URL format. Only http/https allowed")
   private String url;
 
   @NotBlank(message = "Event types are required")

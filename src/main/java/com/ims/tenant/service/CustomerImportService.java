@@ -61,20 +61,18 @@ public class CustomerImportService {
           String name = data[0].trim();
           String phone = data.length > 1 ? data[1].trim() : null;
           String email = data.length > 2 ? data[2].trim() : null;
-          String address =
-              data.length > MIN_COLUMNS_FOR_ADDRESS ? data[COL_ADDRESS_INDEX].trim() : null;
+          String address = data.length > MIN_COLUMNS_FOR_ADDRESS ? data[COL_ADDRESS_INDEX].trim() : null;
           String gstin = data.length > MIN_COLUMNS_FOR_GSTIN ? data[COL_GSTIN_INDEX].trim() : null;
 
-          Customer customer =
-              Objects.requireNonNull(
-                  Customer.builder()
-                      .tenantId(tenantId)
-                      .name(Objects.requireNonNull(name))
-                      .phone(phone)
-                      .email(email)
-                      .address(address)
-                      .gstin(gstin)
-                      .build());
+          Customer customer = Objects.requireNonNull(
+              Customer.builder()
+                  .tenantId(tenantId)
+                  .name(Objects.requireNonNull(name))
+                  .phone(phone)
+                  .email(email)
+                  .address(address)
+                  .gstin(gstin)
+                  .build());
 
           customers.add(customer);
           successCount++;

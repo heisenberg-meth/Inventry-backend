@@ -108,7 +108,8 @@ public class StockTransactionService {
 
         String lockKey = "product:stock:" + productId;
         boolean locked = lockService.withLock(lockKey, Duration.ofSeconds(10), Duration.ofSeconds(5), () -> {
-            int updated = productRepository.decrementStockIfAvailable(productId, qty, Objects.requireNonNull(LocalDateTime.now()));
+            int updated = productRepository.decrementStockIfAvailable(productId, qty,
+                    Objects.requireNonNull(LocalDateTime.now()));
             if (updated == 0) {
                 // Either product not found or insufficient stock
                 Product product = Objects.requireNonNull(productRepository
@@ -161,7 +162,8 @@ public class StockTransactionService {
 
         String lockKey = "product:stock:" + productId;
         boolean locked = lockService.withLock(lockKey, Duration.ofSeconds(10), Duration.ofSeconds(5), () -> {
-            int updated = productRepository.adjustStockIfValid(productId, qty, Objects.requireNonNull(LocalDateTime.now()));
+            int updated = productRepository.adjustStockIfValid(productId, qty,
+                    Objects.requireNonNull(LocalDateTime.now()));
             if (updated == 0) {
                 Product product = Objects.requireNonNull(productRepository
                         .findById(productId)

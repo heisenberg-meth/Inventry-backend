@@ -47,8 +47,44 @@ public class GlobalExceptionHandler {
         return buildResponse(ex.getMessage(), "BAD_REQUEST", HttpStatus.BAD_REQUEST, request, null);
     }
 
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiError> handleConflict(ConflictException ex, HttpServletRequest request) {
+        return buildResponse(ex.getMessage(), "CONFLICT", HttpStatus.CONFLICT, request, null);
+    }
+
+    @ExceptionHandler(ServiceUnavailableException.class)
+    public ResponseEntity<ApiError> handleServiceUnavailable(ServiceUnavailableException ex,
+            HttpServletRequest request) {
+        log.error("Service unavailable: {}", ex.getMessage(), ex);
+        return buildResponse(ex.getMessage(), "SERVICE_UNAVAILABLE", HttpStatus.SERVICE_UNAVAILABLE, request, null);
+    }
+
+    @ExceptionHandler(CodeGenerationException.class)
+    public ResponseEntity<ApiError> handleCodeGeneration(CodeGenerationException ex, HttpServletRequest request) {
+        log.error("Code generation failed: {}", ex.getMessage(), ex);
+        return buildResponse(ex.getMessage(), "CODE_GENERATION_FAILED", HttpStatus.INTERNAL_SERVER_ERROR, request,
+                null);
+    }
+
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ApiError> handleDataIntegrity(
+            org.springframework.dao.DataIntegrityViolationException ex, HttpServletRequest request) {
+        log.warn("Data integrity violation: {}", ex.getMessage());
+
+        String msg = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
+        if (msg.contains("email") || msg.contains("users_email_key") || msg.contains("uk_users_email")) {
+            Map<String, String> errors = new HashMap<>();
+            errors.put("field", "ownerEmail");
+            return buildResponse("This email is already registered",
+                    "EMAIL_TAKEN", HttpStatus.CONFLICT, request, errors);
+        }
+
+        return buildResponse("A resource with the given details already exists.",
+                "CONFLICT", HttpStatus.CONFLICT, request, null);
+    }
+
     @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<ApiError> handleConflict(IllegalStateException ex, HttpServletRequest request) {
+    public ResponseEntity<ApiError> handleStateConflict(IllegalStateException ex, HttpServletRequest request) {
         return buildResponse(ex.getMessage(), "STATE_CONFLICT", HttpStatus.CONFLICT, request, null);
     }
 

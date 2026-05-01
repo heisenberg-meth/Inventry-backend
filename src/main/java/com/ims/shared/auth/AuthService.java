@@ -199,7 +199,7 @@ public class AuthService {
         .orElseThrow(() -> new EntityNotFoundException("No admin user found for this tenant"));
 
     String scope = "TENANT"; // Always enforce TENANT scope
-    UserRole role = UserRole.ADMIN; // Always enforce ADMIN role inside tenant
+    UserRole role = UserRole.TENANT_ADMIN; // Always enforce ADMIN role inside tenant
     String businessType = tenant.getBusinessType();
 
     Set<String> permissions = permissionService.getUserPermissions(targetUser.getId(), safeTenantId);
@@ -622,7 +622,7 @@ public class AuthService {
 
     String scope = Objects.requireNonNull(impersonation ? "TENANT" : user.getScope());
     String roleName = userRepository.findRoleNameByUserId(user.getId()).orElse(null);
-    UserRole roleEnum = impersonation ? UserRole.ADMIN : (roleName != null ? UserRole.valueOf(roleName) : null);
+    UserRole roleEnum = impersonation ? UserRole.TENANT_ADMIN : (roleName != null ? UserRole.valueOf(roleName) : null);
 
     String businessType = null;
     Long rawTenantId = user.getTenantId();

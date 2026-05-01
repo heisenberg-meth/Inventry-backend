@@ -7,5 +7,6 @@ import com.ims.model.OrderStatus;
  */
 public interface OrderStatusStat {
   OrderStatus getStatus();
+
   Long getCount();
 }

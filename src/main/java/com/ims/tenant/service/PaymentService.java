@@ -33,26 +33,24 @@ public class PaymentService {
       String reference,
       String notes,
       Long userId) {
-    Invoice invoice =
-        invoiceRepository
-            .findById(invoiceId)
-            .orElseThrow(() -> new ResourceNotFoundException("Invoice not found: " + invoiceId));
+    Invoice invoice = invoiceRepository
+        .findById(invoiceId)
+        .orElseThrow(() -> new ResourceNotFoundException("Invoice not found: " + invoiceId));
 
     if (InvoiceStatus.PAID == invoice.getStatus()) {
       throw new IllegalArgumentException("Invoice is already fully PAID");
     }
 
-    Payment payment =
-        Payment.builder()
-            .tenantId(TenantContext.requireTenantId())
-            .invoiceId(invoiceId)
-            .amount(amount)
-            .paymentMode(mode)
-            .reference(reference)
-            .notes(notes)
-            .createdBy(userId)
-            .createdAt(Objects.requireNonNull(LocalDateTime.now()))
-            .build();
+    Payment payment = Payment.builder()
+        .tenantId(TenantContext.requireTenantId())
+        .invoiceId(invoiceId)
+        .amount(amount)
+        .paymentMode(mode)
+        .reference(reference)
+        .notes(notes)
+        .createdBy(userId)
+        .createdAt(Objects.requireNonNull(LocalDateTime.now()))
+        .build();
 
     payment = paymentRepository.save(Objects.requireNonNull(payment));
 

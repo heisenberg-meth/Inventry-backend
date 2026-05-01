@@ -46,7 +46,7 @@ public class SupplierController {
   private final SupplierRepository supplierRepository;
 
   @GetMapping
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresRole({ "ADMIN", "MANAGER" })
   @Operation(summary = "List suppliers")
   public ResponseEntity<Page<SupplierResponse>> list(
       Pageable pageable) {
@@ -54,7 +54,7 @@ public class SupplierController {
   }
 
   @PostMapping
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresRole({ "ADMIN", "MANAGER" })
   @Operation(summary = "Create supplier")
   public ResponseEntity<SupplierResponse> create(
       @Valid @RequestBody SupplierRequest request) {
@@ -63,14 +63,14 @@ public class SupplierController {
   }
 
   @GetMapping("/{id}")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresRole({ "ADMIN", "MANAGER" })
   @Operation(summary = "Get supplier")
   public ResponseEntity<SupplierResponse> get(@PathVariable long id) {
     return ResponseEntity.ok(Objects.requireNonNull(supplierService.getSupplierResponseById(id)));
   }
 
   @PutMapping("/{id}")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresRole({ "ADMIN", "MANAGER" })
   @Operation(summary = "Update supplier")
   public ResponseEntity<SupplierResponse> update(
       @PathVariable long id,
@@ -79,7 +79,7 @@ public class SupplierController {
   }
 
   @DeleteMapping("/{id}")
-  @RequiresRole({"ADMIN"})
+  @RequiresRole({ "ADMIN" })
   @Operation(summary = "Delete supplier")
   public ResponseEntity<Void> delete(@PathVariable long id) {
     supplierService.delete(id);
@@ -87,47 +87,41 @@ public class SupplierController {
   }
 
   @GetMapping("/{id}/ledger")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresRole({ "ADMIN", "MANAGER" })
   @Operation(summary = "Get full ledger for supplier")
   public ResponseEntity<Map<String, Object>> getSupplierLedger(@PathVariable long id) {
     return ResponseEntity.ok(supplierService.getSupplierLedger(id));
   }
 
   @PostMapping("/bulk-import")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresRole({ "ADMIN", "MANAGER" })
   @Operation(summary = "Bulk import suppliers via CSV")
   public ResponseEntity<Map<String, Object>> bulkImport(
-      @RequestParam("file")
-          MultipartFile file,
-      @RequestParam(
-              value = "dryRun",
-              defaultValue = "false")
-          boolean dryRun) {
+      @RequestParam("file") MultipartFile file,
+      @RequestParam(value = "dryRun", defaultValue = "false") boolean dryRun) {
     return ResponseEntity.ok(importService.importSuppliers(file, dryRun));
   }
 
   @GetMapping("/export")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresRole({ "ADMIN", "MANAGER" })
   @Operation(summary = "Export suppliers as CSV")
   public ResponseEntity<String> export() {
-    var data =
-        supplierRepository.findAll().stream()
-            .map(
-                s -> {
-                  Map<String, Object> map = new LinkedHashMap<>();
-                  map.put("ID", s.getId());
-                  map.put("Name", s.getName());
-                  map.put("Phone", s.getPhone());
-                  map.put("Email", s.getEmail());
-                  map.put("Address", s.getAddress());
-                  map.put("GSTIN", s.getGstin());
-                  return map;
-                })
-            .collect(Collectors.toList());
+    var data = supplierRepository.findAll().stream()
+        .map(
+            s -> {
+              Map<String, Object> map = new LinkedHashMap<>();
+              map.put("ID", s.getId());
+              map.put("Name", s.getName());
+              map.put("Phone", s.getPhone());
+              map.put("Email", s.getEmail());
+              map.put("Address", s.getAddress());
+              map.put("GSTIN", s.getGstin());
+              return map;
+            })
+        .collect(Collectors.toList());
 
-    String csv =
-        csvExportService.exportToCsv(
-            List.of("ID", "Name", "Phone", "Email", "Address", "GSTIN"), data);
+    String csv = csvExportService.exportToCsv(
+        List.of("ID", "Name", "Phone", "Email", "Address", "GSTIN"), data);
     return ResponseEntity.ok()
         .header(
             HttpHeaders.CONTENT_DISPOSITION,

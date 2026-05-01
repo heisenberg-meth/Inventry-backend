@@ -10,12 +10,12 @@ class UserBuilderTest {
 
   @Test
   void shouldThrowExceptionOnDuplicateRole() {
-    User.UserBuilder builder = User.builder().name("Test User").role(UserRole.ADMIN);
+    User.UserBuilder builder = User.builder().name("Test User").role(UserRole.TENANT_ADMIN);
 
     IllegalStateException exception = assertThrows(
         IllegalStateException.class,
         () -> {
-          builder.role(UserRole.MANAGER);
+          builder.role(UserRole.BUSINESS_MANAGER);
         });
 
     assertEquals("Role already set to: ADMIN", exception.getMessage());
@@ -23,7 +23,7 @@ class UserBuilderTest {
 
   @Test
   void shouldAllowSettingRoleOnce() {
-    User user = User.builder().name("Test User").role(UserRole.ADMIN).build();
+    User user = User.builder().name("Test User").role(UserRole.TENANT_ADMIN).build();
 
     assertNotNull(user.getRole());
     assertEquals("ADMIN", user.getRole().getName());

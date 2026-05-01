@@ -9,15 +9,19 @@ import java.time.LocalDateTime;
  */
 public interface UserSummaryView {
   Long getId();
+
   String getName();
+
   String getEmail();
-  
+
   /**
    * Fetched via JOIN in the repository query.
    */
   String getRoleName();
-  
+
   String getScope();
+
   Boolean getIsActive();
+
   LocalDateTime getCreatedAt();
 }

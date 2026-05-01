@@ -29,10 +29,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * <p>
  * Key differences from production:
  * <ul>
- *   <li>No JWT validation — uses a synthetic auth filter that sets up
- *       SecurityContext from X-Tenant-ID header + DB lookup</li>
- *   <li>Auth whitelist endpoints are still permit-all</li>
- *   <li>Everything else still requires authentication (NOT permitAll)</li>
+ * <li>No JWT validation — uses a synthetic auth filter that sets up
+ * SecurityContext from X-Tenant-ID header + DB lookup</li>
+ * <li>Auth whitelist endpoints are still permit-all</li>
+ * <li>Everything else still requires authentication (NOT permitAll)</li>
  * </ul>
  */
 @TestConfiguration
@@ -42,35 +42,35 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class TestSecurityConfig {
 
     private static final String[] AUTH_WHITELIST = {
-        "/api/v1/auth/login",
-        "/api/v1/auth/signup",
-        "/api/v1/auth/refresh",
-        "/api/v1/auth/forgot-password",
-        "/api/v1/auth/reset-password",
-        "/api/v1/auth/verify-email",
-        "/api/v1/auth/resend-verification",
-        "/api/v1/auth/check-email",
-        "/api/v1/auth/check-slug",
-        "/api/v1/auth/check-company-code",
-        "/api/v1/platform/auth/login",
-        "/api/v1/platform/invites/accept",
-        "/api/v1/platform/invites/complete",
-        "/api/v1/tenant/payments/gateway/webhook"
+            "/api/v1/auth/login",
+            "/api/v1/auth/signup",
+            "/api/v1/auth/refresh",
+            "/api/v1/auth/forgot-password",
+            "/api/v1/auth/reset-password",
+            "/api/v1/auth/verify-email",
+            "/api/v1/auth/resend-verification",
+            "/api/v1/auth/check-email",
+            "/api/v1/auth/check-slug",
+            "/api/v1/auth/check-company-code",
+            "/api/v1/platform/auth/login",
+            "/api/v1/platform/invites/accept",
+            "/api/v1/platform/invites/complete",
+            "/api/v1/tenant/payments/gateway/webhook"
     };
 
     @Bean
     public SecurityFilterChain testSecurityFilterChain(HttpSecurity http,
             OncePerRequestFilter testAuthFilter) throws Exception {
         return http
-            .csrf(csrf -> csrf.disable())
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> {
-                auth.requestMatchers(AUTH_WHITELIST).permitAll();
-                auth.requestMatchers("/actuator/health", "/api/v1/actuator/health").permitAll();
-                auth.anyRequest().authenticated();
-            })
-            .addFilterBefore(testAuthFilter, UsernamePasswordAuthenticationFilter.class)
-            .build();
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> {
+                    auth.requestMatchers(AUTH_WHITELIST).permitAll();
+                    auth.requestMatchers("/actuator/health", "/api/v1/actuator/health").permitAll();
+                    auth.anyRequest().authenticated();
+                })
+                .addFilterBefore(testAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .build();
     }
 
     @Bean
@@ -80,7 +80,8 @@ public class TestSecurityConfig {
             protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                     FilterChain chain) throws java.io.IOException, jakarta.servlet.ServletException {
 
-                // If SecurityContext already has auth (e.g. from @WithMockUser or setUp()), skip
+                // If SecurityContext already has auth (e.g. from @WithMockUser or setUp()),
+                // skip
                 if (SecurityContextHolder.getContext().getAuthentication() != null
                         && SecurityContextHolder.getContext().getAuthentication().isAuthenticated()) {
                     ensureTenantContext(request);
@@ -134,9 +135,9 @@ public class TestSecurityConfig {
             private User findUser(UserRepository userRepository, Long tenantId) {
                 try {
                     return userRepository.findAll().stream()
-                        .filter(u -> tenantId.equals(u.getTenantId()))
-                        .findFirst()
-                        .orElse(null);
+                            .filter(u -> tenantId.equals(u.getTenantId()))
+                            .findFirst()
+                            .orElse(null);
                 } catch (Exception e) {
                     return null;
                 }
@@ -144,27 +145,27 @@ public class TestSecurityConfig {
 
             private void setAuthentication(User user, Long tenantId) {
                 List<SimpleGrantedAuthority> authorities = user.getRole().getPermissions().stream()
-                    .map(p -> new SimpleGrantedAuthority("ROLE_" + p.getKey()))
-                    .collect(Collectors.toList());
+                        .map(p -> new SimpleGrantedAuthority("ROLE_" + p.getKey()))
+                        .collect(Collectors.toList());
                 authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().getName()));
 
                 JwtAuthDetails details = new JwtAuthDetails(
-                    user.getId(), tenantId, user.getRole().getName(), user.getScope(), "RETAIL", false,
-                    user.getRole().getPermissions().stream().map(p -> p.getKey()).collect(Collectors.toSet()),
-                    false, null);
+                        user.getId(), tenantId, user.getRole().getName(), user.getScope(), "RETAIL", false,
+                        user.getRole().getPermissions().stream().map(p -> p.getKey()).collect(Collectors.toSet()),
+                        false, null);
 
                 UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                    user.getId(), details, authorities);
+                        user.getId(), details, authorities);
                 SecurityContextHolder.getContext().setAuthentication(auth);
             }
 
             private void setRootAuthentication(Long tenantId) {
                 JwtAuthDetails details = new JwtAuthDetails(
-                    1L, tenantId, "ROOT", "PLATFORM", "SYSTEM", false,
-                    Collections.emptySet(), false, null);
+                        1L, tenantId, "ROOT", "PLATFORM", "SYSTEM", false,
+                        Collections.emptySet(), false, null);
 
                 UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                    1L, details, List.of(new SimpleGrantedAuthority("ROLE_ROOT")));
+                        1L, details, List.of(new SimpleGrantedAuthority("ROLE_ROOT")));
                 SecurityContextHolder.getContext().setAuthentication(auth);
             }
         };

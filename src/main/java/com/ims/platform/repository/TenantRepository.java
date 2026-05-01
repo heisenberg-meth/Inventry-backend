@@ -21,6 +21,8 @@ public interface TenantRepository extends JpaRepository<Tenant, Long> {
 
   boolean existsByCompanyCode(String companyCode);
 
+  Optional<Tenant> findByIdempotencyKey(String idempotencyKey);
+
   List<Tenant> findAllByCreatedAtBefore(LocalDateTime dateTime);
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)

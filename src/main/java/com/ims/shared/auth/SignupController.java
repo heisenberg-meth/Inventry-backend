@@ -23,7 +23,12 @@ public class SignupController {
 
   @PostMapping
   @Operation(summary = "Registration for new business", description = "Creates a new tenant and its first admin user.")
-  public ResponseEntity<SignupResponse> signup(@Valid @RequestBody SignupRequest request) {
+  public ResponseEntity<SignupResponse> signup(
+      @org.springframework.web.bind.annotation.RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+      @Valid @RequestBody SignupRequest request) {
+    if (idempotencyKey != null) {
+      request.setIdempotencyKey(idempotencyKey);
+    }
     SignupResponse response = signupService.signup(request);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
