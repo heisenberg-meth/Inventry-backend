@@ -18,7 +18,7 @@ class UserBuilderTest {
           builder.role(UserRole.BUSINESS_MANAGER);
         });
 
-    assertEquals("Role already set to: ADMIN", exception.getMessage());
+    assertEquals("Role already set to: TENANT_ADMIN", exception.getMessage());
   }
 
   @Test
@@ -26,6 +26,6 @@ class UserBuilderTest {
     User user = User.builder().name("Test User").role(UserRole.TENANT_ADMIN).build();
 
     assertNotNull(user.getRole());
-    assertEquals("ADMIN", user.getRole().getName());
+    assertEquals(UserRole.TENANT_ADMIN.name(), user.getRole().getName());
   }
 }

@@ -12,17 +12,8 @@ import com.ims.shared.auth.SignupService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import java.util.Objects;
-import org.springframework.test.context.ActiveProfiles;
-
-@SpringBootTest(properties = {
-    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
-    "spring.cache.type=none"
-})
-
-@ActiveProfiles("test")
 public class ManagementIntegrationTest extends BaseIntegrationTest {
 
   @Autowired
@@ -70,7 +61,7 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
     createUser.setName("Staff User");
     createUser.setEmail("staff-mgt1@t1.com");
     createUser.setPassword("staff123");
-    createUser.setRole("STAFF");
+    createUser.setRole("SALES_STAFF");
 
     String createUserJson = objectMapper.writeValueAsString(createUser);
     mockMvc

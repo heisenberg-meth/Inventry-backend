@@ -3,15 +3,16 @@ package com.ims.shared.auth;
 import com.ims.dto.request.SignupRequest;
 import com.ims.dto.response.SignupResponse;
 import com.ims.model.Subscription;
+import com.ims.model.SubscriptionPlan;
 import com.ims.model.SubscriptionStatus;
 import com.ims.model.Tenant;
 import com.ims.model.TenantStatus;
 import com.ims.model.User;
+import com.ims.platform.repository.SubscriptionPlanRepository;
 import com.ims.platform.repository.SubscriptionRepository;
 import com.ims.platform.repository.TenantRepository;
 import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditLogService;
-import com.ims.shared.exception.CodeGenerationException;
 import com.ims.shared.exception.ConflictException;
 import com.ims.shared.exception.ServiceUnavailableException;
 import com.ims.shared.utils.CompanyCodeGenerator;
@@ -20,8 +21,13 @@ import com.ims.tenant.service.TenantSettingsService;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
-import java.time.LocalDateTime;
+import java.security.SecureRandom;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -33,8 +39,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class SignupService {
 
-  private static final int MAX_SLUG_RETRIES = 5;
+  private static final int MAX_SLUG_RETRIES = 3;
   private static final int MAX_CODE_RETRIES = 5;
+
+  private static final Pattern NON_ALNUM = Pattern.compile("[^a-z0-9]+");
+  private static final Pattern TRIM_DASH = Pattern.compile("(^-|-$)");
+  private static final char[] ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789".toCharArray();
+  private static final SecureRandom RNG = new SecureRandom();
 
   private final TenantRepository tenantRepository;
   private final UserRepository userRepository;
@@ -44,6 +55,8 @@ public class SignupService {
   private final SubscriptionRepository subscriptionRepository;
   private final AuditLogService auditLogService;
   private final TenantSettingsService tenantSettingsService;
+  private final com.ims.platform.service.SystemConfigService systemConfigService;
+  private final SubscriptionPlanRepository subscriptionPlanRepository;
 
   // Micrometer metrics (PRD §11.1)
   private final Counter signupSuccessCounter;
@@ -60,6 +73,8 @@ public class SignupService {
       SubscriptionRepository subscriptionRepository,
       AuditLogService auditLogService,
       TenantSettingsService tenantSettingsService,
+      com.ims.platform.service.SystemConfigService systemConfigService,
+      SubscriptionPlanRepository subscriptionPlanRepository,
       MeterRegistry meterRegistry) {
     this.tenantRepository = tenantRepository;
     this.userRepository = userRepository;
@@ -69,6 +84,8 @@ public class SignupService {
     this.subscriptionRepository = subscriptionRepository;
     this.auditLogService = auditLogService;
     this.tenantSettingsService = tenantSettingsService;
+    this.systemConfigService = systemConfigService;
+    this.subscriptionPlanRepository = subscriptionPlanRepository;
 
     this.signupSuccessCounter = Counter.builder("signup.success.count")
         .description("Total successful signups")
@@ -111,13 +128,13 @@ public class SignupService {
     // 1. Validate email uniqueness — advisory check; DB constraint is the real
     // guard (PRD §3.1, §5.1)
     if (userRepository.findByEmailGlobal(normalizedEmail).isPresent()) {
-      throw new ConflictException("Email already registered");
+      throw new ConflictException("Email already registered", Map.of("field", "ownerEmail"));
     }
 
     // 2. Generate workspace slug
     String workspaceSlug = (request.getWorkspaceSlug() != null
         && !request.getWorkspaceSlug().isBlank())
-            ? request.getWorkspaceSlug()
+            ? normalizeSlug(request.getWorkspaceSlug())
             : generateWorkspaceSlug(businessName);
 
     // 3. Generate company code
@@ -151,15 +168,37 @@ public class SignupService {
       // 4-5, §7)
       tenantInitializationService.initializeTenant(user, tenantId, tenantName);
 
-      // 7. Create default subscription (PRD §3.2 Step 4)
+      // 7. Create default subscription (PRD §4.4, §4.4-C)
+      int trialDays = systemConfigService.getInt("TRIAL_DAYS", 7);
+      if (trialDays < 0) {
+        throw new IllegalStateException("Invalid TRIAL_DAYS config: " + trialDays);
+      }
+
+      SubscriptionPlan plan = subscriptionPlanRepository.findDefaultPlan()
+          .orElseThrow(() -> new IllegalStateException("No active default subscription plan found. Signup aborted."));
+
+      OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+      SubscriptionStatus status = (trialDays == 0) ? SubscriptionStatus.ACTIVE : SubscriptionStatus.TRIAL;
+
       Subscription subscription = Subscription.builder()
           .tenantId(tenantId)
-          .plan("FREE")
-          .status(SubscriptionStatus.TRIAL)
-          .startDate(LocalDateTime.now())
-          .endDate(LocalDateTime.now().plusDays(7))
+          .plan(plan.getName())
+          .status(status)
+          .startDate(now)
+          .endDate(trialDays > 0 ? now.plusDays(trialDays) : now.plusYears(1))
+          .trialEnd(status == SubscriptionStatus.TRIAL ? now.plusDays(trialDays) : null)
           .build();
-      subscriptionRepository.save(subscription);
+
+      try {
+        subscriptionRepository.saveAndFlush(subscription);
+      } catch (DataIntegrityViolationException e) {
+        // FR-04-H: Idempotency safety
+        if (e.getMessage() != null && e.getMessage().contains("uk_subscriptions_tenant")) {
+          log.warn("Subscription already exists for tenant {}. Skipping.", tenantId);
+        } else {
+          throw e;
+        }
+      }
 
       // 8. Write audit log INSIDE the transaction (PRD §9.2)
       auditLogService.log(
@@ -168,7 +207,8 @@ public class SignupService {
           TenantContext.PLATFORM_TENANT_ID,
           "Tenant onboarded: " + tenantName
               + " [slug=" + tenant.getWorkspaceSlug()
-              + ", code=" + tenant.getCompanyCode() + "]");
+              + ", code=" + tenant.getCompanyCode()
+              + ", plan=" + plan.getName() + "]");
 
       // 9. Initialize tenant settings (PRD §3.8)
       tenantSettingsService.initializeDefaults(tenantId);
@@ -216,12 +256,11 @@ public class SignupService {
    * regenerates and retries up to MAX retries.
    */
   private Tenant insertTenantWithRetry(
-      String businessName, String businessType, String baseSlug,
+      String businessName, String businessType, String requestedSlug,
       String baseCode, String address, String gstin, String idempotencyKey) {
 
-    String slug = baseSlug;
+    String slug = requestedSlug;
     String code = baseCode;
-    int slugSuffix = 1;
 
     for (int attempt = 0; attempt < MAX_SLUG_RETRIES + MAX_CODE_RETRIES; attempt++) {
       Tenant newTenant = Tenant.builder()
@@ -229,49 +268,95 @@ public class SignupService {
           .businessType(businessType)
           .workspaceSlug(slug)
           .companyCode(code)
-          .status(TenantStatus.ACTIVE) // NG3: Self-service, no pending state
-          .plan("TRIAL") // NG2: Trial plan instead of FREE
+          .status(TenantStatus.ACTIVE)
+          .plan("TRIAL")
           .address(address)
           .gstin(gstin)
           .idempotencyKey(idempotencyKey)
           .build();
 
       try {
-        // PRD §3.2: Explicit saveAndFlush to guarantee tenant exists before FK usage
-        Tenant saved = tenantRepository.saveAndFlush(newTenant);
-        return saved;
+        return tenantRepository.saveAndFlush(newTenant);
       } catch (DataIntegrityViolationException e) {
         duplicateRetryCounter.increment();
-        String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
 
-        if (msg.contains("workspace_slug") || msg.contains("idx_tenants_workspace_slug")) {
-          slug = baseSlug + "-" + slugSuffix++;
-          log.warn("Slug collision, retrying with: {}", slug);
-        } else if (msg.contains("company_code") || msg.contains("uk_tenants_company_code")) {
+        if (isSlugUniqueViolation(e)) {
+          if (requestedSlug != null && !requestedSlug.isBlank() && attempt == 0) {
+            throw new ConflictException("Workspace URL already taken", Map.of("field", "workspaceSlug"));
+          }
+          log.warn("Slug collision for {}, retrying...", slug);
+          slug = generateWorkspaceSlug(businessName);
+        } else if (isCompanyCodeUniqueViolation(e)) {
           code = companyCodeGenerator.generateCode(businessName);
           log.warn("Company code collision, retrying with: {}", code);
-        } else if (msg.contains("idempotency_key")) {
-          // Race: another thread completed with the same idempotency key
+        } else if (isIdempotencyKeyViolation(e)) {
           var existing = tenantRepository.findByIdempotencyKey(idempotencyKey);
           if (existing.isPresent()) {
             return existing.get();
           }
-          throw new ConflictException(
-              "Duplicate signup detected. Please retry.", e);
+          throw new ConflictException("Duplicate signup detected. Please retry.", e);
         } else {
-          throw new ConflictException(
-              "Workspace URL or Company Code already taken, please try again.", e);
+          throw e;
         }
       }
     }
 
-    throw new CodeGenerationException("Unable to generate unique company code");
+    throw new ConflictException("Unable to allocate workspace slug or company code",
+        Map.of("field", "workspaceSlug"));
+  }
+
+  private boolean isSlugUniqueViolation(DataIntegrityViolationException e) {
+    String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+    return msg.contains("workspace_slug") || msg.contains("idx_tenants_workspace_slug");
+  }
+
+  private boolean isCompanyCodeUniqueViolation(DataIntegrityViolationException e) {
+    String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+    return msg.contains("company_code") || msg.contains("uk_tenants_company_code");
+  }
+
+  private boolean isIdempotencyKeyViolation(DataIntegrityViolationException e) {
+    String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+    return msg.contains("idempotency_key");
+  }
+
+  private String randomBase36(int len) {
+    char[] out = new char[len];
+    for (int i = 0; i < len; i++) {
+      out[i] = ALPHABET[RNG.nextInt(ALPHABET.length)];
+    }
+    return new String(out);
+  }
+
+  private String normalizeSlug(String input) {
+    if (input == null)
+      return null;
+    String base = input.toLowerCase(Locale.ROOT);
+    base = NON_ALNUM.matcher(base).replaceAll("-");
+    return TRIM_DASH.matcher(base).replaceAll("");
   }
 
   private String generateWorkspaceSlug(String businessName) {
-    return Objects.requireNonNull(
-        businessName.toLowerCase()
-            .replaceAll("[^a-z0-9]+", "-")
-            .replaceAll("(^-|-$)", ""));
+    if (businessName == null || businessName.isBlank()) {
+      return "tenant-" + randomBase36(6);
+    }
+    String base = businessName.toLowerCase(Locale.ROOT);
+    base = NON_ALNUM.matcher(base).replaceAll("-");
+    base = TRIM_DASH.matcher(base).replaceAll("");
+
+    if (base.isEmpty()) {
+      base = "tenant";
+    }
+
+    if (base.length() > 40) {
+      base = base.substring(0, 40);
+      base = TRIM_DASH.matcher(base).replaceAll("");
+      if (base.isEmpty()) {
+        base = "tenant";
+      }
+    }
+
+    String suffix = randomBase36(6);
+    return base + "-" + suffix;
   }
 }

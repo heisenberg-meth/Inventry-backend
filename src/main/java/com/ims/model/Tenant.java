@@ -39,7 +39,7 @@ public class Tenant {
   @Column(nullable = false)
   private String name;
 
-  @Column(name = "workspace_slug", unique = true)
+  @Column(name = "workspace_slug", unique = true, length = 64)
   private String workspaceSlug;
 
   @Column(name = "company_code", nullable = false, unique = true)

@@ -4,7 +4,8 @@ import com.ims.model.Subscription;
 import com.ims.model.SubscriptionStatus;
 import com.ims.platform.repository.SubscriptionRepository;
 import jakarta.persistence.EntityNotFoundException;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +33,7 @@ public class SubscriptionService {
     Subscription subscription = Objects.requireNonNull(tmpSubscription);
 
     subscription.setEndDate(Objects.requireNonNull(Objects.requireNonNull(subscription.getEndDate()).plusDays(days)));
-    subscription.setUpdatedAt(Objects.requireNonNull(LocalDateTime.now()));
+    subscription.setUpdatedAt(OffsetDateTime.now(ZoneOffset.UTC));
 
     log.info("Subscription {} extended by {} days", id, days);
     Subscription tmpSaved = subscriptionRepository.save(subscription);

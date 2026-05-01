@@ -39,7 +39,7 @@ public class StockController {
   private final TransferOrderService transferOrderService;
 
   @PostMapping("/transfer")
-  @RequiresRole({ "ADMIN", "MANAGER" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Transfer stock between locations")
   public ResponseEntity<TransferOrder> transfer(
       @RequestBody @Valid TransferOrderRequest body) {
@@ -49,7 +49,7 @@ public class StockController {
   }
 
   @GetMapping("/by-location")
-  @RequiresRole({ "ADMIN", "MANAGER", "STAFF" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER", "SALES_STAFF" })
   @Operation(summary = "List products at storage location")
   public ResponseEntity<Page<WarehouseProduct>> getByLocation(
       @RequestParam String location, Pageable pageable) {
@@ -58,21 +58,21 @@ public class StockController {
   }
 
   @GetMapping("/transfers")
-  @RequiresRole({ "ADMIN", "MANAGER", "STAFF" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER", "SALES_STAFF" })
   @Operation(summary = "List all transfer orders")
   public ResponseEntity<Page<TransferOrder>> getTransfers(Pageable pageable) {
     return ResponseEntity.ok(Objects.requireNonNull(stockService.getTransferOrders(pageable)));
   }
 
   @GetMapping("/transfers/{id}")
-  @RequiresRole({ "ADMIN", "MANAGER", "STAFF" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER", "SALES_STAFF" })
   @Operation(summary = "Get transfer order detail")
   public ResponseEntity<TransferOrder> getTransferById(@PathVariable long id) {
     return ResponseEntity.ok(Objects.requireNonNull(stockService.getTransferOrderById(id)));
   }
 
   @PatchMapping("/transfers/{id}/status")
-  @RequiresRole({ "ADMIN", "MANAGER" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Update transfer order status")
   public ResponseEntity<TransferOrder> updateTransferStatus(
       @PathVariable long id, @RequestBody TransferOrderStatusRequest request) {
@@ -82,7 +82,7 @@ public class StockController {
   }
 
   @PostMapping("/in")
-  @RequiresRole({ "ADMIN", "MANAGER", "STAFF" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER", "SALES_STAFF" })
   @Operation(summary = "Record stock received")
   public ResponseEntity<Map<String, String>> stockIn(
       @RequestBody Map<String, Object> body) {
@@ -98,7 +98,7 @@ public class StockController {
   }
 
   @PostMapping("/out")
-  @RequiresRole({ "ADMIN", "MANAGER", "STAFF" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER", "SALES_STAFF" })
   @Operation(summary = "Record stock issued")
   public ResponseEntity<Map<String, String>> stockOut(
       @RequestBody Map<String, Object> body) {
@@ -114,7 +114,7 @@ public class StockController {
   }
 
   @PostMapping("/adjust")
-  @RequiresRole({ "ADMIN", "MANAGER" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Manual stock adjustment")
   public ResponseEntity<Map<String, String>> adjust(
       @RequestBody Map<String, Object> body) {
@@ -130,7 +130,7 @@ public class StockController {
   }
 
   @GetMapping("/movements")
-  @RequiresRole({ "ADMIN", "MANAGER" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Stock movement log")
   public ResponseEntity<Page<StockMovement>> getMovements(Pageable pageable) {
     return ResponseEntity.ok(Objects.requireNonNull(stockService.getMovements(pageable)));

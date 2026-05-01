@@ -30,14 +30,14 @@ public class WebhookController {
   private final WebhookService webhookService;
 
   @GetMapping
-  @RequiresRole({ "ADMIN", "MANAGER" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "List all configured webhooks")
   public ResponseEntity<List<Webhook>> list() {
     return ResponseEntity.ok(webhookService.getMyWebhooks());
   }
 
   @PostMapping
-  @RequiresRole({ "ADMIN", "MANAGER" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Create new webhook")
   public ResponseEntity<Webhook> create(@RequestBody @Valid CreateWebhookRequest req) {
     return ResponseEntity.ok(
@@ -45,7 +45,7 @@ public class WebhookController {
   }
 
   @DeleteMapping("/{id}")
-  @RequiresRole({ "ADMIN", "MANAGER" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Remove webhook")
   public ResponseEntity<Void> delete(@PathVariable Long id) {
     webhookService.deleteWebhook(Objects.requireNonNull(id));

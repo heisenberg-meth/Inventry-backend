@@ -49,7 +49,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<ApiError> handleConflict(ConflictException ex, HttpServletRequest request) {
-        return buildResponse(ex.getMessage(), "CONFLICT", HttpStatus.CONFLICT, request, null);
+        return buildResponse(ex.getMessage(), "CONFLICT", HttpStatus.CONFLICT, request, ex.getErrors());
     }
 
     @ExceptionHandler(ServiceUnavailableException.class)

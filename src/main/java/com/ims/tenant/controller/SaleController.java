@@ -28,7 +28,7 @@ public class SaleController {
   private final OrderService orderService;
 
   @PostMapping
-  @RequiresRole({ "ADMIN", "MANAGER", "STAFF" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER", "SALES_STAFF" })
   @Operation(summary = "Record a sale with billing", description = "Creates a sales order and automatically generates an invoice")
   public ResponseEntity<Order> createSale(@Valid @RequestBody OrderRequest request) {
     Long userId = (Long) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication())

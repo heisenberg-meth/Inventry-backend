@@ -46,7 +46,7 @@ public class SupplierController {
   private final SupplierRepository supplierRepository;
 
   @GetMapping
-  @RequiresRole({ "ADMIN", "MANAGER" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "List suppliers")
   public ResponseEntity<Page<SupplierResponse>> list(
       Pageable pageable) {
@@ -54,7 +54,7 @@ public class SupplierController {
   }
 
   @PostMapping
-  @RequiresRole({ "ADMIN", "MANAGER" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Create supplier")
   public ResponseEntity<SupplierResponse> create(
       @Valid @RequestBody SupplierRequest request) {
@@ -63,14 +63,14 @@ public class SupplierController {
   }
 
   @GetMapping("/{id}")
-  @RequiresRole({ "ADMIN", "MANAGER" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Get supplier")
   public ResponseEntity<SupplierResponse> get(@PathVariable long id) {
     return ResponseEntity.ok(Objects.requireNonNull(supplierService.getSupplierResponseById(id)));
   }
 
   @PutMapping("/{id}")
-  @RequiresRole({ "ADMIN", "MANAGER" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Update supplier")
   public ResponseEntity<SupplierResponse> update(
       @PathVariable long id,
@@ -79,7 +79,7 @@ public class SupplierController {
   }
 
   @DeleteMapping("/{id}")
-  @RequiresRole({ "ADMIN" })
+  @RequiresRole({ "TENANT_ADMIN" })
   @Operation(summary = "Delete supplier")
   public ResponseEntity<Void> delete(@PathVariable long id) {
     supplierService.delete(id);
@@ -87,14 +87,14 @@ public class SupplierController {
   }
 
   @GetMapping("/{id}/ledger")
-  @RequiresRole({ "ADMIN", "MANAGER" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Get full ledger for supplier")
   public ResponseEntity<Map<String, Object>> getSupplierLedger(@PathVariable long id) {
     return ResponseEntity.ok(supplierService.getSupplierLedger(id));
   }
 
   @PostMapping("/bulk-import")
-  @RequiresRole({ "ADMIN", "MANAGER" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Bulk import suppliers via CSV")
   public ResponseEntity<Map<String, Object>> bulkImport(
       @RequestParam("file") MultipartFile file,
@@ -103,7 +103,7 @@ public class SupplierController {
   }
 
   @GetMapping("/export")
-  @RequiresRole({ "ADMIN", "MANAGER" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Export suppliers as CSV")
   public ResponseEntity<String> export() {
     var data = supplierRepository.findAll().stream()

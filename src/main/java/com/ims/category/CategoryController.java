@@ -33,14 +33,14 @@ public class CategoryController {
   private final CategoryService categoryService;
 
   @GetMapping
-  @RequiresRole({ "ADMIN", "MANAGER", "STAFF" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER", "SALES_STAFF" })
   @Operation(summary = "List categories")
   public ResponseEntity<PagedResponse<CategoryResponse>> list(Pageable pageable) {
     return ResponseEntity.ok(categoryService.getCategories(pageable));
   }
 
   @PostMapping
-  @RequiresRole({ "ADMIN", "MANAGER" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Create category")
   public ResponseEntity<CategoryResponse> create(
       @Valid @RequestBody CategoryRequest request) {
@@ -50,14 +50,14 @@ public class CategoryController {
   }
 
   @GetMapping("/{id}")
-  @RequiresRole({ "ADMIN", "MANAGER", "STAFF" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER", "SALES_STAFF" })
   @Operation(summary = "Get category details")
   public ResponseEntity<CategoryResponse> get(@PathVariable long id) {
     return ResponseEntity.ok(categoryService.toResponse(categoryService.getById(id)));
   }
 
   @PutMapping("/{id}")
-  @RequiresRole({ "ADMIN", "MANAGER" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Update category")
   public ResponseEntity<CategoryResponse> update(
       @PathVariable long id, @Valid @RequestBody CategoryRequest request) {
@@ -65,7 +65,7 @@ public class CategoryController {
   }
 
   @DeleteMapping("/{id}")
-  @RequiresRole({ "ADMIN", "MANAGER" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Delete category")
   public ResponseEntity<Void> delete(@PathVariable long id) {
     categoryService.delete(id);

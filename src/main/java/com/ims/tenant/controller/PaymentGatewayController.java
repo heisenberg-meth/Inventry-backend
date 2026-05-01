@@ -34,7 +34,7 @@ public class PaymentGatewayController {
   private final ObjectMapper objectMapper;
 
   @PostMapping("/initiate")
-  @RequiresRole({ "ADMIN", "MANAGER" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @SecurityRequirement(name = "bearerAuth")
   @Operation(summary = "Initiate a gateway payment")
   public ResponseEntity<Map<String, Object>> initiate(@RequestBody Map<String, Object> body) {

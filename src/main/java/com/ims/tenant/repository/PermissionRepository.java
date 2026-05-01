@@ -11,6 +11,8 @@ public interface PermissionRepository extends JpaRepository<Permission, Long> {
 
   Optional<Permission> findByKey(String key);
 
+  List<Permission> findByKeyIn(java.util.Collection<String> keys);
+
   List<Permission> findAllByOrderByKeyAsc();
 
   List<Permission> findByIdIn(List<Long> ids);

@@ -6,6 +6,7 @@ import com.ims.dto.response.UserResponse;
 import com.ims.model.Permission;
 import com.ims.model.Role;
 import com.ims.model.User;
+import com.ims.model.UserRole;
 import com.ims.platform.repository.TenantRepository;
 import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditLogService;
@@ -44,7 +45,10 @@ public class UserService {
   private final RoleRepository roleRepository;
   private final AuditLogService auditLogService;
 
-  private static final List<String> VALID_TENANT_ROLES = List.of("ADMIN", "MANAGER", "STAFF");
+  private static final List<String> VALID_TENANT_ROLES = List.of(
+      UserRole.TENANT_ADMIN.name(),
+      UserRole.BUSINESS_MANAGER.name(),
+      UserRole.SALES_STAFF.name());
 
   /**
    * Fetches user summaries using an optimized projection.

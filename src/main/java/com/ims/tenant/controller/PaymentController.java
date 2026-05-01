@@ -31,7 +31,7 @@ public class PaymentController {
   private final PaymentService paymentService;
 
   @PostMapping
-  @RequiresRole({ "ADMIN", "MANAGER", "STAFF" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER", "SALES_STAFF" })
   @Operation(summary = "Record payment against invoice")
   public ResponseEntity<Payment> recordPayment(@Valid @RequestBody PaymentRequest request) {
     Payment payment = paymentService.recordPayment(
@@ -45,14 +45,14 @@ public class PaymentController {
   }
 
   @GetMapping
-  @RequiresRole({ "ADMIN", "MANAGER" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "List mappings")
   public ResponseEntity<Page<Payment>> list(Pageable pageable) {
     return ResponseEntity.ok(paymentService.getPayments(pageable));
   }
 
   @GetMapping("/{id}")
-  @RequiresRole({ "ADMIN", "MANAGER" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Get payment details")
   public ResponseEntity<Payment> get(@PathVariable Long id) {
     return ResponseEntity.ok(paymentService.getById(id));

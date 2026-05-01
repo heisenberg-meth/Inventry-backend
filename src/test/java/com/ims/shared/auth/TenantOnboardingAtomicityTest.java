@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
-
 import com.ims.dto.request.SignupRequest;
 import com.ims.dto.response.SignupResponse;
 import com.ims.model.Tenant;
@@ -17,33 +16,11 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@ActiveProfiles("test")
-@Testcontainers
-public class TenantOnboardingAtomicityTest {
+import com.ims.BaseIntegrationTest;
 
-  @Container
-  @SuppressWarnings("resource")
-  static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine")
-      .withDatabaseName("inventory_test")
-      .withUsername("test")
-      .withPassword("test");
-
-  @DynamicPropertySource
-  static void registerPgProperties(DynamicPropertyRegistry registry) {
-    registry.add("spring.datasource.url", postgres::getJdbcUrl);
-    registry.add("spring.datasource.username", postgres::getUsername);
-    registry.add("spring.datasource.password", postgres::getPassword);
-  }
+public class TenantOnboardingAtomicityTest extends BaseIntegrationTest {
 
   @Autowired
   private SignupService signupService;
@@ -63,8 +40,10 @@ public class TenantOnboardingAtomicityTest {
   @MockitoSpyBean
   private TenantInitializationService tenantInitializationService;
 
+  @Override
   @BeforeEach
-  void setUp() {
+  protected void setUp() {
+    super.setUp();
     TenantContext.clear();
   }
 

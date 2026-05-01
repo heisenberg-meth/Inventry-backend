@@ -10,6 +10,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,6 +19,8 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "subscription_plans")
+@jakarta.persistence.Cacheable
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -57,6 +61,10 @@ public class SubscriptionPlan {
   @Column(name = "max_products")
   @Builder.Default
   private Integer maxProducts = 0;
+
+  @Column(name = "is_default", nullable = false)
+  @Builder.Default
+  private boolean isDefault = false;
 
   @Column
   @Enumerated(EnumType.STRING)
