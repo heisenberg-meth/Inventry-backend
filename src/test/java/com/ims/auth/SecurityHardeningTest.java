@@ -46,10 +46,11 @@ public class SecurityHardeningTest extends BaseIntegrationTest {
   private String email;
   private SignupResponse signupResponse;
 
+  @Override
   @BeforeEach
-  void setup() {
+  protected void setUp() throws Exception {
+    super.setUp();
     cleanupDatabase();
-    mockRedisAndCache();
     uniqueId = UUID.randomUUID().toString().substring(0, 8);
     email = "security-test-" + uniqueId + "@example.com";
     SignupRequest req = new SignupRequest();

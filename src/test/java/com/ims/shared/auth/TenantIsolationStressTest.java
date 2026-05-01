@@ -31,8 +31,10 @@ class TenantIsolationStressTest extends BaseIntegrationTest {
   private final int THREAD_COUNT = 20;
   private final int ITERATIONS_PER_THREAD = 10;
 
+  @Override
   @BeforeEach
-  void setup() throws Exception {
+  protected void setUp() throws Exception {
+    super.setUp();
     cleanupDatabase();
 
     // Setup Tenant 1 - Set context first

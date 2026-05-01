@@ -19,10 +19,11 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
   @Autowired
   private SignupService signupService;
 
+  @Override
   @BeforeEach
-  void setup() {
+  protected void setUp() throws Exception {
+    super.setUp();
     cleanupDatabase();
-    mockRedisAndCache();
   }
 
   @Test

@@ -14,13 +14,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+
 public class RbacIntegrationTest extends BaseIntegrationTest {
 
   @Autowired
   private SignupService signupService;
 
+  @Override
   @BeforeEach
-  void setup() {
+  protected void setUp() throws Exception {
+    super.setUp();
     cleanupDatabase();
   }
 

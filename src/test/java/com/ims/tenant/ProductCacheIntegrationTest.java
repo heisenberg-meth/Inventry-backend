@@ -29,10 +29,11 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
         @Autowired
         private SignupService signupService;
 
+        @Override
         @BeforeEach
-        void setup() {
+        protected void setUp() throws Exception {
+                super.setUp();
                 cleanupDatabase();
-                mockRedisAndCache();
 
                 spyCache = spy(new ConcurrentMapCache("products"));
                 doReturn(Collections.<Cache>singletonList(spyCache))

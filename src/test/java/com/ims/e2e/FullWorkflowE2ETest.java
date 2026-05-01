@@ -58,10 +58,11 @@ public class FullWorkflowE2ETest extends BaseIntegrationTest {
         private Long tenantId;
         private String authToken;
 
+        @Override
         @BeforeEach
-        void setup() {
+        protected void setUp() throws Exception {
+                super.setUp();
                 cleanupDatabase();
-                mockRedisAndCache();
                 uniqueId = UUID.randomUUID().toString().substring(0, 8);
         }
 

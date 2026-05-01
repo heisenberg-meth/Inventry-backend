@@ -7,14 +7,16 @@ import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
+
 public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
 
         private NamedParameterJdbcTemplate jdbc;
 
+        @Override
         @BeforeEach
-        void setup() {
+        protected void setUp() throws Exception {
+                super.setUp();
                 cleanupDatabase();
-                mockRedisAndCache();
                 jdbc = new NamedParameterJdbcTemplate(jdbcTemplate);
         }
 

@@ -30,8 +30,10 @@ class StockConcurrencyStressTest extends BaseIntegrationTest {
   private final int INITIAL_STOCK = 10;
   private final int THREAD_COUNT = 50;
 
+  @Override
   @BeforeEach
-  void setup() {
+  protected void setUp() throws Exception {
+    super.setUp();
     cleanupDatabase();
     TenantContext.setTenantId(testTenant1Id);
 

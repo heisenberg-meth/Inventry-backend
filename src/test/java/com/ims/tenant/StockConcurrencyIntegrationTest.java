@@ -32,8 +32,10 @@ public class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
   private long userId;
   private long tenantId;
 
+  @Override
   @BeforeEach
-  void setup() throws Exception {
+  protected void setUp() throws Exception {
+    super.setUp();
     cleanupDatabase();
 
     SignupRequest signup = new SignupRequest();

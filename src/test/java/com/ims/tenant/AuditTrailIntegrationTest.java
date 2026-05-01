@@ -24,7 +24,7 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
 
         @Override
         @BeforeEach
-        protected void setUp() {
+        protected void setUp() throws Exception {
                 super.setUp();
                 cleanupDatabase();
         }

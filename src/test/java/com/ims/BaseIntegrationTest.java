@@ -217,7 +217,7 @@ public abstract class BaseIntegrationTest {
   }
 
   @BeforeEach
-  protected void setUp() {
+  protected void setUp() throws Exception {
     if (TEST_ROOT_PASSWORD == null || TEST_ROOT_PASSWORD.isBlank()) {
       throw new IllegalStateException("TEST_ROOT_PASSWORD must be configured for integration tests.");
     }

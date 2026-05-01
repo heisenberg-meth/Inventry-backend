@@ -35,10 +35,11 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
         @Autowired
         private CustomerRepository customerRepository;
 
+        @Override
         @BeforeEach
-        void setup() {
+        protected void setUp() throws Exception {
+                super.setUp();
                 cleanupDatabase();
-                mockRedisAndCache();
         }
 
         @Test

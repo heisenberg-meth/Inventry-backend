@@ -40,10 +40,11 @@ public class InvoiceConcurrencyTest extends BaseIntegrationTest {
   private Long tenantId;
   private List<Long> orderIds = new ArrayList<>();
 
+  @Override
   @BeforeEach
-  void setup() {
+  protected void setUp() throws Exception {
+    super.setUp();
     cleanupDatabase();
-    mockRedisAndCache();
 
     // Create a tenant
     Tenant tenant = Tenant.builder()

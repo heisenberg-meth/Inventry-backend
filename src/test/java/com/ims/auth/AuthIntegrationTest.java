@@ -11,15 +11,17 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
+
 public class AuthIntegrationTest extends BaseIntegrationTest {
 
   @Autowired
   private SignupService signupService;
 
+  @Override
   @BeforeEach
-  void setup() {
+  protected void setUp() throws Exception {
+    super.setUp();
     cleanupDatabase();
-    mockRedisAndCache();
   }
 
   @Test
