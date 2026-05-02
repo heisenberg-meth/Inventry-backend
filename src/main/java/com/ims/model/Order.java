@@ -71,6 +71,9 @@ public class Order {
   @Column(name = "reference_order_id")
   private Long referenceOrderId;
 
+  @Column(name = "idempotency_key")
+  private String idempotencyKey;
+
   @Column(name = "created_at")
   @Builder.Default
   private LocalDateTime createdAt = LocalDateTime.now();

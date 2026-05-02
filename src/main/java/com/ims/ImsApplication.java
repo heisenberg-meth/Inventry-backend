@@ -14,7 +14,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableRetry
 public class ImsApplication {
 
-  public static void main(String[] args) {
-    SpringApplication.run(ImsApplication.class, args);
-  }
+    public static void main(String[] args) {
+        SpringApplication.run(ImsApplication.class, args);
+    }
 }

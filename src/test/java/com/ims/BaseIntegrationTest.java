@@ -6,11 +6,13 @@ import static org.mockito.Mockito.doReturn;
 import com.ims.model.User;
 import com.ims.model.Role;
 import com.ims.shared.auth.AuthService;
+import com.ims.shared.auth.JwtAuthDetails;
 import com.ims.dto.request.LoginRequest;
 import com.ims.shared.auth.TenantContext;
 import com.ims.config.TestSecurityConfig;
 import com.ims.product.ProductRepository;
 import com.ims.dto.response.LoginResponse;
+import org.springframework.security.core.context.SecurityContext;
 import com.ims.category.CategoryRepository;
 import com.ims.shared.audit.AuditLogRepository;
 import com.ims.tenant.repository.UserRepository;
@@ -34,7 +36,9 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.util.UUID;
 import java.util.Objects;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -92,7 +96,7 @@ import org.springframework.context.annotation.Import;
 })
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 @Import(TestSecurityConfig.class)
 public abstract class BaseIntegrationTest {
   static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
@@ -233,15 +237,15 @@ public abstract class BaseIntegrationTest {
       return; // Not initialized yet
     }
     // Set up ROOT with all common roles for testing
-    java.util.List<SimpleGrantedAuthority> authorities = java.util.Arrays.asList(
+    List<SimpleGrantedAuthority> authorities = Arrays.asList(
         new SimpleGrantedAuthority("ROLE_ROOT"),
         new SimpleGrantedAuthority("ROLE_TENANT_ADMIN"),
         new SimpleGrantedAuthority("ROLE_BUSINESS_MANAGER"),
         new SimpleGrantedAuthority("ROLE_SALES_STAFF"));
 
-    com.ims.shared.auth.JwtAuthDetails details = new com.ims.shared.auth.JwtAuthDetails(
+    JwtAuthDetails details = new JwtAuthDetails(
         1L, systemTenantId, "ROOT", "PLATFORM", "SYSTEM", false,
-        java.util.Collections.emptySet(), false, null);
+        Collections.emptySet(), false, null);
 
     UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
         1L, details, authorities);
@@ -429,16 +433,16 @@ public abstract class BaseIntegrationTest {
 
       // Also set SecurityContext with JwtAuthDetails for code that expects tenant
       // from security context
-      com.ims.shared.auth.JwtAuthDetails details = new com.ims.shared.auth.JwtAuthDetails(
+      JwtAuthDetails details = new JwtAuthDetails(
           1L, tid, "ROOT", "PLATFORM", "SYSTEM", false,
-          java.util.Collections.emptySet(), false, null);
+          Collections.emptySet(), false, null);
 
       UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-          1L, details, java.util.List.of(new SimpleGrantedAuthority("ROLE_ROOT")));
+          1L, details, List.of(new SimpleGrantedAuthority("ROLE_ROOT")));
       auth.setDetails(details); // IMPORTANT: Set details separately!
 
       // Properly set SecurityContext
-      org.springframework.security.core.context.SecurityContext context = SecurityContextHolder.createEmptyContext();
+      SecurityContext context = SecurityContextHolder.createEmptyContext();
       context.setAuthentication(auth);
       SecurityContextHolder.setContext(context);
 

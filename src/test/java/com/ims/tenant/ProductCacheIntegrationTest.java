@@ -38,10 +38,8 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
                 spyCache = spy(new ConcurrentMapCache("products"));
                 doReturn(Collections.<Cache>singletonList(spyCache))
                                 .when(tenantAwareCacheResolver)
-                                .resolveCaches(
-                                                Objects.requireNonNull(
-                                                                any(CacheOperationInvocationContext.class)));
-                doReturn(spyCache).when(cacheManager).getCache(Objects.requireNonNull(any(String.class)));
+                                .resolveCaches(any(CacheOperationInvocationContext.class));
+                doReturn(spyCache).when(cacheManager).getCache(any(String.class));
         }
 
         @Test

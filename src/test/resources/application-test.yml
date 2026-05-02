@@ -19,11 +19,21 @@ spring:
     properties:
       hibernate:
         cache:
-          use_second_level_cache: false
-          use_query_cache: false
-          region.factory_class: org.hibernate.cache.internal.NoCachingRegionFactory
+          "[use_second_level_cache]": false
+          "[use_query_cache]": false
+          "[region.factory_class]": org.hibernate.cache.internal.NoCachingRegionFactory
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.actuate.autoconfigure.metrics.cache.CacheMetricsAutoConfiguration
   cache:
     type: none
+
+management:
+  metrics:
+    enable:
+      cache: false
+    binders:
+      cache:
+        enabled: false
+

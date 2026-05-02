@@ -5,6 +5,8 @@ import lombok.Getter;
 import java.time.LocalDateTime;
 import java.util.Map;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 @Getter
 @Builder
 public class ApiError {
@@ -13,6 +15,7 @@ public class ApiError {
     private final int status;
     private final LocalDateTime timestamp;
     private final String path;
-    private final String traceId;
-    private final Map<String, String> errors; // For validation details
+    @JsonProperty("correlation_id")
+    private final String correlationId;
+    private final Map<String, String> errors;
 }
