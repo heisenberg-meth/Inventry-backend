@@ -1,5 +1,6 @@
 package com.ims.shared.config;
 
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.filter.ForwardedHeaderFilter;
@@ -16,5 +17,15 @@ public class FilterConfig {
   @Bean
   public ForwardedHeaderFilter forwardedHeaderFilter() {
     return new ForwardedHeaderFilter();
+  }
+
+  @Bean
+  public FilterRegistrationBean<com.ims.shared.ratelimit.RateLimitFilter> rateLimitFilterRegistration(
+      com.ims.shared.ratelimit.RateLimitFilter rateLimitFilter) {
+    FilterRegistrationBean<com.ims.shared.ratelimit.RateLimitFilter> registration = new FilterRegistrationBean<>();
+    registration.setFilter(rateLimitFilter);
+    registration.addUrlPatterns("/*");
+    registration.setOrder(1); // Ensure it runs early
+    return registration;
   }
 }

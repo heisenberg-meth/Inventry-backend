@@ -14,7 +14,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import java.util.Objects;
 import java.util.Map;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -36,7 +35,6 @@ public class AuditLogService {
 
     AuditLog auditEntry = Objects.requireNonNull(
         AuditLog.builder()
-            .tenantId(tenantId)
             .userId(userId)
             .action(Objects.requireNonNull(action.name()))
             .details(Objects.requireNonNull(details))
@@ -46,7 +44,7 @@ public class AuditLogService {
     auditLogRepository.save(auditEntry);
   }
 
-  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  @Transactional
   public void logRequiresNew(AuditAction action, Long tenantId, Long userId, String details) {
     log(action, tenantId, userId, details);
   }
@@ -74,7 +72,6 @@ public class AuditLogService {
       log.warn("Legacy log called with non-enum value: {}. Logging as string.", action);
       AuditLog auditEntry = Objects.requireNonNull(
           AuditLog.builder()
-              .tenantId(tenantId)
               .userId(userId)
               .action(action)
               .details(details)

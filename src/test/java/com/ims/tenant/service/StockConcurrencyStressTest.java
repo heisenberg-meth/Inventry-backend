@@ -40,7 +40,6 @@ class StockConcurrencyStressTest extends BaseIntegrationTest {
     Product p = productRepository.save(Product.builder()
         .name("Race-Condition-Product")
         .sku("RACE-001")
-        .tenantId(testTenant1Id)
         .salePrice(BigDecimal.valueOf(100))
         .stock(INITIAL_STOCK)
         .active(true)

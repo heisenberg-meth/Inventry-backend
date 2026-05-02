@@ -12,12 +12,12 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface WebhookOutboxRepository extends JpaRepository<WebhookOutbox, Long> {
 
-    @Query("""
-                SELECT w FROM WebhookOutbox w
-                WHERE w.status IN (com.ims.model.WebhookOutbox.OutboxStatus.PENDING, com.ims.model.WebhookOutbox.OutboxStatus.FAILED)
-                AND (w.nextRetryAt IS NULL OR w.nextRetryAt <= :now)
-                ORDER BY w.createdAt ASC
-            """)
+    @Query(value = """
+                SELECT * FROM webhook_outbox
+                WHERE status IN ('PENDING', 'FAILED')
+                AND (next_retry_at IS NULL OR next_retry_at <= :now)
+                ORDER BY created_at ASC
+            """, nativeQuery = true)
     List<WebhookOutbox> findPendingForProcessing(@Param("now") LocalDateTime now, Pageable pageable);
 
     @Query(value = "SELECT * FROM webhook_outbox WHERE tenant_id = :tenantId", nativeQuery = true)

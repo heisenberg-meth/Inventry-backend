@@ -1,7 +1,6 @@
 package com.ims.tenant;
 
 import static org.assertj.core.api.Assertions.assertThat;
-
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.SignupRequest;
 import com.ims.product.Product;
@@ -59,7 +58,6 @@ public class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
 
     TenantContext.setTenantId(tenantId);
     Product product = Product.builder()
-        .tenantId(tenantId)
         .name("Concurrency Test Product")
         .sku("CONC-001")
         .salePrice(Objects.requireNonNull(BigDecimal.valueOf(10.0)))

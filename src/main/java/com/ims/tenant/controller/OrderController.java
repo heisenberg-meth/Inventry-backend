@@ -49,28 +49,32 @@ public class OrderController {
   @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Create purchase order")
   public ResponseEntity<Order> createPurchaseOrder(
+      @org.springframework.web.bind.annotation.RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
       @Valid @RequestBody OrderRequest request) {
     Long userId = extractUserId();
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(orderService.createPurchaseOrder(request, userId));
+        .body(orderService.createPurchaseOrder(request, userId, idempotencyKey));
   }
 
   @PostMapping("/sale")
   @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER", "SALES_STAFF" })
   @Operation(summary = "Create sale order")
-  public ResponseEntity<Order> createSalesOrder(@Valid @RequestBody OrderRequest request) {
+  public ResponseEntity<Order> createSalesOrder(
+      @org.springframework.web.bind.annotation.RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+      @Valid @RequestBody OrderRequest request) {
     Long userId = extractUserId();
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(orderService.createSalesOrder(request, userId));
+        .body(orderService.createSalesOrder(request, userId, idempotencyKey));
   }
 
   @PostMapping("/return")
   @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER", "SALES_STAFF" })
   @Operation(summary = "Create return order")
   public ResponseEntity<Order> createReturnOrder(
+      @org.springframework.web.bind.annotation.RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
       @Valid @RequestBody OrderRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(orderService.createReturnOrder(request, extractUserId()));
+        .body(orderService.createReturnOrder(request, extractUserId(), idempotencyKey));
   }
 
   @PostMapping("/{id}/confirm")

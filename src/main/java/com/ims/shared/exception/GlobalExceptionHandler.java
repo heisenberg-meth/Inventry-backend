@@ -4,17 +4,19 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
-@ControllerAdvice
+@org.springframework.web.bind.annotation.RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
 
@@ -29,8 +31,12 @@ public class GlobalExceptionHandler {
                 status, request, null);
     }
 
-    @ExceptionHandler(EntityNotFoundException.class)
-    public ResponseEntity<ApiError> handleNotFound(EntityNotFoundException ex, HttpServletRequest request) {
+    @ExceptionHandler({
+            EntityNotFoundException.class,
+            NoHandlerFoundException.class,
+            NoResourceFoundException.class
+    })
+    public ResponseEntity<ApiError> handleNotFound(Exception ex, HttpServletRequest request) {
         return buildResponse(ex.getMessage(), "NOT_FOUND", HttpStatus.NOT_FOUND, request, null);
     }
 
@@ -66,9 +72,9 @@ public class GlobalExceptionHandler {
                 null);
     }
 
-    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiError> handleDataIntegrity(
-            org.springframework.dao.DataIntegrityViolationException ex, HttpServletRequest request) {
+            DataIntegrityViolationException ex, HttpServletRequest request) {
         log.warn("Data integrity violation: {}", ex.getMessage());
 
         String msg = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
@@ -99,7 +105,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleGeneric(Exception ex, HttpServletRequest request) {
         log.error("Unhandled exception occurred: traceId={}", MDC.get(TRACE_ID_KEY), ex);
-        return buildResponse("An unexpected error occurred. Please contact support.",
+        return buildResponse(ex.getMessage(),
                 "INTERNAL_SERVER_ERROR", HttpStatus.INTERNAL_SERVER_ERROR, request, null);
     }
 
@@ -112,7 +118,7 @@ public class GlobalExceptionHandler {
                 .status(status.value())
                 .timestamp(LocalDateTime.now())
                 .path(request.getRequestURI())
-                .traceId(MDC.get(TRACE_ID_KEY))
+                .correlationId(MDC.get(TRACE_ID_KEY))
                 .errors(errors)
                 .build();
 

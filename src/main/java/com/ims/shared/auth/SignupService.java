@@ -101,55 +101,67 @@ public class SignupService {
         .register(meterRegistry);
   }
 
-  @Transactional
+  /**
+   * Main entry point for signup. Handles slug/code resolution and retries
+   * OUTSIDE the transaction to avoid marking the transaction as rollback-only
+   * on unique constraint violations.
+   */
   public SignupResponse signup(SignupRequest request) {
-    return signupLatencyTimer.record(() -> doSignup(request));
+    return signupLatencyTimer.record(() -> {
+      // 0. Idempotency Check (PRD §4.3) - Advisory check before transaction
+      if (request.getIdempotencyKey() != null && !request.getIdempotencyKey().isBlank()) {
+        var existing = tenantRepository.findByIdempotencyKey(request.getIdempotencyKey());
+        if (existing.isPresent()) {
+          log.info("Signup: Returning existing tenant for idempotency key: {}", request.getIdempotencyKey());
+          Tenant t = existing.get();
+          return new SignupResponse("Signup already completed", t.getCompanyCode(), t.getWorkspaceSlug());
+        }
+      }
+
+      String normalizedEmail = request.getOwnerEmail().trim().toLowerCase();
+      if (userRepository.findByEmailGlobal(normalizedEmail).isPresent()) {
+        throw new ConflictException("Email already registered", Map.of("field", "ownerEmail"));
+      }
+
+      // 1. Resolve slug and code with existence checks
+      String workspaceSlug = resolveUniqueSlug(request);
+      String companyCode = resolveUniqueCompanyCode(request.getBusinessName());
+
+      // 2. Execute actual signup in a transaction
+      return executeSignup(request, workspaceSlug, companyCode);
+    });
   }
 
-  private SignupResponse doSignup(SignupRequest request) {
-    // 0. Idempotency Check (PRD §4.3)
-    if (request.getIdempotencyKey() != null && !request.getIdempotencyKey().isBlank()) {
-      var existing = tenantRepository.findByIdempotencyKey(request.getIdempotencyKey());
-      if (existing.isPresent()) {
-        log.info("Signup: Returning existing tenant for idempotency key: {}",
-            request.getIdempotencyKey());
-        Tenant t = existing.get();
-        return new SignupResponse(
-            "Signup already completed",
-            t.getCompanyCode(),
-            t.getWorkspaceSlug());
-      }
-    }
-
-    TenantContext.clear();
+  @Transactional
+  public SignupResponse executeSignup(SignupRequest request, String workspaceSlug, String companyCode) {
     String normalizedEmail = request.getOwnerEmail().trim().toLowerCase();
     String businessName = request.getBusinessName();
 
-    // 1. Validate email uniqueness — advisory check; DB constraint is the real
-    // guard (PRD §3.1, §5.1)
+    // Re-verify email inside transaction for strict atomicity
     if (userRepository.findByEmailGlobal(normalizedEmail).isPresent()) {
       throw new ConflictException("Email already registered", Map.of("field", "ownerEmail"));
     }
 
-    // 2. Generate workspace slug
-    String workspaceSlug = (request.getWorkspaceSlug() != null
-        && !request.getWorkspaceSlug().isBlank())
-            ? normalizeSlug(request.getWorkspaceSlug())
-            : generateWorkspaceSlug(businessName);
+    // Create the tenant
+    Tenant tenant = Tenant.builder()
+        .name(businessName)
+        .businessType(request.getBusinessType())
+        .workspaceSlug(workspaceSlug)
+        .companyCode(companyCode)
+        .status(TenantStatus.ACTIVE)
+        .plan("TRIAL")
+        .address(request.getAddress())
+        .gstin(request.getGstin())
+        .idempotencyKey(request.getIdempotencyKey())
+        .build();
 
-    // 3. Generate company code
-    String companyCode = companyCodeGenerator.generateCode(businessName);
-
-    // 4. INSERT-FIRST with retry on constraint violation (PRD §5.2, §6.1, §6.2)
-    // This eliminates the check-then-insert race condition anti-pattern.
-    Tenant tenant = insertTenantWithRetry(
-        businessName, request.getBusinessType(), workspaceSlug, companyCode,
-        request.getAddress(), request.getGstin(), request.getIdempotencyKey());
+    tenant = tenantRepository.save(tenant);
     Long tenantId = tenant.getId();
     String tenantName = tenant.getName();
 
     Long previousTenant = TenantContext.getTenantId();
     try {
+      // Set context IMMEDIATELY after save so subsequent operations have it
       TenantContext.setTenantId(tenantId);
 
       // 5. Create admin user (PRD §4.1 step 4)
@@ -161,7 +173,6 @@ public class SignupService {
               passwordEncoder.encode(request.getPassword())))
           .scope("TENANT")
           .isActive(true)
-          .tenantId(tenantId)
           .build();
 
       // 6. Initialize tenant: seeds roles, creates user, sends email (PRD §4.1 steps
@@ -181,7 +192,6 @@ public class SignupService {
       SubscriptionStatus status = (trialDays == 0) ? SubscriptionStatus.ACTIVE : SubscriptionStatus.TRIAL;
 
       Subscription subscription = Subscription.builder()
-          .tenantId(tenantId)
           .plan(plan.getName())
           .status(status)
           .startDate(now)
@@ -225,20 +235,23 @@ public class SignupService {
     } catch (Exception e) {
       signupFailureCounter.increment();
 
-      // Write SIGNUP_FAILED audit in a new transaction so it persists (PRD §2.1 G6)
-      auditLogService.logRequiresNew(
-          AuditAction.SIGNUP_FAILED,
-          tenantId != null ? tenantId : TenantContext.PLATFORM_TENANT_ID,
-          TenantContext.PLATFORM_TENANT_ID,
-          "Signup failed for business: " + businessName + ". Error: " + e.getMessage());
+      // Write SIGNUP_FAILED audit. PRD Phase 2: Use regular log to avoid breaking
+      // rollback guarantees
+      // with REQUIRES_NEW if anything went wrong with the tenant creation itself.
+      try {
+        auditLogService.log(
+            AuditAction.SIGNUP_FAILED,
+            tenantId != null ? tenantId : TenantContext.PLATFORM_TENANT_ID,
+            TenantContext.PLATFORM_TENANT_ID,
+            "Signup failed for business: " + businessName + ". Error: " + e.getMessage());
+      } catch (Exception auditEx) {
+        log.error("Failed to log signup failure audit", auditEx);
+      }
 
-      log.error("Signup: Failed to initialize tenant id={}. "
-          + "Transaction will roll back.", tenantId, e);
+      log.error("Signup: Failed to initialize tenant id={}. Transaction will roll back.", tenantId, e);
 
-      // Map infrastructure failures to 503 (PRD §3.11)
       if (e instanceof DataAccessResourceFailureException) {
-        throw new ServiceUnavailableException(
-            "Service temporarily unavailable. Please try again.", e);
+        throw new ServiceUnavailableException("Service temporarily unavailable. Please try again.", e);
       }
       throw e;
     } finally {
@@ -250,74 +263,38 @@ public class SignupService {
     }
   }
 
-  /**
-   * INSERT-FIRST strategy (PRD §5.2, §6.1, §6.2).
-   * Attempts to insert the tenant. On slug or company code collision,
-   * regenerates and retries up to MAX retries.
-   */
-  private Tenant insertTenantWithRetry(
-      String businessName, String businessType, String requestedSlug,
-      String baseCode, String address, String gstin, String idempotencyKey) {
+  private String resolveUniqueSlug(SignupRequest request) {
+    String slug = (request.getWorkspaceSlug() != null && !request.getWorkspaceSlug().isBlank())
+        ? normalizeSlug(request.getWorkspaceSlug())
+        : generateWorkspaceSlug(request.getBusinessName());
 
-    String slug = requestedSlug;
-    String code = baseCode;
-
-    for (int attempt = 0; attempt < MAX_SLUG_RETRIES + MAX_CODE_RETRIES; attempt++) {
-      Tenant newTenant = Tenant.builder()
-          .name(businessName)
-          .businessType(businessType)
-          .workspaceSlug(slug)
-          .companyCode(code)
-          .status(TenantStatus.ACTIVE)
-          .plan("TRIAL")
-          .address(address)
-          .gstin(gstin)
-          .idempotencyKey(idempotencyKey)
-          .build();
-
-      try {
-        return tenantRepository.saveAndFlush(newTenant);
-      } catch (DataIntegrityViolationException e) {
-        duplicateRetryCounter.increment();
-
-        if (isSlugUniqueViolation(e)) {
-          if (requestedSlug != null && !requestedSlug.isBlank() && attempt == 0) {
-            throw new ConflictException("Workspace URL already taken", Map.of("field", "workspaceSlug"));
-          }
-          log.warn("Slug collision for {}, retrying...", slug);
-          slug = generateWorkspaceSlug(businessName);
-        } else if (isCompanyCodeUniqueViolation(e)) {
-          code = companyCodeGenerator.generateCode(businessName);
-          log.warn("Company code collision, retrying with: {}", code);
-        } else if (isIdempotencyKeyViolation(e)) {
-          var existing = tenantRepository.findByIdempotencyKey(idempotencyKey);
-          if (existing.isPresent()) {
-            return existing.get();
-          }
-          throw new ConflictException("Duplicate signup detected. Please retry.", e);
-        } else {
-          throw e;
-        }
+    if (request.getWorkspaceSlug() != null && !request.getWorkspaceSlug().isBlank()) {
+      if (tenantRepository.existsByWorkspaceSlug(slug)) {
+        throw new ConflictException("Workspace URL already taken", Map.of("field", "workspaceSlug"));
       }
+      return slug;
     }
 
-    throw new ConflictException("Unable to allocate workspace slug or company code",
-        Map.of("field", "workspaceSlug"));
+    for (int i = 0; i < MAX_SLUG_RETRIES; i++) {
+      if (!tenantRepository.existsByWorkspaceSlug(slug)) {
+        return slug;
+      }
+      duplicateRetryCounter.increment();
+      slug = generateWorkspaceSlug(request.getBusinessName());
+    }
+    throw new ConflictException("Unable to allocate unique workspace slug", Map.of("field", "workspaceSlug"));
   }
 
-  private boolean isSlugUniqueViolation(DataIntegrityViolationException e) {
-    String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
-    return msg.contains("workspace_slug") || msg.contains("idx_tenants_workspace_slug");
-  }
-
-  private boolean isCompanyCodeUniqueViolation(DataIntegrityViolationException e) {
-    String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
-    return msg.contains("company_code") || msg.contains("uk_tenants_company_code");
-  }
-
-  private boolean isIdempotencyKeyViolation(DataIntegrityViolationException e) {
-    String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
-    return msg.contains("idempotency_key");
+  private String resolveUniqueCompanyCode(String businessName) {
+    String code = companyCodeGenerator.generateCode(businessName);
+    for (int i = 0; i < MAX_CODE_RETRIES; i++) {
+      if (!tenantRepository.existsByCompanyCode(code)) {
+        return code;
+      }
+      duplicateRetryCounter.increment();
+      code = companyCodeGenerator.generateCode(businessName);
+    }
+    throw new ConflictException("Unable to allocate unique company code", Map.of("field", "companyCode"));
   }
 
   private String randomBase36(int len) {

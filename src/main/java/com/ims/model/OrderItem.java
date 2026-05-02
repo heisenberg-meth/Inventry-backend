@@ -26,6 +26,13 @@ public class OrderItem {
   @SequenceGenerator(name = "order_item_seq", sequenceName = "order_items_id_seq", allocationSize = 50)
   private Long id;
 
+  @org.hibernate.annotations.TenantId
+  @jakarta.persistence.Column(name = "tenant_id", nullable = false, updatable = false)
+  private Long tenantId;
+
+  @jakarta.persistence.Version
+  private Long version;
+
   @Column(name = "order_id", nullable = false)
   private Long orderId;
 

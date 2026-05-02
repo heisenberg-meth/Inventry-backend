@@ -83,7 +83,7 @@ public class ProductImportService {
           Category category = getOrCreateCategory(categoryCache, categoryName, tenantId);
 
           Product product = Product.builder()
-              .name(name).tenantId(tenantId).salePrice(salePrice).stock(stock).sku(sku)
+              .name(name).salePrice(salePrice).stock(stock).sku(sku)
               .categoryId(category.getId()).unit("Unit").active(true).reorderLevel(DEFAULT_REORDER_LEVEL)
               .build();
 
@@ -137,7 +137,7 @@ public class ProductImportService {
     }
 
     Category newCat = Category.builder()
-        .name(name.trim()).tenantId(tenantId).description("Auto-created during import").build();
+        .name(name.trim()).description("Auto-created during import").build();
     Category saved = categoryRepository.save(newCat);
     cache.put(nameKey, saved);
     return saved;

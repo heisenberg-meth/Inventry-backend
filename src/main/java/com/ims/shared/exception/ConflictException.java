@@ -9,7 +9,10 @@ import lombok.Getter;
  */
 @Getter
 public class ConflictException extends RuntimeException {
-  private final Map<String, String> errors;
+
+  private static final long serialVersionUID = 1L;
+
+  private final transient Map<String, String> errors;
 
   public ConflictException(String message) {
     super(message);

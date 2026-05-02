@@ -13,11 +13,22 @@ public class TenantContext {
   private static final ThreadLocal<Long> TENANT = new ThreadLocal<>();
 
   public static void setTenantId(Long tenantId) {
+    if (tenantId == null) {
+      throw new IllegalArgumentException("tenantId cannot be null. Use clear() to remove context.");
+    }
     TENANT.set(tenantId);
+  }
+
+  public static void setCurrentTenant(Long tenantId) {
+    setTenantId(tenantId);
   }
 
   public static Long getTenantId() {
     return TENANT.get();
+  }
+
+  public static Long getCurrentTenant() {
+    return getTenantId();
   }
 
   public static Long requireTenantId() {

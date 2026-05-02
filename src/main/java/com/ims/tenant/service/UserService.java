@@ -104,7 +104,6 @@ public class UserService {
     }
 
     User user = User.builder()
-        .tenantId(tenantId)
         .name(request.getName())
         .email(request.getEmail())
         .passwordHash(Objects.requireNonNull(passwordEncoder.encode(request.getPassword())))

@@ -56,11 +56,11 @@ public class InvoiceConcurrencyTest extends BaseIntegrationTest {
         .build();
     tenant = tenantRepository.save(tenant);
     this.tenantId = tenant.getId();
+    TenantContext.setTenantId(tenantId);
 
     // Create 10 orders to generate invoices for
     for (int i = 0; i < 10; i++) {
       Order order = Order.builder()
-          .tenantId(Objects.requireNonNull(tenantId))
           .type("SALE")
           .status(com.ims.model.OrderStatus.PENDING)
           .totalAmount(new BigDecimal("100.00"))

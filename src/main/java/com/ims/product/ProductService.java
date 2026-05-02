@@ -17,6 +17,7 @@ import com.ims.tenant.domain.pharmacy.PharmacyProductRepository;
 import com.ims.tenant.domain.warehouse.WarehouseProduct;
 import com.ims.tenant.service.WarehouseProductRepository;
 import jakarta.persistence.EntityNotFoundException;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -148,10 +149,10 @@ public class ProductService {
         Product.builder()
             .name(Objects.requireNonNull(request.getName()))
             .sku(Objects.requireNonNull(request.getSku()))
-            .barcode(Objects.requireNonNull(request.getBarcode()))
-            .categoryId(Objects.requireNonNull(request.getCategoryId()))
-            .unit(Objects.requireNonNull(request.getUnit()))
-            .purchasePrice(Objects.requireNonNull(request.getPurchasePrice()))
+            .barcode(request.getBarcode())
+            .categoryId(request.getCategoryId())
+            .unit(request.getUnit() != null ? request.getUnit() : "PCS")
+            .purchasePrice(request.getPurchasePrice() != null ? request.getPurchasePrice() : BigDecimal.ZERO)
             .salePrice(Objects.requireNonNull(request.getSalePrice()))
             .reorderLevel(
                 request.getReorderLevel() != null
@@ -374,20 +375,47 @@ public class ProductService {
 
     Product savedProduct = Objects.requireNonNull(productRepository.save(clone));
 
+    // Clone extensions
+    String businessType = securityContextAccessor.getBusinessType().orElse("");
+    PharmacyProduct pp = null;
+    WarehouseProduct wp = null;
+
+    if ("PHARMACY".equals(businessType)) {
+      var originalPp = pharmacyProductRepository.findById(id).orElse(null);
+      if (originalPp != null) {
+        pp = PharmacyProduct.builder()
+            .product(savedProduct)
+            .batchNumber(originalPp.getBatchNumber())
+            .expiryDate(originalPp.getExpiryDate())
+            .manufacturer(originalPp.getManufacturer())
+            .hsnCode(originalPp.getHsnCode())
+            .schedule(originalPp.getSchedule())
+            .build();
+        pp = pharmacyProductRepository.save(pp);
+      }
+    } else if ("WAREHOUSE".equals(businessType)) {
+      var originalWp = warehouseProductRepository.findById(id).orElse(null);
+      if (originalWp != null) {
+        wp = WarehouseProduct.builder()
+            .product(savedProduct)
+            .storageLocation(originalWp.getStorageLocation())
+            .zone(originalWp.getZone())
+            .rack(originalWp.getRack())
+            .bin(originalWp.getBin())
+            .build();
+        wp = warehouseProductRepository.save(wp);
+      }
+    }
+
     auditLogService.logAudit(
         AuditAction.DUPLICATE_PRODUCT,
         AuditResource.PRODUCT,
         savedProduct.getId(),
         "Duplicated from product #" + id);
 
-    ProductResponse fallback = toResponse(Objects.requireNonNull(savedProduct));
-
-    ProductResponse result = productRepository
-        .findByIdWithDetails(savedProduct.getId())
-        .map(this::toResponse)
-        .orElse(fallback);
-
-    return Objects.requireNonNull(result);
+    return (pp != null || wp != null)
+        ? toResponse(savedProduct, pp, wp)
+        : toResponse(savedProduct);
   }
 
   private String generateUniqueSku(String originalSku) {

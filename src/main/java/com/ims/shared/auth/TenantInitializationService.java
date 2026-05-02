@@ -2,6 +2,7 @@ package com.ims.shared.auth;
 
 import com.ims.category.CategoryService;
 import com.ims.dto.CategoryRequest;
+import com.ims.model.Permission;
 import com.ims.model.Role;
 import com.ims.model.User;
 import com.ims.model.UserRole;
@@ -12,6 +13,8 @@ import com.ims.tenant.repository.UserRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,7 +35,7 @@ public class TenantInitializationService {
   @Transactional(propagation = Propagation.REQUIRED)
   public User initializeTenant(
       User user, Long tenantId, String tenantName) {
-    Long oldTenantId = TenantContext.getTenantId();
+    Long oldTenantId = TenantContext.getCurrentTenant();
     try {
       TenantContext.setTenantId(tenantId);
 
@@ -94,19 +97,20 @@ public class TenantInitializationService {
 
   private void seedDefaultRoles(Long tenantId) {
     // FR-03-C: Bulk lookup from cache
-    Map<String, com.ims.model.Permission> allPerms = permissionCacheService.getAll();
+    Map<String, Permission> allPerms = permissionCacheService.getAll();
 
     // FR-03-J: Permission Matrix
+    // FR-03-J: Permission Matrix - Include all permissions except manage_platform
     seedRole(tenantId, UserRole.TENANT_ADMIN, allPerms.values().stream()
         .filter(p -> !p.getKey().equals("manage_platform"))
-        .collect(java.util.stream.Collectors.toList()));
+        .collect(Collectors.toList()));
 
     seedRole(tenantId, UserRole.BUSINESS_MANAGER, filterPerms(allPerms,
         "view_business", "create_business", "_user", "_product", "stock_", "create_invoice", "view_reports",
         "_category", "_supplier"));
 
     seedRole(tenantId, UserRole.SALES_STAFF, filterPerms(allPerms,
-        "view_product", "stock_out", "create_invoice"));
+        "view_product", "view_user", "view_users", "stock_out", "create_invoice", "view_customers"));
 
     seedRole(tenantId, UserRole.INVENTORY_MANAGER, filterPerms(allPerms,
         "_product", "stock_", "view_reports", "_category"));
@@ -116,12 +120,16 @@ public class TenantInitializationService {
 
     seedRole(tenantId, UserRole.VIEWER, allPerms.values().stream()
         .filter(p -> p.getKey().startsWith("view_"))
-        .collect(java.util.stream.Collectors.toList()));
+        .collect(Collectors.toList()));
 
     log.info("Default roles seeded for tenant: {}", tenantId);
   }
 
-  private void seedRole(Long tenantId, UserRole roleType, List<com.ims.model.Permission> perms) {
+  private void seedRole(Long tenantId, UserRole roleType, List<Permission> perms) {
+    Long currentTenant = TenantContext.getCurrentTenant();
+    if (currentTenant == null) {
+      throw new IllegalStateException("TenantContext not set during role seeding");
+    }
     Role role = Role.builder()
         .name(roleType.name())
         .description("Default " + roleType.name() + " role")
@@ -131,7 +139,7 @@ public class TenantInitializationService {
     roleRepository.save(role);
   }
 
-  private List<com.ims.model.Permission> filterPerms(Map<String, com.ims.model.Permission> all, String... keys) {
+  private List<Permission> filterPerms(Map<String, Permission> all, String... keys) {
     return all.values().stream()
         .filter(p -> {
           for (String k : keys) {
@@ -145,6 +153,6 @@ public class TenantInitializationService {
           }
           return false;
         })
-        .collect(java.util.stream.Collectors.toList());
+        .collect(Collectors.toList());
   }
 }

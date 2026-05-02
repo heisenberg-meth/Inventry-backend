@@ -50,7 +50,6 @@ public class PaymentGatewayService {
 
     Payment payment = Objects.requireNonNull(
         Payment.builder()
-            .tenantId(TenantContext.requireTenantId())
             .invoiceId(invoiceId)
             .amount(amount)
             .paymentMode("GATEWAY")
@@ -83,73 +82,75 @@ public class PaymentGatewayService {
   public void processWebhook(Long tenantId, String eventId, String eventType, JsonNode payload) {
     log.info("Processing validated payment gateway webhook: {} for tenant {}", eventType, tenantId);
 
-    PaymentGatewayLog pgLog = Objects.requireNonNull(
-        PaymentGatewayLog.builder()
-            .tenantId(Objects.requireNonNull(tenantId))
-            .eventId(Objects.requireNonNull(eventId))
-            .eventType(Objects.requireNonNull(eventType))
-            .rawPayload(Objects.requireNonNull(payload.toString()))
-            .build());
-    logRepository.save(pgLog);
+    Long previousTenantId = TenantContext.getTenantId();
+    TenantContext.setTenantId(tenantId);
+    try {
+      PaymentGatewayLog pgLog = Objects.requireNonNull(
+          PaymentGatewayLog.builder()
+              .eventId(Objects.requireNonNull(eventId))
+              .eventType(Objects.requireNonNull(eventType))
+              .rawPayload(Objects.requireNonNull(payload.toString()))
+              .build());
+      logRepository.save(pgLog);
 
-    if ("payment.captured".equals(eventType)) {
-      String gatewayOrderId = payload.path("payload").path("payment").path("entity").path("order_id").asText();
-      BigDecimal amount = new BigDecimal(
-          payload.path("payload").path("payment").path("entity").path("amount").asLong())
-          .divide(PAISE_PER_RUPEE); // Razorpay reports amount in paise
-      String currency = payload.path("payload").path("payment").path("entity").path("currency").asText();
-      String gatewayPaymentId = payload.path("payload").path("payment").path("entity").path("id").asText();
+      if ("payment.captured".equals(eventType)) {
+        String gatewayOrderId = payload.path("payload").path("payment").path("entity").path("order_id").asText();
+        BigDecimal amount = new BigDecimal(
+            payload.path("payload").path("payment").path("entity").path("amount").asLong())
+            .divide(PAISE_PER_RUPEE); // Razorpay reports amount in paise
+        String currency = payload.path("payload").path("payment").path("entity").path("currency").asText();
+        String gatewayPaymentId = payload.path("payload").path("payment").path("entity").path("id").asText();
 
-      // 1. Locate and validate payment record
-      Long previousTenantId = TenantContext.getTenantId();
-      TenantContext.setTenantId(tenantId);
-      Payment payment;
-      try {
-        payment = paymentRepository
+        // 1. Locate and validate payment record
+        Payment payment = paymentRepository
             .findByGatewayTransactionId(gatewayOrderId)
             .orElseThrow(
                 () -> new EntityNotFoundException("Payment not found for order: " + gatewayOrderId));
-      } finally {
-        TenantContext.setTenantId(previousTenantId);
-      }
 
-      if (PaymentStatus.PAID.equals(payment.getStatus())) {
-        log.info("Payment {} already processed, skipping state update", gatewayOrderId);
-        return;
-      }
+        if (PaymentStatus.PAID.equals(payment.getStatus())) {
+          log.info("Payment {} already processed, skipping state update", gatewayOrderId);
+          return;
+        }
 
-      // 2. Cross-verify amount and currency
-      if (payment.getAmount().compareTo(amount) != 0 || !"INR".equals(currency)) {
-        log.error(
-            "CRITICAL: Payment mismatch for order {}. Expected: {} INR, Received: {} {}",
-            gatewayOrderId,
-            payment.getAmount(),
-            amount,
-            currency);
-        payment.setStatus(PaymentStatus.FAILED);
-        payment.setNotes("Amount/Currency mismatch on webhook");
+        // 2. Cross-verify amount and currency
+        if (payment.getAmount().compareTo(amount) != 0 || !"INR".equals(currency)) {
+          log.error(
+              "CRITICAL: Payment mismatch for order {}. Expected: {} INR, Received: {} {}",
+              gatewayOrderId,
+              payment.getAmount(),
+              amount,
+              currency);
+          payment.setStatus(PaymentStatus.FAILED);
+          payment.setNotes("Amount/Currency mismatch on webhook");
+          paymentRepository.save(payment);
+          return;
+        }
+
+        // 3. Update Payment state
+        payment.setStatus(PaymentStatus.PAID);
+        payment.setReference(Objects.requireNonNull(gatewayPaymentId));
         paymentRepository.save(payment);
-        return;
+
+        // 4. Update Invoice state
+        invoiceRepository
+            .findById(Objects.requireNonNull(payment.getInvoiceId()))
+            .filter(inv -> tenantId.equals(inv.getTenantId()))
+            .ifPresent(
+                invoice -> {
+                  invoice.setStatus(InvoiceStatus.PAID);
+                  invoice.setPaidAt(Objects.requireNonNull(LocalDateTime.now()));
+                  invoiceRepository.save(invoice);
+                  log.info("Invoice {} marked as PAID", invoice.getId());
+                });
+
+        log.info("Successfully processed payment capture for order {}", gatewayOrderId);
       }
-
-      // 3. Update Payment state
-      payment.setStatus(PaymentStatus.PAID);
-      payment.setReference(Objects.requireNonNull(gatewayPaymentId));
-      paymentRepository.save(payment);
-
-      // 4. Update Invoice state
-      invoiceRepository
-          .findById(Objects.requireNonNull(payment.getInvoiceId()))
-          .filter(inv -> tenantId.equals(inv.getTenantId()))
-          .ifPresent(
-              invoice -> {
-                invoice.setStatus(InvoiceStatus.PAID);
-                invoice.setPaidAt(Objects.requireNonNull(LocalDateTime.now()));
-                invoiceRepository.save(invoice);
-                log.info("Invoice {} marked as PAID", invoice.getId());
-              });
-
-      log.info("Successfully processed payment capture for order {}", gatewayOrderId);
+    } finally {
+      if (previousTenantId != null) {
+        TenantContext.setTenantId(previousTenantId);
+      } else {
+        TenantContext.clear();
+      }
     }
   }
 }

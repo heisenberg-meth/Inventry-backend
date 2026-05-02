@@ -64,7 +64,14 @@ public class OrderService {
   private static final int PERCENTAGE_BASE = 100;
 
   @Transactional
-  public Order createPurchaseOrder(OrderRequest request, Long userId) {
+  public Order createPurchaseOrder(OrderRequest request, Long userId, String idempotencyKey) {
+    if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+      var existing = orderRepository.findByIdempotencyKey(idempotencyKey);
+      if (existing.isPresent()) {
+        log.info("Returning existing purchase order for idempotency key: {}", idempotencyKey);
+        return existing.get();
+      }
+    }
     Long supplierId = request.getSupplierId();
     List<OrderItemRequest> itemRequests = request.getItems();
 
@@ -114,7 +121,6 @@ public class OrderService {
     }
 
     Order order = Order.builder()
-        .tenantId(com.ims.shared.auth.TenantContext.requireTenantId())
         .type("PURCHASE")
         .status(com.ims.model.OrderStatus.PENDING)
         .supplierId(supplierId)
@@ -122,6 +128,7 @@ public class OrderService {
         .taxAmount(Objects.requireNonNull(taxAmount))
         .notes(request.getNotes())
         .createdBy(userId)
+        .idempotencyKey(idempotencyKey)
         .build();
 
     Order savedPurchaseOrder = orderRepository.save(order);
@@ -144,7 +151,14 @@ public class OrderService {
   }
 
   @Transactional
-  public Order createSalesOrder(OrderRequest request, Long userId) {
+  public Order createSalesOrder(OrderRequest request, Long userId, String idempotencyKey) {
+    if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+      var existing = orderRepository.findByIdempotencyKey(idempotencyKey);
+      if (existing.isPresent()) {
+        log.info("Returning existing sales order for idempotency key: {}", idempotencyKey);
+        return existing.get();
+      }
+    }
     Long customerId = request.getCustomerId();
     List<OrderItemRequest> itemRequests = request.getItems();
 
@@ -219,7 +233,6 @@ public class OrderService {
     }
 
     Order salesOrder = Order.builder()
-        .tenantId(com.ims.shared.auth.TenantContext.requireTenantId())
         .type("SALE")
         .status(OrderStatus.PENDING)
         .customerId(customerId)
@@ -228,6 +241,7 @@ public class OrderService {
         .discount(Objects.requireNonNull(rootDiscount))
         .notes(request.getNotes())
         .createdBy(userId)
+        .idempotencyKey(idempotencyKey)
         .build();
     Order savedSalesOrder = orderRepository.save(salesOrder);
 
@@ -254,7 +268,14 @@ public class OrderService {
   }
 
   @Transactional
-  public Order createReturnOrder(OrderRequest request, Long userId) {
+  public Order createReturnOrder(OrderRequest request, Long userId, String idempotencyKey) {
+    if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+      var existing = orderRepository.findByIdempotencyKey(idempotencyKey);
+      if (existing.isPresent()) {
+        log.info("Returning existing return order for idempotency key: {}", idempotencyKey);
+        return existing.get();
+      }
+    }
     Long originalOrderId = request.getOriginalOrderId();
     List<OrderItemRequest> returnItems = request.getItems();
 
@@ -270,13 +291,13 @@ public class OrderService {
     BigDecimal returnTax = BigDecimal.ZERO;
 
     Order initialReturnOrder = Order.builder()
-        .tenantId(com.ims.shared.auth.TenantContext.requireTenantId())
         .type("RETURN")
         .status(com.ims.model.OrderStatus.COMPLETED)
         .customerId(originalOrder.getCustomerId())
         .referenceOrderId(originalOrderId)
         .notes(request.getNotes() != null ? request.getNotes() : "Customer return")
         .createdBy(userId)
+        .idempotencyKey(idempotencyKey)
         .build();
 
     Order savedReturnOrder = orderRepository.save(initialReturnOrder);
