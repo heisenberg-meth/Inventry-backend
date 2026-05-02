@@ -9,7 +9,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -17,7 +16,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
-@ControllerAdvice
+@org.springframework.web.bind.annotation.RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
 
@@ -106,7 +105,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleGeneric(Exception ex, HttpServletRequest request) {
         log.error("Unhandled exception occurred: traceId={}", MDC.get(TRACE_ID_KEY), ex);
-        return buildResponse("An unexpected error occurred. Please contact support.",
+        return buildResponse(ex.getMessage(),
                 "INTERNAL_SERVER_ERROR", HttpStatus.INTERNAL_SERVER_ERROR, request, null);
     }
 

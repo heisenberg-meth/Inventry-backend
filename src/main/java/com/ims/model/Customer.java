@@ -25,6 +25,9 @@ public class Customer {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
+  @jakarta.persistence.Version
+  private Long version;
+
   @TenantId
   @Column(name = "tenant_id", nullable = false, updatable = false)
   private Long tenantId;

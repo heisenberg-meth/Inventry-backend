@@ -181,10 +181,10 @@ public class JwtFilter extends OncePerRequestFilter {
   @Override
   protected boolean shouldNotFilter(HttpServletRequest request) {
     String path = request.getRequestURI();
-    // Only bypass for health check. Other actuator/swagger paths need auth in prod.
-    return "/actuator/health".equals(path)
+
+    return path.equals("/actuator/health")
         || path.equals("/api/v1/actuator/health")
-        || path.contains("/auth/")
-        || path.contains("/platform/auth/");
+        || path.equals("/api/v1/auth/login")
+        || path.equals("/api/v1/auth/signup");
   }
 }

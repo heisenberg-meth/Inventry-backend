@@ -9,6 +9,7 @@ import com.ims.shared.auth.TenantContext;
 import java.util.Objects;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -52,15 +53,15 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
     var t2Users = userRepository.findAll();
     TenantContext.clear();
 
-    org.junit.jupiter.api.Assertions.assertEquals(1, t1Users.size());
-    org.junit.jupiter.api.Assertions.assertEquals(1, t2Users.size());
-    org.junit.jupiter.api.Assertions.assertTrue(t1Users.get(0).getEmail().contains("@t1.com"));
-    org.junit.jupiter.api.Assertions.assertTrue(t2Users.get(0).getEmail().contains("@t2.com"));
+    Assertions.assertEquals(1, t1Users.size());
+    Assertions.assertEquals(1, t2Users.size());
+    Assertions.assertTrue(t1Users.get(0).getEmail().contains("@t1.com"));
+    Assertions.assertTrue(t2Users.get(0).getEmail().contains("@t2.com"));
   }
 
   @Test
   void testUnauthorizedAccess() throws Exception {
-    mockMvc.perform(get("/api/v1/tenant/users").with(tenant("1")))
+    mockMvc.perform(get("/api/v1/tenant/users").header("X-Tenant-ID", "1"))
         .andExpect(status().isUnauthorized());
   }
 

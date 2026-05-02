@@ -59,7 +59,6 @@ public class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
 
     TenantContext.setTenantId(tenantId);
     Product product = Product.builder()
-        .tenantId(tenantId)
         .name("Concurrency Test Product")
         .sku("CONC-001")
         .salePrice(Objects.requireNonNull(BigDecimal.valueOf(10.0)))

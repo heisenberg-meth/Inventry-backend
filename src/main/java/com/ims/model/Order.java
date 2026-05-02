@@ -30,6 +30,9 @@ public class Order {
   @SequenceGenerator(name = "order_seq", sequenceName = "orders_id_seq", allocationSize = 50)
   private Long id;
 
+  @jakarta.persistence.Version
+  private Long version;
+
   @TenantId
   @Column(name = "tenant_id", nullable = false, updatable = false)
   private Long tenantId;

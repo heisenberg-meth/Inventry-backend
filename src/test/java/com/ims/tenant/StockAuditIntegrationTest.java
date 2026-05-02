@@ -38,7 +38,6 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
     // Tenant 1
     TenantContext.setTenantId(testTenant1Id);
     User u1 = User.builder()
-        .tenantId(testTenant1Id)
         .email("u1@t1.com")
         .name("U1")
         .passwordHash("p")
@@ -51,7 +50,6 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
     user1Id = u1.getId();
 
     Product p1 = Product.builder()
-        .tenantId(testTenant1Id)
         .name("T1 Product")
         .sku("T1-PROD")
         .salePrice(Objects.requireNonNull(BigDecimal.valueOf(10.0)))
@@ -65,7 +63,6 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
     // Tenant 2
     TenantContext.setTenantId(testTenant2Id);
     User u2 = User.builder()
-        .tenantId(testTenant2Id)
         .email("u2@t2.com")
         .name("U2")
         .passwordHash("p")
@@ -78,7 +75,6 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
     user2Id = u2.getId();
 
     Product p2 = Product.builder()
-        .tenantId(testTenant2Id)
         .name("T2 Product")
         .sku("T2-PROD")
         .salePrice(Objects.requireNonNull(BigDecimal.valueOf(20.0)))

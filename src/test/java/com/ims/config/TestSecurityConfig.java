@@ -5,9 +5,10 @@ import com.ims.shared.auth.JwtAuthDetails;
 import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.repository.UserRepository;
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.util.Collections;
+import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -69,6 +70,12 @@ public class TestSecurityConfig {
                     auth.requestMatchers("/actuator/health", "/api/v1/actuator/health").permitAll();
                     auth.anyRequest().authenticated();
                 })
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"message\":\"Unauthorized\",\"status\":401}");
+                        }))
                 .addFilterBefore(testAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
@@ -87,10 +94,8 @@ public class TestSecurityConfig {
 
         @Override
         protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-                FilterChain chain) throws java.io.IOException, jakarta.servlet.ServletException {
+                FilterChain chain) throws IOException, ServletException {
 
-            // If SecurityContext already has auth (e.g. from @WithMockUser or setUp()),
-            // skip
             if (SecurityContextHolder.getContext().getAuthentication() != null
                     && SecurityContextHolder.getContext().getAuthentication().isAuthenticated()) {
                 ensureTenantContext(request);
@@ -99,8 +104,9 @@ public class TestSecurityConfig {
             }
 
             Long tenantId = parseTenantId(request);
+            String authHeader = request.getHeader("Authorization");
+
             if (tenantId == null) {
-                // No tenant header and no existing auth — let Spring Security reject as 401
                 chain.doFilter(request, response);
                 return;
             }
@@ -108,11 +114,13 @@ public class TestSecurityConfig {
             TenantContext.setTenantId(tenantId);
 
             try {
-                User user = findUser(userRepository, tenantId);
-                if (user != null) {
-                    setAuthentication(user, tenantId);
+                if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                    User user = findUser(userRepository, tenantId);
+                    if (user != null) {
+                        setAuthentication(user, tenantId);
+                    }
                 } else {
-                    setRootAuthentication(tenantId);
+                    SecurityContextHolder.clearContext();
                 }
                 chain.doFilter(request, response);
             } finally {
@@ -168,14 +176,5 @@ public class TestSecurityConfig {
             SecurityContextHolder.getContext().setAuthentication(auth);
         }
 
-        private void setRootAuthentication(Long tenantId) {
-            JwtAuthDetails details = new JwtAuthDetails(
-                    1L, tenantId, "ROOT", "PLATFORM", "SYSTEM", false,
-                    Collections.emptySet(), false, null);
-
-            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                    1L, details, List.of(new SimpleGrantedAuthority("ROLE_ROOT")));
-            SecurityContextHolder.getContext().setAuthentication(auth);
-        }
     }
 }

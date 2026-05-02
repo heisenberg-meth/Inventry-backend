@@ -109,6 +109,6 @@ public class ApiKeyFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return path.startsWith("/api/v1/auth/") || path.startsWith("/api/v1/public/");
+        return path.equals("/api/v1/auth/login") || path.equals("/api/v1/auth/signup");
     }
 }

@@ -46,7 +46,6 @@ class TenantIsolationStressTest extends BaseIntegrationTest {
         .email("admin1@t1.com")
         .passwordHash(pass)
         .role(adminRole1)
-        .tenantId(testTenant1Id)
         .scope("TENANT")
         .isVerified(true)
         .isActive(true)
@@ -61,30 +60,29 @@ class TenantIsolationStressTest extends BaseIntegrationTest {
         .email("admin2@t2.com")
         .passwordHash(pass)
         .role(adminRole2)
-        .tenantId(testTenant2Id)
         .scope("TENANT")
         .isVerified(true)
         .isActive(true)
         .build());
     token2 = login("admin2@t2.com", "password", "T2001", testTenant2Id);
 
-    // Create unique products for each tenant - context already set
+    // Create unique products for each tenant
+    TenantContext.setTenantId(testTenant1Id);
     for (int i = 0; i < 5; i++) {
       productRepository.save(Product.builder()
           .name("T1-Product-" + i)
           .sku("T1-SKU-" + i)
-          .tenantId(testTenant1Id)
           .salePrice(BigDecimal.valueOf(100))
           .stock(10)
           .active(true)
           .build());
     }
 
+    TenantContext.setTenantId(testTenant2Id);
     for (int i = 0; i < 5; i++) {
       productRepository.save(Product.builder()
           .name("T2-Product-" + i)
           .sku("T2-SKU-" + i)
-          .tenantId(testTenant2Id)
           .salePrice(BigDecimal.valueOf(200))
           .stock(20)
           .active(true)
