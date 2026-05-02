@@ -16,16 +16,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.test.context.ActiveProfiles;
 
-@SpringBootTest(properties = {
-    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
-    "spring.cache.type=none"
-})
-@ActiveProfiles("test")
 public class StockAuditIntegrationTest extends BaseIntegrationTest {
 
   @Autowired
@@ -36,10 +29,11 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
   private Long user1Id;
   private Long user2Id;
 
+  @Override
   @BeforeEach
-  void setup() {
+  protected void setUp() throws Exception {
+    super.setUp();
     cleanupDatabase();
-    mockRedisAndCache();
 
     // Tenant 1
     TenantContext.setTenantId(testTenant1Id);
@@ -48,7 +42,8 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
         .email("u1@t1.com")
         .name("U1")
         .passwordHash("p")
-        .role(Objects.requireNonNull(getOrCreateRole(Objects.requireNonNull(UserRole.ADMIN.name()), testTenant1Id)))
+        .role(Objects
+            .requireNonNull(getOrCreateRole(Objects.requireNonNull(UserRole.TENANT_ADMIN.name()), testTenant1Id)))
         .scope("TENANT")
         .isVerified(true)
         .build();
@@ -74,7 +69,8 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
         .email("u2@t2.com")
         .name("U2")
         .passwordHash("p")
-        .role(Objects.requireNonNull(getOrCreateRole(Objects.requireNonNull(UserRole.ADMIN.name()), testTenant2Id)))
+        .role(Objects
+            .requireNonNull(getOrCreateRole(Objects.requireNonNull(UserRole.TENANT_ADMIN.name()), testTenant2Id)))
         .scope("TENANT")
         .isVerified(true)
         .build();

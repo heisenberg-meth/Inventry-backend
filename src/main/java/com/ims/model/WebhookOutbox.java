@@ -23,46 +23,46 @@ import org.hibernate.annotations.TenantId;
 @AllArgsConstructor
 public class WebhookOutbox {
 
-    public enum OutboxStatus {
-        PENDING, PROCESSING, COMPLETED, FAILED
-    }
+  public enum OutboxStatus {
+    PENDING, PROCESSING, COMPLETED, FAILED
+  }
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    @TenantId
-    @Column(name = "tenant_id", nullable = false)
-    private Long tenantId;
+  @TenantId
+  @Column(name = "tenant_id", nullable = false, updatable = false)
+  private Long tenantId;
 
-    @Column(name = "webhook_id")
-    private Long webhook_id;
+  @Column(name = "webhook_id")
+  private Long webhook_id;
 
-    @Column(name = "event_type", nullable = false)
-    private String eventType;
+  @Column(name = "event_type", nullable = false)
+  private String eventType;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
-    private String payload;
+  @Column(nullable = false, columnDefinition = "TEXT")
+  private String payload;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    @Builder.Default
-    private OutboxStatus status = OutboxStatus.PENDING;
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false)
+  @Builder.Default
+  private OutboxStatus status = OutboxStatus.PENDING;
 
-    @Column(name = "retry_count")
-    @Builder.Default
-    private Integer retryCount = 0;
+  @Column(name = "retry_count")
+  @Builder.Default
+  private Integer retryCount = 0;
 
-    @Column(name = "next_retry_at")
-    private LocalDateTime nextRetryAt;
+  @Column(name = "next_retry_at")
+  private LocalDateTime nextRetryAt;
 
-    @Column(name = "last_error", columnDefinition = "TEXT")
-    private String lastError;
+  @Column(name = "last_error", columnDefinition = "TEXT")
+  private String lastError;
 
-    @Column(name = "created_at", nullable = false)
-    @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now();
+  @Column(name = "created_at", nullable = false)
+  @Builder.Default
+  private LocalDateTime createdAt = LocalDateTime.now();
 
-    @Column(name = "processed_at")
-    private LocalDateTime processedAt;
+  @Column(name = "processed_at")
+  private LocalDateTime processedAt;
 }

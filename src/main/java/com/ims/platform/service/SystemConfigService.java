@@ -32,6 +32,16 @@ public class SystemConfigService {
         .orElse(defaultValue);
   }
 
+  public int getInt(String key, int defaultValue) {
+    String val = getConfig(key, String.valueOf(defaultValue));
+    try {
+      return Integer.parseInt(val);
+    } catch (NumberFormatException e) {
+      log.error("Invalid integer configuration for key {}: {}", key, val);
+      return defaultValue;
+    }
+  }
+
   @Transactional
   @CacheEvict(value = "systemConfig", key = "#key")
   public SystemConfig updateConfig(String key, String value) {

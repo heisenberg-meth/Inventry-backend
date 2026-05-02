@@ -34,7 +34,7 @@ public class PaymentGatewayController {
   private final ObjectMapper objectMapper;
 
   @PostMapping("/initiate")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @SecurityRequirement(name = "bearerAuth")
   @Operation(summary = "Initiate a gateway payment")
   public ResponseEntity<Map<String, Object>> initiate(@RequestBody Map<String, Object> body) {
@@ -54,8 +54,7 @@ public class PaymentGatewayController {
   public ResponseEntity<Void> handleWebhook(HttpServletRequest request) {
     try {
       // 1. Get raw body (crucial for signature verification)
-      String rawBody =
-          request.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
+      String rawBody = request.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
 
       // 2. Extract signature header
       String receivedSig = request.getHeader("X-Razorpay-Signature");

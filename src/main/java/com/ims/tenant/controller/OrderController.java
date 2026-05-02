@@ -34,18 +34,19 @@ public class OrderController {
   private final OrderService orderService;
 
   @GetMapping
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER", "SALES_STAFF" })
   @Operation(summary = "List all orders")
   public ResponseEntity<Page<Order>> getOrders(
       @RequestParam(required = false) String type, Pageable pageable) {
     if (type != null) {
-      return ResponseEntity.ok(orderService.getOrdersByType(Objects.requireNonNull(type), Objects.requireNonNull(pageable)));
+      return ResponseEntity
+          .ok(orderService.getOrdersByType(Objects.requireNonNull(type), Objects.requireNonNull(pageable)));
     }
     return ResponseEntity.ok(orderService.getOrders(Objects.requireNonNull(pageable)));
   }
 
   @PostMapping("/purchase")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Create purchase order")
   public ResponseEntity<Order> createPurchaseOrder(
       @Valid @RequestBody OrderRequest request) {
@@ -55,7 +56,7 @@ public class OrderController {
   }
 
   @PostMapping("/sale")
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER", "SALES_STAFF" })
   @Operation(summary = "Create sale order")
   public ResponseEntity<Order> createSalesOrder(@Valid @RequestBody OrderRequest request) {
     Long userId = extractUserId();
@@ -64,7 +65,7 @@ public class OrderController {
   }
 
   @PostMapping("/return")
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER", "SALES_STAFF" })
   @Operation(summary = "Create return order")
   public ResponseEntity<Order> createReturnOrder(
       @Valid @RequestBody OrderRequest request) {
@@ -73,7 +74,7 @@ public class OrderController {
   }
 
   @PostMapping("/{id}/confirm")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Confirm order and deduct stock (for sales)")
   public ResponseEntity<Order> confirmOrder(@PathVariable long id) {
     Long userId = extractUserId();
@@ -81,7 +82,7 @@ public class OrderController {
   }
 
   @PostMapping("/{id}/ship")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Mark order as shipped")
   public ResponseEntity<Order> shipOrder(@PathVariable long id) {
     Long userId = extractUserId();
@@ -89,7 +90,7 @@ public class OrderController {
   }
 
   @PostMapping("/{id}/complete")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Complete order and add stock (for purchases)")
   public ResponseEntity<Order> completeOrder(@PathVariable long id) {
     Long userId = extractUserId();
@@ -97,7 +98,7 @@ public class OrderController {
   }
 
   @PostMapping("/{id}/cancel")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Cancel order and revert stock if confirmed")
   public ResponseEntity<Order> cancelOrder(@PathVariable long id) {
     Long userId = extractUserId();
@@ -105,21 +106,20 @@ public class OrderController {
   }
 
   private long extractUserId() {
-    return (Long)
-        Objects.requireNonNull(
-            Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication())
-                .getPrincipal());
+    return (Long) Objects.requireNonNull(
+        Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication())
+            .getPrincipal());
   }
 
   @GetMapping("/{id}")
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER", "SALES_STAFF" })
   @Operation(summary = "Get order detail with items")
   public ResponseEntity<Map<String, Object>> getOrder(@PathVariable long id) {
     return ResponseEntity.ok(orderService.getOrderWithItems(id));
   }
 
   @GetMapping("/{id}/pdf")
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER", "SALES_STAFF" })
   @Operation(summary = "Download order summary as PDF")
   public ResponseEntity<byte[]> downloadPdf(@PathVariable long id) {
     byte[] pdf = orderService.generateOrderPdf(id);

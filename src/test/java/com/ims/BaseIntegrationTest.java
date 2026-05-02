@@ -76,7 +76,8 @@ import org.springframework.context.annotation.Import;
 @SpringBootTest(properties = {
     "spring.autoconfigure.exclude="
         + "org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,"
-        + "org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
+        + "org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,"
+        + "org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
 
     "spring.task.scheduling.enabled=false",
     "spring.testcontainers.enabled=true",
@@ -216,7 +217,7 @@ public abstract class BaseIntegrationTest {
   }
 
   @BeforeEach
-  void setUp() {
+  protected void setUp() throws Exception {
     if (TEST_ROOT_PASSWORD == null || TEST_ROOT_PASSWORD.isBlank()) {
       throw new IllegalStateException("TEST_ROOT_PASSWORD must be configured for integration tests.");
     }
@@ -234,9 +235,9 @@ public abstract class BaseIntegrationTest {
     // Set up ROOT with all common roles for testing
     java.util.List<SimpleGrantedAuthority> authorities = java.util.Arrays.asList(
         new SimpleGrantedAuthority("ROLE_ROOT"),
-        new SimpleGrantedAuthority("ROLE_ADMIN"),
-        new SimpleGrantedAuthority("ROLE_MANAGER"),
-        new SimpleGrantedAuthority("ROLE_STAFF"));
+        new SimpleGrantedAuthority("ROLE_TENANT_ADMIN"),
+        new SimpleGrantedAuthority("ROLE_BUSINESS_MANAGER"),
+        new SimpleGrantedAuthority("ROLE_SALES_STAFF"));
 
     com.ims.shared.auth.JwtAuthDetails details = new com.ims.shared.auth.JwtAuthDetails(
         1L, systemTenantId, "ROOT", "PLATFORM", "SYSTEM", false,

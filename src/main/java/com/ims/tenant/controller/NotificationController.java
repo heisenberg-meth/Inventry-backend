@@ -27,21 +27,21 @@ public class NotificationController {
   private final NotificationService notificationService;
 
   @GetMapping
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER", "SALES_STAFF" })
   @Operation(summary = "List my notifications")
   public ResponseEntity<List<Notification>> list() {
     return ResponseEntity.ok(notificationService.getMyNotifications(Objects.requireNonNull(extractUserId())));
   }
 
   @GetMapping("/unread")
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER", "SALES_STAFF" })
   @Operation(summary = "List my unread notifications")
   public ResponseEntity<List<Notification>> listUnread() {
     return ResponseEntity.ok(notificationService.getUnreadNotifications(Objects.requireNonNull(extractUserId())));
   }
 
   @PatchMapping("/{id}/read")
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER", "SALES_STAFF" })
   @Operation(summary = "Mark notification as read")
   public ResponseEntity<Void> markAsRead(@PathVariable Long id) {
     notificationService.markAsRead(Objects.requireNonNull(id));
@@ -49,7 +49,7 @@ public class NotificationController {
   }
 
   @PatchMapping("/mark-all-read")
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER", "SALES_STAFF" })
   @Operation(summary = "Mark all notifications as read")
   public ResponseEntity<Void> markAllRead() {
     notificationService.markAllAsRead(Objects.requireNonNull(extractUserId()));
@@ -57,7 +57,8 @@ public class NotificationController {
   }
 
   private Long extractUserId() {
-    var auth = Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication(), "Authentication required");
+    var auth = Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication(),
+        "Authentication required");
     return Objects.requireNonNull((Long) auth.getPrincipal(), "User ID principal required");
   }
 }

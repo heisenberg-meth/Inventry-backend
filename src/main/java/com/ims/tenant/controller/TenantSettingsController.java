@@ -29,7 +29,7 @@ public class TenantSettingsController {
   private final SecurityContextAccessor securityContext;
 
   @GetMapping
-  @RequiresRole({"ADMIN"})
+  @RequiresRole({ "TENANT_ADMIN" })
   @Operation(summary = "Get tenant configurations (domain, sequence tracking)")
   public ResponseEntity<TenantResponse> getSettings() {
     Long tenantId = securityContext.requireTenantId();
@@ -37,7 +37,7 @@ public class TenantSettingsController {
   }
 
   @PatchMapping
-  @RequiresRole({"ADMIN"})
+  @RequiresRole({ "TENANT_ADMIN" })
   @Operation(summary = "Configure custom workspace slugs and business name")
   public ResponseEntity<TenantResponse> updateSettings(
       @Valid @RequestBody UpdateTenantSettingsRequest request) {

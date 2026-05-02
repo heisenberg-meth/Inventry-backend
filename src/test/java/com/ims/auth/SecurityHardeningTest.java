@@ -21,10 +21,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 
 /**
  * Integration tests covering the security hardening from Chunk 2 & 5:
@@ -32,8 +30,6 @@ import org.springframework.test.context.ActiveProfiles;
  * - 2FA (TOTP) setup and backup codes
  * - MFA challenge-response login flow
  */
-@AutoConfigureMockMvc // Overrides BaseIntegrationTest to enable filters
-@ActiveProfiles("test")
 public class SecurityHardeningTest extends BaseIntegrationTest {
 
   @Autowired
@@ -50,10 +46,11 @@ public class SecurityHardeningTest extends BaseIntegrationTest {
   private String email;
   private SignupResponse signupResponse;
 
+  @Override
   @BeforeEach
-  void setup() {
+  protected void setUp() throws Exception {
+    super.setUp();
     cleanupDatabase();
-    mockRedisAndCache();
     uniqueId = UUID.randomUUID().toString().substring(0, 8);
     email = "security-test-" + uniqueId + "@example.com";
     SignupRequest req = new SignupRequest();

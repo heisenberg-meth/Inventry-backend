@@ -26,7 +26,7 @@ public class PaymentGatewayLog {
   private Long id;
 
   @TenantId
-  @Column(name = "tenant_id", nullable = false)
+  @Column(name = "tenant_id", nullable = false, updatable = false)
   private Long tenantId;
 
   @Column(name = "payment_id")

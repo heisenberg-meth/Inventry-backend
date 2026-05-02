@@ -47,7 +47,7 @@ public class CustomerController {
   private final CustomerRepository customerRepository;
 
   @GetMapping
-  @RequiresRole({ "ADMIN", "MANAGER" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "List customers")
   public ResponseEntity<Page<CustomerResponse>> list(
       Pageable pageable) {
@@ -55,7 +55,7 @@ public class CustomerController {
   }
 
   @PostMapping
-  @RequiresRole({ "ADMIN", "MANAGER" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Create customer")
   public ResponseEntity<CustomerResponse> create(
       @Valid @RequestBody CustomerRequest request) {
@@ -64,14 +64,14 @@ public class CustomerController {
   }
 
   @GetMapping("/{id}")
-  @RequiresRole({ "ADMIN", "MANAGER" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Get customer")
   public ResponseEntity<CustomerResponse> get(@PathVariable long id) {
     return ResponseEntity.ok(Objects.requireNonNull(customerService.getCustomerResponseById(id)));
   }
 
   @PutMapping("/{id}")
-  @RequiresRole({ "ADMIN", "MANAGER" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Update customer")
   public ResponseEntity<CustomerResponse> update(
       @PathVariable long id,
@@ -80,7 +80,7 @@ public class CustomerController {
   }
 
   @DeleteMapping("/{id}")
-  @RequiresRole({ "ADMIN" })
+  @RequiresRole({ "TENANT_ADMIN" })
   @Operation(summary = "Delete customer")
   public ResponseEntity<Void> delete(@PathVariable long id) {
     customerService.delete(id);
@@ -88,14 +88,14 @@ public class CustomerController {
   }
 
   @GetMapping("/{id}/ledger")
-  @RequiresRole({ "ADMIN", "MANAGER" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Get full ledger for customer")
   public ResponseEntity<Map<String, Object>> getCustomerLedger(@PathVariable long id) {
     return ResponseEntity.ok(customerService.getCustomerLedger(id));
   }
 
   @PostMapping("/bulk-import")
-  @RequiresRole({ "ADMIN", "MANAGER" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Bulk import customers via CSV")
   public ResponseEntity<Map<String, Object>> bulkImport(
       @RequestParam("file") MultipartFile file,
@@ -104,7 +104,7 @@ public class CustomerController {
   }
 
   @GetMapping("/export")
-  @RequiresRole({ "ADMIN", "MANAGER" })
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Export customers as CSV")
   public ResponseEntity<String> export() {
     var data = customerRepository.findAll().stream()

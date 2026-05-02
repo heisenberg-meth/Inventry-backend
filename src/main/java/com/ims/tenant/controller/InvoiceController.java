@@ -35,21 +35,21 @@ public class InvoiceController {
   private final InvoiceService invoiceService;
 
   @GetMapping
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER", "SALES_STAFF" })
   @Operation(summary = "List invoices")
   public ResponseEntity<Page<Invoice>> getInvoices(Pageable pageable) {
     return ResponseEntity.ok(invoiceService.getInvoices(pageable));
   }
 
   @GetMapping("/overdue")
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER", "SALES_STAFF" })
   @Operation(summary = "List overdue invoices")
   public ResponseEntity<Page<Invoice>> getOverdueInvoices(Pageable pageable) {
     return ResponseEntity.ok(invoiceService.getOverdueInvoices(pageable));
   }
 
   @PostMapping
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Manually generate invoice from order")
   public ResponseEntity<Invoice> createInvoice(
       @Valid @RequestBody CreateInvoiceRequest request) {
@@ -57,7 +57,7 @@ public class InvoiceController {
   }
 
   @PatchMapping("/{id}/status")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Update invoice status")
   public ResponseEntity<Invoice> updateStatus(
       @PathVariable long id, @Valid @RequestBody InvoiceStatusRequest request) {
@@ -65,7 +65,7 @@ public class InvoiceController {
   }
 
   @GetMapping("/{id}/pdf")
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER", "SALES_STAFF" })
   @Operation(summary = "Download invoice PDF")
   public ResponseEntity<byte[]> downloadPdf(@PathVariable long id) {
     byte[] pdf = invoiceService.generatePdf(id);

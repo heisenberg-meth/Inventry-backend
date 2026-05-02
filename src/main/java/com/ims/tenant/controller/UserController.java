@@ -35,7 +35,7 @@ public class UserController {
   private final UserService userService;
 
   @PostMapping
-  @RequiresRole({"ADMIN"})
+  @RequiresRole({ "TENANT_ADMIN" })
   @Operation(summary = "Create tenant user")
   public ResponseEntity<UserResponse> createUser(
       @Valid @RequestBody CreateUserRequest request) {
@@ -44,21 +44,21 @@ public class UserController {
   }
 
   @GetMapping
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "List tenant users")
   public ResponseEntity<Page<UserResponse>> getUsers(Pageable pageable) {
     return ResponseEntity.ok(userService.getUsers(Objects.requireNonNull(pageable)));
   }
 
   @GetMapping("/{id}")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Get user details")
   public ResponseEntity<UserResponse> getUser(@PathVariable long id) {
     return ResponseEntity.ok(userService.getUserById(id));
   }
 
   @PatchMapping("/{id}/role")
-  @RequiresRole({"ADMIN"})
+  @RequiresRole({ "TENANT_ADMIN" })
   @Operation(summary = "Update user role")
   public ResponseEntity<UserResponse> updateRole(
       @PathVariable long id, @RequestBody Map<String, String> body) {
@@ -70,7 +70,7 @@ public class UserController {
   }
 
   @PostMapping("/{id}/permissions")
-  @RequiresRole({"ADMIN"})
+  @RequiresRole({ "TENANT_ADMIN" })
   @Operation(summary = "Assign custom permissions to user")
   public ResponseEntity<UserResponse> assignPermissions(
       @PathVariable long id, @Valid @RequestBody AssignPermissionsRequest request) {
@@ -78,7 +78,7 @@ public class UserController {
   }
 
   @DeleteMapping("/{id}")
-  @RequiresRole({"ADMIN"})
+  @RequiresRole({ "TENANT_ADMIN" })
   @Operation(summary = "Deactivate user (soft delete)")
   public ResponseEntity<Void> deactivateUser(@PathVariable long id) {
     userService.deactivateUser(id);

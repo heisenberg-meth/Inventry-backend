@@ -13,7 +13,7 @@ public class TenantPersistenceService {
 
   private final TenantRepository tenantRepository;
 
-  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  @Transactional(propagation = Propagation.REQUIRED)
   public Tenant saveTenant(Tenant tenant) {
     Tenant saved = tenantRepository.save(tenant);
     return saved;

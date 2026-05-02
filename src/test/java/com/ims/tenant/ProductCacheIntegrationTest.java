@@ -18,18 +18,10 @@ import org.springframework.cache.concurrent.ConcurrentMapCache;
 import org.springframework.cache.Cache;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cache.interceptor.CacheOperationInvocationContext;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MvcResult;
 
-@SpringBootTest(properties = {
-                "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
-                "spring.cache.type=none"
-})
-
-@ActiveProfiles("test")
 public class ProductCacheIntegrationTest extends BaseIntegrationTest {
 
         private Cache spyCache;
@@ -37,10 +29,11 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
         @Autowired
         private SignupService signupService;
 
+        @Override
         @BeforeEach
-        void setup() {
+        protected void setUp() throws Exception {
+                super.setUp();
                 cleanupDatabase();
-                mockRedisAndCache();
 
                 spyCache = spy(new ConcurrentMapCache("products"));
                 doReturn(Collections.<Cache>singletonList(spyCache))

@@ -32,7 +32,7 @@ public class Invoice {
   private Long id;
 
   @TenantId
-  @Column(name = "tenant_id", nullable = false)
+  @Column(name = "tenant_id", nullable = false, updatable = false)
   private Long tenantId;
 
   @Column(name = "order_id")

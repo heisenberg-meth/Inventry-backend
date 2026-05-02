@@ -21,7 +21,8 @@ import com.ims.shared.audit.AuditLogService;
 import com.ims.shared.auth.TenantInitializationService;
 import com.ims.tenant.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -82,44 +83,99 @@ public class TenantService {
 
   @Transactional
   public TenantResponse createTenant(CreateTenantRequest request) {
-    if (request.getWorkspaceSlug() != null
-        && tenantRepository.existsByWorkspaceSlug(request.getWorkspaceSlug())) {
-      throw new IllegalArgumentException("Workspace slug already taken");
+    String businessName = request.getName();
+    String requestedSlug = request.getWorkspaceSlug();
+    String companyCode = companyCodeGenerator.generateCode(businessName);
+
+    // Hardened retry loop (PRD §4.5)
+    for (int attempt = 0; attempt < 8; attempt++) {
+      String slug = (requestedSlug != null && !requestedSlug.isBlank() && attempt == 0)
+          ? normalizeSlug(requestedSlug)
+          : generateWorkspaceSlug(businessName);
+
+      Tenant tenant = Tenant.builder()
+          .name(businessName)
+          .workspaceSlug(slug)
+          .companyCode(companyCode)
+          .businessType(request.getBusinessType())
+          .plan(request.getPlan() != null ? request.getPlan() : "FREE")
+          .status(TenantStatus.ACTIVE)
+          .maxProducts(request.getMaxProducts())
+          .maxUsers(request.getMaxUsers())
+          .build();
+
+      try {
+        Tenant savedTenant = tenantRepository.saveAndFlush(tenant);
+        log.info("Tenant created: id={} name={} type={}",
+            savedTenant.getId(), savedTenant.getName(), savedTenant.getBusinessType());
+
+        Long tenantIdForAudit = Objects.requireNonNull(savedTenant.getId());
+        auditLogService.log(
+            AuditAction.CREATE_TENANT,
+            tenantIdForAudit,
+            com.ims.shared.auth.TenantContext.PLATFORM_TENANT_ID,
+            "Created tenant: " + savedTenant.getName());
+
+        return toResponse(savedTenant);
+      } catch (org.springframework.dao.DataIntegrityViolationException e) {
+        String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+        if (msg.contains("workspace_slug") || msg.contains("idx_tenants_workspace_slug")) {
+          if (requestedSlug != null && !requestedSlug.isBlank() && attempt == 0) {
+            throw new com.ims.shared.exception.ConflictException("Workspace URL already taken",
+                java.util.Map.of("field", "workspaceSlug"));
+          }
+          log.warn("Workspace slug collision: {}, retrying...", slug);
+          // Loop will pick a new slug in next iteration
+        } else if (msg.contains("company_code") || msg.contains("uk_tenants_company_code")) {
+          companyCode = companyCodeGenerator.generateCode(businessName);
+          log.warn("Company code collision, retrying with: {}", companyCode);
+        } else {
+          throw e;
+        }
+      }
     }
 
-    String companyCode;
-    do {
-      companyCode = companyCodeGenerator.generateCode(request.getName());
-    } while (tenantRepository.existsByCompanyCode(companyCode));
+    throw new com.ims.shared.exception.ConflictException("Unable to allocate unique tenant identifiers",
+        java.util.Map.of("field", "workspaceSlug"));
+  }
 
-    Tenant tenant = Objects.requireNonNull(
-        Tenant.builder()
-            .name(request.getName())
-            .workspaceSlug(request.getWorkspaceSlug())
-            .companyCode(Objects.requireNonNull(companyCode))
-            .businessType(request.getBusinessType())
-            .plan(request.getPlan() != null ? request.getPlan() : "FREE")
-            .status(TenantStatus.ACTIVE)
-            .maxProducts(request.getMaxProducts())
-            .maxUsers(request.getMaxUsers())
-            .build());
+  private String normalizeSlug(String input) {
+    if (input == null)
+      return null;
+    String base = input.toLowerCase(java.util.Locale.ROOT)
+        .replaceAll("[^a-z0-9]+", "-")
+        .replaceAll("(^-|-$)", "");
+    return base;
+  }
 
-    Tenant savedTenant = Objects.requireNonNull(tenantRepository.save(tenant));
+  // PRD §4.5 canonical slug generator
+  private String generateWorkspaceSlug(String businessName) {
+    if (businessName == null || businessName.isBlank()) {
+      return "tenant-" + randomBase36(6);
+    }
+    String base = businessName.toLowerCase(java.util.Locale.ROOT)
+        .replaceAll("[^a-z0-9]+", "-")
+        .replaceAll("(^-|-$)", "");
 
-    log.info(
-        "Tenant created: id={} name={} type={}",
-        savedTenant.getId(),
-        savedTenant.getName(),
-        savedTenant.getBusinessType());
+    if (base.isEmpty())
+      base = "tenant";
+    if (base.length() > 40) {
+      base = base.substring(0, 40).replaceAll("(^-|-$)", "");
+      if (base.isEmpty())
+        base = "tenant";
+    }
 
-    Long tenantIdForAudit = Objects.requireNonNull(savedTenant.getId());
-    auditLogService.log(
-        AuditAction.CREATE_TENANT,
-        tenantIdForAudit,
-        com.ims.shared.auth.TenantContext.PLATFORM_TENANT_ID,
-        "Created tenant: " + savedTenant.getName());
+    return base + "-" + randomBase36(6);
+  }
 
-    return toResponse(savedTenant);
+  private String randomBase36(int len) {
+    String alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
+    java.security.SecureRandom rng = new java.security.SecureRandom();
+    char[] suffix = new char[len];
+    for (int i = 0; i < len; i++) {
+      suffix[i] = alphabet.charAt(rng.nextInt(alphabet.length()));
+    }
+    return new String(suffix);
   }
 
   @Transactional
@@ -273,7 +329,7 @@ public class TenantService {
         .findByTenantIdAndStatus(tenantId, SubscriptionStatus.ACTIVE)
         .forEach(
             sub -> {
-              sub.setStatus(SubscriptionStatus.DEACTIVATED);
+              sub.setStatus(SubscriptionStatus.SUSPENDED);
               subscriptionRepository.save(sub);
             });
 
@@ -292,16 +348,16 @@ public class TenantService {
     int durationDays = plan.getDurationDays() != null
         ? plan.getDurationDays()
         : DEFAULT_SUBSCRIPTION_DURATION_DAYS;
-    LocalDateTime startDate = LocalDateTime.now();
-    LocalDateTime endDate = startDate.plusDays(durationDays);
+    OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+    OffsetDateTime endDate = now.plusDays(durationDays);
 
     Subscription subscription = Objects.requireNonNull(
         Subscription.builder()
             .tenantId(tenantId)
             .plan(plan.getName())
             .status(SubscriptionStatus.ACTIVE)
-            .startDate(Objects.requireNonNull(startDate))
-            .endDate(Objects.requireNonNull(endDate))
+            .startDate(now)
+            .endDate(endDate)
             .build());
 
     Subscription savedSub = Objects.requireNonNull(subscriptionRepository.save(subscription));

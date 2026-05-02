@@ -41,8 +41,8 @@ public class StockService {
   }
 
   @Cacheable(value = "stock", key = "'location:' + #location", cacheResolver = "tenantAwareCacheResolver")
-  public  Page<WarehouseProduct> getProductsByLocation(
-       String location,  Pageable pageable) {
+  public Page<WarehouseProduct> getProductsByLocation(
+      String location, Pageable pageable) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
       throw new TenantContextException("Tenant context is missing");

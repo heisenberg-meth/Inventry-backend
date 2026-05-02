@@ -39,7 +39,7 @@ public class Tenant {
   @Column(nullable = false)
   private String name;
 
-  @Column(name = "workspace_slug", unique = true)
+  @Column(name = "workspace_slug", unique = true, length = 64)
   private String workspaceSlug;
 
   @Column(name = "company_code", nullable = false, unique = true)
@@ -50,12 +50,16 @@ public class Tenant {
 
   @Column
   @Builder.Default
-  private String plan = "FREE";
+  private String plan = "TRIAL";
 
   @Column
   @Enumerated(EnumType.STRING)
   @Builder.Default
-  private TenantStatus status = TenantStatus.PENDING;
+  private TenantStatus status = TenantStatus.ACTIVE;
+
+  @Column
+  @Builder.Default
+  private String currency = "INR";
 
   @Column(name = "invoice_sequence")
   @Builder.Default
@@ -83,6 +87,9 @@ public class Tenant {
   @Column(name = "ip_whitelist", columnDefinition = "TEXT")
   private String ipWhitelist;
 
+  @Column(name = "idempotency_key", unique = true)
+  private String idempotencyKey;
+
   @Column(name = "created_at")
   @Builder.Default
   private LocalDateTime createdAt = LocalDateTime.now();
@@ -95,6 +102,7 @@ public class Tenant {
     private String companyCode;
     private String businessType;
     private String plan;
+    private String currency;
     private TenantStatus statusValue;
     private boolean statusSet = false;
     private Integer invoiceSequence;
@@ -105,6 +113,7 @@ public class Tenant {
     private String gstin;
     private String webhookSecret;
     private String ipWhitelist;
+    private String idempotencyKey;
     private LocalDateTime createdAt;
 
     public TenantBuilder status(TenantStatus status) {
@@ -116,15 +125,21 @@ public class Tenant {
       return this;
     }
 
+    public TenantBuilder idempotencyKey(String idempotencyKey) {
+      this.idempotencyKey = idempotencyKey;
+      return this;
+    }
+
     public Tenant build() {
-      TenantStatus finalStatus = statusSet ? statusValue : TenantStatus.PENDING;
+      TenantStatus finalStatus = statusSet ? statusValue : TenantStatus.ACTIVE;
       return new Tenant(id, version, name, workspaceSlug, companyCode, businessType,
-          plan != null ? plan : "FREE",
+          plan != null ? plan : "TRIAL",
           finalStatus,
+          currency != null ? currency : "INR",
           invoiceSequence != null ? invoiceSequence : 0,
           maxProducts, maxUsers,
           expiryThresholdDays != null ? expiryThresholdDays : DEFAULT_EXPIRY_THRESHOLD_DAYS,
-          address, gstin, webhookSecret, ipWhitelist,
+          address, gstin, webhookSecret, ipWhitelist, idempotencyKey,
           createdAt != null ? createdAt : LocalDateTime.now());
     }
   }

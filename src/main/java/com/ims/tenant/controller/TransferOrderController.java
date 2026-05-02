@@ -34,14 +34,14 @@ public class TransferOrderController {
   private final TransferOrderService transferOrderService;
 
   @GetMapping
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "List warehouse transfers")
   public ResponseEntity<Page<TransferOrder>> list(Pageable pageable) {
     return ResponseEntity.ok(transferOrderService.getTransfers(pageable));
   }
 
   @PostMapping
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Create warehouse transfer")
   public ResponseEntity<TransferOrder> create(
       @Valid @RequestBody TransferOrderRequest request,
@@ -51,14 +51,14 @@ public class TransferOrderController {
   }
 
   @PatchMapping("/{id}/status")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Update transfer status (SHIPPED/RECEIVED/CANCELLED)")
   public ResponseEntity<TransferOrder> updateStatus(
       @PathVariable Long id,
       @Valid @RequestBody TransferOrderStatusRequest body,
       @CurrentUser Long userId) {
     TransferOrderStatus status = body.getStatus();
-    
+
     return ResponseEntity.ok(transferOrderService.updateStatus(id, status, userId));
   }
 }

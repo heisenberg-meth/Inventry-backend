@@ -8,14 +8,17 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 @Entity
-@Table(name = "subscriptions")
+@Table(name = "subscriptions", uniqueConstraints = {
+    @jakarta.persistence.UniqueConstraint(columnNames = { "tenant_id" })
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -37,16 +40,19 @@ public class Subscription {
   private SubscriptionStatus status;
 
   @Column(name = "start_date", nullable = false)
-  private LocalDateTime startDate;
+  private OffsetDateTime startDate;
 
   @Column(name = "end_date", nullable = false)
-  private LocalDateTime endDate;
+  private OffsetDateTime endDate;
+
+  @Column(name = "trial_end")
+  private OffsetDateTime trialEnd;
 
   @Column(name = "created_at")
   @Builder.Default
-  private LocalDateTime createdAt = LocalDateTime.now();
+  private OffsetDateTime createdAt = OffsetDateTime.now(ZoneOffset.UTC);
 
   @Column(name = "updated_at")
   @Builder.Default
-  private LocalDateTime updatedAt = LocalDateTime.now();
+  private OffsetDateTime updatedAt = OffsetDateTime.now(ZoneOffset.UTC);
 }

@@ -397,11 +397,15 @@ public class ProductService {
     // Remove existing -COPY or -COPY-N suffix to get base
     String baseSku = originalSku.replaceAll("-COPY(-\\d+)?$", "");
     String newSku = baseSku + "-COPY";
-    int counter = 1;
-    while (productRepository.existsBySku(newSku)) {
-      newSku = baseSku + "-COPY-" + counter++;
+
+    // Bounded retry to avoid infinite loop (PRD principle)
+    for (int counter = 1; counter <= 10; counter++) {
+      if (!productRepository.existsBySku(newSku)) {
+        return newSku;
+      }
+      newSku = baseSku + "-COPY-" + counter;
     }
-    return newSku;
+    return newSku + "-" + UUID.randomUUID().toString().substring(0, 5);
   }
 
   public List<ProductResponse> getLowStockProducts() {

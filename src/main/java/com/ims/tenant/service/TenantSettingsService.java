@@ -3,6 +3,7 @@ package com.ims.tenant.service;
 import com.ims.dto.request.UpdateTenantSettingsRequest;
 import com.ims.dto.response.TenantResponse;
 import com.ims.model.Tenant;
+import com.ims.model.TenantStatus;
 import com.ims.platform.repository.TenantRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.Objects;
@@ -26,6 +27,21 @@ public class TenantSettingsService {
             .findById(Objects.requireNonNull(tenantId))
             .orElseThrow(() -> new EntityNotFoundException("Tenant not found")));
     return toResponse(tenant);
+  }
+
+  @Transactional
+  public void initializeDefaults(Long tenantId) {
+    Tenant tenant = tenantRepository.findById(tenantId)
+        .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+
+    // Explicitly initialize defaults (PRD §3.2 Step 5)
+    tenant.setInvoiceSequence(1000);
+    tenant.setExpiryThresholdDays(30);
+    tenant.setCurrency("INR");
+    tenant.setStatus(TenantStatus.ACTIVE);
+
+    tenantRepository.save(tenant);
+    log.info("Tenant settings initialized for tenant: {}", tenantId);
   }
 
   @Transactional

@@ -12,17 +12,16 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface StockMovementRepository extends JpaRepository<StockMovement, Long> {
 
-  Page<StockMovement> findAllByOrderByCreatedAtDesc(Pageable pageable);
+    Page<StockMovement> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
-  @Query(
-      "SELECT sm FROM StockMovement sm WHERE "
-          + "(:productId IS NULL OR sm.productId = :productId) "
-          + "AND (:from IS NULL OR sm.createdAt >= :from) "
-          + "AND (:to IS NULL OR sm.createdAt <= :to) "
-          + "ORDER BY sm.createdAt DESC")
-  Page<StockMovement> findByFilters(
-      @Param("productId") Long productId,
-      @Param("from") LocalDateTime from,
-      @Param("to") LocalDateTime to,
-      Pageable pageable);
+    @Query("SELECT sm FROM StockMovement sm WHERE "
+            + "(:productId IS NULL OR sm.productId = :productId) "
+            + "AND (:from IS NULL OR sm.createdAt >= :from) "
+            + "AND (:to IS NULL OR sm.createdAt <= :to) "
+            + "ORDER BY sm.createdAt DESC")
+    Page<StockMovement> findByFilters(
+            @Param("productId") Long productId,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to,
+            Pageable pageable);
 }
