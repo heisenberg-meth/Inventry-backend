@@ -56,7 +56,18 @@ public class PermissionService {
       }
     }
 
-    log.info("Permissions for user {}: {}", userId, permissions);
+    // FR-01-C: Fetch custom permissions directly from User entity
+    userRepository.findByIdWithPermissions(userId).ifPresent(user -> {
+      if (user.getCustomPermissions() != null && !user.getCustomPermissions().isEmpty()) {
+        Set<String> customPerms = user.getCustomPermissions().stream()
+            .map(Permission::getKey)
+            .collect(Collectors.toSet());
+        log.info("Adding {} custom permissions for user {}", customPerms.size(), userId);
+        permissions.addAll(customPerms);
+      }
+    });
+
+    log.info("Final permissions for user {}: {}", userId, permissions);
     return permissions;
   }
 }

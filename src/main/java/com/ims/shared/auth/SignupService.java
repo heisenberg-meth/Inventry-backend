@@ -57,6 +57,7 @@ public class SignupService {
   private final TenantSettingsService tenantSettingsService;
   private final com.ims.platform.service.SystemConfigService systemConfigService;
   private final SubscriptionPlanRepository subscriptionPlanRepository;
+  private final com.ims.shared.metrics.BusinessMetrics businessMetrics;
 
   // Micrometer metrics (PRD §11.1)
   private final Counter signupSuccessCounter;
@@ -75,7 +76,8 @@ public class SignupService {
       TenantSettingsService tenantSettingsService,
       com.ims.platform.service.SystemConfigService systemConfigService,
       SubscriptionPlanRepository subscriptionPlanRepository,
-      MeterRegistry meterRegistry) {
+      MeterRegistry meterRegistry,
+      com.ims.shared.metrics.BusinessMetrics businessMetrics) {
     this.tenantRepository = tenantRepository;
     this.userRepository = userRepository;
     this.passwordEncoder = passwordEncoder;
@@ -86,6 +88,7 @@ public class SignupService {
     this.tenantSettingsService = tenantSettingsService;
     this.systemConfigService = systemConfigService;
     this.subscriptionPlanRepository = subscriptionPlanRepository;
+    this.businessMetrics = businessMetrics;
 
     this.signupSuccessCounter = Counter.builder("signup.success.count")
         .description("Total successful signups")
@@ -128,7 +131,14 @@ public class SignupService {
       String companyCode = resolveUniqueCompanyCode(request.getBusinessName());
 
       // 2. Execute actual signup in a transaction
-      return executeSignup(request, workspaceSlug, companyCode);
+      // FR-04-A: Set platform context before starting transaction to bypass
+      // TenantEnforcementAspect
+      TenantContext.setTenantId(TenantContext.PLATFORM_TENANT_ID);
+      try {
+        return executeSignup(request, workspaceSlug, companyCode);
+      } finally {
+        TenantContext.clear();
+      }
     });
   }
 
@@ -224,6 +234,7 @@ public class SignupService {
       tenantSettingsService.initializeDefaults(tenantId);
 
       signupSuccessCounter.increment();
+      businessMetrics.incrementTenantOnboarding();
       log.info("Signup: Completed onboarding for tenant id={} name={}",
           tenantId, tenantName);
 

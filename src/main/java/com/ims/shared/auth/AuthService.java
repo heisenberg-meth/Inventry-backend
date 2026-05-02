@@ -105,63 +105,73 @@ public class AuthService {
 
   @Transactional
   public Map<String, String> verifyEmail(String token, String email) {
-    User user = userRepository
-        .findByEmailGlobal(Objects.requireNonNull(email).trim().toLowerCase())
-        .orElseThrow(() -> new IllegalArgumentException("Invalid verification token"));
+    TenantContext.setTenantId(TenantContext.PLATFORM_TENANT_ID);
+    try {
+      User user = userRepository
+          .findByEmailGlobal(Objects.requireNonNull(email).trim().toLowerCase())
+          .orElseThrow(() -> new IllegalArgumentException("Invalid verification token"));
 
-    if (user.getVerificationToken() == null
-        || !passwordEncoder.matches(token, user.getVerificationToken())) {
-      throw new IllegalArgumentException("Invalid verification token");
+      if (user.getVerificationToken() == null
+          || !passwordEncoder.matches(token, user.getVerificationToken())) {
+        throw new IllegalArgumentException("Invalid verification token");
+      }
+
+      if (user.getVerificationTokenExpiry() == null
+          || LocalDateTime.now().isAfter(user.getVerificationTokenExpiry())) {
+        throw new IllegalArgumentException("Verification token has expired");
+      }
+
+      user.setIsVerified(true);
+      user.setVerificationToken(null);
+      user.setVerificationTokenExpiry(null);
+      userRepository.save(user);
+
+      log.info("Email verified for user: {}", user.getEmail());
+      Map<String, String> result = Map.of("message", "Email verified successfully");
+      return Objects.requireNonNull(result);
+    } finally {
+      TenantContext.clear();
     }
-
-    if (user.getVerificationTokenExpiry() == null
-        || LocalDateTime.now().isAfter(user.getVerificationTokenExpiry())) {
-      throw new IllegalArgumentException("Verification token has expired");
-    }
-
-    user.setIsVerified(true);
-    user.setVerificationToken(null);
-    user.setVerificationTokenExpiry(null);
-    userRepository.save(user);
-
-    log.info("Email verified for user: {}", user.getEmail());
-    Map<String, String> result = Map.of("message", "Email verified successfully");
-    return Objects.requireNonNull(result);
   }
 
   @Transactional
   @RateLimiter(name = "resendVerification")
   public Map<String, String> resendVerification(String email) {
-    User user = userRepository
-        .findByEmailGlobal(Objects.requireNonNull(email).trim().toLowerCase())
-        .orElse(null);
+    TenantContext.setTenantId(TenantContext.PLATFORM_TENANT_ID);
+    try {
+      User user = userRepository
+          .findByEmailGlobal(Objects.requireNonNull(email).trim().toLowerCase())
+          .orElse(null);
 
-    // Always return generic success message to prevent email enumeration
-    String responseMessage = "Verification email sent if account exists";
+      // Always return generic success message to prevent email enumeration
+      String responseMessage = "Verification email sent if account exists";
 
-    if (user == null) {
+      if (user == null) {
+        Map<String, String> result = Map.of("message", responseMessage);
+        return Objects.requireNonNull(result);
+      }
+
+      if (Boolean.TRUE.equals(user.getIsVerified())) {
+        Map<String, String> result = Map.of("message", "Email is already verified");
+        return Objects.requireNonNull(result);
+      }
+
+      // Generate and hash new token
+      String rawToken = UUID.randomUUID().toString();
+      String hashedToken = passwordEncoder.encode(rawToken);
+
+      user.setVerificationToken(hashedToken);
+      user.setVerificationTokenExpiry(
+          LocalDateTime.now().plusMinutes(VERIFICATION_TOKEN_EXPIRY_MINUTES));
+      userRepository.save(user);
+
+      log.info("Verification email resent to: {}", email);
+      emailService.sendVerificationEmail(email, rawToken);
       Map<String, String> result = Map.of("message", responseMessage);
       return Objects.requireNonNull(result);
+    } finally {
+      TenantContext.clear();
     }
-
-    if (Boolean.TRUE.equals(user.getIsVerified())) {
-      Map<String, String> result = Map.of("message", "Email is already verified");
-      return Objects.requireNonNull(result);
-    }
-
-    // Generate and hash new token
-    String rawToken = UUID.randomUUID().toString();
-    String hashedToken = passwordEncoder.encode(rawToken);
-
-    user.setVerificationToken(hashedToken);
-    user.setVerificationTokenExpiry(
-        LocalDateTime.now().plusMinutes(VERIFICATION_TOKEN_EXPIRY_MINUTES));
-    userRepository.save(user);
-
-    log.info("Verification email resent to: {}", email);
-    emailService.sendVerificationEmail(email, rawToken);
-    Map<String, String> result = Map.of("message", responseMessage);
-    return Objects.requireNonNull(result);
   }
 
   @Transactional
@@ -779,49 +789,59 @@ public class AuthService {
 
   @Transactional
   public Map<String, String> forgotPassword(ForgotPasswordRequest request) {
-    User user = userRepository.findByEmailGlobal(request.getEmail().trim().toLowerCase()).orElse(null);
+    TenantContext.setTenantId(TenantContext.PLATFORM_TENANT_ID);
+    try {
+      User user = userRepository.findByEmailGlobal(request.getEmail().trim().toLowerCase()).orElse(null);
 
-    String responseMessage = "If the email exists, a password reset link has been sent";
+      String responseMessage = "If the email exists, a password reset link has been sent";
 
-    if (user == null) {
+      if (user == null) {
+        return Objects.requireNonNull(Map.of("message", responseMessage));
+      }
+
+      String rawToken = UUID.randomUUID().toString();
+      String hashedToken = Objects.requireNonNull(passwordEncoder.encode(rawToken));
+
+      user.setResetToken(hashedToken);
+      user.setResetTokenExpiry(Objects.requireNonNull(LocalDateTime.now().plusMinutes(RESET_TOKEN_EXPIRY_MINUTES)));
+      userRepository.save(user);
+
+      emailService.sendPasswordResetEmail(user.getEmail(), rawToken);
+
       return Objects.requireNonNull(Map.of("message", responseMessage));
+    } finally {
+      TenantContext.clear();
     }
-
-    String rawToken = UUID.randomUUID().toString();
-    String hashedToken = Objects.requireNonNull(passwordEncoder.encode(rawToken));
-
-    user.setResetToken(hashedToken);
-    user.setResetTokenExpiry(Objects.requireNonNull(LocalDateTime.now().plusMinutes(RESET_TOKEN_EXPIRY_MINUTES)));
-    userRepository.save(user);
-
-    emailService.sendPasswordResetEmail(user.getEmail(), rawToken);
-
-    return Objects.requireNonNull(Map.of("message", responseMessage));
   }
 
   @Transactional
   public Map<String, String> resetPassword(ResetPasswordRequest request) {
-    User user = userRepository
-        .findByEmailGlobal(request.getEmail().trim().toLowerCase())
-        .orElseThrow(() -> new IllegalArgumentException("Invalid or expired reset token"));
+    TenantContext.setTenantId(TenantContext.PLATFORM_TENANT_ID);
+    try {
+      User user = userRepository
+          .findByEmailGlobal(request.getEmail().trim().toLowerCase())
+          .orElseThrow(() -> new IllegalArgumentException("Invalid or expired reset token"));
 
-    String storedToken = user.getResetToken() != null
-        ? user.getResetToken()
-        : "$2a$10$invalid-placeholder-hash-prevents-timing";
-    boolean tokenMatches = passwordEncoder.matches(request.getResetToken(), storedToken);
-    boolean notExpired = user.getResetTokenExpiry() != null
-        && !LocalDateTime.now().isAfter(user.getResetTokenExpiry());
+      String storedToken = user.getResetToken() != null
+          ? user.getResetToken()
+          : "$2a$10$invalid-placeholder-hash-prevents-timing";
+      boolean tokenMatches = passwordEncoder.matches(request.getResetToken(), storedToken);
+      boolean notExpired = user.getResetTokenExpiry() != null
+          && !LocalDateTime.now().isAfter(user.getResetTokenExpiry());
 
-    if (!tokenMatches || !notExpired) {
-      throw new IllegalArgumentException("Invalid or expired reset token");
+      if (!tokenMatches || !notExpired) {
+        throw new IllegalArgumentException("Invalid or expired reset token");
+      }
+
+      user.setPasswordHash(Objects.requireNonNull(passwordEncoder.encode(request.getNewPassword())));
+      user.setResetToken(null);
+      user.setResetTokenExpiry(null);
+      userRepository.save(user);
+
+      return Objects.requireNonNull(Map.of("message", "Password reset successfully"));
+    } finally {
+      TenantContext.clear();
     }
-
-    user.setPasswordHash(Objects.requireNonNull(passwordEncoder.encode(request.getNewPassword())));
-    user.setResetToken(null);
-    user.setResetTokenExpiry(null);
-    userRepository.save(user);
-
-    return Objects.requireNonNull(Map.of("message", "Password reset successfully"));
   }
 
   @Transactional
@@ -889,41 +909,48 @@ public class AuthService {
 
   @Transactional
   public LoginResponse verifyMfa(MfaRequest request) {
-    String mfaToken = request.getMfaToken();
-    Long userId = (Long) redisTemplate.opsForValue().get(MFA_SESSION_PREFIX + mfaToken);
-
-    if (userId == null) {
-      throw new UnauthorizedException("MFA session expired or invalid");
-    }
-
-    User user = userRepository.findByIdGlobal(userId)
-        .orElseThrow(() -> new EntityNotFoundException("User not found"));
-
-    boolean verified = false;
+    TenantContext.setTenantId(TenantContext.PLATFORM_TENANT_ID);
     try {
-      int code = Integer.parseInt(request.getCode());
-      verified = twoFactorAuthService.verifyCode(user.getTwoFactorSecret(), code);
-    } catch (NumberFormatException e) {
-      // Check backup codes
-      String backupCodes = user.getBackupCodes();
-      if (backupCodes != null && backupCodes.contains(request.getCode().toUpperCase())) {
-        verified = true;
-        // Remove used backup code
-        String newBackupCodes = backupCodes.replace(request.getCode().toUpperCase(), "").replace(",,", ",");
-        user.setBackupCodes(newBackupCodes);
-        userRepository.save(user);
+      String mfaToken = request.getMfaToken();
+      Long userId = (Long) redisTemplate.opsForValue().get(MFA_SESSION_PREFIX + mfaToken);
+
+      if (userId == null) {
+        throw new UnauthorizedException("MFA session expired or invalid");
       }
+
+      User user = userRepository.findByIdGlobal(userId)
+          .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+      boolean verified = false;
+      try {
+        int code = Integer.parseInt(request.getCode());
+        verified = twoFactorAuthService.verifyCode(user.getTwoFactorSecret(), code);
+      } catch (NumberFormatException e) {
+        // Check backup codes
+        String backupCodes = user.getBackupCodes();
+        if (backupCodes != null && backupCodes.contains(request.getCode().toUpperCase())) {
+          verified = true;
+          // Remove used backup code
+          String newBackupCodes = backupCodes.replace(request.getCode().toUpperCase(), "").replace(",,", ",");
+          user.setBackupCodes(newBackupCodes);
+          userRepository.save(user);
+        }
+      }
+
+      if (!verified) {
+        throw new IllegalArgumentException("Invalid verification code");
+      }
+
+      redisTemplate.delete(MFA_SESSION_PREFIX + mfaToken);
+
+      // Proceed with generating tokens (similar to login logic)
+      if (user.getTenantId() != null) {
+        TenantContext.setTenantId(user.getTenantId());
+      }
+      return generateLoginResponse(user);
+    } finally {
+      TenantContext.clear();
     }
-
-    if (!verified) {
-      throw new IllegalArgumentException("Invalid verification code");
-    }
-
-    redisTemplate.delete(MFA_SESSION_PREFIX + mfaToken);
-
-    // Proceed with generating tokens (similar to login logic)
-    // For brevity, I'll call a private method that generates the full LoginResponse
-    return generateLoginResponse(user);
   }
 
   private LoginResponse generateLoginResponse(User user) {

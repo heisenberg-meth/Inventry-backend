@@ -10,11 +10,9 @@ import com.ims.platform.repository.TenantRepository;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-@Disabled("Requires refactoring for stable test context")
 public class TenantOnboardingAtomicityTest extends BaseIntegrationTest {
 
   @Autowired
