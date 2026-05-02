@@ -58,7 +58,6 @@ public class ScheduledTasksService {
     TenantContext.runWithTenant(tenantId, () -> {
       if (alertRepository.findByTypeAndResourceIdAndIsDismissedFalse("LOW_STOCK", p.getId()).isEmpty()) {
         Alert alert = Alert.builder()
-            .tenantId(tenantId)
             .type("LOW_STOCK")
             .severity("HIGH")
             .message("Low stock for " + p.getName() + " (" + p.getStock() + " remaining)")
@@ -99,7 +98,6 @@ public class ScheduledTasksService {
     TenantContext.runWithTenant(tenantId, () -> {
       if (alertRepository.findByTypeAndResourceIdAndIsDismissedFalse("OVERDUE_INVOICE", inv.getId()).isEmpty()) {
         Alert alert = Alert.builder()
-            .tenantId(tenantId)
             .type("OVERDUE_INVOICE")
             .severity("MEDIUM")
             .message("Invoice " + inv.getInvoiceNumber() + " is overdue since " + inv.getDueDate())

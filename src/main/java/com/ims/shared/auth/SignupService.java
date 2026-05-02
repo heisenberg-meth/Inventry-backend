@@ -173,7 +173,6 @@ public class SignupService {
               passwordEncoder.encode(request.getPassword())))
           .scope("TENANT")
           .isActive(true)
-          .tenantId(tenantId)
           .build();
 
       // 6. Initialize tenant: seeds roles, creates user, sends email (PRD §4.1 steps
@@ -193,7 +192,6 @@ public class SignupService {
       SubscriptionStatus status = (trialDays == 0) ? SubscriptionStatus.ACTIVE : SubscriptionStatus.TRIAL;
 
       Subscription subscription = Subscription.builder()
-          .tenantId(tenantId)
           .plan(plan.getName())
           .status(status)
           .startDate(now)
