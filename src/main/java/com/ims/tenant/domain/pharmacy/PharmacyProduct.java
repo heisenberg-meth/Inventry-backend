@@ -22,6 +22,13 @@ import lombok.NoArgsConstructor;
 @Builder
 public class PharmacyProduct {
 
+  @org.hibernate.annotations.TenantId
+  @jakarta.persistence.Column(name = "tenant_id", nullable = false, updatable = false)
+  private Long tenantId;
+
+  @jakarta.persistence.Version
+  private Long version;
+
   @Id
   @Column(name = "product_id")
   private Long productId;

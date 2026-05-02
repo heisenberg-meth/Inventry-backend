@@ -1,34 +1,36 @@
 package com.ims.config;
 
+import com.ims.shared.auth.JwtFilter;
 import com.ims.shared.audit.TraceFilter;
 import com.ims.shared.auth.ApiKeyFilter;
-import com.ims.shared.auth.JwtFilter;
 import com.ims.shared.auth.TenantFilter;
 import com.ims.shared.ratelimit.RateLimitFilter;
+import com.ims.shared.security.IpWhitelistFilter;
 import java.util.List;
 import java.util.Arrays;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.EnableAspectJAutoProxy;
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.core.env.Environment;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Profile;
+import org.springframework.security.config.Customizer;
 import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.core.env.Environment;
-import com.ims.shared.security.IpWhitelistFilter;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.context.annotation.EnableAspectJAutoProxy;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.XXssProtectionHeaderWriter.HeaderValue;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 
 @Configuration
 @EnableWebSecurity
@@ -107,9 +109,9 @@ public class SecurityConfig {
                 .frameOptions(frame -> frame.deny())
                 .xssProtection(
                     xss -> xss.headerValue(
-                        org.springframework.security.web.header.writers.XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
+                        HeaderValue.ENABLED_MODE_BLOCK))
                 .contentTypeOptions(
-                    Objects.requireNonNull(org.springframework.security.config.Customizer.withDefaults()))
+                    Objects.requireNonNull(Customizer.withDefaults()))
                 .contentSecurityPolicy(
                     csp -> csp.policyDirectives(
                         "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; object-src 'none';"))
@@ -117,11 +119,11 @@ public class SecurityConfig {
                     hsts -> hsts.includeSubDomains(true).preload(true).maxAgeInSeconds(HSTS_MAX_AGE_SECONDS)))
         .exceptionHandling(
             ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
-        .addFilterBefore(ipWhitelistFilter, TraceFilter.class)
         .addFilterBefore(traceFilter, UsernamePasswordAuthenticationFilter.class)
+        .addFilterBefore(ipWhitelistFilter, TraceFilter.class)
         .addFilterAfter(rateLimitFilter, TraceFilter.class)
-        .addFilterAfter(apiKeyFilter, RateLimitFilter.class)
-        .addFilterBefore(tenantFilter, JwtFilter.class)
+        .addFilterAfter(tenantFilter, RateLimitFilter.class)
+        .addFilterAfter(apiKeyFilter, TenantFilter.class)
         .addFilterAfter(jwtFilter, ApiKeyFilter.class);
   }
 

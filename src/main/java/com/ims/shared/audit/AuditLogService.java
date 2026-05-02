@@ -14,7 +14,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import java.util.Objects;
 import java.util.Map;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -45,7 +44,7 @@ public class AuditLogService {
     auditLogRepository.save(auditEntry);
   }
 
-  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  @Transactional
   public void logRequiresNew(AuditAction action, Long tenantId, Long userId, String details) {
     log(action, tenantId, userId, details);
   }

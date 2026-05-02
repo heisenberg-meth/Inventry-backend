@@ -16,7 +16,9 @@ public class MdcTaskDecorator implements TaskDecorator {
         if (contextMap != null) {
           MDC.setContextMap(contextMap);
         }
-        TenantContext.setTenantId(tenantId);
+        if (tenantId != null) {
+          TenantContext.setTenantId(tenantId);
+        }
         runnable.run();
       } finally {
         TenantContext.clear();

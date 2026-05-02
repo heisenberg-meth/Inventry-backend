@@ -345,7 +345,7 @@ public abstract class BaseIntegrationTest {
     TenantContext.setTenantId(tenantId);
     try {
       return roleRepository.findByName(name)
-          .orElseGet(() -> roleRepository.save(Role.builder().name(name).tenantId(tenantId).build()));
+          .orElseGet(() -> roleRepository.save(Role.builder().name(name).build()));
     } finally {
       TenantContext.setTenantId(previous);
     }
