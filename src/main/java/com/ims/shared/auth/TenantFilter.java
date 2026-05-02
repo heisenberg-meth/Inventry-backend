@@ -21,28 +21,46 @@ public class TenantFilter extends OncePerRequestFilter {
       FilterChain filterChain)
       throws ServletException, IOException {
 
-    if (TenantContext.getTenantId() != null) {
+    if (shouldNotFilter(request)) {
       filterChain.doFilter(request, response);
       return;
     }
 
+    String tenantHeader = request.getHeader("X-Tenant-ID");
+    if (tenantHeader == null || tenantHeader.isBlank()) {
+      log.warn("Missing X-Tenant-ID header for request: {}", request.getRequestURI());
+      sendError(response, "Missing X-Tenant-ID header", 401);
+      return;
+    }
+
     try {
-      String tenantHeader = request.getHeader("X-Tenant-ID");
-      if (tenantHeader != null && !tenantHeader.isBlank()) {
-        Long tenantId = Long.parseLong(tenantHeader);
-        TenantContext.setTenantId(tenantId);
-        MDC.put("tenantId", String.valueOf(tenantId));
-      }
+      Long tenantId = Long.parseLong(tenantHeader);
+      TenantContext.setTenantId(tenantId);
+      MDC.put("tenantId", String.valueOf(tenantId));
       filterChain.doFilter(request, response);
+    } catch (NumberFormatException e) {
+      log.warn("Invalid X-Tenant-ID header: {}", tenantHeader);
+      sendError(response, "Invalid X-Tenant-ID header format", 401);
     } finally {
       TenantContext.clear();
       MDC.remove("tenantId");
     }
   }
 
+  private void sendError(HttpServletResponse response, String message, int status) throws IOException {
+    response.setStatus(status);
+    response.setContentType("application/json");
+    response.getWriter().write(String.format(
+        "{\"status\":%d,\"error\":\"UNAUTHORIZED\",\"message\":\"%s\",\"path\":\"\"}",
+        status, message));
+  }
+
   @Override
   protected boolean shouldNotFilter(HttpServletRequest request) {
     String path = request.getRequestURI();
-    return "/actuator/health".equals(path) || path.equals("/api/v1/actuator/health");
+    return "/actuator/health".equals(path)
+        || path.equals("/api/v1/actuator/health")
+        || path.contains("/auth/")
+        || path.contains("/platform/auth/");
   }
 }

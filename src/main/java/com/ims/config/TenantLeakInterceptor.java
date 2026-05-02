@@ -19,6 +19,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class TenantLeakInterceptor implements StatementInspector {
 
+  private static final long serialVersionUID = 1L;
+
   private static final String[] MULTI_TENANT_TABLES = {
       "products", "orders", "order_items", "customers", "suppliers",
       "stock_movements", "invoices", "payments", "categories"

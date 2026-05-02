@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -30,10 +31,12 @@ public class SaleController {
   @PostMapping
   @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER", "SALES_STAFF" })
   @Operation(summary = "Record a sale with billing", description = "Creates a sales order and automatically generates an invoice")
-  public ResponseEntity<Order> createSale(@Valid @RequestBody OrderRequest request) {
+  public ResponseEntity<Order> createSale(
+      @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+      @Valid @RequestBody OrderRequest request) {
     Long userId = (Long) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication())
         .getPrincipal();
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(orderService.createSalesOrder(Objects.requireNonNull(request), Objects.requireNonNull(userId)));
+        .body(orderService.createSalesOrder(request, userId, idempotencyKey));
   }
 }

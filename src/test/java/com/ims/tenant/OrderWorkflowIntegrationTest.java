@@ -2,6 +2,7 @@ package com.ims.tenant;
 
 import com.ims.BaseIntegrationTest;
 import java.math.BigDecimal;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -67,7 +68,7 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
 
                 // Create product
                 jdbc.update(
-                                "INSERT INTO products (name, sku, sale_price, stock, active, tenant_id) " +
+                                "INSERT INTO products (name, sku, sale_price, stock, is_active, tenant_id) " +
                                                 "VALUES (:name, :sku, :price, :stock, true, :tid)",
                                 new MapSqlParameterSource()
                                                 .addValue("name", "Test Product")
@@ -112,6 +113,6 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
                                 new MapSqlParameterSource().addValue("pid", productId),
                                 BigDecimal.class);
 
-                org.junit.jupiter.api.Assertions.assertEquals(90, stock.intValue());
+                Assertions.assertEquals(90, stock.intValue());
         }
 }

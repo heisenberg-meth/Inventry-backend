@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+
 public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
 
   @Autowired
@@ -40,7 +41,7 @@ public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
   @Test
   void testRateLimitEnforcement() throws Exception {
     // Mock Redis to return 100 requests already made (Public limit is 50)
-    doReturn(100L).when(zSetOperations).zCard(Objects.requireNonNull(any(String.class)));
+    doReturn(100L).when(zSetOperations).zCard(any(String.class));
 
     mockMvc
         .perform(get("/api/any-public-endpoint"))
@@ -52,7 +53,7 @@ public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
   @Test
   void testAuthRateLimitEnforcement() throws Exception {
     // Mock Redis for auth endpoint (Limit is 20)
-    doReturn(25L).when(zSetOperations).zCard(Objects.requireNonNull(any(String.class)));
+    doReturn(25L).when(zSetOperations).zCard(any(String.class));
 
     String authLoginJson = objectMapper.writeValueAsString(
         Map.of("email", "root@ims.com", "password", TEST_ROOT_PASSWORD));
