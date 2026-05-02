@@ -12,6 +12,7 @@ public class BusinessMetrics {
     private final Counter purchasesTotal;
     private final Counter webhookEventsTotal;
     private final Counter loginFailuresTotal;
+    private final Counter tenantOnboardingTotal;
 
     public BusinessMetrics(MeterRegistry registry) {
         this.ordersTotal = Counter.builder("ims.orders.total")
@@ -33,6 +34,10 @@ public class BusinessMetrics {
         this.loginFailuresTotal = Counter.builder("ims.auth.login.failures.total")
                 .description("Total number of failed login attempts")
                 .register(registry);
+
+        this.tenantOnboardingTotal = Counter.builder("ims.tenant.onboarding.total")
+                .description("Total number of successfully onboarded tenants")
+                .register(registry);
     }
 
     public void incrementOrders(String type) {
@@ -50,5 +55,9 @@ public class BusinessMetrics {
 
     public void incrementLoginFailures() {
         loginFailuresTotal.increment();
+    }
+
+    public void incrementTenantOnboarding() {
+        tenantOnboardingTotal.increment();
     }
 }

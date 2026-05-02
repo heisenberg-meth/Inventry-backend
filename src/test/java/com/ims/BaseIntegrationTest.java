@@ -103,7 +103,7 @@ public abstract class BaseIntegrationTest {
 
   static {
     postgres.start();
-    System.setProperty("DOCKER_API_VERSION", "1.40");
+    System.setProperty("DOCKER_API_VERSION", "1.41");
   }
 
   protected static final String TEST_ROOT_PASSWORD = System.getProperty("ims.test.root.password",
@@ -329,6 +329,17 @@ public abstract class BaseIntegrationTest {
               jdbcTemplate.execute(
                   "INSERT INTO subscription_plans (name, status, is_default, billing_cycle, version) " +
                       "VALUES ('DEFAULT', 'ACTIVE', true, 'MONTHLY', 0)");
+
+              // FR-03-J: Seed ROOT permissions so ROOT user actually has authorities in tests
+              jdbcTemplate.execute(
+                  "INSERT INTO role_permissions (role_id, permission_id) " +
+                      "SELECT r.id, p.id FROM roles r, permissions p " +
+                      "WHERE r.name = 'ROOT' AND r.tenant_id IS NULL");
+
+              // Enable Support Mode for tests to allow RBAC overrides
+              jdbcTemplate.execute(
+                  "INSERT INTO system_configs (config_key, config_value, description) " +
+                      "VALUES ('SUPPORT_MODE', 'true', 'Enable root override for tests')");
 
               entityManager.clear();
               TenantContext.clear();

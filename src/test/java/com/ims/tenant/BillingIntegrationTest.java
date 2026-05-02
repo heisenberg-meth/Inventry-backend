@@ -138,7 +138,11 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
                                 orderResult.getResponse().getContentAsString(),
                                 new TypeReference<Map<String, Object>>() {
                                 });
-                Long orderId = Long.valueOf(orderResponse.get("order_id").toString());
+                Object orderIdObj = orderResponse.get("id");
+                if (orderIdObj == null) {
+                    orderIdObj = orderResponse.get("order_id");
+                }
+                Long orderId = Long.valueOf(orderIdObj.toString());
 
                 // 3. Confirm Order (Triggers Invoice Generation)
                 mockMvc
