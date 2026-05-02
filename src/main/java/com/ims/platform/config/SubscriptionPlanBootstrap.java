@@ -7,6 +7,7 @@ import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
@@ -16,6 +17,7 @@ public class SubscriptionPlanBootstrap {
   private final SubscriptionPlanRepository repo;
 
   @PostConstruct
+  @Transactional
   public void init() {
     if (repo.findDefaultPlan().isEmpty()) {
       log.info("No default subscription plan found. Seeding DEFAULT plan...");

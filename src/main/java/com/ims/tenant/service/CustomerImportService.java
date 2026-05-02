@@ -1,7 +1,6 @@
 package com.ims.tenant.service;
 
 import com.ims.model.Customer;
-import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.repository.CustomerRepository;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -36,7 +35,6 @@ public class CustomerImportService {
     int successCount = 0;
     int failCount = 0;
     List<String> errors = new ArrayList<>();
-    Long tenantId = TenantContext.requireTenantId();
 
     try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
       String line;
@@ -66,7 +64,6 @@ public class CustomerImportService {
 
           Customer customer = Objects.requireNonNull(
               Customer.builder()
-                  .tenantId(tenantId)
                   .name(Objects.requireNonNull(name))
                   .phone(phone)
                   .email(email)

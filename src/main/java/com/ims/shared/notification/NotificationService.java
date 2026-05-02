@@ -53,7 +53,6 @@ public class NotificationService {
     Notification notification = Objects.requireNonNull(
         Notification.builder()
             .userId(Objects.requireNonNull(userId))
-            .tenantId(tenantId)
             .title(Objects.requireNonNull(title))
             .message(Objects.requireNonNull(message))
             .type(Objects.requireNonNull(type))

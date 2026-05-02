@@ -26,7 +26,8 @@ public class AuditLog {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Column(name = "tenant_id")
+  @org.hibernate.annotations.TenantId
+  @Column(name = "tenant_id", updatable = false)
   private Long tenantId;
 
   @Column(name = "user_id")

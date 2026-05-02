@@ -2,11 +2,8 @@ package com.ims.tenant.domain.warehouse;
 
 import com.ims.model.TransferOrder;
 import com.ims.model.TransferOrderStatus;
-import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.repository.TransferOrderRepository;
-
 import jakarta.persistence.EntityNotFoundException;
-
 import com.ims.tenant.dto.TransferOrderRequest;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +23,6 @@ public class TransferOrderService {
   @Transactional
   public TransferOrder createTransfer(
       TransferOrderRequest request, Long userId) {
-    Long tenantId = TenantContext.requireTenantId();
     long productId = Objects.requireNonNull(request.getProductId());
     String fromLocation = Objects.requireNonNull(request.getFromLocation());
     String toLocation = Objects.requireNonNull(request.getToLocation());
@@ -35,7 +31,6 @@ public class TransferOrderService {
 
     // Create transfer order
     TransferOrder transfer = TransferOrder.builder()
-        .tenantId(tenantId)
         .productId(productId)
         .quantity(quantity)
         .fromLocation(fromLocation)

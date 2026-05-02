@@ -36,7 +36,6 @@ public class AuditLogService {
 
     AuditLog auditEntry = Objects.requireNonNull(
         AuditLog.builder()
-            .tenantId(tenantId)
             .userId(userId)
             .action(Objects.requireNonNull(action.name()))
             .details(Objects.requireNonNull(details))
@@ -74,7 +73,6 @@ public class AuditLogService {
       log.warn("Legacy log called with non-enum value: {}. Logging as string.", action);
       AuditLog auditEntry = Objects.requireNonNull(
           AuditLog.builder()
-              .tenantId(tenantId)
               .userId(userId)
               .action(action)
               .details(details)

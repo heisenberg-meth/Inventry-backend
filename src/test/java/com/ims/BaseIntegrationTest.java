@@ -325,6 +325,11 @@ public abstract class BaseIntegrationTest {
                   jdbcTemplate.queryForObject(
                       "SELECT id FROM tenants WHERE workspace_slug = 't2'", Long.class));
 
+              // Seed DEFAULT Subscription Plan
+              jdbcTemplate.execute(
+                  "INSERT INTO subscription_plans (name, status, is_default, billing_cycle, version) " +
+                      "VALUES ('DEFAULT', 'ACTIVE', true, 'MONTHLY', 0)");
+
               entityManager.clear();
               TenantContext.clear();
               setupRootAuthentication();

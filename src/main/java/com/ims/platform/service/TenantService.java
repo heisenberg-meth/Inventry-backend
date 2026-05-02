@@ -18,7 +18,10 @@ import com.ims.platform.repository.SubscriptionRepository;
 import com.ims.platform.repository.TenantRepository;
 import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditLogService;
+import com.ims.shared.auth.TenantContext;
 import com.ims.shared.auth.TenantInitializationService;
+import com.ims.shared.exception.ConflictException;
+import com.ims.shared.utils.CompanyCodeGenerator;
 import com.ims.tenant.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.OffsetDateTime;
@@ -31,6 +34,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -55,7 +59,7 @@ public class TenantService {
   private final AuditLogService auditLogService;
   private final SubscriptionRepository subscriptionRepository;
   private final SubscriptionPlanRepository subscriptionPlanRepository;
-  private final com.ims.shared.utils.CompanyCodeGenerator companyCodeGenerator;
+  private final CompanyCodeGenerator companyCodeGenerator;
 
   public Page<TenantResponse> getAllTenants(Pageable pageable) {
     Page<Tenant> tenants = tenantRepository.findAll(Objects.requireNonNull(pageable));
@@ -113,11 +117,11 @@ public class TenantService {
         auditLogService.log(
             AuditAction.CREATE_TENANT,
             tenantIdForAudit,
-            com.ims.shared.auth.TenantContext.PLATFORM_TENANT_ID,
+            TenantContext.PLATFORM_TENANT_ID,
             "Created tenant: " + savedTenant.getName());
 
         return toResponse(savedTenant);
-      } catch (org.springframework.dao.DataIntegrityViolationException e) {
+      } catch (DataIntegrityViolationException e) {
         String msg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
         if (msg.contains("workspace_slug") || msg.contains("idx_tenants_workspace_slug")) {
           if (requestedSlug != null && !requestedSlug.isBlank() && attempt == 0) {
@@ -135,7 +139,7 @@ public class TenantService {
       }
     }
 
-    throw new com.ims.shared.exception.ConflictException("Unable to allocate unique tenant identifiers",
+    throw new ConflictException("Unable to allocate unique tenant identifiers",
         java.util.Map.of("field", "workspaceSlug"));
   }
 
@@ -230,7 +234,7 @@ public class TenantService {
     tenantRepository.save(tenant);
 
     auditLogService.log(
-        AuditAction.UPDATE_TENANT_STATUS, id, com.ims.shared.auth.TenantContext.PLATFORM_TENANT_ID,
+        AuditAction.UPDATE_TENANT_STATUS, id, TenantContext.PLATFORM_TENANT_ID,
         "Tenant suspended: " + tenant.getName());
     log.info("Tenant suspended: id={}", id);
     return Map.of("message", "Tenant suspended successfully", "status", "SUSPENDED");
@@ -247,7 +251,7 @@ public class TenantService {
     tenantRepository.save(tenant);
 
     auditLogService.log(
-        AuditAction.UPDATE_TENANT_STATUS, id, com.ims.shared.auth.TenantContext.PLATFORM_TENANT_ID,
+        AuditAction.UPDATE_TENANT_STATUS, id, TenantContext.PLATFORM_TENANT_ID,
         "Tenant activated: " + tenant.getName());
     log.info("Tenant activated: id={}", id);
     return Map.of("message", "Tenant activated successfully", "status", "ACTIVE");
@@ -351,31 +355,36 @@ public class TenantService {
     OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
     OffsetDateTime endDate = now.plusDays(durationDays);
 
-    Subscription subscription = Objects.requireNonNull(
-        Subscription.builder()
-            .tenantId(tenantId)
-            .plan(plan.getName())
-            .status(SubscriptionStatus.ACTIVE)
-            .startDate(now)
-            .endDate(endDate)
-            .build());
+    // Set context for Hibernate @TenantId
+    TenantContext.setTenantId(tenantId);
+    try {
+      Subscription subscription = Objects.requireNonNull(
+          Subscription.builder()
+              .plan(plan.getName())
+              .status(SubscriptionStatus.ACTIVE)
+              .startDate(now)
+              .endDate(endDate)
+              .build());
 
-    Subscription savedSub = Objects.requireNonNull(subscriptionRepository.save(subscription));
+      Subscription savedSub = Objects.requireNonNull(subscriptionRepository.save(subscription));
 
-    auditLogService.log(
-        AuditAction.ASSIGN_PLAN,
-        tenantId,
-        com.ims.shared.auth.TenantContext.PLATFORM_TENANT_ID,
-        "Assigned plan " + plan.getName() + " to tenant " + tenant.getName());
+      auditLogService.log(
+          AuditAction.ASSIGN_PLAN,
+          tenantId,
+          TenantContext.PLATFORM_TENANT_ID,
+          "Assigned plan " + plan.getName() + " to tenant " + tenant.getName());
 
-    Map<String, Object> response = new HashMap<>();
-    response.put("message", "Plan assigned successfully");
-    response.put("subscriptionId", savedSub.getId());
-    response.put("plan", plan.getName());
-    response.put("status", savedSub.getStatus());
-    response.put("startDate", savedSub.getStartDate());
-    response.put("endDate", savedSub.getEndDate());
-    return response;
+      Map<String, Object> response = new HashMap<>();
+      response.put("message", "Plan assigned successfully");
+      response.put("subscriptionId", savedSub.getId());
+      response.put("plan", plan.getName());
+      response.put("status", savedSub.getStatus());
+      response.put("startDate", savedSub.getStartDate());
+      response.put("endDate", savedSub.getEndDate());
+      return response;
+    } finally {
+      TenantContext.clear();
+    }
   }
 
   /** Get tenant subscription info. */

@@ -12,6 +12,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
 @Slf4j
+@org.springframework.core.annotation.Order(org.springframework.core.Ordered.HIGHEST_PRECEDENCE + 10)
 public class TenantFilter extends OncePerRequestFilter {
 
   @Override

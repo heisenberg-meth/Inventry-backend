@@ -121,8 +121,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
        @Query("SELECT p FROM Product p WHERE p.stock <= p.reorderLevel AND p.active = true")
        Stream<Product> streamAllLowStock();
 
-       @Query("SELECT p FROM Product p WHERE p.stock <= p.reorderLevel AND p.active = true")
-       Stream<Product> streamAllLowStockGlobal();
+        @Query(value = "SELECT * FROM products WHERE stock <= reorder_level AND is_active = true", nativeQuery = true)
+        Stream<Product> streamAllLowStockGlobal();
 
        @Query("SELECT COUNT(p) FROM Product p WHERE p.stock = 0 AND p.active = true")
        long countOutOfStock();

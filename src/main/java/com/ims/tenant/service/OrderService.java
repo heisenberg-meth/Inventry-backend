@@ -121,7 +121,6 @@ public class OrderService {
     }
 
     Order order = Order.builder()
-        .tenantId(com.ims.shared.auth.TenantContext.requireTenantId())
         .type("PURCHASE")
         .status(com.ims.model.OrderStatus.PENDING)
         .supplierId(supplierId)
@@ -234,7 +233,6 @@ public class OrderService {
     }
 
     Order salesOrder = Order.builder()
-        .tenantId(com.ims.shared.auth.TenantContext.requireTenantId())
         .type("SALE")
         .status(OrderStatus.PENDING)
         .customerId(customerId)
@@ -293,7 +291,6 @@ public class OrderService {
     BigDecimal returnTax = BigDecimal.ZERO;
 
     Order initialReturnOrder = Order.builder()
-        .tenantId(com.ims.shared.auth.TenantContext.requireTenantId())
         .type("RETURN")
         .status(com.ims.model.OrderStatus.COMPLETED)
         .customerId(originalOrder.getCustomerId())

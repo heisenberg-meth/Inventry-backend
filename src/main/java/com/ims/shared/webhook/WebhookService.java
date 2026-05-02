@@ -69,7 +69,6 @@ public class WebhookService {
 
     Webhook webhook = Objects.requireNonNull(
         Webhook.builder()
-            .tenantId(TenantContext.requireTenantId())
             .url(Objects.requireNonNull(normalizedUri.toString()))
             .eventTypes(Objects.requireNonNull(eventTypes))
             .secret(Objects.requireNonNull(encryptionService.encrypt(secret)))
@@ -96,11 +95,12 @@ public class WebhookService {
    */
   @Transactional
   public void dispatch(Long tenantId, String eventType, Object payload) {
+    Long previousTenantId = TenantContext.getTenantId();
+    TenantContext.setTenantId(tenantId);
     try {
       String jsonPayload = objectMapper.writeValueAsString(payload);
 
       WebhookOutbox entry = WebhookOutbox.builder()
-          .tenantId(tenantId)
           .eventType(eventType)
           .payload(jsonPayload)
           .status(WebhookOutbox.OutboxStatus.PENDING)
@@ -114,6 +114,12 @@ public class WebhookService {
       // We don't throw here to avoid failing the main transaction if webhook
       // persistence fails,
       // but in a strict system, you might want to throw to ensure consistency.
+    } finally {
+      if (previousTenantId != null) {
+        TenantContext.setTenantId(previousTenantId);
+      } else {
+        TenantContext.clear();
+      }
     }
   }
 

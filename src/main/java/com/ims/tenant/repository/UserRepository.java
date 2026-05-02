@@ -125,11 +125,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     int clearExpiredResetTokens(@Param("now") LocalDateTime now);
 
     @Modifying(clearAutomatically = true)
-    @Query("""
-            UPDATE User u
-            SET u.resetToken = null,
-                u.resetTokenExpiry = null
-            WHERE u.resetTokenExpiry < :now
-            """)
+    @Query(value = "UPDATE users SET reset_token = null, reset_token_expiry = null WHERE reset_token_expiry < :now", nativeQuery = true)
     int clearAllExpiredResetTokens(@Param("now") LocalDateTime now);
 }

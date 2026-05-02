@@ -10,10 +10,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.annotation.Order;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.web.util.matcher.IpAddressMatcher;
 import org.springframework.stereotype.Component;
+import org.springframework.core.Ordered;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
@@ -41,6 +43,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
 @Slf4j
+@Order(Ordered.HIGHEST_PRECEDENCE)
 public class RateLimitFilter extends OncePerRequestFilter {
 
   private static final int STATUS_TOO_MANY_REQUESTS = 429;

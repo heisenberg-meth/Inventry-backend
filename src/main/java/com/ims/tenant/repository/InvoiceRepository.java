@@ -36,6 +36,6 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
         @Query("SELECT i FROM Invoice i WHERE i.status <> :status AND i.dueDate < :date")
         Stream<Invoice> streamOverdue(@Param("status") InvoiceStatus status, @Param("date") LocalDate date);
 
-        @Query("SELECT i FROM Invoice i WHERE i.status <> :status AND i.dueDate < :date")
+        @Query(value = "SELECT * FROM invoices WHERE status <> :status AND due_date < :date", nativeQuery = true)
         Stream<Invoice> streamAllOverdueGlobal(@Param("status") InvoiceStatus status, @Param("date") LocalDate date);
 }
