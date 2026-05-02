@@ -100,6 +100,7 @@ public class TenantInitializationService {
     Map<String, Permission> allPerms = permissionCacheService.getAll();
 
     // FR-03-J: Permission Matrix
+    // FR-03-J: Permission Matrix - Include all permissions except manage_platform
     seedRole(tenantId, UserRole.TENANT_ADMIN, allPerms.values().stream()
         .filter(p -> !p.getKey().equals("manage_platform"))
         .collect(Collectors.toList()));
@@ -109,7 +110,7 @@ public class TenantInitializationService {
         "_category", "_supplier"));
 
     seedRole(tenantId, UserRole.SALES_STAFF, filterPerms(allPerms,
-        "view_product", "stock_out", "create_invoice"));
+        "view_product", "view_user", "view_users", "stock_out", "create_invoice", "view_customers"));
 
     seedRole(tenantId, UserRole.INVENTORY_MANAGER, filterPerms(allPerms,
         "_product", "stock_", "view_reports", "_category"));
@@ -132,6 +133,7 @@ public class TenantInitializationService {
     Role role = Role.builder()
         .name(roleType.name())
         .description("Default " + roleType.name() + " role")
+        .tenantId(tenantId)
         .permissions(perms)
         .build();
     roleRepository.save(role);
