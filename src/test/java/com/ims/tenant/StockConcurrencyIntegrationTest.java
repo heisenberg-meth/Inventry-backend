@@ -1,7 +1,6 @@
 package com.ims.tenant;
 
 import static org.assertj.core.api.Assertions.assertThat;
-
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.SignupRequest;
 import com.ims.product.Product;

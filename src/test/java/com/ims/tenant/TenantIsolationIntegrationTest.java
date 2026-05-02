@@ -28,6 +28,7 @@ public class TenantIsolationIntegrationTest extends BaseIntegrationTest {
     Category category = new Category();
     category.setName("Test Category");
     category.setTenantId(testTenant1Id);
+    categoryRepository.save(category);
     TenantContext.clear();
 
     TenantContext.setTenantId(testTenant1Id);

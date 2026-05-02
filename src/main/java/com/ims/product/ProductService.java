@@ -17,6 +17,7 @@ import com.ims.tenant.domain.pharmacy.PharmacyProductRepository;
 import com.ims.tenant.domain.warehouse.WarehouseProduct;
 import com.ims.tenant.service.WarehouseProductRepository;
 import jakarta.persistence.EntityNotFoundException;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -148,10 +149,10 @@ public class ProductService {
         Product.builder()
             .name(Objects.requireNonNull(request.getName()))
             .sku(Objects.requireNonNull(request.getSku()))
-            .barcode(Objects.requireNonNull(request.getBarcode()))
-            .categoryId(Objects.requireNonNull(request.getCategoryId()))
-            .unit(Objects.requireNonNull(request.getUnit()))
-            .purchasePrice(Objects.requireNonNull(request.getPurchasePrice()))
+            .barcode(request.getBarcode())
+            .categoryId(request.getCategoryId())
+            .unit(request.getUnit() != null ? request.getUnit() : "PCS")
+            .purchasePrice(request.getPurchasePrice() != null ? request.getPurchasePrice() : BigDecimal.ZERO)
             .salePrice(Objects.requireNonNull(request.getSalePrice()))
             .reorderLevel(
                 request.getReorderLevel() != null
@@ -412,8 +413,8 @@ public class ProductService {
         savedProduct.getId(),
         "Duplicated from product #" + id);
 
-    return (pp != null || wp != null) 
-        ? toResponse(savedProduct, pp, wp) 
+    return (pp != null || wp != null)
+        ? toResponse(savedProduct, pp, wp)
         : toResponse(savedProduct);
   }
 
