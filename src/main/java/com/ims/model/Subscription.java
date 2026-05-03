@@ -10,14 +10,17 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.OffsetDateTime;
+import org.hibernate.annotations.TenantId;
+import jakarta.persistence.Version;
 import java.time.ZoneOffset;
 
 @Entity
 @Table(name = "subscriptions", uniqueConstraints = {
-    @jakarta.persistence.UniqueConstraint(columnNames = { "tenant_id" })
+    @UniqueConstraint(columnNames = { "tenant_id" })
 })
 @Data
 @NoArgsConstructor
@@ -29,7 +32,10 @@ public class Subscription {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @org.hibernate.annotations.TenantId
+  @Version
+  private Long version;
+
+  @TenantId
   @Column(name = "tenant_id", nullable = false, updatable = false)
   private Long tenantId;
 

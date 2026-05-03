@@ -10,7 +10,7 @@ public class TenantContext {
    */
   public static final Long PLATFORM_TENANT_ID = -1L;
 
-  private static final ThreadLocal<Long> TENANT = new ThreadLocal<>();
+  private static final ThreadLocal<Long> TENANT = new InheritableThreadLocal<>();
 
   public static void setTenantId(Long tenantId) {
     if (tenantId == null) {

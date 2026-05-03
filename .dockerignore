@@ -5,7 +5,6 @@ target/
 .mvn/
 mvnw
 mvnw.cmd
-pom.xml
 Dockerfile
 .github/
 .agents/
@@ -16,3 +15,7 @@ checkstyle.xml
 log.txt
 docker-compose.yml
 nginx/
+node_modules/
+# IMPORTANT: allow pom.xml and src
+!pom.xml
+!src/

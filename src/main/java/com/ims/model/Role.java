@@ -21,7 +21,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.Cache;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
-import org.hibernate.annotations.TenantId;
 
 @Entity
 @Table(name = "roles", uniqueConstraints = {
@@ -48,7 +47,6 @@ public class Role {
   @Column
   private String description;
 
-  @TenantId
   @Column(name = "tenant_id", nullable = false, updatable = false)
   private Long tenantId;
 

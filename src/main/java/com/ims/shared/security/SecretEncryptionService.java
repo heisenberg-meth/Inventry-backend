@@ -8,10 +8,18 @@ import java.util.HexFormat;
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Service;
 
 @Service
 public class SecretEncryptionService {
+
+  @PostConstruct
+  public void validateKey() {
+    if (keySpec == null || keySpec.getEncoded().length != KEY_SIZE) {
+      throw new IllegalStateException("Encryption key not properly initialized or invalid size");
+    }
+  }
 
   private static final String ALGORITHM = "AES/GCM/NoPadding";
   private static final int IV_SIZE = 12; // recommended for GCM

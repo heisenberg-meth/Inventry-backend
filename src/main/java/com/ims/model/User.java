@@ -53,6 +53,8 @@ public class User {
     private boolean twoFactorEnabled;
     private String twoFactorSecret;
     private String backupCodes;
+    private Integer failedAttempts;
+    private LocalDateTime lockoutUntil;
     private LocalDateTime createdAt;
 
     public UserBuilder role(Role role) {
@@ -79,6 +81,7 @@ public class User {
           isVerified != null ? isVerified : false,
           resetToken, resetTokenExpiry, verificationToken, verificationTokenExpiry, lastLogin,
           twoFactorEnabled, twoFactorSecret, backupCodes,
+          failedAttempts != null ? failedAttempts : 0, lockoutUntil,
           createdAt != null ? createdAt : LocalDateTime.now());
     }
   }
@@ -163,6 +166,13 @@ public class User {
 
   @Column(name = "backup_codes", columnDefinition = "TEXT")
   private String backupCodes;
+
+  @Column(name = "failed_attempts")
+  @Builder.Default
+  private Integer failedAttempts = 0;
+
+  @Column(name = "lockout_until")
+  private LocalDateTime lockoutUntil;
 
   @Column(name = "created_at")
   @Builder.Default

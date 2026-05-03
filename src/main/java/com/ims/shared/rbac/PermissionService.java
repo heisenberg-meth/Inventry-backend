@@ -25,26 +25,25 @@ public class PermissionService {
   @Cacheable(value = "permissions", key = "#userId", cacheResolver = "tenantAwareCacheResolver")
   @Transactional(readOnly = true)
   public Set<String> getUserPermissions(Long userId, Long tenantId) {
-    log.info("Fetching permissions from DB for user: {} tenantId: {}", userId, tenantId);
-
+    System.out.println("DEBUG PermissionService: Getting permissions for userId=" + userId + " tenantId=" + tenantId);
     Set<String> permissions = new HashSet<>();
 
     String roleName = userRepository.findRoleNameByUserId(userId).orElse(null);
-    log.info("Role name for user {}: {}", userId, roleName);
+    System.out.println("DEBUG PermissionService: roleName=" + roleName);
 
     if (roleName != null) {
       Optional<Role> roleOpt;
 
       if (tenantId != null && !"ROOT".equals(roleName)) {
-        roleOpt = roleRepository.findByNameWithPermissions(roleName, tenantId);
+        roleOpt = roleRepository.findByNameWithPermissions(roleName, tenantId.toString());
       } else {
         roleOpt = roleRepository.findByNameAndTenantIdIsNullWithPermissions(roleName);
       }
 
       if (roleOpt.isPresent()) {
         Role role = roleOpt.get();
-        log.info("Found role: {} with {} permissions", role.getName(),
-            role.getPermissions() != null ? role.getPermissions().size() : 0);
+        System.out.println("DEBUG PermissionService: Found role " + role.getName() + " with "
+            + (role.getPermissions() != null ? role.getPermissions().size() : 0) + " permissions");
         if (role.getPermissions() != null && !role.getPermissions().isEmpty()) {
           permissions.addAll(
               role.getPermissions().stream()
@@ -52,7 +51,7 @@ public class PermissionService {
                   .collect(Collectors.toSet()));
         }
       } else {
-        log.info("Role '{}' not found for tenantId={}", roleName, tenantId);
+        System.out.println("DEBUG PermissionService: Role '" + roleName + "' not found for tenantId=" + tenantId);
       }
     }
 
@@ -62,12 +61,13 @@ public class PermissionService {
         Set<String> customPerms = user.getCustomPermissions().stream()
             .map(Permission::getKey)
             .collect(Collectors.toSet());
-        log.info("Adding {} custom permissions for user {}", customPerms.size(), userId);
+        System.out.println(
+            "DEBUG PermissionService: Adding " + customPerms.size() + " custom permissions for user " + userId);
         permissions.addAll(customPerms);
       }
     });
 
-    log.info("Final permissions for user {}: {}", userId, permissions);
+    System.out.println("DEBUG PermissionService: Final permissions for user " + userId + ": " + permissions);
     return permissions;
   }
 }

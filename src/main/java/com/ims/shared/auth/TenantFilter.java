@@ -5,8 +5,10 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.jboss.logging.MDC;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -36,6 +38,18 @@ public class TenantFilter extends OncePerRequestFilter {
 
     try {
       Long tenantId = Long.parseLong(tenantHeader);
+
+      // Validate against authenticated user (if already set by JwtFilter or similar)
+      var auth = SecurityContextHolder.getContext().getAuthentication();
+      if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
+        if (!details.isPlatformUser() && !Objects.equals(details.getTenantId(), tenantId)) {
+          log.warn("Tenant mismatch: user {} (tenant {}) tried to access tenant {}",
+              details.getUserId(), details.getTenantId(), tenantId);
+          sendError(response, "Access denied to tenant " + tenantId, 403);
+          return;
+        }
+      }
+
       TenantContext.setTenantId(tenantId);
       MDC.put("tenantId", String.valueOf(tenantId));
       filterChain.doFilter(request, response);

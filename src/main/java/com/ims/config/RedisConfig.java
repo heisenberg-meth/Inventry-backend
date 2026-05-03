@@ -78,11 +78,6 @@ public class RedisConfig {
             .map(
                 cacheName -> {
                   Cache cache = cacheManager.getCache(Objects.requireNonNull(cacheName));
-                  if (cache == null) {
-                    String[] parts = Objects.requireNonNull(cacheName.split(":"));
-                    String baseName = Objects.requireNonNull(parts[0]);
-                    return cacheManager.getCache(baseName);
-                  }
                   return cache;
                 })
             .filter(Objects::nonNull)

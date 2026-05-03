@@ -74,7 +74,7 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
                 // 2. Verify Audit Log for creation
                 mockMvc
                                 .perform(
-                                                get("/api/v1/tenant/audit-logs")
+                                                get("/api/v1/tenant/audits")
                                                                 .header("Authorization", "Bearer " + token)
                                                                 .with(tenant(Objects.requireNonNull(
                                                                                 String.valueOf(tenantId)))))
@@ -98,7 +98,7 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
                 // 4. Verify Audit Log for update
                 mockMvc
                                 .perform(
-                                                get("/api/v1/tenant/audit-logs")
+                                                get("/api/v1/tenant/audits")
                                                                 .header("Authorization", "Bearer " + token)
                                                                 .with(tenant(Objects.requireNonNull(
                                                                                 String.valueOf(tenantId)))))
@@ -151,7 +151,7 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
                 // T1 should see 4 logs (Signup + Login + Create + Category Create)
                 mockMvc
                                 .perform(
-                                                get("/api/v1/tenant/audit-logs")
+                                                get("/api/v1/tenant/audits")
                                                                 .header("Authorization", "Bearer " + t1Token)
                                                                 .with(tenant(Objects
                                                                                 .requireNonNull(String.valueOf(t2Id)))))
@@ -160,7 +160,7 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
                 // T2 should see 2 logs (Signup + Login)
                 mockMvc
                                 .perform(
-                                                get("/api/v1/tenant/audit-logs")
+                                                get("/api/v1/tenant/audits")
                                                                 .header("Authorization", "Bearer " + t2Token)
                                                                 .with(tenant(Objects
                                                                                 .requireNonNull(String.valueOf(t2Id)))))

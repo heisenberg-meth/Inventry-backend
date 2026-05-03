@@ -125,7 +125,12 @@ public class AuditLogService {
 
   public Page<AuditLogResponse> getAllLogs(
       Pageable pageable) {
-    var logs = auditLogRepository.findAll(pageable);
+    Page<AuditLog> logs;
+    if (isSystemAdmin()) {
+      logs = auditLogRepository.findAllGlobal(pageable);
+    } else {
+      logs = auditLogRepository.findAll(pageable);
+    }
 
     if (isSystemAdmin() && systemConfigService.isSupportModeEnabled()) {
       return logs.map(this::toDto);

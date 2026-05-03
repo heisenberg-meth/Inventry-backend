@@ -3,8 +3,8 @@ replicaCount: 2
 
 image:
   repository: ims-backend
-  pullPolicy: Always
-  tag: "latest"
+  pullPolicy: IfNotPresent
+  tag: ""
 
 imagePullSecrets: []
 nameOverride: ""
@@ -60,7 +60,7 @@ config:
   redisPort: 6379
 
 secrets:
-  dbPassword: "change-me"
-  redisPassword: "change-me"
-  jwtSecret: "replace-with-secure-key"
-  encryptionKey: "01234567890123456789012345678901"
+  dbPassword: ""
+  redisPassword: ""
+  jwtSecret: ""
+  encryptionKey: ""

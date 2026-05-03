@@ -28,6 +28,7 @@ public class TenantOnboardingAtomicityTest extends BaseIntegrationTest {
   @BeforeEach
   protected void setUp() throws Exception {
     super.setUp();
+    cleanupDatabase();
     TenantContext.clear();
   }
 
@@ -57,15 +58,21 @@ public class TenantOnboardingAtomicityTest extends BaseIntegrationTest {
     assertThat(tenantRepository.count()).isEqualTo(initialTenantCount + 1);
 
     Tenant createdTenant = tenantRepository.findByWorkspaceSlug(response.getWorkspaceSlug()).orElseThrow();
+    Long tenantId = createdTenant.getId();
+    TenantContext.setTenantId(tenantId);
 
-    // Check trial subscription
-    assertThat(
-        subscriptionRepository.findByTenantIdAndStatus(createdTenant.getId(), com.ims.model.SubscriptionStatus.TRIAL))
-        .isNotEmpty();
+    try {
+      // Check trial subscription
+      assertThat(
+          subscriptionRepository.findByTenantIdAndStatus(tenantId, com.ims.model.SubscriptionStatus.TRIAL))
+          .isNotEmpty();
 
-    // Check settings
-    assertThat(createdTenant.getInvoiceSequence()).isEqualTo(1000);
-    assertThat(createdTenant.getCurrency()).isEqualTo("INR");
+      // Check settings
+      assertThat(createdTenant.getInvoiceSequence()).isEqualTo(1000);
+      assertThat(createdTenant.getCurrency()).isEqualTo("INR");
+    } finally {
+      TenantContext.clear();
+    }
   }
 
   @Test

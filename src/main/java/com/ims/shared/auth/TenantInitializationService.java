@@ -32,7 +32,7 @@ public class TenantInitializationService {
   private final AuditLogService auditLogService;
   private final PermissionCacheService permissionCacheService;
 
-  @Transactional(propagation = Propagation.REQUIRED)
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
   public User initializeTenant(
       User user, Long tenantId, String tenantName) {
     Long oldTenantId = TenantContext.getCurrentTenant();
@@ -131,9 +131,9 @@ public class TenantInitializationService {
       throw new IllegalStateException("TenantContext not set during role seeding");
     }
     Role role = Role.builder()
+        .tenantId(tenantId)
         .name(roleType.name())
         .description("Default " + roleType.name() + " role")
-        .tenantId(tenantId)
         .permissions(perms)
         .build();
     roleRepository.save(role);

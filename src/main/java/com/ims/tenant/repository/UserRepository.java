@@ -127,4 +127,19 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Modifying(clearAutomatically = true)
     @Query(value = "UPDATE users SET reset_token = null, reset_token_expiry = null WHERE reset_token_expiry < :now", nativeQuery = true)
     int clearAllExpiredResetTokens(@Param("now") LocalDateTime now);
+
+    @Transactional
+    @Modifying
+    @Query(value = "UPDATE users SET failed_attempts = 0 WHERE id = :id", nativeQuery = true)
+    void resetFailedAttempts(@Param("id") Long id);
+
+    @Transactional
+    @Modifying
+    @Query(value = "UPDATE users SET failed_attempts = failed_attempts + 1, lockout_until = CASE WHEN failed_attempts + 1 >= :maxFailedAttempts THEN :plusMinutes ELSE lockout_until END WHERE id = :id", nativeQuery = true)
+    void recordFailedAttempt(@Param("id") Long id, @Param("maxFailedAttempts") int maxFailedAttempts, @Param("plusMinutes") LocalDateTime plusMinutes);
+
+    @Transactional
+    @Modifying
+    @Query(value = "UPDATE users SET two_factor_secret = :secret, two_factor_enabled = :enabled WHERE id = :id", nativeQuery = true)
+    void updateTwoFactorSettings(@Param("id") Long id, @Param("secret") String secret, @Param("enabled") boolean enabled);
 }

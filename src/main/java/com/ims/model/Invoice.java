@@ -13,6 +13,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import jakarta.persistence.Version;
+import jakarta.persistence.EnumType;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.TenantId;
@@ -30,6 +32,9 @@ public class Invoice {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
+
+  @Version
+  private Long version;
 
   @TenantId
   @Column(name = "tenant_id", nullable = false, updatable = false)
@@ -52,7 +57,7 @@ public class Invoice {
   private BigDecimal discount = BigDecimal.ZERO;
 
   @Column
-  @Enumerated(jakarta.persistence.EnumType.STRING)
+  @Enumerated(EnumType.STRING)
   @Builder.Default
   private InvoiceStatus status = InvoiceStatus.UNPAID;
 

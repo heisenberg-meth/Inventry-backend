@@ -17,13 +17,12 @@ public interface RoleRepository extends JpaRepository<Role, Long> {
 
   Optional<Role> findByNameAndTenantId(String name, Long tenantId);
 
+  Optional<Role> findByNameAndTenantIdIsNull(String name);
+
   boolean existsByTenantId(Long tenantId);
 
   @Query("SELECT r FROM Role r LEFT JOIN FETCH r.permissions WHERE r.name = :name AND r.tenantId = :tenantId")
-  Optional<Role> findByNameWithPermissions(@Param("name") String name, @Param("tenantId") Long tenantId);
-
-  @Query(value = "SELECT * FROM roles WHERE name = :name AND tenant_id IS NULL", nativeQuery = true)
-  Optional<Role> findByNameAndTenantIdIsNull(@Param("name") String name);
+  Optional<Role> findByNameWithPermissions(@Param("name") String name, @Param("tenantId") String tenantId);
 
   @Query("SELECT r FROM Role r LEFT JOIN FETCH r.permissions WHERE r.name = :name AND r.tenantId IS NULL")
   Optional<Role> findByNameAndTenantIdIsNullWithPermissions(@Param("name") String name);

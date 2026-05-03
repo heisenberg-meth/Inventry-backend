@@ -122,9 +122,9 @@ public class SecurityConfig {
         .addFilterBefore(traceFilter, UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(ipWhitelistFilter, TraceFilter.class)
         .addFilterAfter(rateLimitFilter, TraceFilter.class)
-        .addFilterAfter(tenantFilter, RateLimitFilter.class)
-        .addFilterAfter(apiKeyFilter, TenantFilter.class)
-        .addFilterAfter(jwtFilter, ApiKeyFilter.class);
+        .addFilterAfter(apiKeyFilter, RateLimitFilter.class)
+        .addFilterAfter(jwtFilter, ApiKeyFilter.class)
+        .addFilterAfter(tenantFilter, JwtFilter.class);
   }
 
   @Bean

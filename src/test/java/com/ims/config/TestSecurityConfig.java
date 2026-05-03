@@ -1,7 +1,6 @@
 package com.ims.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ims.model.User;
 import com.ims.shared.auth.JwtAuthDetails;
 import com.ims.shared.auth.JwtUtil;
 import com.ims.shared.auth.TenantContext;
@@ -13,9 +12,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -95,13 +94,11 @@ public class TestSecurityConfig {
             @Value("${app.rate-limit.authenticated-rpm:500}") int tenantRpm,
             @Value("${app.rate-limit.window-seconds:60}") int windowSeconds) {
         System.out.println("COMPOSITE FILTER BEAN CREATED");
-        return new CompositeTestFilter(userRepository, transactionTemplate, redisTemplate,
+        return new CompositeTestFilter(redisTemplate,
                 jwtUtil, authRpm, publicRpm, tenantRpm, windowSeconds);
     }
 
     public static class CompositeTestFilter extends OncePerRequestFilter {
-        private final UserRepository userRepository;
-        private final TransactionTemplate transactionTemplate;
         private final RedisTemplate<String, Object> redisTemplate;
         private final JwtUtil jwtUtil;
         private final int authRpm;
@@ -110,13 +107,9 @@ public class TestSecurityConfig {
         private final int windowSeconds;
         private final ObjectMapper objectMapper = new ObjectMapper();
 
-        public CompositeTestFilter(UserRepository userRepository,
-                TransactionTemplate transactionTemplate,
-                RedisTemplate<String, Object> redisTemplate,
+        public CompositeTestFilter(RedisTemplate<String, Object> redisTemplate,
                 JwtUtil jwtUtil,
                 int authRpm, int publicRpm, int tenantRpm, int windowSeconds) {
-            this.userRepository = userRepository;
-            this.transactionTemplate = transactionTemplate;
             this.redisTemplate = redisTemplate;
             this.jwtUtil = jwtUtil;
             this.authRpm = authRpm;
@@ -144,9 +137,43 @@ public class TestSecurityConfig {
                 TenantContext.setTenantId(tenantId);
 
                 if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                    User user = findUser(tenantId);
-                    if (user != null) {
-                        setAuthentication(user, tenantId);
+                    String token = authHeader.substring(7);
+                    try {
+                        if (jwtUtil.validateToken(token)) {
+                            Long userId = jwtUtil.extractUserId(token);
+                            String role = jwtUtil.extractRole(token);
+                            Set<String> permissions = jwtUtil.extractPermissions(token);
+                            System.out.println("DEBUG: permissions from JWT: " + permissions);
+                            String scope = jwtUtil.extractScope(token);
+                            String bizType = jwtUtil.extractBusinessType(token);
+                            boolean isPlatform = jwtUtil.extractIsPlatformUser(token);
+
+                            List<SimpleGrantedAuthority> authorities = permissions.stream()
+                                    .map(SimpleGrantedAuthority::new)
+                                    .collect(Collectors.toList());
+                            authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
+                            
+                            System.out.println("DEBUG: authorities=" + authorities);
+
+                            Long tokenTenantId = jwtUtil.extractTenantId(token);
+                            if (tokenTenantId != null && !tokenTenantId.equals(tenantId)) {
+                                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                                response.setContentType("application/json");
+                                response.getWriter().write("{\"message\":\"Tenant mismatch\",\"status\":403}");
+                                return;
+                            }
+
+                            JwtAuthDetails details = new JwtAuthDetails(
+                                    userId, tenantId, role, scope, bizType, isPlatform,
+                                    permissions, false, null);
+
+                            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                                    userId, details, authorities);
+                            auth.setDetails(details);
+                            SecurityContextHolder.getContext().setAuthentication(auth);
+                        }
+                    } catch (Exception e) {
+                        SecurityContextHolder.clearContext();
                     }
                 } else {
                     SecurityContextHolder.clearContext();
@@ -240,36 +267,6 @@ public class TestSecurityConfig {
             } catch (Exception e) {
                 return null;
             }
-        }
-
-        private User findUser(Long tenantId) {
-            return transactionTemplate.execute(status -> userRepository.findAll().stream()
-                    .filter(u -> tenantId.equals(u.getTenantId()))
-                    .findFirst()
-                    .map(user -> {
-                        if (user.getRole() != null) {
-                            Hibernate.initialize(user.getRole());
-                            Hibernate.initialize(user.getRole().getPermissions());
-                        }
-                        return user;
-                    })
-                    .orElse(null));
-        }
-
-        private void setAuthentication(User user, Long tenantId) {
-            List<SimpleGrantedAuthority> authorities = user.getRole().getPermissions().stream()
-                    .map(p -> new SimpleGrantedAuthority("ROLE_" + p.getKey()))
-                    .collect(Collectors.toList());
-            authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().getName()));
-
-            JwtAuthDetails details = new JwtAuthDetails(
-                    user.getId(), tenantId, user.getRole().getName(), user.getScope(), "RETAIL", false,
-                    user.getRole().getPermissions().stream().map(p -> p.getKey()).collect(Collectors.toSet()),
-                    false, null);
-
-            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                    user.getId(), details, authorities);
-            SecurityContextHolder.getContext().setAuthentication(auth);
         }
     }
 }

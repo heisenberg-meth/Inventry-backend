@@ -1,6 +1,5 @@
 package com.ims;
 
-import org.mockito.Mockito;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.doReturn;
 import com.ims.model.User;
@@ -226,10 +225,6 @@ public abstract class BaseIntegrationTest {
       throw new IllegalStateException("TEST_ROOT_PASSWORD must be configured for integration tests.");
     }
     mockRedisAndCache();
-    Mockito.lenient().when(passwordEncoder.encode(anyString()))
-        .thenReturn("$2a$10$dummyhashdummyhash");
-    Mockito.lenient().when(passwordEncoder.matches(anyString(), anyString()))
-        .thenReturn(true);
   }
 
   protected void setupRootAuthentication() {
@@ -337,6 +332,7 @@ public abstract class BaseIntegrationTest {
                       "WHERE r.name = 'ROOT' AND r.tenant_id IS NULL");
 
               // Enable Support Mode for tests to allow RBAC overrides
+              jdbcTemplate.execute("DELETE FROM system_configs WHERE config_key = 'SUPPORT_MODE'");
               jdbcTemplate.execute(
                   "INSERT INTO system_configs (config_key, config_value, description) " +
                       "VALUES ('SUPPORT_MODE', 'true', 'Enable root override for tests')");

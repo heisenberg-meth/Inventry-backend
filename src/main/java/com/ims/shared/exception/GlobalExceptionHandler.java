@@ -31,6 +31,11 @@ public class GlobalExceptionHandler {
                 status, request, null);
     }
 
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<ApiError> handleUnauthorized(UnauthorizedException ex, HttpServletRequest request) {
+        return buildResponse(ex.getMessage(), "UNAUTHORIZED", HttpStatus.UNAUTHORIZED, request, null);
+    }
+
     @ExceptionHandler({
             EntityNotFoundException.class,
             NoHandlerFoundException.class,

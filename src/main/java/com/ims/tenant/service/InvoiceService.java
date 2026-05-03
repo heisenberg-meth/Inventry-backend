@@ -243,11 +243,15 @@ public class InvoiceService {
     context.setVariable("status", invoice.getStatus());
 
     context.setVariable("items", items);
-    context.setVariable(
-        "subtotal", order.getTotalAmount().subtract(order.getTaxAmount()).add(order.getDiscount()));
-    context.setVariable("taxAmount", order.getTaxAmount());
-    context.setVariable("discount", order.getDiscount());
-    context.setVariable("totalAmount", order.getTotalAmount());
+
+    BigDecimal total = order.getTotalAmount() != null ? order.getTotalAmount() : BigDecimal.ZERO;
+    BigDecimal tax = order.getTaxAmount() != null ? order.getTaxAmount() : BigDecimal.ZERO;
+    BigDecimal discount = order.getDiscount() != null ? order.getDiscount() : BigDecimal.ZERO;
+
+    context.setVariable("subtotal", total.subtract(tax).add(discount));
+    context.setVariable("taxAmount", tax);
+    context.setVariable("discount", discount);
+    context.setVariable("totalAmount", total);
 
     return Objects.requireNonNull(pdfService.generatePdfFromHtml("invoice-template", context));
   }

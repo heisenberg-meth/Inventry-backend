@@ -84,7 +84,8 @@ public class AuthController {
   @Operation(summary = "Get current user profile")
   public ResponseEntity<Map<String, Object>> getProfile() {
     Long userId = Objects.requireNonNull(extractUserId());
-    return ResponseEntity.ok(authService.getProfile(userId));
+    Map<String, Object> profile = authService.getProfile(userId);
+    return ResponseEntity.ok(profile);
   }
 
   @PatchMapping("/change-password")
@@ -93,31 +94,33 @@ public class AuthController {
   public ResponseEntity<Map<String, String>> changePassword(
       @Valid @RequestBody ChangePasswordRequest request) {
     Long userId = Objects.requireNonNull(extractUserId());
-    return ResponseEntity.ok(
-        authService.changePassword(userId, Objects.requireNonNull(request)));
+    Map<String, String> response = authService.changePassword(userId, Objects.requireNonNull(request));
+    return ResponseEntity.ok(response);
   }
 
   @PostMapping("/forgot-password")
   @Operation(summary = "Forgot password", description = "Request password reset token (sent via email)")
   public ResponseEntity<Map<String, String>> forgotPassword(
       @Valid @RequestBody ForgotPasswordRequest request) {
-    return ResponseEntity.ok(authService.forgotPassword(Objects.requireNonNull(request)));
+    Map<String, String> response = authService.forgotPassword(Objects.requireNonNull(request));
+    return ResponseEntity.ok(response);
   }
 
   @PostMapping("/reset-password")
   @Operation(summary = "Reset password", description = "Reset password using reset token")
   public ResponseEntity<Map<String, String>> resetPassword(
       @Valid @RequestBody ResetPasswordRequest request) {
-    return ResponseEntity.ok(authService.resetPassword(Objects.requireNonNull(request)));
+    Map<String, String> response = authService.resetPassword(Objects.requireNonNull(request));
+    return ResponseEntity.ok(response);
   }
 
   @GetMapping("/verify-email")
   @Operation(summary = "Verify email", description = "Verify user email using verification token")
   public ResponseEntity<Map<String, String>> verifyEmail(
       @RequestParam String token, @RequestParam String email) {
-    return ResponseEntity.ok(
-        authService.verifyEmail(
-            Objects.requireNonNull(token), Objects.requireNonNull(email)));
+    Map<String, String> response = authService.verifyEmail(
+            Objects.requireNonNull(token), Objects.requireNonNull(email));
+    return ResponseEntity.ok(response);
   }
 
   @PostMapping("/resend-verification")
@@ -128,26 +131,29 @@ public class AuthController {
     if (email == null || email.isBlank()) {
       return ResponseEntity.badRequest().build();
     }
-    return ResponseEntity.ok(
-        authService.resendVerification(Objects.requireNonNull(email)));
+    Map<String, String> response = authService.resendVerification(Objects.requireNonNull(email));
+    return ResponseEntity.ok(response);
   }
 
   @GetMapping("/check-email")
   @Operation(summary = "Check email availability")
   public ResponseEntity<Map<String, Boolean>> checkEmail(@RequestParam String email) {
-    return ResponseEntity.ok(authService.checkEmail(Objects.requireNonNull(email)));
+    Map<String, Boolean> response = authService.checkEmail(Objects.requireNonNull(email));
+    return ResponseEntity.ok(response);
   }
 
   @GetMapping("/check-slug")
   @Operation(summary = "Check workspace slug availability")
   public ResponseEntity<Map<String, Boolean>> checkSlug(@RequestParam String slug) {
-    return ResponseEntity.ok(authService.checkSlug(Objects.requireNonNull(slug)));
+    Map<String, Boolean> response = authService.checkSlug(Objects.requireNonNull(slug));
+    return ResponseEntity.ok(response);
   }
 
   @GetMapping("/check-company-code")
   @Operation(summary = "Check if company code exists")
   public ResponseEntity<Map<String, Boolean>> checkCompanyCode(@RequestParam String code) {
-    return ResponseEntity.ok(authService.checkCompanyCode(Objects.requireNonNull(code)));
+    Map<String, Boolean> response = authService.checkCompanyCode(Objects.requireNonNull(code));
+    return ResponseEntity.ok(response);
   }
 
   @GetMapping("/permissions")
@@ -155,14 +161,16 @@ public class AuthController {
   @Operation(summary = "Get current user permissions")
   public ResponseEntity<Map<String, Object>> getMyPermissions() {
     Long userId = Objects.requireNonNull(extractUserId());
-    return ResponseEntity.ok(authService.getMyPermissions(userId));
+    Map<String, Object> response = authService.getMyPermissions(userId);
+    return ResponseEntity.ok(response);
   }
 
   @GetMapping("/validate")
   @SecurityRequirement(name = "bearerAuth")
   @Operation(summary = "Validate current token")
   public ResponseEntity<Map<String, Boolean>> validateToken() {
-    return ResponseEntity.ok(Map.of("valid", true));
+    Map<String, Boolean> response = Map.of("valid", true);
+    return ResponseEntity.ok(response);
   }
 
   @PostMapping("/2fa/setup")
@@ -170,7 +178,8 @@ public class AuthController {
   @Operation(summary = "Initiate 2FA setup", description = "Generates TOTP secret and QR code URL")
   public ResponseEntity<Map<String, Object>> setup2fa() {
     Long userId = Objects.requireNonNull(extractUserId());
-    return ResponseEntity.ok(authService.setup2FA(userId));
+    Map<String, Object> response = authService.setup2FA(userId);
+    return ResponseEntity.ok(response);
   }
 
   @PostMapping("/2fa/enable")
@@ -179,7 +188,8 @@ public class AuthController {
   public ResponseEntity<Map<String, Object>> enable2fa(@RequestBody Map<String, String> body) {
     Long userId = Objects.requireNonNull(extractUserId());
     String code = Objects.requireNonNull(body.get("code"), "Code is required");
-    return ResponseEntity.ok(authService.enable2FA(userId, code));
+    Map<String, Object> response = authService.enable2FA(userId, code);
+    return ResponseEntity.ok(response);
   }
 
   @PostMapping("/2fa/disable")
@@ -188,7 +198,8 @@ public class AuthController {
   public ResponseEntity<Map<String, String>> disable2fa(@RequestBody Map<String, String> body) {
     Long userId = Objects.requireNonNull(extractUserId());
     String password = Objects.requireNonNull(body.get("password"), "Password is required");
-    return ResponseEntity.ok(authService.disable2FA(userId, password));
+    Map<String, String> response = authService.disable2FA(userId, password);
+    return ResponseEntity.ok(response);
   }
 
   @PostMapping("/2fa/verify")

@@ -2,7 +2,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "ims-backend.fullname" . }}
+  name: {{ include "ims-backend.fullname" $ }}
   labels:
     {{- include "ims-backend.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
@@ -31,7 +31,7 @@ spec:
             pathType: {{ .pathType }}
             backend:
               service:
-                name: {{ include "ims-backend.fullname" . }}
+                name: {{ include "ims-backend.fullname" $ }}
                 port:
                   number: {{ $.Values.service.port }}
           {{- end }}
