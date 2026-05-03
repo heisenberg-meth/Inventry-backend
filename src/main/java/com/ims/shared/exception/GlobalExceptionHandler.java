@@ -77,6 +77,12 @@ public class GlobalExceptionHandler {
                 null);
     }
 
+    @ExceptionHandler(BillingException.class)
+    public ResponseEntity<ApiError> handleBilling(BillingException ex, HttpServletRequest request) {
+        log.error("Billing operation failed: {}", ex.getMessage(), ex);
+        return buildResponse(ex.getMessage(), "BILLING_ERROR", HttpStatus.INTERNAL_SERVER_ERROR, request, null);
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiError> handleDataIntegrity(
             DataIntegrityViolationException ex, HttpServletRequest request) {

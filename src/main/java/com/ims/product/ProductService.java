@@ -68,8 +68,9 @@ public class ProductService {
       pageable = PageRequest.of(pageable.getPageNumber(), MAX_PAGE_SIZE, pageable.getSort());
     }
 
+    Long tenantId = securityContextAccessor.requireTenantId();
     Page<ProductResponse> page = productRepository
-        .findAllWithDetails(pageable)
+        .findAllWithDetails(tenantId, pageable)
         .map(this::toResponse);
     return new PagedResponse<>(
         page.getContent(),
@@ -81,9 +82,9 @@ public class ProductService {
 
   public List<ProductResponse> getNextProducts(
       Long lastId, int limit) {
-    securityContextAccessor.requireTenantId();
+    Long tenantId = securityContextAccessor.requireTenantId();
     Pageable pageable = PageRequest.of(0, Math.min(limit, MAX_PAGE_SIZE));
-    List<ProductResponse> list = productRepository.findNextProducts(lastId != null ? lastId : 0L, pageable)
+    List<ProductResponse> list = productRepository.findNextProducts(tenantId, lastId != null ? lastId : 0L, pageable)
         .stream()
         .map(this::toResponse)
         .collect(Collectors.toList());
@@ -482,8 +483,8 @@ public class ProductService {
   @Transactional(readOnly = true)
   @RequiresPermission("export_products")
   public String exportProductsAsCsv() {
-    securityContextAccessor.requireTenantId();
-    var products = productRepository.findExportData();
+    Long tenantId = securityContextAccessor.requireTenantId();
+    var products = productRepository.findExportData(tenantId);
 
     var data = products.stream()
         .map(

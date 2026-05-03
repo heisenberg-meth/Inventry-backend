@@ -106,7 +106,7 @@ public class SupplierController {
   @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Export suppliers as CSV")
   public ResponseEntity<String> export() {
-    var data = supplierRepository.findAll().stream()
+    var data = supplierRepository.findAllByTenantId(com.ims.shared.auth.TenantContext.getTenantId()).stream()
         .map(
             s -> {
               Map<String, Object> map = new LinkedHashMap<>();

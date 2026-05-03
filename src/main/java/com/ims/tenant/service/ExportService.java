@@ -6,7 +6,6 @@ import com.ims.category.Category;
 import com.ims.category.CategoryRepository;
 import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.repository.OrderRepository;
-
 import org.springframework.data.domain.Pageable;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -14,7 +13,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.time.LocalDateTime;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -43,7 +41,7 @@ public class ExportService {
         response.setHeader("Content-Disposition", "attachment; filename=products_" + tenantId + ".csv");
 
         // Fetch all categories for this tenant to provide names in the CSV
-        Map<Long, String> categoryMap = categoryRepository.findAll(Pageable.unpaged())
+        Map<Long, String> categoryMap = categoryRepository.findByTenantId(tenantId, Pageable.unpaged())
                 .getContent().stream()
                 .collect(Collectors.toMap(Category::getId, Category::getName));
 
@@ -56,7 +54,7 @@ public class ExportService {
             Page<Product> page;
 
             do {
-                page = productRepository.findAllByActiveTrue(PageRequest.of(pageNum, pageSize));
+                page = productRepository.findByTenantIdAndActiveTrue(tenantId, PageRequest.of(pageNum, pageSize));
                 for (var product : page.getContent()) {
                     writer.printf("%d,\"%s\",\"%s\",\"%s\",%d,\"%s\",%.2f,%.2f,\"%s\"%n",
                             product.getId(),
@@ -96,10 +94,12 @@ public class ExportService {
             Page<com.ims.model.Order> page;
 
             do {
+                Long tenantId = TenantContext.requireTenantId();
                 if (type != null) {
-                    page = orderRepository.findByTypeAndDateRange(type, from, to, PageRequest.of(pageNum, pageSize));
+                    page = orderRepository.findByTypeAndDateRange(tenantId, type, from, to,
+                            PageRequest.of(pageNum, pageSize));
                 } else {
-                    page = orderRepository.findByDateRange(from, to, PageRequest.of(pageNum, pageSize));
+                    page = orderRepository.findByDateRange(tenantId, from, to, PageRequest.of(pageNum, pageSize));
                 }
 
                 for (var order : page.getContent()) {

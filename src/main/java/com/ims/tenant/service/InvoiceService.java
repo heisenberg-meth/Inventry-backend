@@ -179,81 +179,86 @@ public class InvoiceService {
 
   @Transactional(readOnly = true)
   public byte[] generatePdf(Long id) {
-    Invoice invoice = invoiceRepository
-        .findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
+    try {
+      Invoice invoice = invoiceRepository
+          .findById(id)
+          .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
 
-    Order order = orderRepository
-        .findById(Objects.requireNonNull(invoice.getOrderId()))
-        .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+      Order order = orderRepository
+          .findById(Objects.requireNonNull(invoice.getOrderId()))
+          .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
-    Tenant tenant = tenantRepository
-        .findById(Objects.requireNonNull(TenantContext.getTenantId()))
-        .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+      Tenant tenant = tenantRepository
+          .findById(Objects.requireNonNull(TenantContext.getTenantId()))
+          .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
-    String customerName = "Walk-in Customer";
-    String customerAddress = "N/A";
-    String customerGstin = "N/A";
+      String customerName = "Walk-in Customer";
+      String customerAddress = "N/A";
+      String customerGstin = "N/A";
 
-    if (order.getCustomerId() != null) {
-      Customer customer = customerRepository
-          .findById(order.getCustomerId())
-          .orElse(null);
-      if (customer != null) {
-        customerName = customer.getName();
-        customerAddress = customer.getAddress();
-        customerGstin = customer.getGstin();
+      if (order.getCustomerId() != null) {
+        Customer customer = customerRepository
+            .findById(order.getCustomerId())
+            .orElse(null);
+        if (customer != null) {
+          customerName = customer.getName();
+          customerAddress = customer.getAddress();
+          customerGstin = customer.getGstin();
+        }
       }
+
+      List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
+
+      List<Map<String, Object>> items = orderItems.stream()
+          .map(
+              item -> {
+                Product product = productRepository
+                    .findById(
+                        Objects.requireNonNull(item.getProductId(), "product id required"))
+                    .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+                Map<String, Object> map = new HashMap<>();
+                map.put("productName", product.getName());
+                map.put("quantity", item.getQuantity());
+                map.put("unitPrice", item.getUnitPrice());
+                map.put("discount", item.getDiscount());
+                map.put("total", item.getTotal());
+                return map;
+              })
+          .collect(Collectors.toList());
+
+      Context context = new Context();
+      context.setVariable("tenantName", tenant.getName());
+      context.setVariable(
+          "tenantAddress", tenant.getAddress() != null ? tenant.getAddress() : "Company Address TBD");
+      context.setVariable("tenantGstin", tenant.getGstin() != null ? tenant.getGstin() : "GSTIN-TBD");
+
+      context.setVariable("customerName", customerName);
+      context.setVariable("customerAddress", customerAddress != null ? customerAddress : "N/A");
+      context.setVariable("customerGstin", customerGstin != null ? customerGstin : "N/A");
+
+      context.setVariable("invoiceNumber", invoice.getInvoiceNumber());
+      context.setVariable(
+          "invoiceDate",
+          invoice.getCreatedAt() != null ? invoice.getCreatedAt().toLocalDate() : LocalDate.now());
+      context.setVariable("orderId", order.getId());
+      context.setVariable("status", invoice.getStatus());
+
+      context.setVariable("items", items);
+
+      BigDecimal total = order.getTotalAmount() != null ? order.getTotalAmount() : BigDecimal.ZERO;
+      BigDecimal tax = order.getTaxAmount() != null ? order.getTaxAmount() : BigDecimal.ZERO;
+      BigDecimal discount = order.getDiscount() != null ? order.getDiscount() : BigDecimal.ZERO;
+
+      context.setVariable("subtotal", total.subtract(tax).add(discount));
+      context.setVariable("taxAmount", tax);
+      context.setVariable("discount", discount);
+      context.setVariable("totalAmount", total);
+
+      return Objects.requireNonNull(pdfService.generatePdfFromHtml("invoice-template", context));
+    } catch (Exception e) {
+      log.error("Failed to generate invoice PDF for invoice {}: {}", id, e.getMessage(), e);
+      throw new com.ims.shared.exception.BillingException("Invoice generation failed", e);
     }
-
-    List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
-
-    List<Map<String, Object>> items = orderItems.stream()
-        .map(
-            item -> {
-              Product product = productRepository
-                  .findById(
-                      Objects.requireNonNull(item.getProductId(), "product id required"))
-                  .orElseThrow(() -> new EntityNotFoundException("Product not found"));
-              Map<String, Object> map = new HashMap<>();
-              map.put("productName", product.getName());
-              map.put("quantity", item.getQuantity());
-              map.put("unitPrice", item.getUnitPrice());
-              map.put("discount", item.getDiscount());
-              map.put("total", item.getTotal());
-              return map;
-            })
-        .collect(Collectors.toList());
-
-    Context context = new Context();
-    context.setVariable("tenantName", tenant.getName());
-    context.setVariable(
-        "tenantAddress", tenant.getAddress() != null ? tenant.getAddress() : "Company Address TBD");
-    context.setVariable("tenantGstin", tenant.getGstin() != null ? tenant.getGstin() : "GSTIN-TBD");
-
-    context.setVariable("customerName", customerName);
-    context.setVariable("customerAddress", customerAddress != null ? customerAddress : "N/A");
-    context.setVariable("customerGstin", customerGstin != null ? customerGstin : "N/A");
-
-    context.setVariable("invoiceNumber", invoice.getInvoiceNumber());
-    context.setVariable(
-        "invoiceDate",
-        invoice.getCreatedAt() != null ? invoice.getCreatedAt().toLocalDate() : LocalDate.now());
-    context.setVariable("orderId", order.getId());
-    context.setVariable("status", invoice.getStatus());
-
-    context.setVariable("items", items);
-
-    BigDecimal total = order.getTotalAmount() != null ? order.getTotalAmount() : BigDecimal.ZERO;
-    BigDecimal tax = order.getTaxAmount() != null ? order.getTaxAmount() : BigDecimal.ZERO;
-    BigDecimal discount = order.getDiscount() != null ? order.getDiscount() : BigDecimal.ZERO;
-
-    context.setVariable("subtotal", total.subtract(tax).add(discount));
-    context.setVariable("taxAmount", tax);
-    context.setVariable("discount", discount);
-    context.setVariable("totalAmount", total);
-
-    return Objects.requireNonNull(pdfService.generatePdfFromHtml("invoice-template", context));
   }
 
   public Page<Invoice> getInvoices(Pageable pageable) {

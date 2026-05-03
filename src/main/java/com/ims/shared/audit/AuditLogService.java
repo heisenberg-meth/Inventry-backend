@@ -35,6 +35,7 @@ public class AuditLogService {
 
     AuditLog auditEntry = Objects.requireNonNull(
         AuditLog.builder()
+            .tenantId(tenantId != null ? tenantId : TenantContext.getTenantId())
             .userId(userId)
             .action(Objects.requireNonNull(action.name()))
             .details(Objects.requireNonNull(details))
@@ -139,8 +140,8 @@ public class AuditLogService {
   }
 
   public Page<AuditLogResponse> getTenantLogs(Pageable pageable) {
-    TenantContext.assertTenantPresent();
-    var logs = auditLogRepository.findAll(pageable);
+    Long tenantId = TenantContext.requireTenantId();
+    var logs = auditLogRepository.findByTenantId(tenantId, pageable);
 
     if (isSystemAdmin() && systemConfigService.isSupportModeEnabled()) {
       return logs.map(this::toDto);
@@ -152,19 +153,23 @@ public class AuditLogService {
     Long previousTenantId = TenantContext.getTenantId();
     TenantContext.setTenantId(tenantId);
     try {
-      var logs = auditLogRepository.findAll(pageable);
+      var logs = auditLogRepository.findByTenantId(tenantId, pageable);
       if (isSystemAdmin() && systemConfigService.isSupportModeEnabled()) {
         return logs.map(this::toDto);
       }
       return logs.map(this::toMaskedDto);
     } finally {
-      TenantContext.setTenantId(previousTenantId);
+      if (previousTenantId != null) {
+        TenantContext.setTenantId(previousTenantId);
+      } else {
+        TenantContext.clear();
+      }
     }
   }
 
   public Page<AuditLogResponse> getTenantLogsAsDto(Pageable pageable) {
-    TenantContext.assertTenantPresent();
-    var logs = auditLogRepository.findAll(pageable);
+    Long tenantId = TenantContext.requireTenantId();
+    var logs = auditLogRepository.findByTenantId(tenantId, pageable);
     return logs.map(this::toMaskedDto);
   }
 

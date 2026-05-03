@@ -1,7 +1,6 @@
 package com.ims.shared.pdf;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,9 +23,9 @@ public class PdfService {
       renderer.layout();
       renderer.createPDF(outputStream);
       return outputStream.toByteArray();
-    } catch (IOException e) {
-      log.error("Error generating PDF from template {}: {}", templateName, e.getMessage());
-      throw new RuntimeException("Failed to generate PDF", e);
+    } catch (Exception e) {
+      log.error("Error generating PDF from template {}: {}", templateName, e.getMessage(), e);
+      throw new RuntimeException("Failed to generate PDF: " + e.getMessage(), e);
     }
   }
 }

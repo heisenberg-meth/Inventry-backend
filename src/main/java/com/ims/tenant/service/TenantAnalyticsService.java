@@ -12,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import com.ims.shared.auth.TenantContext;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -43,7 +44,7 @@ public class TenantAnalyticsService {
         .withMinute(0);
 
     return Objects.requireNonNull(
-        orderRepository.getMonthlyRevenue("SALE", from).stream()
+        orderRepository.getMonthlyRevenue(TenantContext.requireTenantId(), "SALE", from).stream()
             .map(
                 r -> {
                   String monthName = Month.of(r.getMonth()).getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
@@ -59,6 +60,7 @@ public class TenantAnalyticsService {
     return Objects.requireNonNull(
         productRepository
             .findTopStock(
+                TenantContext.requireTenantId(),
                 PageRequest.of(0, TOP_PRODUCTS_LIMIT))
             .getContent()
             .stream()
@@ -74,7 +76,7 @@ public class TenantAnalyticsService {
   public List<Map<String, Object>> getOrderStatusStats() {
     LocalDateTime from = LocalDateTime.now().minusMonths(ORDER_STATUS_WINDOW_MONTHS);
 
-    var stats = orderRepository.getOrderStatusStats(from);
+    List<OrderStatusStat> stats = orderRepository.getOrderStatusStats(TenantContext.requireTenantId(), from);
     long total = stats.stream().mapToLong(OrderStatusStat::getCount).sum();
 
     if (total == 0) {

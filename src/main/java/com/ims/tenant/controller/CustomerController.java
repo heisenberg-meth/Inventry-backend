@@ -106,7 +106,7 @@ public class CustomerController {
   @RequiresRole({ "TENANT_ADMIN", "BUSINESS_MANAGER" })
   @Operation(summary = "Export customers as CSV")
   public ResponseEntity<String> export() {
-    var data = customerRepository.findAll().stream()
+    var data = customerRepository.findAllByTenantId(com.ims.shared.auth.TenantContext.getTenantId()).stream()
         .map(
             c -> {
               Map<String, Object> map = new LinkedHashMap<>();

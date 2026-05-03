@@ -66,10 +66,11 @@ public class OrderService {
   @Transactional
   public Order createPurchaseOrder(OrderRequest request, Long userId, String idempotencyKey) {
     if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-      var existing = orderRepository.findByIdempotencyKey(idempotencyKey);
+      Long tenantId = TenantContext.requireTenantId();
+      var existing = orderRepository.findByIdempotencyKeyAndTenantId(idempotencyKey, tenantId);
       if (existing.isPresent()) {
         log.info("Returning existing purchase order for idempotency key: {}", idempotencyKey);
-        return existing.get();
+        return existing.orElseThrow();
       }
     }
     Long supplierId = request.getSupplierId();
@@ -153,10 +154,11 @@ public class OrderService {
   @Transactional
   public Order createSalesOrder(OrderRequest request, Long userId, String idempotencyKey) {
     if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-      var existing = orderRepository.findByIdempotencyKey(idempotencyKey);
+      Long tenantId = TenantContext.requireTenantId();
+      var existing = orderRepository.findByIdempotencyKeyAndTenantId(idempotencyKey, tenantId);
       if (existing.isPresent()) {
         log.info("Returning existing sales order for idempotency key: {}", idempotencyKey);
-        return existing.get();
+        return existing.orElseThrow();
       }
     }
     Long customerId = request.getCustomerId();
@@ -270,10 +272,11 @@ public class OrderService {
   @Transactional
   public Order createReturnOrder(OrderRequest request, Long userId, String idempotencyKey) {
     if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-      var existing = orderRepository.findByIdempotencyKey(idempotencyKey);
+      Long tenantId = TenantContext.requireTenantId();
+      var existing = orderRepository.findByIdempotencyKeyAndTenantId(idempotencyKey, tenantId);
       if (existing.isPresent()) {
         log.info("Returning existing return order for idempotency key: {}", idempotencyKey);
-        return existing.get();
+        return existing.orElseThrow();
       }
     }
     Long originalOrderId = request.getOriginalOrderId();
@@ -382,11 +385,11 @@ public class OrderService {
   }
 
   public Page<Order> getOrders(Pageable pageable) {
-    return orderRepository.findAll(pageable);
+    return orderRepository.findAllByTenantId(TenantContext.requireTenantId(), pageable);
   }
 
   public Page<Order> getOrdersByType(String type, Pageable pageable) {
-    return orderRepository.findByType(type, pageable);
+    return orderRepository.findByType(TenantContext.requireTenantId(), type, pageable);
   }
 
   @Transactional(readOnly = true)
@@ -617,10 +620,10 @@ public class OrderService {
   }
 
   public Page<Order> getOrdersBySupplier(Long supplierId, Pageable pageable) {
-    return orderRepository.findBySupplierId(supplierId, pageable);
+    return orderRepository.findBySupplierId(TenantContext.requireTenantId(), supplierId, pageable);
   }
 
   public Page<Order> getOrdersByCustomer(Long customerId, Pageable pageable) {
-    return orderRepository.findByCustomerId(customerId, pageable);
+    return orderRepository.findByCustomerId(TenantContext.requireTenantId(), customerId, pageable);
   }
 }

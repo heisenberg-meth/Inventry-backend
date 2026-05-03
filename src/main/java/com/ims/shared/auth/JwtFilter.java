@@ -122,10 +122,19 @@ public class JwtFilter extends OncePerRequestFilter {
         MDC.put("requestId", UUID.randomUUID().toString());
       }
 
-      final String role = Objects.requireNonNull(jwtUtil.extractRole(safeToken));
-      final String scope = Objects.requireNonNull(jwtUtil.extractScope(safeToken));
+      final String role = jwtUtil.extractRole(safeToken);
+      final String scope = jwtUtil.extractScope(safeToken);
+      final Set<String> permissions = jwtUtil.extractPermissions(safeToken);
+
+      if (role == null || scope == null) {
+        log.warn("JWT token missing required claims (role or scope) for user {}", userId);
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json");
+        response.getWriter().write("{\"error\":\"Invalid token: Missing required claims\"}");
+        return;
+      }
+
       final String businessType = jwtUtil.extractBusinessType(safeToken);
-      final Set<String> permissions = Objects.requireNonNull(jwtUtil.extractPermissions(safeToken));
       final boolean impersonation = jwtUtil.extractImpersonation(safeToken);
       final Long impersonatedBy = jwtUtil.extractImpersonatedBy(safeToken);
 

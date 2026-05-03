@@ -211,7 +211,7 @@ public class AuthService {
     // MFA check - if enabled, return MFA required response
     if (Boolean.TRUE.equals(user.isTwoFactorEnabled()) && user.getTwoFactorSecret() != null) {
       String mfaToken = UUID.randomUUID().toString();
-      redisTemplate.opsForValue().set(MFA_SESSION_PREFIX + mfaToken, user.getId().toString(),
+      redisTemplate.opsForValue().set(MFA_SESSION_PREFIX + mfaToken, user.getId(),
           MFA_SESSION_TTL_MINUTES, TimeUnit.MINUTES);
       return LoginResponse.builder()
           .mfaRequired(true)
@@ -327,34 +327,48 @@ public class AuthService {
   private LoginResponse generateLoginResponse(User user) {
     Long tenantId = user.getTenantId();
     String scope = user.getScope();
-    String businessType = null;
-    if ("TENANT".equals(scope) && tenantId != null) {
-      businessType = tenantRepository.findById(tenantId).map(Tenant::getBusinessType).orElse(null);
+    // Establishing context for permissions and role fetch
+    Long previousTenant = TenantContext.getTenantId();
+    TenantContext.setTenantId(tenantId != null ? tenantId : TenantContext.PLATFORM_TENANT_ID);
+
+    try {
+      String businessType = null;
+      if ("TENANT".equals(scope) && tenantId != null) {
+        businessType = tenantRepository.findById(tenantId).map(Tenant::getBusinessType).orElse(null);
+      }
+
+      Set<String> permissions = permissionService.getUserPermissions(user.getId(), tenantId);
+      System.out.println("DEBUG: permissions for user " + user.getId() + " tenantId=" + tenantId + ": " + permissions);
+      String roleName = userRepository.findRoleNameByUserId(user.getId()).orElse(null);
+      UserRole roleEnum = (roleName != null) ? UserRole.valueOf(roleName) : null;
+
+      String accessToken = jwtUtil.generateToken(user.getId(), tenantId != null ? tenantId : -1L, roleEnum, scope,
+          businessType != null ? businessType : "NONE", Boolean.TRUE.equals(user.getIsPlatformUser()), permissions);
+      String refreshToken = jwtUtil.generateRefreshToken(user.getId(), tenantId != null ? tenantId : -1L, roleEnum,
+          scope,
+          businessType != null ? businessType : "NONE", Boolean.TRUE.equals(user.getIsPlatformUser()), permissions);
+
+      LoginResponse.LoginResponseBuilder builder = LoginResponse.builder().accessToken(accessToken)
+          .refreshToken(refreshToken).expiresIn(jwtUtil.getExpirySeconds())
+          .user(LoginResponse.UserResponse.builder().id(user.getId().toString()).name(user.getName())
+              .email(user.getEmail()).role(roleName).scope(user.getScope())
+              .isPlatformUser(Boolean.TRUE.equals(user.getIsPlatformUser())).build());
+
+      if (tenantId != null) {
+        tenantRepository.findById(tenantId).ifPresent(t -> {
+          builder
+              .tenant(LoginResponse.TenantResponse.builder().id(t.getId()).name(t.getName()).type(t.getBusinessType())
+                  .companyCode(t.getCompanyCode()).workspaceSlug(t.getWorkspaceSlug()).build());
+        });
+      }
+      return builder.build();
+    } finally {
+      if (previousTenant != null) {
+        TenantContext.setTenantId(previousTenant);
+      } else {
+        TenantContext.clear();
+      }
     }
-
-    Set<String> permissions = permissionService.getUserPermissions(user.getId(), tenantId);
-    System.out.println("DEBUG: permissions for user " + user.getId() + " tenantId=" + tenantId + ": " + permissions);
-    String roleName = userRepository.findRoleNameByUserId(user.getId()).orElse(null);
-    UserRole roleEnum = (roleName != null) ? UserRole.valueOf(roleName) : null;
-
-    String accessToken = jwtUtil.generateToken(user.getId(), tenantId != null ? tenantId : -1L, roleEnum, scope,
-        businessType != null ? businessType : "NONE", Boolean.TRUE.equals(user.getIsPlatformUser()), permissions);
-    String refreshToken = jwtUtil.generateRefreshToken(user.getId(), tenantId != null ? tenantId : -1L, roleEnum, scope,
-        businessType != null ? businessType : "NONE", Boolean.TRUE.equals(user.getIsPlatformUser()), permissions);
-
-    LoginResponse.LoginResponseBuilder builder = LoginResponse.builder().accessToken(accessToken)
-        .refreshToken(refreshToken).expiresIn(jwtUtil.getExpirySeconds())
-        .user(LoginResponse.UserResponse.builder().id(user.getId().toString()).name(user.getName())
-            .email(user.getEmail()).role(roleName).scope(user.getScope())
-            .isPlatformUser(Boolean.TRUE.equals(user.getIsPlatformUser())).build());
-
-    if (tenantId != null) {
-      tenantRepository.findById(tenantId).ifPresent(t -> {
-        builder.tenant(LoginResponse.TenantResponse.builder().id(t.getId()).name(t.getName()).type(t.getBusinessType())
-            .companyCode(t.getCompanyCode()).workspaceSlug(t.getWorkspaceSlug()).build());
-      });
-    }
-    return builder.build();
   }
 
   // ────────────────────────────────────────────────────────────────────────────

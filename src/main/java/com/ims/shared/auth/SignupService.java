@@ -97,7 +97,7 @@ public class SignupService {
       if (request.getIdempotencyKey() != null && !request.getIdempotencyKey().isBlank()) {
         var existing = tenantRepository.findByIdempotencyKey(request.getIdempotencyKey());
         if (existing.isPresent()) {
-          Tenant t = existing.get();
+          Tenant t = existing.orElseThrow();
           return new SignupResponse("Signup already completed", t.getCompanyCode(), t.getWorkspaceSlug());
         }
       }
@@ -141,7 +141,8 @@ public class SignupService {
           log.error("Failed to log signup failure audit", auditEx);
         }
 
-        if (e instanceof RuntimeException re) throw re;
+        if (e instanceof RuntimeException re)
+          throw re;
         throw new RuntimeException(e);
       }
     });
@@ -239,7 +240,8 @@ public class SignupService {
     }
 
     for (int i = 0; i < MAX_SLUG_RETRIES; i++) {
-      if (!tenantRepository.existsByWorkspaceSlug(slug)) return slug;
+      if (!tenantRepository.existsByWorkspaceSlug(slug))
+        return slug;
       duplicateRetryCounter.increment();
       slug = generateWorkspaceSlug(request.getBusinessName());
     }
@@ -249,7 +251,8 @@ public class SignupService {
   private String resolveUniqueCompanyCode(String businessName) {
     String code = companyCodeGenerator.generateCode(businessName);
     for (int i = 0; i < MAX_CODE_RETRIES; i++) {
-      if (!tenantRepository.existsByCompanyCode(code)) return code;
+      if (!tenantRepository.existsByCompanyCode(code))
+        return code;
       duplicateRetryCounter.increment();
       code = companyCodeGenerator.generateCode(businessName);
     }
@@ -258,27 +261,32 @@ public class SignupService {
 
   private String randomBase36(int len) {
     char[] out = new char[len];
-    for (int i = 0; i < len; i++) out[i] = ALPHABET.charAt(RNG.nextInt(ALPHABET.length()));
+    for (int i = 0; i < len; i++)
+      out[i] = ALPHABET.charAt(RNG.nextInt(ALPHABET.length()));
     return new String(out);
   }
 
   private String normalizeSlug(String input) {
-    if (input == null) return null;
+    if (input == null)
+      return null;
     String base = input.toLowerCase(Locale.ROOT);
     base = NON_ALNUM.matcher(base).replaceAll("-");
     return TRIM_DASH.matcher(base).replaceAll("");
   }
 
   private String generateWorkspaceSlug(String businessName) {
-    if (businessName == null || businessName.isBlank()) return "tenant-" + randomBase36(6);
+    if (businessName == null || businessName.isBlank())
+      return "tenant-" + randomBase36(6);
     String base = businessName.toLowerCase(Locale.ROOT);
     base = NON_ALNUM.matcher(base).replaceAll("-");
     base = TRIM_DASH.matcher(base).replaceAll("");
-    if (base.isEmpty()) base = "tenant";
+    if (base.isEmpty())
+      base = "tenant";
     if (base.length() > 40) {
       base = base.substring(0, 40);
       base = TRIM_DASH.matcher(base).replaceAll("");
-      if (base.isEmpty()) base = "tenant";
+      if (base.isEmpty())
+        base = "tenant";
     }
     return base + "-" + randomBase36(6);
   }

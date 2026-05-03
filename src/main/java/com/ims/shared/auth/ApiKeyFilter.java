@@ -48,8 +48,9 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         String keyHash = hashKey(apiKey);
         Optional<ApiKey> keyOpt = apiKeyRepository.findByKeyHash(keyHash);
 
-        if (keyOpt.isEmpty() || !keyOpt.get().isActive() ||
-                (keyOpt.get().getExpiresAt() != null && keyOpt.get().getExpiresAt().isBefore(LocalDateTime.now()))) {
+        if (keyOpt.isEmpty() || !keyOpt.orElseThrow().isActive() ||
+                (keyOpt.orElseThrow().getExpiresAt() != null
+                        && keyOpt.orElseThrow().getExpiresAt().isBefore(LocalDateTime.now()))) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
             response.getWriter().write(
@@ -57,7 +58,7 @@ public class ApiKeyFilter extends OncePerRequestFilter {
             return;
         }
 
-        ApiKey key = keyOpt.get();
+        ApiKey key = keyOpt.orElseThrow(() -> new RuntimeException("API Key missing after check"));
 
         // Set Security Context
         Set<String> permissions = Set.of();

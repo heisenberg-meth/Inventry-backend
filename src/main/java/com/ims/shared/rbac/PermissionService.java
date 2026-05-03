@@ -41,7 +41,7 @@ public class PermissionService {
       }
 
       if (roleOpt.isPresent()) {
-        Role role = roleOpt.get();
+        Role role = roleOpt.orElseThrow();
         System.out.println("DEBUG PermissionService: Found role " + role.getName() + " with "
             + (role.getPermissions() != null ? role.getPermissions().size() : 0) + " permissions");
         if (role.getPermissions() != null && !role.getPermissions().isEmpty()) {

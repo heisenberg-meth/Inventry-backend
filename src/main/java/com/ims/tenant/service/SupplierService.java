@@ -39,8 +39,8 @@ public class SupplierService {
   private final AuditLogService auditLogService;
 
   public Page<SupplierResponse> getSuppliers(Pageable pageable) {
-    TenantContext.assertTenantPresent();
-    return Objects.requireNonNull(supplierRepository.findAll(pageable).map(this::toResponse));
+    Long tenantId = TenantContext.requireTenantId();
+    return Objects.requireNonNull(supplierRepository.findByTenantId(tenantId, pageable).map(this::toResponse));
   }
 
   public Supplier getById(Long id) {
@@ -133,7 +133,8 @@ public class SupplierService {
   public Map<String, Object> getSupplierLedger(Long id) {
     Supplier supplier = getById(id);
 
-    List<Order> orders = orderRepository.findBySupplierId(id, Pageable.unpaged()).getContent();
+    List<Order> orders = orderRepository.findBySupplierId(TenantContext.requireTenantId(), id, Pageable.unpaged())
+        .getContent();
     List<Invoice> invoices = invoiceRepository.findBySupplierId(id);
     List<Payment> payments = paymentRepository.findBySupplierId(id);
 

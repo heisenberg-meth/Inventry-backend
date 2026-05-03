@@ -31,9 +31,9 @@ public class CategoryService {
 
   public PagedResponse<CategoryResponse> getCategories(
       Pageable pageable) {
-    TenantContext.assertTenantPresent();
+    Long tenantId = TenantContext.requireTenantId();
 
-    Page<CategoryResponse> page = categoryRepository.findAll(pageable).map(this::toResponse);
+    Page<CategoryResponse> page = categoryRepository.findByTenantId(tenantId, pageable).map(this::toResponse);
     return new PagedResponse<>(
         page.getContent(),
         page.getTotalElements(),
@@ -54,7 +54,8 @@ public class CategoryService {
   public Category create(CategoryRequest request) {
     String name = Objects.requireNonNull(request.getName());
 
-    if (categoryRepository.existsByNameIgnoreCase(name)) {
+    Long tenantId = TenantContext.requireTenantId();
+    if (categoryRepository.existsByNameIgnoreCaseAndTenantId(name, tenantId)) {
       throw new IllegalArgumentException("Category with this name already exists");
     }
 
@@ -85,7 +86,7 @@ public class CategoryService {
     String name = Objects.requireNonNull(request.getName());
 
     if (!category.getName().equalsIgnoreCase(name)
-        && categoryRepository.existsByNameIgnoreCase(name)) {
+        && categoryRepository.existsByNameIgnoreCaseAndTenantId(name, TenantContext.requireTenantId())) {
       throw new IllegalArgumentException("Category with this name already exists");
     }
 

@@ -49,7 +49,7 @@ public class StockService {
     }
 
     checkWarehouseType();
-    return Objects.requireNonNull(warehouseProductRepository.findByLocation(location, pageable));
+    return Objects.requireNonNull(warehouseProductRepository.findByLocation(tenantId, location, pageable));
   }
 
   public Page<TransferOrder> getTransferOrders(Pageable pageable) {
@@ -59,7 +59,7 @@ public class StockService {
     }
 
     checkWarehouseType();
-    return Objects.requireNonNull(transferOrderRepository.findAll(pageable));
+    return Objects.requireNonNull(transferOrderRepository.findAllByTenantId(tenantId, pageable));
   }
 
   @Cacheable(value = "stock", key = "'order:' + #id", cacheResolver = "tenantAwareCacheResolver")
@@ -119,7 +119,7 @@ public class StockService {
       throw new TenantContextException("Tenant context is missing");
     }
 
-    return Objects.requireNonNull(stockMovementRepository.findAllByOrderByCreatedAtDesc(pageable));
+    return Objects.requireNonNull(stockMovementRepository.findAllByTenantId(tenantId, pageable));
   }
 
   public Page<StockMovement> getFilteredMovements(
@@ -130,6 +130,6 @@ public class StockService {
     }
 
     return Objects.requireNonNull(
-        stockMovementRepository.findByFilters(productId, from, to, pageable));
+        stockMovementRepository.findByFilters(tenantId, productId, from, to, pageable));
   }
 }

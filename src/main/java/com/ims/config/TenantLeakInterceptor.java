@@ -2,10 +2,10 @@ package com.ims.config;
 
 import com.ims.shared.auth.TenantContext;
 import com.ims.shared.exception.TenantIsolationException;
-
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.resource.jdbc.spi.StatementInspector;
 import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Profile;
 
 /**
  * HARDENING COMPONENT: TenantLeakInterceptor.
@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
  * configured.
  * Enable after fixing services to use tenant-aware queries.
  */
-// @Profile("test")
+@Profile("test")
 @Slf4j
 @Component
 public class TenantLeakInterceptor implements StatementInspector {
@@ -25,7 +25,7 @@ public class TenantLeakInterceptor implements StatementInspector {
 
   private static final String[] MULTI_TENANT_TABLES = {
       "products", "orders", "order_items", "customers", "suppliers",
-      "stock_movements", "invoices", "payments", "categories"
+      "stock_movements", "invoices", "payments", "categories", "audit_logs"
   };
 
   @Override

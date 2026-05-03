@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface WarehouseProductRepository extends JpaRepository<WarehouseProduct, Long> {
   @Query("SELECT wp FROM WarehouseProduct wp JOIN wp.product p "
-      + "WHERE wp.storageLocation = :location AND p.active = true")
-  Page<WarehouseProduct> findByLocation(@Param("location") String location, Pageable pageable);
+      + "WHERE p.tenantId = :tenantId AND wp.storageLocation = :location AND p.active = true")
+  Page<WarehouseProduct> findByLocation(@Param("tenantId") Long tenantId, @Param("location") String location,
+      Pageable pageable);
 }

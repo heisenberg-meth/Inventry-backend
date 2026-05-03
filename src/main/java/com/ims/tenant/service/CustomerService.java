@@ -32,8 +32,8 @@ public class CustomerService {
   private final PaymentRepository paymentRepository;
 
   public Page<CustomerResponse> getCustomers(Pageable pageable) {
-    TenantContext.assertTenantPresent();
-    return customerRepository.findAll(pageable).map(this::toResponse);
+    Long tenantId = TenantContext.requireTenantId();
+    return customerRepository.findByTenantId(tenantId, pageable).map(this::toResponse);
   }
 
   public Customer getById(Long id) {
@@ -97,7 +97,8 @@ public class CustomerService {
   public Map<String, Object> getCustomerLedger(Long id) {
     Customer customer = getById(id);
 
-    List<Order> orders = orderRepository.findByCustomerId(id, Pageable.unpaged()).getContent();
+    List<Order> orders = orderRepository.findByCustomerId(TenantContext.requireTenantId(), id, Pageable.unpaged())
+        .getContent();
     List<Invoice> invoices = invoiceRepository.findByCustomerId(id);
     List<Payment> payments = paymentRepository.findByCustomerId(id);
 

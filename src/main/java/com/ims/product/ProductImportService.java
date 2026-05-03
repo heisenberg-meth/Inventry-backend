@@ -44,7 +44,7 @@ public class ProductImportService {
     Long tenantId = securityContextAccessor.requireTenantId();
 
     Map<String, Category> categoryCache = new HashMap<>();
-    categoryRepository.findAll().forEach(cat -> categoryCache.put(cat.getName().toLowerCase(), cat));
+    categoryRepository.findAllByTenantId(tenantId).forEach(cat -> categoryCache.put(cat.getName().toLowerCase(), cat));
 
     List<Product> chunk = new ArrayList<>();
     int successCount = 0;

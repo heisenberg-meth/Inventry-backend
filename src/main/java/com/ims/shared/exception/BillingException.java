@@ -1,0 +1,15 @@
+package com.ims.shared.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+@ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+public class BillingException extends RuntimeException {
+    public BillingException(String message) {
+        super(message);
+    }
+
+    public BillingException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}

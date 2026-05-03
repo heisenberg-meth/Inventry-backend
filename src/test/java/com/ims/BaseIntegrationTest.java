@@ -351,8 +351,8 @@ public abstract class BaseIntegrationTest {
     Long previous = TenantContext.getTenantId();
     TenantContext.setTenantId(tenantId);
     try {
-      return roleRepository.findByName(name)
-          .orElseGet(() -> roleRepository.save(Role.builder().name(name).build()));
+      return roleRepository.findByNameAndTenantId(name, tenantId)
+          .orElseGet(() -> roleRepository.save(Role.builder().name(name).tenantId(tenantId).build()));
     } finally {
       TenantContext.setTenantId(previous);
     }

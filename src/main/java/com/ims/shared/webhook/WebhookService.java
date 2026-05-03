@@ -59,8 +59,7 @@ public class WebhookService {
   private final BusinessMetrics businessMetrics;
 
   public List<Webhook> getMyWebhooks() {
-    TenantContext.assertTenantPresent();
-    return webhookRepository.findAll();
+    return webhookRepository.findAllByTenantId(TenantContext.requireTenantId());
   }
 
   @Transactional
@@ -133,7 +132,7 @@ public class WebhookService {
     Long previousTenantId = TenantContext.getTenantId();
     TenantContext.setTenantId(tenantId);
     try {
-      webhooks = webhookRepository.findAll();
+      webhooks = webhookRepository.findAllByTenantId(tenantId);
     } finally {
       TenantContext.setTenantId(previousTenantId);
     }
