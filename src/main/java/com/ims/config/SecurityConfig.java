@@ -2,6 +2,8 @@ package com.ims.config;
 
 import com.ims.shared.audit.TraceFilter;
 import com.ims.shared.auth.JwtFilter;
+import com.ims.shared.auth.NaasAccessDeniedHandler;
+import com.ims.shared.auth.NaasAuthenticationEntryPoint;
 import com.ims.shared.auth.TenantContextFilter;
 import com.ims.shared.ratelimit.RateLimitFilter;
 import java.util.List;
@@ -15,12 +17,10 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.http.HttpStatus;
 import org.springframework.core.env.Profiles;
 import org.springframework.beans.factory.annotation.Value;
 
@@ -37,6 +37,8 @@ public class SecurityConfig {
   private final TraceFilter traceFilter;
   private final TenantContextFilter tenantContextFilter;
   private final Environment environment;
+  private final NaasAuthenticationEntryPoint naasAuthenticationEntryPoint;
+  private final NaasAccessDeniedHandler naasAccessDeniedHandler;
 
   @Value("${app.security.allowed-origins:*}")
   private String allowedOrigins;
@@ -55,13 +57,21 @@ public class SecurityConfig {
                 csp -> csp.policyDirectives("default-src 'self'; frame-ancestors 'none'; object-src 'none';"))
             .httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31536000)))
         .exceptionHandling(
-            ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+            ex -> ex.authenticationEntryPoint(naasAuthenticationEntryPoint)
+                .accessDeniedHandler(naasAccessDeniedHandler))
         .authorizeHttpRequests(
-            auth -> auth.requestMatchers("/auth/**")
-                .permitAll()
-                .requestMatchers("/api/auth/**")
-                .permitAll()
-                .requestMatchers("/api/platform/auth/**")
+            auth -> auth.requestMatchers(
+                    "/api/auth/login",
+                    "/api/auth/signup",
+                    "/api/auth/forgot-password",
+                    "/api/auth/reset-password",
+                    "/api/auth/verify-email",
+                    "/api/auth/resend-verification",
+                    "/api/auth/check-email",
+                    "/api/auth/check-slug",
+                    "/api/auth/check-company-code",
+                    "/api/platform/auth/login"
+                )
                 .permitAll()
                 .requestMatchers("/api/platform/invites/accept", "/api/platform/invites/complete")
                 .permitAll()
@@ -95,8 +105,9 @@ public class SecurityConfig {
     if (allowedOrigins == null || allowedOrigins.trim().isEmpty() || "*".equals(allowedOrigins)) {
       // NEVER use wildcard in production - fail securely
       if (environment != null
-          && environment.acceptsProfiles(Profiles.of("dev", "local"))) {
-        configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:5173"));
+          && environment.acceptsProfiles(Profiles.of("dev", "local", "test"))) {
+        configuration.setAllowedOrigins(List.of("*"));
+        configuration.setAllowCredentials(true);
       } else {
         throw new IllegalStateException("CORS allowed-origins must be explicitly configured for non-dev profiles");
       }

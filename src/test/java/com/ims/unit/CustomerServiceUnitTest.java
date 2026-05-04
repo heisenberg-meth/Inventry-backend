@@ -1,0 +1,162 @@
+package com.ims.unit;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+import java.util.Optional;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+
+import com.ims.model.Customer;
+import com.ims.shared.auth.TenantContext;
+import com.ims.tenant.repository.CustomerRepository;
+import com.ims.tenant.repository.InvoiceRepository;
+import com.ims.tenant.repository.OrderRepository;
+import com.ims.tenant.repository.PaymentRepository;
+import com.ims.tenant.service.CustomerService;
+
+import jakarta.persistence.EntityNotFoundException;
+
+@ExtendWith(MockitoExtension.class)
+class CustomerServiceUnitTest {
+
+    @Mock
+    private CustomerRepository customerRepository;
+    @Mock
+    private OrderRepository orderRepository;
+    @Mock
+    private InvoiceRepository invoiceRepository;
+    @Mock
+    private PaymentRepository paymentRepository;
+
+    private CustomerService customerService;
+
+    @BeforeEach
+    void setUp() {
+        customerService = new CustomerService(
+                customerRepository,
+                orderRepository,
+                invoiceRepository,
+                paymentRepository
+        );
+    }
+
+    @Test
+    void getCustomers_returnsPagedResults() {
+        Customer customer = Customer.builder()
+                .id(1L)
+                .name("Test Customer")
+                .tenantId(1L)
+                .build();
+        Page<Customer> page = new PageImpl<>(java.util.List.of(customer));
+
+        when(customerRepository.findAll(PageRequest.of(0, 10))).thenReturn(page);
+
+        Page<Customer> result = customerService.getCustomers(PageRequest.of(0, 10));
+
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Test Customer", result.getContent().get(0).getName());
+    }
+
+    @Test
+    void getById_existingCustomer_returnsCustomer() {
+        Customer customer = Customer.builder()
+                .id(1L)
+                .name("Test Customer")
+                .tenantId(1L)
+                .build();
+
+        when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
+
+        Customer result = customerService.getById(1L);
+
+        assertNotNull(result);
+        assertEquals("Test Customer", result.getName());
+    }
+
+    @Test
+    void getById_nonExistentCustomer_throwsException() {
+        when(customerRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThrows(EntityNotFoundException.class, () -> {
+            customerService.getById(999L);
+        });
+    }
+
+    @Test
+    void create_withValidData_createsCustomer() {
+        TenantContext.setTenantId(1L);
+        try {
+            Customer customer = Customer.builder()
+                    .name("New Customer")
+                    .phone("1234567890")
+                    .build();
+
+            when(customerRepository.save(any(Customer.class))).thenAnswer(i -> {
+                Customer c = i.getArgument(0);
+                c.setId(1L);
+                return c;
+            });
+
+            Customer result = customerService.create(customer);
+
+            assertNotNull(result);
+            assertEquals(1L, result.getTenantId());
+            verify(customerRepository).save(any(Customer.class));
+        } finally {
+            TenantContext.clear();
+        }
+    }
+
+    @Test
+    void update_withValidData_updatesCustomer() {
+        TenantContext.setTenantId(1L);
+        try {
+            Customer existing = Customer.builder()
+                    .id(1L)
+                    .name("Old Name")
+                    .phone("0000000000")
+                    .tenantId(1L)
+                    .build();
+
+            Customer updates = Customer.builder()
+                    .name("New Name")
+                    .phone("1234567890")
+                    .build();
+
+            when(customerRepository.findById(1L)).thenReturn(Optional.of(existing));
+            when(customerRepository.save(any(Customer.class))).thenAnswer(i -> i.getArgument(0));
+
+            Customer result = customerService.update(1L, updates);
+
+            assertEquals("New Name", result.getName());
+            assertEquals("1234567890", result.getPhone());
+        } finally {
+            TenantContext.clear();
+        }
+    }
+
+    @Test
+    void delete_existingCustomer_deletesSuccessfully() {
+        Customer customer = Customer.builder()
+                .id(1L)
+                .tenantId(1L)
+                .build();
+
+        when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
+        doNothing().when(customerRepository).delete(customer);
+
+        customerService.delete(1L);
+
+        verify(customerRepository).delete(customer);
+    }
+}

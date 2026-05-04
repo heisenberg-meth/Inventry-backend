@@ -134,6 +134,7 @@ public abstract class BaseIntegrationTest {
 
   @BeforeEach
   void setUp() {
+    cleanupDatabase();
     mockRedisAndCache();
   }
 
@@ -200,11 +201,8 @@ public abstract class BaseIntegrationTest {
   }
 
   protected void verifyUser(String email) {
-    userRepository.findByEmailUnfiltered(email).ifPresent(u -> {
-      u.setIsVerified(true);
-      userRepository.save(u);
-      entityManager.flush();
-    });
+    jdbcTemplate.update("UPDATE users SET is_verified = TRUE WHERE email = ?", email);
+    entityManager.clear();
   }
 
   protected void mockRedisAndCache() {

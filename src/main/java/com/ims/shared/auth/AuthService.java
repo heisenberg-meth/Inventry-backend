@@ -14,6 +14,8 @@ import com.ims.model.User;
 import com.ims.platform.repository.TenantRepository;
 import com.ims.tenant.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -133,6 +135,7 @@ public class AuthService {
 
     return LoginResponse.builder()
         .accessToken(accessToken)
+        .tokenType("Bearer")
         .expiresIn(jwtUtil.getExpirySeconds())
         .user(LoginResponse.UserResponse.builder()
             .id(targetUser.getId().toString())
@@ -180,6 +183,7 @@ public class AuthService {
     return LoginResponse.builder()
         .accessToken(accessToken)
         .refreshToken(refreshToken)
+        .tokenType("Bearer")
         .expiresIn(jwtUtil.getExpirySeconds())
         .user(
             LoginResponse.UserResponse.builder()
@@ -198,36 +202,36 @@ public class AuthService {
   public LoginResponse login(LoginRequest request) {
     User user = userRepository
         .findByEmailUnfiltered(request.getEmail())
-        .orElseThrow(() -> new EntityNotFoundException("Invalid email or password"));
+        .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
 
     if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-      throw new IllegalArgumentException("Invalid email or password");
+      throw new BadCredentialsException("Invalid email or password");
     }
 
     if (!Boolean.TRUE.equals(user.getIsActive())) {
-      throw new IllegalArgumentException("Account is deactivated");
+      throw new DisabledException("Account is deactivated");
     }
 
     // Check email verification for tenant users
     if ("TENANT".equals(user.getScope()) && !Boolean.TRUE.equals(user.getIsVerified())) {
-      throw new IllegalArgumentException("Email not verified. Please verify your email before logging in.");
+      throw new BadCredentialsException("Email not verified. Please verify your email before logging in.");
     }
 
     // Validate companyCode
     if (request.getCompanyCode() != null && !request.getCompanyCode().isBlank()) {
       Tenant tenant = tenantRepository
           .findByCompanyCode(request.getCompanyCode())
-          .orElseThrow(() -> new EntityNotFoundException("Invalid company code"));
+          .orElseThrow(() -> new BadCredentialsException("Invalid company code"));
       if (!Objects.equals(user.getTenantId(), tenant.getId())) {
-        throw new IllegalArgumentException("User does not belong to this company");
+        throw new BadCredentialsException("User does not belong to this company");
       }
       if (!"TENANT".equals(user.getScope())) {
-        throw new IllegalArgumentException("Platform users cannot log in with a company code");
+        throw new BadCredentialsException("Platform users cannot log in with a company code");
       }
     } else {
       // Platform login
       if (!"PLATFORM".equals(user.getScope())) {
-        throw new IllegalArgumentException("Company code is required for business login");
+        throw new BadCredentialsException("Company code is required for business login");
       }
     }
 
@@ -255,6 +259,7 @@ public class AuthService {
     LoginResponse.LoginResponseBuilder responseBuilder = LoginResponse.builder()
         .accessToken(accessToken)
         .refreshToken(refreshToken)
+        .tokenType("Bearer")
         .expiresIn(jwtUtil.getExpirySeconds())
         .user(
             LoginResponse.UserResponse.builder()
@@ -342,6 +347,7 @@ public class AuthService {
     LoginResponse.LoginResponseBuilder responseBuilder = LoginResponse.builder()
         .accessToken(newAccessToken)
         .refreshToken(newRefreshToken)
+        .tokenType("Bearer")
         .expiresIn(jwtUtil.getExpirySeconds())
         .user(
             LoginResponse.UserResponse.builder()

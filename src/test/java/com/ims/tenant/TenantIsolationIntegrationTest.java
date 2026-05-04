@@ -1,0 +1,137 @@
+package com.ims.tenant;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ims.BaseIntegrationTest;
+import com.ims.dto.request.LoginRequest;
+import com.ims.dto.response.LoginResponse;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+
+@SpringBootTest(properties = {
+                "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
+                "spring.cache.type=none"
+})
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+class TenantIsolationIntegrationTest extends BaseIntegrationTest {
+
+        @Autowired
+        private MockMvc mockMvc;
+
+        @Autowired
+        private ObjectMapper objectMapper;
+
+        private String tenant1Token;
+        private String tenant2Token;
+        private Long tenant1Id;
+        private Long tenant2Id;
+
+        @BeforeEach
+        void setup() throws Exception {
+                cleanupDatabase();
+                mockRedisAndCache();
+
+                // Get tenant IDs from seeded data
+                tenant1Id = testTenant1Id;
+                tenant2Id = testTenant2Id;
+
+                // Create users directly in DB for each tenant
+                String passwordHash = passwordEncoder.encode("password123");
+
+        // User for tenant 1
+        jdbcTemplate.update(
+            "INSERT INTO users (name, email, password_hash, role, scope, tenant_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "Tenant1 User", "tenant1@test.com", passwordHash, "ADMIN", "TENANT", tenant1Id, true
+        );
+        
+        // User for tenant 2
+        jdbcTemplate.update(
+            "INSERT INTO users (name, email, password_hash, role, scope, tenant_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "Tenant2 User", "tenant2@test.com", passwordHash, "ADMIN", "TENANT", tenant2Id, true
+        );
+
+        // Verify users
+        verifyUser("tenant1@test.com");
+        verifyUser("tenant2@test.com");
+
+        // Login tenant 1
+        tenant1Token = loginAndGetToken("tenant1@test.com", "password123", "T1001");
+        
+        // Login tenant 2
+        tenant2Token = loginAndGetToken("tenant2@test.com", "password123", "T2001");
+        }
+
+        private String loginAndGetToken(String email, String password, String companyCode) throws Exception {
+                LoginRequest loginRequest = new LoginRequest();
+                loginRequest.setEmail(email);
+                loginRequest.setPassword(password);
+                loginRequest.setCompanyCode(companyCode);
+
+                MockHttpServletRequestBuilder loginBuilder = post("/api/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(loginRequest));
+                MvcResult loginResult = mockMvc.perform(loginBuilder)
+                                .andExpect(status().isOk())
+                                .andReturn();
+
+                LoginResponse response = objectMapper.readValue(
+                                loginResult.getResponse().getContentAsString(), LoginResponse.class);
+                return response.getAccessToken();
+        }
+
+    @Test
+    void tenant1CannotAccessTenant2Data() throws Exception {
+        // Create a product in tenant1
+        String productPayload = """
+                {
+                    "name": "Tenant1 Product",
+                    "sku": "T1-SKU-001",
+                    "purchasePrice": 5.99,
+                    "salePrice": 10.99,
+                    "quantity": 100
+                }
+                """;
+
+        MockHttpServletRequestBuilder createProductBuilder = post("/api/tenant/products")
+                .header("Authorization", "Bearer " + tenant1Token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(productPayload);
+        mockMvc.perform(createProductBuilder)
+                .andExpect(status().isCreated());
+
+        // Try to access product from tenant2 context
+        MockHttpServletRequestBuilder getProductsBuilder = get("/api/tenant/products")
+                .header("Authorization", "Bearer " + tenant2Token);
+        mockMvc.perform(getProductsBuilder)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isEmpty());
+    }
+
+    @Test
+    void tenantContextIsIsolated() throws Exception {
+        // Verify tenant context is set correctly for each tenant
+        MockHttpServletRequestBuilder getTenant1Builder = get("/api/tenant/settings")
+                .header("Authorization", "Bearer " + tenant1Token);
+        mockMvc.perform(getTenant1Builder)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.workspace_slug").value("t1"));
+
+        MockHttpServletRequestBuilder getTenant2Builder = get("/api/tenant/settings")
+                .header("Authorization", "Bearer " + tenant2Token);
+        mockMvc.perform(getTenant2Builder)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.workspace_slug").value("t2"));
+    }
+}

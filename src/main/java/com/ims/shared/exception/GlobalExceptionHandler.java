@@ -17,15 +17,26 @@ import lombok.extern.slf4j.Slf4j;
 
 @RestControllerAdvice
 @Slf4j
+@lombok.RequiredArgsConstructor
 public class GlobalExceptionHandler {
+
+  private final com.ims.shared.auth.NaasService naasService;
 
   private static final int STATUS_BAD_REQUEST = 400;
   private static final int STATUS_NOT_FOUND = 404;
+  private static final int STATUS_UNAUTHORIZED = 401;
   private static final int STATUS_FORBIDDEN = 403;
   private static final int STATUS_UNPROCESSABLE = 422;
   private static final int STATUS_CONFLICT = 409;
   private static final int STATUS_INTERNAL_ERROR = 500;
 
+
+  @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+  public ResponseEntity<Map<String, Object>> handleAuthentication(
+      org.springframework.security.core.AuthenticationException ex, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+        .body(errorBody(STATUS_UNAUTHORIZED, "UNAUTHORIZED", ex.getMessage(), request.getRequestURI()));
+  }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<Map<String, Object>> handleValidation(
@@ -97,11 +108,14 @@ public class GlobalExceptionHandler {
         .body(errorBody(STATUS_CONFLICT, "ILLEGAL_STATE", ex.getMessage(), request.getRequestURI()));
   }
 
-  @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
-  public ResponseEntity<Map<String, Object>> handleNoResourceFound(
-      org.springframework.web.servlet.resource.NoResourceFoundException ex, HttpServletRequest request) {
+  @ExceptionHandler({
+      org.springframework.web.servlet.resource.NoResourceFoundException.class,
+      org.springframework.web.servlet.NoHandlerFoundException.class
+  })
+  public ResponseEntity<String> handleNoResourceFound(Exception ex, HttpServletRequest request) {
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .body(errorBody(STATUS_NOT_FOUND, "NOT_FOUND", "Resource not found", request.getRequestURI()));
+        .contentType(org.springframework.http.MediaType.TEXT_PLAIN)
+        .body(naasService.getNoMessage());
   }
 
   @ExceptionHandler(Exception.class)

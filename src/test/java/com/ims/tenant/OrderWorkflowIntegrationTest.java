@@ -10,6 +10,7 @@ import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.request.SignupRequest;
 import com.ims.dto.request.LoginRequest;
+import com.ims.dto.request.StockInRequest;
 import com.ims.dto.response.ProductResponse;
 import com.ims.dto.response.SignupResponse;
 import com.ims.model.Customer;
@@ -89,15 +90,17 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
     ProductResponse product = objectMapper.readValue(prodResult.getResponse().getContentAsString(),
         ProductResponse.class);
 
-    // 2. Stock In (100 units)
-    mockMvc.perform(post("/api/tenant/stock/in")
-        .header("Authorization", "Bearer " + token)
-        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
-        .content(Objects.requireNonNull(objectMapper.writeValueAsString(Map.of(
-            "product_id", product.getId(),
-            "quantity", 100,
-            "notes", "Initial Stock")))))
-        .andExpect(status().isOk());
+        // 2. Stock In (100 units)
+        StockInRequest stockInReq = new StockInRequest();
+        stockInReq.setProductId(product.getId());
+        stockInReq.setQuantity(100);
+        stockInReq.setNotes("Initial Stock");
+        
+        mockMvc.perform(post("/api/tenant/stock/in")
+                .header("Authorization", "Bearer " + token)
+                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                .content(Objects.requireNonNull(objectMapper.writeValueAsString(stockInReq)))
+                .andExpect(status().isOk());
 
     verifyStock(token, product.getId(), 100);
 

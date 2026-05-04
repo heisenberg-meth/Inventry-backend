@@ -125,15 +125,15 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
                                 .content(Objects.requireNonNull(t1ReqJson)))
                                 .andExpect(status().isCreated());
 
-                // T1 should see 3 logs (Signup + Login + Create)
+                // T1 should see 4 logs (Category Create + Signup + Login + Product Create)
                 mockMvc.perform(get("/api/tenant/audits").header("Authorization", "Bearer " + t1Token))
                                 .andExpect(status().isOk())
-                                .andExpect(jsonPath("$.content.length()").value(3));
+                                .andExpect(jsonPath("$.content.length()").value(4));
 
-                // T2 should see 2 logs (Signup + Login)
+                // T2 should see 3 logs (Category Create + Signup + Login)
                 mockMvc.perform(get("/api/tenant/audits").header("Authorization", "Bearer " + t2Token))
                                 .andExpect(status().isOk())
-                                .andExpect(jsonPath("$.content.length()").value(2));
+                                .andExpect(jsonPath("$.content.length()").value(3));
         }
 
         private SignupRequest createSignupRequest(String name, String slug, String email) {

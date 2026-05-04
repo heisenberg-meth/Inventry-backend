@@ -1,6 +1,7 @@
 package com.ims.tenant.controller;
 
 import com.ims.dto.TransferOrderStatusRequest;
+import com.ims.dto.request.StockInRequest;
 import com.ims.model.StockMovement;
 import com.ims.model.TransferOrder;
 import com.ims.tenant.domain.warehouse.WarehouseProduct;
@@ -71,22 +72,21 @@ public class StockController {
     return ResponseEntity.ok(Objects.requireNonNull(stockService.updateTransferStatus(id, request, userId)));
   }
 
-  @PostMapping("/in")
-  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
-  @Operation(summary = "Record stock received")
-  public ResponseEntity<Map<String, String>> stockIn(@RequestBody Map<String, Object> body) {
-    Long userId = extractUserId();
-    Object productIdObj = body.get("product_id");
-    Object quantityObj = body.get("quantity");
-    if (productIdObj == null || quantityObj == null) {
-      throw new IllegalArgumentException("product_id and quantity are required");
-    }
-    Long productId = Long.valueOf(productIdObj.toString());
-    int quantity = Integer.parseInt(quantityObj.toString());
-    String notes = body.getOrDefault("notes", "").toString();
+    @PostMapping("/in")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @Operation(summary = "Record stock received")
+    public ResponseEntity<Map<String, String>> stockIn(@RequestBody StockInRequest request) {
+        Long userId = extractUserId();
+        Long productId = request.getProductId();
+        int quantity = request.getQuantity();
+        String notes = request.getNotes() != null ? request.getNotes() : "";
 
-    stockService.stockIn(productId, quantity, notes, userId);
-    return ResponseEntity.ok(Map.of("message", "Stock in recorded successfully"));
+        if (productId == null || quantity <= 0) {
+            throw new IllegalArgumentException("productId and valid quantity are required");
+        }
+
+        stockService.stockIn(productId, quantity, notes, userId);
+        return ResponseEntity.ok(Map.of("message", "Stock in recorded successfully"));
   }
 
   @PostMapping("/out")

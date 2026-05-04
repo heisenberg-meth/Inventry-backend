@@ -117,10 +117,15 @@ public class JwtFilter extends OncePerRequestFilter {
   @Override
   protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
     String path = request.getRequestURI();
-    return path.endsWith("/auth/login")
-        || path.endsWith("/auth/signup")
-        || path.endsWith("/auth/forgot-password")
-        || path.endsWith("/auth/reset-password")
+    return path.equals("/api/auth/login")
+        || path.equals("/api/auth/signup")
+        || path.equals("/api/auth/forgot-password")
+        || path.equals("/api/auth/reset-password")
+        || path.equals("/api/auth/verify-email")
+        || path.equals("/api/auth/resend-verification")
+        || path.equals("/api/auth/check-email")
+        || path.equals("/api/auth/check-slug")
+        || path.equals("/api/auth/check-company-code")
         || path.startsWith("/actuator/")
         || path.startsWith("/swagger-ui")
         || path.startsWith("/api-docs");

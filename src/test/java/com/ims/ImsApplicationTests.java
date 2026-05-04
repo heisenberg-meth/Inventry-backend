@@ -2,17 +2,23 @@ package com.ims;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.cache.CacheManager;
 import org.springframework.data.redis.core.RedisTemplate;
 
-@SpringBootTest
-@ActiveProfiles("test")
+@SpringBootTest(properties = {
+    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
+    "spring.cache.type=none"
+})
 class ImsApplicationTests {
 
-  @MockitoBean
+  @MockBean
   private RedisTemplate<String, Object> redisTemplate;
 
+  @MockBean
+  private CacheManager cacheManager;
+
   @Test
-  void contextLoads() {}
+  void contextLoads() {
+  }
 }
