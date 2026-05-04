@@ -24,21 +24,12 @@ import org.springframework.web.bind.annotation.RestController;
 @SecurityRequirement(name = "bearerAuth")
 public class TenantAuditController {
 
-  private final AuditLogRepository auditLogRepository;
+  private final com.ims.shared.audit.AuditLogService auditLogService;
 
   @GetMapping
   @PreAuthorize("hasRole('ADMIN')")
   @Operation(summary = "Get activity logs for current tenant")
   public ResponseEntity<Page<AuditLog>> getTenantLogs(Pageable pageable) {
-    Long tenantId = getTenantId();
-    return ResponseEntity.ok(auditLogRepository.findByTenantId(tenantId, pageable));
-  }
-
-  private Long getTenantId() {
-    var auth = SecurityContextHolder.getContext().getAuthentication();
-    if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
-      return Objects.requireNonNull(details.getTenantId());
-    }
-    throw new IllegalStateException("Tenant ID missing from security context");
+    return ResponseEntity.ok(auditLogService.getTenantLogs(pageable));
   }
 }
