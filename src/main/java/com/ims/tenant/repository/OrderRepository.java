@@ -13,44 +13,39 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
-  // findById is inherited
+        // findById is inherited
 
-  @Override
-  @NonNull
-  Page<Order> findAll(@NonNull Pageable pageable);
+        @Override
+        @NonNull
 
-  @NonNull
-  Page<Order> findByType(@NonNull String type, @NonNull Pageable pageable);
+        Page<Order> findAll(@NonNull Pageable pageable);
 
-  @NonNull
-  Page<Order> findBySupplierId(@NonNull Long supplierId, @NonNull Pageable pageable);
+        Page<Order> findByType(String type, Pageable pageable);
 
-  @NonNull
-  Page<Order> findByCustomerId(@NonNull Long customerId, @NonNull Pageable pageable);
+        Page<Order> findBySupplierId(Long supplierId, Pageable pageable);
 
-  @Query(
-      "SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o "
-          + "WHERE o.type = :type AND o.createdAt >= :from AND o.createdAt <= :to")
-  @NonNull
-  BigDecimal sumAmountByTypeAndDateRange(
-      @Param("type") @NonNull String type,
-      @Param("from") @NonNull LocalDateTime from,
-      @Param("to") @NonNull LocalDateTime to);
+        Page<Order> findByCustomerId(Long customerId, Pageable pageable);
 
-  @Query(
-      "SELECT COALESCE(SUM(o.taxAmount), 0) FROM Order o "
-          + "WHERE o.type = :type AND o.createdAt >= :from AND o.createdAt <= :to")
-  @NonNull
-  BigDecimal sumTaxAmountByTypeAndDateRange(
-      @Param("type") @NonNull String type,
-      @Param("from") @NonNull LocalDateTime from,
-      @Param("to") @NonNull LocalDateTime to);
+        @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o "
+                        + "WHERE o.type = :type AND o.createdAt >= :from AND o.createdAt <= :to")
 
-  @Query(
-      "SELECT COUNT(o) FROM Order o "
-          + "WHERE o.type = :type AND o.createdAt >= :from AND o.createdAt <= :to")
-  long countByTypeAndDateRange(
-      @Param("type") @NonNull String type,
-      @Param("from") @NonNull LocalDateTime from,
-      @Param("to") @NonNull LocalDateTime to);
+        BigDecimal sumAmountByTypeAndDateRange(
+                        @Param("type") String type,
+                        @Param("from") LocalDateTime from,
+                        @Param("to") LocalDateTime to);
+
+        @Query("SELECT COALESCE(SUM(o.taxAmount), 0) FROM Order o "
+                        + "WHERE o.type = :type AND o.createdAt >= :from AND o.createdAt <= :to")
+
+        BigDecimal sumTaxAmountByTypeAndDateRange(
+                        @Param("type") String type,
+                        @Param("from") LocalDateTime from,
+                        @Param("to") LocalDateTime to);
+
+        @Query("SELECT COUNT(o) FROM Order o "
+                        + "WHERE o.type = :type AND o.createdAt >= :from AND o.createdAt <= :to")
+        long countByTypeAndDateRange(
+                        @Param("type") String type,
+                        @Param("from") LocalDateTime from,
+                        @Param("to") LocalDateTime to);
 }

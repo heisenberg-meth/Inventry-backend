@@ -17,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@SuppressWarnings("null")
 public class CustomerService {
 
   private final CustomerRepository customerRepository;
@@ -25,24 +24,24 @@ public class CustomerService {
   private final InvoiceRepository invoiceRepository;
   private final PaymentRepository paymentRepository;
 
-  public @NonNull Page<Customer> getCustomers(@NonNull Pageable pageable) {
+  public Page<Customer> getCustomers(@NonNull Pageable pageable) {
     return customerRepository.findAll(pageable);
   }
 
-  public @NonNull Customer getById(@NonNull Long id) {
+  public Customer getById(@NonNull Long id) {
     return customerRepository
         .findById(id)
         .orElseThrow(() -> new EntityNotFoundException("Customer not found"));
   }
 
   @Transactional
-  public @NonNull Customer create(@NonNull Customer customer) {
+  public Customer create(Customer customer) {
     customer.setTenantId(com.ims.shared.auth.TenantContext.getTenantId());
     return customerRepository.save(customer);
   }
 
   @Transactional
-  public @NonNull Customer update(@NonNull Long id, @NonNull Customer updates) {
+  public Customer update(Long id, Customer updates) {
     Customer customer = getById(id);
     if (updates.getName() != null) {
       customer.setName(updates.getName());
@@ -63,7 +62,7 @@ public class CustomerService {
   }
 
   @Transactional
-  public void delete(@NonNull Long id) {
+  public void delete(Long id) {
     Customer customer = getById(id);
     customerRepository.delete(customer);
   }

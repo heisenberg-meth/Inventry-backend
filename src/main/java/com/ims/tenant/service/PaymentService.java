@@ -14,7 +14,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.lang.NonNull;
 import java.util.Objects;
 
 @Service
@@ -26,7 +25,7 @@ public class PaymentService {
   private final InvoiceRepository invoiceRepository;
 
   @Transactional
-  public Payment recordPayment(@NonNull Long invoiceId, BigDecimal amount, String mode, String reference, String notes,
+  public Payment recordPayment(Long invoiceId, BigDecimal amount, String mode, String reference, String notes,
       Long userId) {
     Invoice invoice = invoiceRepository.findById(invoiceId)
         .orElseThrow(() -> new ResourceNotFoundException("Invoice not found: " + invoiceId));
@@ -71,11 +70,11 @@ public class PaymentService {
     return Objects.requireNonNull(payment);
   }
 
-  public Page<Payment> getPayments(@NonNull Pageable pageable) {
+  public Page<Payment> getPayments(Pageable pageable) {
     return paymentRepository.findAll(pageable);
   }
 
-  public Payment getById(@NonNull Long id) {
+  public Payment getById(Long id) {
     return paymentRepository.findById(id)
         .orElseThrow(() -> new ResourceNotFoundException("Payment not found: " + id));
   }

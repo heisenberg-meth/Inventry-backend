@@ -6,7 +6,6 @@ import com.ims.tenant.repository.TransferOrderRepository;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.lang.NonNull;
 import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,7 +18,7 @@ public class TransferOrderService {
   private final TransferOrderRepository transferOrderRepository;
 
   @Transactional
-  public @NonNull TransferOrder createTransfer(@NonNull Map<String, Object> request, @NonNull Long userId) {
+  public TransferOrder createTransfer(Map<String, Object> request, Long userId) {
     Long tenantId = Objects.requireNonNull(TenantContext.getTenantId());
     long productId = Long.parseLong(Objects.requireNonNull(request.get("product_id")).toString());
     String fromLocation = Objects.requireNonNull(request.get("from_location")).toString();

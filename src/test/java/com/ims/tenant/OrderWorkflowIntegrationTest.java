@@ -35,7 +35,7 @@ import org.springframework.test.web.servlet.MvcResult;
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@SuppressWarnings("null")
+
 public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
 
   @Autowired
@@ -82,7 +82,7 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
     createReq.setSalePrice(new BigDecimal("100.00"));
     MvcResult prodResult = mockMvc.perform(post("/api/tenant/products")
         .header("Authorization", "Bearer " + token)
-        .contentType(MediaType.APPLICATION_JSON)
+        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
         .content(Objects.requireNonNull(objectMapper.writeValueAsString(createReq))))
         .andExpect(status().isCreated())
         .andReturn();
@@ -92,7 +92,7 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
     // 2. Stock In (100 units)
     mockMvc.perform(post("/api/tenant/stock/in")
         .header("Authorization", "Bearer " + token)
-        .contentType(MediaType.APPLICATION_JSON)
+        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
         .content(Objects.requireNonNull(objectMapper.writeValueAsString(Map.of(
             "product_id", product.getId(),
             "quantity", 100,
@@ -111,7 +111,7 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
 
     MvcResult orderResult = mockMvc.perform(post("/api/tenant/orders/sale")
         .header("Authorization", "Bearer " + token)
-        .contentType(MediaType.APPLICATION_JSON)
+        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
         .content(Objects.requireNonNull(objectMapper.writeValueAsString(orderReq))))
         .andExpect(status().isCreated())
         .andReturn();
@@ -152,7 +152,7 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
     loginRequest.setCompanyCode(workspace);
 
     MvcResult result = mockMvc.perform(post("/api/auth/login")
-        .contentType(MediaType.APPLICATION_JSON)
+        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
         .content(Objects.requireNonNull(objectMapper.writeValueAsString(loginRequest))))
         .andExpect(status().isOk())
         .andReturn();

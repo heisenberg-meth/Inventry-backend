@@ -1,7 +1,6 @@
 package com.ims.tenant.controller;
 
 import com.ims.model.Order;
-import com.ims.shared.rbac.RequiresRole;
 import com.ims.tenant.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -11,9 +10,9 @@ import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.lang.NonNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -29,16 +28,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @Tag(name = "Tenant - Orders", description = "Order management")
 @SecurityRequirement(name = "bearerAuth")
-@SuppressWarnings("null")
+
 public class OrderController {
 
   private final OrderService orderService;
 
   @GetMapping
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "List all orders")
   public ResponseEntity<Page<Order>> getOrders(
-      @RequestParam(required = false) String type, @NonNull Pageable pageable) {
+      @RequestParam(required = false) String type, Pageable pageable) {
     if (type != null) {
       return ResponseEntity.ok(orderService.getOrdersByType(type, pageable));
     }
@@ -46,79 +45,80 @@ public class OrderController {
   }
 
   @PostMapping("/purchase")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Create purchase order")
   public ResponseEntity<Map<String, Object>> createPurchaseOrder(
-      @NonNull @RequestBody Map<String, Object> request) {
+      @RequestBody Map<String, Object> request) {
     Long userId = extractUserId();
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(orderService.createPurchaseOrder(request, userId));
   }
 
   @PostMapping("/sale")
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "Create sale order")
   public ResponseEntity<Map<String, Object>> createSalesOrder(
-      @NonNull @RequestBody Map<String, Object> request) {
+      @RequestBody Map<String, Object> request) {
     Long userId = extractUserId();
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(orderService.createSalesOrder(request, userId));
   }
 
   @PostMapping("/return")
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "Create return order")
   public ResponseEntity<Order> createReturnOrder(@RequestBody Map<String, Object> request) {
     return ResponseEntity.status(HttpStatus.CREATED).body(orderService.createReturnOrder(request, extractUserId()));
   }
 
   @PostMapping("/{id}/confirm")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Confirm order and deduct stock (for sales)")
-  public ResponseEntity<Order> confirmOrder(@NonNull @PathVariable Long id) {
+  public ResponseEntity<Order> confirmOrder(@PathVariable Long id) {
     Long userId = extractUserId();
     return ResponseEntity.ok(orderService.confirmOrder(id, userId));
   }
 
   @PostMapping("/{id}/ship")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Mark order as shipped")
-  public ResponseEntity<Order> shipOrder(@NonNull @PathVariable Long id) {
+  public ResponseEntity<Order> shipOrder(@PathVariable Long id) {
     Long userId = extractUserId();
     return ResponseEntity.ok(orderService.shipOrder(id, userId));
   }
 
   @PostMapping("/{id}/complete")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Complete order and add stock (for purchases)")
-  public ResponseEntity<Order> completeOrder(@NonNull @PathVariable Long id) {
+  public ResponseEntity<Order> completeOrder(@PathVariable Long id) {
     Long userId = extractUserId();
     return ResponseEntity.ok(orderService.completeOrder(id, userId));
   }
 
   @PostMapping("/{id}/cancel")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Cancel order and revert stock if confirmed")
-  public ResponseEntity<Order> cancelOrder(@NonNull @PathVariable Long id) {
+  public ResponseEntity<Order> cancelOrder(@PathVariable Long id) {
     Long userId = extractUserId();
     return ResponseEntity.ok(orderService.cancelOrder(id, userId));
   }
 
-  private @NonNull Long extractUserId() {
-    return (Long) Objects.requireNonNull(Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal());
+  private Long extractUserId() {
+    return (Long) Objects
+        .requireNonNull(Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal());
   }
 
   @GetMapping("/{id}")
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "Get order detail with items")
-  public ResponseEntity<Map<String, Object>> getOrder(@PathVariable @NonNull Long id) {
+  public ResponseEntity<Map<String, Object>> getOrder(@PathVariable Long id) {
     return ResponseEntity.ok(orderService.getOrderWithItems(id));
   }
 
   @GetMapping("/{id}/pdf")
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "Download order summary as PDF")
-  public ResponseEntity<byte[]> downloadPdf(@PathVariable @NonNull Long id) {
+  public ResponseEntity<byte[]> downloadPdf(@PathVariable Long id) {
     byte[] pdf = orderService.generateOrderPdf(id);
     return ResponseEntity.ok()
         .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=order-" + id + ".pdf")
@@ -127,10 +127,10 @@ public class OrderController {
   }
 
   @PatchMapping("/{id}/status")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Update order status")
   public ResponseEntity<Order> updateStatus(
-      @NonNull @PathVariable Long id, @NonNull @RequestBody Map<String, String> body) {
+      @PathVariable Long id, @RequestBody Map<String, String> body) {
     return ResponseEntity.ok(orderService.updateOrderStatus(id, Objects.requireNonNull(body.get("status"))));
   }
 }

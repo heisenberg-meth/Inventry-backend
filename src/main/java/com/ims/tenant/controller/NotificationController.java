@@ -2,13 +2,13 @@ package com.ims.tenant.controller;
 
 import com.ims.model.Notification;
 import com.ims.shared.notification.NotificationService;
-import com.ims.shared.rbac.RequiresRole;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,21 +22,21 @@ public class NotificationController {
   private final NotificationService notificationService;
 
   @GetMapping
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "List my notifications")
   public ResponseEntity<List<Notification>> list() {
     return ResponseEntity.ok(notificationService.getMyNotifications(extractUserId()));
   }
 
   @GetMapping("/unread")
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "List my unread notifications")
   public ResponseEntity<List<Notification>> listUnread() {
     return ResponseEntity.ok(notificationService.getUnreadNotifications(extractUserId()));
   }
 
   @PatchMapping("/{id}/read")
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "Mark notification as read")
   public ResponseEntity<Void> markAsRead(@PathVariable Long id) {
     notificationService.markAsRead(id);
@@ -44,7 +44,7 @@ public class NotificationController {
   }
 
   @PatchMapping("/mark-all-read")
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "Mark all notifications as read")
   public ResponseEntity<Void> markAllRead() {
     notificationService.markAllAsRead(extractUserId());

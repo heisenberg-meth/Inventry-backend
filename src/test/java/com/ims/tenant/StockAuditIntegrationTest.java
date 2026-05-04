@@ -24,11 +24,12 @@ import java.util.List;
     "spring.cache.type=none"
 })
 @ActiveProfiles("test")
-@SuppressWarnings("null")
+
 public class StockAuditIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired private StockService stockService;
-  
+  @Autowired
+  private StockService stockService;
+
   private Long product1Id;
   private Long product2Id;
   private Long user1Id;
@@ -38,10 +39,11 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
   void setup() {
     cleanupDatabase();
     mockRedisAndCache();
-    
+
     // Tenant 1
     TenantContext.setTenantId(testTenant1Id);
-    User u1 = User.builder().tenantId(testTenant1Id).email("u1@t1.com").name("U1").passwordHash("p").role("ADMIN").scope("TENANT").build();
+    User u1 = User.builder().tenantId(testTenant1Id).email("u1@t1.com").name("U1").passwordHash("p").role("ADMIN")
+        .scope("TENANT").build();
     u1 = userRepository.save(Objects.requireNonNull(u1));
     user1Id = u1.getId();
 
@@ -59,7 +61,8 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
 
     // Tenant 2
     TenantContext.setTenantId(testTenant2Id);
-    User u2 = User.builder().tenantId(testTenant2Id).email("u2@t2.com").name("U2").passwordHash("p").role("ADMIN").scope("TENANT").build();
+    User u2 = User.builder().tenantId(testTenant2Id).email("u2@t2.com").name("U2").passwordHash("p").role("ADMIN")
+        .scope("TENANT").build();
     u2 = userRepository.save(Objects.requireNonNull(u2));
     user2Id = u2.getId();
 
@@ -74,7 +77,7 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
         .build();
     p2 = productRepository.save(Objects.requireNonNull(p2));
     product2Id = p2.getId();
-    
+
     TenantContext.clear();
   }
 
@@ -86,30 +89,30 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
   @Test
   void testStockAuditTrail() {
     TenantContext.setTenantId(testTenant1Id);
-    
+
     // 1. Stock In
     stockService.stockIn(product1Id, 10, "Initial stock", user1Id);
-    
+
     // 2. Stock Out
     stockService.stockOut(product1Id, 5, "Sale", user1Id);
-    
+
     // 3. Stock Adjust
     stockService.stockAdjust(product1Id, -2, "Damage", user1Id);
 
     Page<StockMovement> movements = stockService.getMovements(PageRequest.of(0, 10));
     List<StockMovement> list = movements.getContent();
-    
+
     assertThat(list).hasSize(3);
-    
+
     // Most recent first
     assertThat(list.get(0).getMovementType()).isEqualTo("ADJUSTMENT");
     assertThat(list.get(0).getPreviousStock()).isEqualTo(55);
     assertThat(list.get(0).getNewStock()).isEqualTo(53);
-    
+
     assertThat(list.get(1).getMovementType()).isEqualTo("OUT");
     assertThat(list.get(1).getPreviousStock()).isEqualTo(60);
     assertThat(list.get(1).getNewStock()).isEqualTo(55);
-    
+
     assertThat(list.get(2).getMovementType()).isEqualTo("IN");
     assertThat(list.get(2).getPreviousStock()).isEqualTo(50);
     assertThat(list.get(2).getNewStock()).isEqualTo(60);
@@ -120,7 +123,7 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
     // Tenant 1 actions
     TenantContext.setTenantId(testTenant1Id);
     stockService.stockIn(product1Id, 10, "T1 In", user1Id);
-    
+
     // Tenant 2 actions
     TenantContext.setTenantId(testTenant2Id);
     stockService.stockIn(product2Id, 50, "T2 In", user2Id);
@@ -143,15 +146,15 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
   @Test
   void testLowStockAlerts() {
     TenantContext.setTenantId(testTenant1Id);
-    
+
     // Initial stock is 50, reorder level is 5.
     // Stock out 46 -> stock is 4 (Low Stock!)
     stockService.stockOut(product1Id, 46, "Big sale", user1Id);
-    
+
     var lowStock = productRepository.findLowStock(testTenant1Id);
     assertThat(lowStock).hasSize(1);
     assertThat(lowStock.get(0).getId()).isEqualTo(product1Id);
-    
+
     // Stock in 10 -> stock is 14 (Not low stock anymore)
     stockService.stockIn(product1Id, 10, "Restock", user1Id);
     lowStock = productRepository.findLowStock(testTenant1Id);

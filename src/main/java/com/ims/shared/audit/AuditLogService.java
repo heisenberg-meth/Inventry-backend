@@ -6,12 +6,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.lang.NonNull;
+
+import java.util.Objects;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
-@SuppressWarnings("null")
 public class AuditLogService {
 
   private final AuditLogRepository auditLogRepository;
@@ -27,7 +27,7 @@ public class AuditLogService {
         .details(details)
         .build();
 
-    auditLogRepository.save(auditEntry);
+    Objects.requireNonNull(auditLogRepository.save(auditEntry), "Audit entry must not be null after save");
   }
 
   /**
@@ -46,7 +46,7 @@ public class AuditLogService {
           .action(action)
           .details(details)
           .build();
-      auditLogRepository.save(auditEntry);
+      Objects.requireNonNull(auditLogRepository.save(auditEntry), "Audit entry must not be null after save");
     }
   }
 
@@ -89,7 +89,7 @@ public class AuditLogService {
   }
 
   public org.springframework.data.domain.Page<com.ims.model.AuditLog> getAllLogs(
-      @NonNull org.springframework.data.domain.Pageable pageable) {
+      org.springframework.data.domain.Pageable pageable) {
     var logs = auditLogRepository.findAll(pageable);
 
     // Unmask for ROOT when support mode is explicitly enabled
@@ -99,8 +99,12 @@ public class AuditLogService {
     return logs.map(this::maskSensitiveData); // everyone else gets masked
   }
 
-  public org.springframework.data.domain.Page<com.ims.model.AuditLog> getTenantLogs(Long tenantId,
-      @NonNull org.springframework.data.domain.Pageable pageable) {
+  public org.springframework.data.domain.Page<com.ims.model.AuditLog> getTenantLogs(
+      org.springframework.data.domain.Pageable pageable) {
+    Long tenantId = com.ims.shared.auth.TenantContext.getTenantId();
+    if (tenantId == null) {
+      throw new IllegalStateException("Missing tenant context");
+    }
     var logs = auditLogRepository.findByTenantId(tenantId, pageable);
 
     // Unmask for ROOT when support mode is explicitly enabled

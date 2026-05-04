@@ -1,7 +1,6 @@
 package com.ims.tenant.controller;
 
 import com.ims.model.Webhook;
-import com.ims.shared.rbac.RequiresRole;
 import com.ims.shared.webhook.WebhookService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -10,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -22,14 +22,14 @@ public class WebhookController {
   private final WebhookService webhookService;
 
   @GetMapping
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "List all configured webhooks")
   public ResponseEntity<List<Webhook>> list() {
     return ResponseEntity.ok(webhookService.getMyWebhooks());
   }
 
   @PostMapping
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Create new webhook")
   public ResponseEntity<Webhook> create(@RequestBody Map<String, String> body) {
     return ResponseEntity.ok(webhookService.createWebhook(
@@ -37,7 +37,7 @@ public class WebhookController {
   }
 
   @DeleteMapping("/{id}")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Remove webhook")
   public ResponseEntity<Void> delete(@PathVariable Long id) {
     webhookService.deleteWebhook(id);

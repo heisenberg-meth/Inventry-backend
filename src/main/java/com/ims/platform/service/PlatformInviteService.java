@@ -18,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@SuppressWarnings("null")
 public class PlatformInviteService {
 
   private final PlatformInviteRepository inviteRepository;
@@ -50,7 +49,7 @@ public class PlatformInviteService {
         .build();
 
     log.info("Platform invite created for {} by {}", email, currentUserId);
-    return java.util.Objects.requireNonNull(inviteRepository.save(invite));
+    return java.util.Objects.requireNonNull(inviteRepository.save(invite), "Saved invite must not be null");
   }
 
   public PlatformInvite validateToken(String token) {
@@ -83,10 +82,10 @@ public class PlatformInviteService {
         .isVerified(true)
         .build();
 
-    userRepository.save(user);
+    java.util.Objects.requireNonNull(userRepository.save(user), "Saved user must not be null");
 
     invite.setUsedAt(LocalDateTime.now());
-    inviteRepository.save(invite);
+    java.util.Objects.requireNonNull(inviteRepository.save(invite), "Updated invite must not be null");
 
     log.info("Platform invite completed for {}. User created.", invite.getEmail());
   }

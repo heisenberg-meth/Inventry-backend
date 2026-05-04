@@ -10,6 +10,7 @@ import com.ims.model.SupportTicket;
 import com.ims.shared.audit.AuditLogService;
 import com.ims.tenant.repository.SupportMessageRepository;
 import com.ims.tenant.repository.SupportTicketRepository;
+import com.ims.shared.auth.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -36,21 +37,22 @@ public class SupportService {
   // ==================== TENANT-SIDE ====================
 
   @Transactional
-  public @NonNull SupportTicket createTicket(
-      @NonNull Long tenantId, @NonNull Long userId, @NonNull CreateTicketRequest request) {
+  public SupportTicket createTicket(
+      Long userId, CreateTicketRequest request) {
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null)
+      throw new IllegalStateException("Missing tenant context");
 
-    SupportTicket ticket =
-        SupportTicket.builder()
-            .tenantId(tenantId)
-            .createdBy(userId)
-            .title(request.getTitle())
-            .description(request.getDescription())
-            .priority(request.getPriority() != null ? request.getPriority() : "MEDIUM")
-            .category(request.getCategory() != null ? request.getCategory() : "GENERAL")
-            .status("OPEN")
-            .build();
+    SupportTicket ticket = SupportTicket.builder()
+        .tenantId(tenantId)
+        .createdBy(userId)
+        .title(request.getTitle())
+        .description(request.getDescription())
+        .priority(request.getPriority() != null ? request.getPriority() : "MEDIUM")
+        .category(request.getCategory() != null ? request.getCategory() : "GENERAL")
+        .status("OPEN")
+        .build();
 
-    @SuppressWarnings("null")
     SupportTicket saved = ticketRepository.save(ticket);
     Objects.requireNonNull(saved);
 
@@ -61,16 +63,22 @@ public class SupportService {
   }
 
   @Transactional(readOnly = true)
-  public Page<SupportTicket> listTenantTickets(@NonNull Long tenantId, @NonNull Pageable pageable) {
+  public Page<SupportTicket> listTenantTickets(Pageable pageable) {
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null)
+      throw new IllegalStateException("Missing tenant context");
     return ticketRepository.findByTenantId(tenantId, pageable);
   }
 
   @Transactional(readOnly = true)
-  public Map<String, Object> getTenantTicketDetails(@NonNull Long tenantId, @NonNull Long ticketId) {
-    SupportTicket ticket =
-        ticketRepository
-            .findByIdAndTenantId(ticketId, tenantId)
-            .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
+  public Map<String, Object> getTenantTicketDetails(Long ticketId) {
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null)
+      throw new IllegalStateException("Missing tenant context");
+
+    SupportTicket ticket = ticketRepository
+        .findByIdAndTenantId(ticketId, tenantId)
+        .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
 
     List<SupportMessage> messages = messageRepository.findByTicketIdOrderByCreatedAtAsc(ticketId);
 
@@ -81,11 +89,14 @@ public class SupportService {
   }
 
   @Transactional
-  public SupportTicket closeTicketByTenant(@NonNull Long tenantId, @NonNull Long ticketId) {
-    SupportTicket ticket =
-        ticketRepository
-            .findByIdAndTenantId(ticketId, tenantId)
-            .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
+  public SupportTicket closeTicketByTenant(Long ticketId) {
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null)
+      throw new IllegalStateException("Missing tenant context");
+
+    SupportTicket ticket = ticketRepository
+        .findByIdAndTenantId(ticketId, tenantId)
+        .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
 
     ticket.setStatus("CLOSED");
     ticket.setUpdatedAt(LocalDateTime.now());
@@ -105,16 +116,15 @@ public class SupportService {
 
   @Transactional(readOnly = true)
   public Page<SupportTicket> listMyAssignedTickets(
-      @NonNull Long userId, @NonNull Pageable pageable) {
+      Long userId, Pageable pageable) {
     return ticketRepository.findByAssignedTo(userId, pageable);
   }
 
   @Transactional(readOnly = true)
   public Map<String, Object> getPlatformTicketDetails(@NonNull Long ticketId) {
-    SupportTicket ticket =
-        ticketRepository
-            .findById(ticketId)
-            .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
+    SupportTicket ticket = ticketRepository
+        .findById(ticketId)
+        .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
 
     List<SupportMessage> messages = messageRepository.findByTicketIdOrderByCreatedAtAsc(ticketId);
 
@@ -126,11 +136,10 @@ public class SupportService {
 
   @Transactional
   public SupportTicket assignTicket(
-      @NonNull Long ticketId, @NonNull AssignTicketRequest request) {
-    SupportTicket ticket =
-        ticketRepository
-            .findById(ticketId)
-            .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
+      @NonNull Long ticketId, AssignTicketRequest request) {
+    SupportTicket ticket = ticketRepository
+        .findById(ticketId)
+        .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
 
     ticket.setAssignedTo(request.getSupportAdminId());
     if ("OPEN".equals(ticket.getStatus())) {
@@ -150,11 +159,10 @@ public class SupportService {
 
   @Transactional
   public SupportTicket updateStatus(
-      @NonNull Long ticketId, @NonNull UpdateTicketStatusRequest request) {
-    SupportTicket ticket =
-        ticketRepository
-            .findById(ticketId)
-            .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
+      @NonNull Long ticketId, UpdateTicketStatusRequest request) {
+    SupportTicket ticket = ticketRepository
+        .findById(ticketId)
+        .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
 
     ticket.setStatus(request.getStatus());
     ticket.setUpdatedAt(LocalDateTime.now());
@@ -170,11 +178,10 @@ public class SupportService {
   }
 
   @Transactional
-  public SupportTicket closeTicketByPlatform(@NonNull Long ticketId) {
-    SupportTicket ticket =
-        ticketRepository
-            .findById(ticketId)
-            .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
+  public SupportTicket closeTicketByPlatform(Long ticketId) {
+    SupportTicket ticket = ticketRepository
+        .findById(ticketId)
+        .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
 
     ticket.setStatus("CLOSED");
     ticket.setUpdatedAt(LocalDateTime.now());
@@ -188,24 +195,21 @@ public class SupportService {
   // ==================== SHARED ====================
 
   @Transactional
-  public @NonNull SupportMessage addMessage(
-      @NonNull Long ticketId, @NonNull Long senderId, @NonNull String senderType,
-      @NonNull AddMessageRequest request) {
+  public SupportMessage addMessage(
+      Long ticketId, Long senderId, String senderType,
+      AddMessageRequest request) {
 
-    SupportTicket ticket =
-        ticketRepository
-            .findById(ticketId)
-            .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
+    SupportTicket ticket = ticketRepository
+        .findById(ticketId)
+        .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
 
-    SupportMessage message =
-        SupportMessage.builder()
-            .ticketId(ticketId)
-            .senderId(senderId)
-            .senderType(senderType)
-            .message(request.getMessage())
-            .build();
+    SupportMessage message = SupportMessage.builder()
+        .ticketId(ticketId)
+        .senderId(senderId)
+        .senderType(senderType)
+        .message(request.getMessage())
+        .build();
 
-    @SuppressWarnings("null")
     SupportMessage saved = messageRepository.save(message);
     Objects.requireNonNull(saved);
 

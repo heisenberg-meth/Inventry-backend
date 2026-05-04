@@ -34,7 +34,8 @@ public class Category {
   @Column(nullable = false)
   private String name;
 
-  @Column private String description;
+  @Column
+  private String description;
 
   @Column(name = "tax_rate")
   @Builder.Default

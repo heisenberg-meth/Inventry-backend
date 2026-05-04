@@ -2,11 +2,13 @@ package com.ims.config;
 
 import com.ims.shared.audit.TraceFilter;
 import com.ims.shared.auth.JwtFilter;
+import com.ims.shared.auth.TenantContextFilter;
 import com.ims.shared.ratelimit.RateLimitFilter;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -19,18 +21,22 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.http.HttpStatus;
-
-
+import org.springframework.core.env.Profiles;
 import org.springframework.beans.factory.annotation.Value;
+
+import org.springframework.core.env.Environment;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
   private final JwtFilter jwtFilter;
   private final RateLimitFilter rateLimitFilter;
   private final TraceFilter traceFilter;
+  private final TenantContextFilter tenantContextFilter;
+  private final Environment environment;
 
   @Value("${app.security.allowed-origins:*}")
   private String allowedOrigins;
@@ -43,34 +49,37 @@ public class SecurityConfig {
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .headers(headers -> headers
             .frameOptions(frame -> frame.deny())
-            .xssProtection(xss -> xss.headerValue(org.springframework.security.web.header.writers.XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
-            .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'; frame-ancestors 'none'; object-src 'none';"))
-            .httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31536000))
-        )
+            .xssProtection(xss -> xss.headerValue(
+                org.springframework.security.web.header.writers.XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
+            .contentSecurityPolicy(
+                csp -> csp.policyDirectives("default-src 'self'; frame-ancestors 'none'; object-src 'none';"))
+            .httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31536000)))
         .exceptionHandling(
             ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
         .authorizeHttpRequests(
-            auth ->
-                auth.requestMatchers("/auth/**")
-                    .permitAll()
-                    .requestMatchers("/api/auth/**")
-                    .permitAll()
-                    .requestMatchers("/api/platform/auth/**")
-                    .permitAll()
-                    .requestMatchers("/api/platform/invites/accept", "/api/platform/invites/complete")
-                    .permitAll()
-                    .requestMatchers("/api/tenant/payments/gateway/webhook")
-                    .permitAll()
-                    .requestMatchers("/actuator/**")
-                    .permitAll()
-                    .requestMatchers(
-                        "/swagger-ui/**", "/api-docs/**", "/swagger-ui.html", "/v3/api-docs/**")
-                    .permitAll()
-                    .anyRequest()
-                    .authenticated())
+            auth -> auth.requestMatchers("/auth/**")
+                .permitAll()
+                .requestMatchers("/api/auth/**")
+                .permitAll()
+                .requestMatchers("/api/platform/auth/**")
+                .permitAll()
+                .requestMatchers("/api/platform/invites/accept", "/api/platform/invites/complete")
+                .permitAll()
+                .requestMatchers("/api/tenant/payments/gateway/webhook")
+                .permitAll()
+                .requestMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus")
+                .permitAll()
+                .requestMatchers("/actuator/**")
+                .hasRole("ADMIN")
+                .requestMatchers(
+                    "/swagger-ui/**", "/api-docs/**", "/swagger-ui.html", "/v3/api-docs/**")
+                .permitAll()
+                .anyRequest()
+                .authenticated())
         .addFilterBefore(traceFilter, UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-        .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+        .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+        .addFilterBefore(tenantContextFilter, UsernamePasswordAuthenticationFilter.class);
 
     return http.build();
   }
@@ -83,16 +92,21 @@ public class SecurityConfig {
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
-    if (allowedOrigins == null || "*".equals(allowedOrigins)) {
-      // Never use wildcard in production to avoid security risks.
-      // Defailing to local dev for safety if nothing provided.
-      configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:5173"));
+    if (allowedOrigins == null || allowedOrigins.trim().isEmpty() || "*".equals(allowedOrigins)) {
+      // NEVER use wildcard in production - fail securely
+      if (environment != null
+          && environment.acceptsProfiles(Profiles.of("dev", "local"))) {
+        configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:5173"));
+      } else {
+        throw new IllegalStateException("CORS allowed-origins must be explicitly configured for non-dev profiles");
+      }
     } else {
       configuration.setAllowedOrigins(List.of(allowedOrigins.split(",")));
     }
     configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     configuration.setAllowCredentials(true);
-    configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Correlation-ID", "ngrok-skip-browser-warning"));
+    configuration
+        .setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Correlation-ID", "ngrok-skip-browser-warning"));
     configuration.setExposedHeaders(List.of("X-Correlation-ID", "X-RateLimit-Limit", "X-RateLimit-Remaining"));
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", configuration);

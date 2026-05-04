@@ -20,7 +20,6 @@ import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.lang.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -29,7 +28,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@SuppressWarnings("null")
 public class OrderService {
 
   private final OrderRepository orderRepository;
@@ -46,7 +44,7 @@ public class OrderService {
   private static final int PERCENTAGE_BASE = 100;
 
   @Transactional
-  public @NonNull Map<String, Object> createPurchaseOrder(@NonNull Map<String, Object> request, @NonNull Long userId) {
+  public Map<String, Object> createPurchaseOrder(Map<String, Object> request, Long userId) {
     Long supplierId = Long.valueOf(request.get("supplier_id").toString());
     @SuppressWarnings("unchecked")
     List<Map<String, Object>> items = (List<Map<String, Object>>) request.get("items");
@@ -135,7 +133,7 @@ public class OrderService {
   }
 
   @Transactional
-  public @NonNull Map<String, Object> createSalesOrder(@NonNull Map<String, Object> request, @NonNull Long userId) {
+  public Map<String, Object> createSalesOrder(Map<String, Object> request, Long userId) {
     Long customerId = request.containsKey("customer_id")
         ? Long.valueOf(request.get("customer_id").toString())
         : null;
@@ -266,7 +264,7 @@ public class OrderService {
   }
 
   @Transactional
-  public @NonNull Order createReturnOrder(@NonNull Map<String, Object> request, @NonNull Long userId) {
+  public Order createReturnOrder(Map<String, Object> request, Long userId) {
     Long originalOrderId = Long.valueOf(request.get("original_order_id").toString());
     @SuppressWarnings("unchecked")
     List<Map<String, Object>> returnItems = (List<Map<String, Object>>) request.get("items");
@@ -344,15 +342,15 @@ public class OrderService {
     return returnOrder;
   }
 
-  public @NonNull Page<Order> getOrders(@NonNull Pageable pageable) {
+  public Page<Order> getOrders(Pageable pageable) {
     return Objects.requireNonNull(orderRepository.findAll(pageable));
   }
 
-  public @NonNull Page<Order> getOrdersByType(@NonNull String type, @NonNull Pageable pageable) {
+  public Page<Order> getOrdersByType(String type, Pageable pageable) {
     return Objects.requireNonNull(orderRepository.findByType(type, pageable));
   }
 
-  public @NonNull Map<String, Object> getOrderWithItems(@NonNull Long id) {
+  public Map<String, Object> getOrderWithItems(Long id) {
     Order order = orderRepository
         .findById(id)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
@@ -361,7 +359,7 @@ public class OrderService {
   }
 
   @Transactional(readOnly = true)
-  public byte[] generateOrderPdf(@NonNull Long id) {
+  public byte[] generateOrderPdf(Long id) {
     Order order = orderRepository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
@@ -418,7 +416,7 @@ public class OrderService {
   }
 
   @Transactional
-  public @NonNull Order confirmOrder(@NonNull Long id, @NonNull Long userId) {
+  public Order confirmOrder(Long id, Long userId) {
     Order order = orderRepository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
@@ -454,7 +452,7 @@ public class OrderService {
   }
 
   @Transactional
-  public @NonNull Order shipOrder(@NonNull Long id, @NonNull Long userId) {
+  public Order shipOrder(Long id, Long userId) {
     Order order = orderRepository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
@@ -470,7 +468,7 @@ public class OrderService {
   }
 
   @Transactional
-  public @NonNull Order completeOrder(@NonNull Long id, @NonNull Long userId) {
+  public Order completeOrder(Long id, Long userId) {
     Order order = orderRepository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
@@ -497,7 +495,7 @@ public class OrderService {
   }
 
   @Transactional
-  public @NonNull Order cancelOrder(@NonNull Long id, @NonNull Long userId) {
+  public Order cancelOrder(Long id, Long userId) {
     Order order = orderRepository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
@@ -523,16 +521,16 @@ public class OrderService {
     return order;
   }
 
-  public @NonNull Page<Order> getOrdersBySupplier(@NonNull Long supplierId, @NonNull Pageable pageable) {
+  public Page<Order> getOrdersBySupplier(Long supplierId, Pageable pageable) {
     return Objects.requireNonNull(orderRepository.findBySupplierId(supplierId, pageable));
   }
 
-  public @NonNull Page<Order> getOrdersByCustomer(@NonNull Long customerId, @NonNull Pageable pageable) {
+  public Page<Order> getOrdersByCustomer(Long customerId, Pageable pageable) {
     return Objects.requireNonNull(orderRepository.findByCustomerId(customerId, pageable));
   }
 
   @Transactional
-  public @NonNull Order updateOrderStatus(@NonNull Long id, @NonNull String status) {
+  public Order updateOrderStatus(Long id, String status) {
     Order order = orderRepository
         .findById(id)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));

@@ -3,6 +3,7 @@ package com.ims.shared.auth;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import java.util.Date;
 import java.util.HashMap;
@@ -15,9 +16,6 @@ import org.springframework.stereotype.Component;
 public class JwtUtil {
 
   private static final long MILLIS_IN_SECOND = 1000L;
-  private static final int HEX_RADIX = 16;
-  private static final int BYTE_SHIFT = 4;
-
 
   private final SecretKey key;
   private final long expirySeconds;
@@ -27,7 +25,8 @@ public class JwtUtil {
       @Value("${app.jwt.secret}") String secret,
       @Value("${app.jwt.expiry-seconds}") long expirySeconds,
       @Value("${app.jwt.refresh-expiry-seconds}") long refreshExpirySeconds) {
-    this.key = Keys.hmacShaKeyFor(hexStringToByteArray(secret));
+    // Use Base64 decoding for production-safe key (must be pre-encoded 256-bit key)
+    this.key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
     this.expirySeconds = expirySeconds;
     this.refreshExpirySeconds = refreshExpirySeconds;
   }
@@ -46,13 +45,12 @@ public class JwtUtil {
       claims.put("business_type", businessType);
     }
 
-
     return Jwts.builder()
         .claims(claims)
         .subject(userId.toString())
         .issuedAt(new Date())
         .expiration(new Date(System.currentTimeMillis() + expirySeconds * MILLIS_IN_SECOND))
-        .signWith(key)
+        .signWith(key, Jwts.SIG.HS256)
         .compact();
   }
 
@@ -71,19 +69,22 @@ public class JwtUtil {
       claims.put("business_type", businessType);
     }
 
-
     return Jwts.builder()
         .claims(claims)
         .subject(userId.toString())
         .issuedAt(new Date())
         .expiration(new Date(System.currentTimeMillis() + refreshExpirySeconds * MILLIS_IN_SECOND))
-        .signWith(key)
+        .signWith(key, Jwts.SIG.HS256)
         .compact();
   }
 
   public boolean validateToken(String token) {
     try {
-      Jwts.parser().verifyWith(key).build().parseSignedClaims(token);
+      Claims claims = extractAllClaims(token);
+      // Explicit expiration check
+      if (claims.getExpiration().before(new Date())) {
+        return false;
+      }
       return true;
     } catch (JwtException | IllegalArgumentException e) {
       return false;
@@ -91,7 +92,11 @@ public class JwtUtil {
   }
 
   public Claims extractAllClaims(String token) {
-    return Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+    return Jwts.parser()
+        .verifyWith(key)
+        .build()
+        .parseSignedClaims(token)
+        .getPayload();
   }
 
   public Long extractUserId(String token) {
@@ -121,17 +126,5 @@ public class JwtUtil {
 
   public long getExpirySeconds() {
     return expirySeconds;
-  }
-
-  private byte[] hexStringToByteArray(String s) {
-    int len = s.length();
-    byte[] data = new byte[len / 2];
-    for (int i = 0; i < len; i += 2) {
-      data[i / 2] =
-          (byte)
-              ((Character.digit(s.charAt(i), HEX_RADIX) << BYTE_SHIFT)
-                  + Character.digit(s.charAt(i + 1), HEX_RADIX));
-    }
-    return data;
   }
 }

@@ -17,142 +17,151 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import java.math.BigDecimal;
+import java.util.Objects;
+
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest(properties = {
-    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
-    "spring.cache.type=none"
+                "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
+                "spring.cache.type=none"
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@SuppressWarnings("null")
+
 public class AuditTrailIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired private MockMvc mockMvc;
-  @Autowired private ObjectMapper objectMapper;
-  @Autowired private SignupService signupService;
+        @Autowired
+        private MockMvc mockMvc;
+        @Autowired
+        private ObjectMapper objectMapper;
+        @Autowired
+        private SignupService signupService;
 
-  @BeforeEach
-  void setup() {
-    cleanupDatabase();
-    mockRedisAndCache();
-  }
+        @BeforeEach
+        void setup() {
+                cleanupDatabase();
+                mockRedisAndCache();
+        }
 
-  @Test
-  void testProductAuditLogging() throws Exception {
-    SignupRequest signup = new SignupRequest();
-    signup.setBusinessName("Audit Corp");
-    signup.setWorkspaceSlug("audit-corp");
-    signup.setBusinessType("RETAIL");
-    signup.setOwnerName("Admin");
-    signup.setOwnerEmail("admin@audit.com");
-    signup.setPassword("password123");
-    com.ims.dto.response.SignupResponse response = signupService.signup(signup);
-    verifyUser("admin@audit.com");
-    
-    String token = login("admin@audit.com", "password123", response.getCompanyCode());
+        @Test
+        void testProductAuditLogging() throws Exception {
+                SignupRequest signup = new SignupRequest();
+                signup.setBusinessName("Audit Corp");
+                signup.setWorkspaceSlug("audit-corp");
+                signup.setBusinessType("RETAIL");
+                signup.setOwnerName("Admin");
+                signup.setOwnerEmail("admin@audit.com");
+                signup.setPassword("password123");
+                com.ims.dto.response.SignupResponse response = signupService.signup(signup);
+                verifyUser("admin@audit.com");
 
-    // 1. Create Product
-    CreateProductRequest createReq = new CreateProductRequest();
-    createReq.setName("Audit Product");
-    createReq.setSku("AUDIT-001");
-    createReq.setSalePrice(new BigDecimal("10.00"));
-    
-    String requestJson = objectMapper.writeValueAsString(createReq);
-    MvcResult result = mockMvc.perform(post("/api/tenant/products")
-            .header("Authorization", "Bearer " + token)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(requestJson))
-        .andExpect(status().isCreated())
-        .andReturn();
-    
-    ProductResponse product = objectMapper.readValue(result.getResponse().getContentAsString(), ProductResponse.class);
+                String token = login("admin@audit.com", "password123", response.getCompanyCode());
 
-    // 2. Verify Audit Log for creation
-    mockMvc.perform(get("/api/tenant/audits")
-            .header("Authorization", "Bearer " + token))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.content[?(@.action == 'CREATE')]").exists());
+                // 1. Create Product
+                CreateProductRequest createReq = new CreateProductRequest();
+                createReq.setName("Audit Product");
+                createReq.setSku("AUDIT-001");
+                createReq.setSalePrice(new BigDecimal("10.00"));
 
-    // 3. Update Product
-    createReq.setName("Updated Audit Product");
-    String updateJson = objectMapper.writeValueAsString(createReq);
-    mockMvc.perform(put("/api/tenant/products/" + product.getId())
-            .header("Authorization", "Bearer " + token)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(updateJson))
-        .andExpect(status().isOk());
+                String requestJson = objectMapper.writeValueAsString(createReq);
+                MvcResult result = mockMvc.perform(post("/api/tenant/products")
+                                .header("Authorization", "Bearer " + token)
+                                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                                .content(Objects.requireNonNull(requestJson)))
+                                .andExpect(status().isCreated())
+                                .andReturn();
 
-    // 4. Verify Audit Log for update
-    mockMvc.perform(get("/api/tenant/audits")
-            .header("Authorization", "Bearer " + token))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.content[?(@.action == 'UPDATE')]").exists());
-  }
+                ProductResponse product = objectMapper.readValue(result.getResponse().getContentAsString(),
+                                ProductResponse.class);
 
-  @Test
-  void testAuditIsolation() throws Exception {
-    // Tenant 1
-    com.ims.dto.response.SignupResponse r1 = signupService.signup(createSignupRequest("T1", "t1-audit", "admin@t1.com"));
-    verifyUser("admin@t1.com");
-    String t1Token = login("admin@t1.com", "password123", r1.getCompanyCode());
-    
-    // Tenant 2
-    com.ims.dto.response.SignupResponse r2 = signupService.signup(createSignupRequest("T2", "t2-audit", "admin@t2.com"));
-    verifyUser("admin@t2.com");
-    String t2Token = login("admin@t2.com", "password123", r2.getCompanyCode());
+                // 2. Verify Audit Log for creation
+                mockMvc.perform(get("/api/tenant/audits")
+                                .header("Authorization", "Bearer " + token))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.content[?(@.action == 'CREATE')]").exists());
 
-    // T1 performs an action
-    CreateProductRequest createReq = new CreateProductRequest();
-    createReq.setName("T1 Product");
-    createReq.setSku("T1-001");
-    createReq.setSalePrice(new BigDecimal("10.00"));
-    String t1ReqJson = objectMapper.writeValueAsString(createReq);
-    mockMvc.perform(post("/api/tenant/products")
-            .header("Authorization", "Bearer " + t1Token)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(t1ReqJson))
-        .andExpect(status().isCreated());
+                // 3. Update Product
+                createReq.setName("Updated Audit Product");
+                String updateJson = objectMapper.writeValueAsString(createReq);
+                mockMvc.perform(put("/api/tenant/products/" + product.getId())
+                                .header("Authorization", "Bearer " + token)
+                                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                                .content(Objects.requireNonNull(updateJson)))
+                                .andExpect(status().isOk());
 
-    // T1 should see 3 logs (Signup + Login + Create)
-    mockMvc.perform(get("/api/tenant/audits").header("Authorization", "Bearer " + t1Token))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.content.length()").value(3));
+                // 4. Verify Audit Log for update
+                mockMvc.perform(get("/api/tenant/audits")
+                                .header("Authorization", "Bearer " + token))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.content[?(@.action == 'UPDATE')]").exists());
+        }
 
-    // T2 should see 2 logs (Signup + Login)
-    mockMvc.perform(get("/api/tenant/audits").header("Authorization", "Bearer " + t2Token))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.content.length()").value(2));
-  }
+        @Test
+        void testAuditIsolation() throws Exception {
+                // Tenant 1
+                com.ims.dto.response.SignupResponse r1 = signupService
+                                .signup(createSignupRequest("T1", "t1-audit", "admin@t1.com"));
+                verifyUser("admin@t1.com");
+                String t1Token = login("admin@t1.com", "password123", r1.getCompanyCode());
 
-  private SignupRequest createSignupRequest(String name, String slug, String email) {
-    SignupRequest signup = new SignupRequest();
-    signup.setBusinessName(name);
-    signup.setWorkspaceSlug(slug);
-    signup.setBusinessType("RETAIL");
-    signup.setOwnerName("Admin");
-    signup.setOwnerEmail(email);
-    signup.setPassword("password123");
-    return signup;
-  }
+                // Tenant 2
+                com.ims.dto.response.SignupResponse r2 = signupService
+                                .signup(createSignupRequest("T2", "t2-audit", "admin@t2.com"));
+                verifyUser("admin@t2.com");
+                String t2Token = login("admin@t2.com", "password123", r2.getCompanyCode());
 
-  private String login(String email, String password, String workspace) throws Exception {
-    LoginRequest loginRequest = new LoginRequest();
-    loginRequest.setEmail(email);
-    loginRequest.setPassword(password);
-    loginRequest.setCompanyCode(workspace);
-    
-    String loginJson = objectMapper.writeValueAsString(loginRequest);
-    MvcResult result = mockMvc.perform(post("/api/auth/login")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(loginJson))
-        .andExpect(status().isOk())
-        .andReturn();
+                // T1 performs an action
+                CreateProductRequest createReq = new CreateProductRequest();
+                createReq.setName("T1 Product");
+                createReq.setSku("T1-001");
+                createReq.setSalePrice(new BigDecimal("10.00"));
+                String t1ReqJson = objectMapper.writeValueAsString(createReq);
+                mockMvc.perform(post("/api/tenant/products")
+                                .header("Authorization", "Bearer " + t1Token)
+                                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                                .content(Objects.requireNonNull(t1ReqJson)))
+                                .andExpect(status().isCreated());
 
-    LoginResponse response = objectMapper.readValue(result.getResponse().getContentAsString(), LoginResponse.class);
-    return response.getAccessToken();
-  }
+                // T1 should see 3 logs (Signup + Login + Create)
+                mockMvc.perform(get("/api/tenant/audits").header("Authorization", "Bearer " + t1Token))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.content.length()").value(3));
+
+                // T2 should see 2 logs (Signup + Login)
+                mockMvc.perform(get("/api/tenant/audits").header("Authorization", "Bearer " + t2Token))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.content.length()").value(2));
+        }
+
+        private SignupRequest createSignupRequest(String name, String slug, String email) {
+                SignupRequest signup = new SignupRequest();
+                signup.setBusinessName(name);
+                signup.setWorkspaceSlug(slug);
+                signup.setBusinessType("RETAIL");
+                signup.setOwnerName("Admin");
+                signup.setOwnerEmail(email);
+                signup.setPassword("password123");
+                return signup;
+        }
+
+        private String login(String email, String password, String workspace) throws Exception {
+                LoginRequest loginRequest = new LoginRequest();
+                loginRequest.setEmail(email);
+                loginRequest.setPassword(password);
+                loginRequest.setCompanyCode(workspace);
+
+                String loginJson = objectMapper.writeValueAsString(loginRequest);
+                MvcResult result = mockMvc.perform(post("/api/auth/login")
+                                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                                .content(Objects.requireNonNull(loginJson)))
+                                .andExpect(status().isOk())
+                                .andReturn();
+
+                LoginResponse response = objectMapper.readValue(result.getResponse().getContentAsString(),
+                                LoginResponse.class);
+                return response.getAccessToken();
+        }
 }

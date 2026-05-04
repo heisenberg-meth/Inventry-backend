@@ -12,7 +12,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
 import com.ims.shared.auth.JwtUtil;
 import jakarta.servlet.FilterChain;
 import java.util.concurrent.TimeUnit;
@@ -30,11 +29,9 @@ class RateLimitFilterTest {
   private static final int TENANT_RPM = 20;
   private static final int WINDOW_SECONDS = 60;
 
-  @SuppressWarnings("unchecked")
-  private final RedisTemplate<String, Object> redisTemplate = mock(RedisTemplate.class);
+  private RedisTemplate<String, Object> redisTemplate;
 
-  @SuppressWarnings("unchecked")
-  private final ZSetOperations<String, Object> zSet = mock(ZSetOperations.class);
+  private ZSetOperations<String, Object> zSet;
 
   private final JwtUtil jwtUtil = mock(JwtUtil.class);
 
@@ -43,9 +40,8 @@ class RateLimitFilterTest {
   @BeforeEach
   void setup() {
     when(redisTemplate.opsForZSet()).thenReturn(zSet);
-    filter =
-        new RateLimitFilter(
-            redisTemplate, jwtUtil, AUTH_RPM, PUBLIC_RPM, TENANT_RPM, WINDOW_SECONDS);
+    filter = new RateLimitFilter(
+        redisTemplate, jwtUtil, AUTH_RPM, PUBLIC_RPM, TENANT_RPM, WINDOW_SECONDS);
   }
 
   @Test
@@ -210,8 +206,10 @@ class RateLimitFilterTest {
     filter.doFilter(req, res, chain);
 
     assertEquals(200, res.getStatus());
-    // Cache outage → rate-limit headers are intentionally absent so downstream code cannot
-    // mistake them for an authoritative count. Contract locked in by this assertion.
+    // Cache outage → rate-limit headers are intentionally absent so downstream code
+    // cannot
+    // mistake them for an authoritative count. Contract locked in by this
+    // assertion.
     assertNull(res.getHeader("X-RateLimit-Limit"));
     assertNull(res.getHeader("X-RateLimit-Remaining"));
     assertNull(res.getHeader("Retry-After"));
@@ -234,7 +232,7 @@ class RateLimitFilterTest {
 
   @Test
   void skipsExcludedSwaggerAndApiDocsPaths() throws Exception {
-    for (String path : new String[] {"/swagger-ui/index.html", "/v3/api-docs/ims-api"}) {
+    for (String path : new String[] { "/swagger-ui/index.html", "/v3/api-docs/ims-api" }) {
       MockHttpServletRequest req = new MockHttpServletRequest("GET", path);
       req.setRemoteAddr("10.0.0.8");
       MockHttpServletResponse res = new MockHttpServletResponse();
@@ -275,43 +273,38 @@ class RateLimitFilterTest {
 
     filter.doFilter(req, res, chain);
 
-    // Not the auth tier — contains "/auth" as a substring but is not /auth or /api/auth subtree.
+    // Not the auth tier — contains "/auth" as a substring but is not /auth or
+    // /api/auth subtree.
     assertEquals(String.valueOf(PUBLIC_RPM), res.getHeader("X-RateLimit-Limit"));
   }
 
   @Test
   void rejectsInvalidConfiguration() {
-    // Each setting is checked and reported independently so operators see the exact property key
+    // Each setting is checked and reported independently so operators see the exact
+    // property key
     // (e.g. app.rate-limit.public-rpm) that needs fixing.
-    IllegalArgumentException authEx =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                new RateLimitFilter(
-                    redisTemplate, jwtUtil, 0, PUBLIC_RPM, TENANT_RPM, WINDOW_SECONDS));
+    IllegalArgumentException authEx = assertThrows(
+        IllegalArgumentException.class,
+        () -> new RateLimitFilter(
+            redisTemplate, jwtUtil, 0, PUBLIC_RPM, TENANT_RPM, WINDOW_SECONDS));
     assertEquals("app.rate-limit.auth-rpm must be >= 1 (got 0)", authEx.getMessage());
 
-    IllegalArgumentException publicEx =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                new RateLimitFilter(
-                    redisTemplate, jwtUtil, AUTH_RPM, 0, TENANT_RPM, WINDOW_SECONDS));
+    IllegalArgumentException publicEx = assertThrows(
+        IllegalArgumentException.class,
+        () -> new RateLimitFilter(
+            redisTemplate, jwtUtil, AUTH_RPM, 0, TENANT_RPM, WINDOW_SECONDS));
     assertEquals("app.rate-limit.public-rpm must be >= 1 (got 0)", publicEx.getMessage());
 
-    IllegalArgumentException tenantEx =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                new RateLimitFilter(
-                    redisTemplate, jwtUtil, AUTH_RPM, PUBLIC_RPM, 0, WINDOW_SECONDS));
+    IllegalArgumentException tenantEx = assertThrows(
+        IllegalArgumentException.class,
+        () -> new RateLimitFilter(
+            redisTemplate, jwtUtil, AUTH_RPM, PUBLIC_RPM, 0, WINDOW_SECONDS));
     assertEquals(
         "app.rate-limit.authenticated-rpm must be >= 1 (got 0)", tenantEx.getMessage());
 
-    IllegalArgumentException windowEx =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> new RateLimitFilter(redisTemplate, jwtUtil, AUTH_RPM, PUBLIC_RPM, TENANT_RPM, 0));
+    IllegalArgumentException windowEx = assertThrows(
+        IllegalArgumentException.class,
+        () -> new RateLimitFilter(redisTemplate, jwtUtil, AUTH_RPM, PUBLIC_RPM, TENANT_RPM, 0));
     assertEquals(
         "app.rate-limit.window-seconds must be >= 1 (got 0)", windowEx.getMessage());
   }

@@ -2,7 +2,6 @@ package com.ims.platform.controller;
 
 import com.ims.model.AuditLog;
 import com.ims.shared.audit.AuditLogService;
-import com.ims.shared.rbac.RequiresRole;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -11,7 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import java.util.Objects;
-import org.springframework.lang.NonNull;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,9 +25,9 @@ public class PlatformAuditController {
   private final AuditLogService auditLogService;
 
   @GetMapping("/logs")
-  @RequiresRole({"ROOT", "PLATFORM_ADMIN"})
+  @PreAuthorize("hasAnyRole('ROOT', 'PLATFORM_ADMIN')")
   @Operation(summary = "View aggregated audit logs", description = "Shows combined logs across all tenants for platform monitoring")
-  public ResponseEntity<Page<AuditLog>> getAggregatedLogs(@NonNull Pageable pageable) {
+  public ResponseEntity<Page<AuditLog>> getAggregatedLogs(Pageable pageable) {
     return ResponseEntity.ok(auditLogService.getAllLogs(Objects.requireNonNull(pageable)));
   }
 }

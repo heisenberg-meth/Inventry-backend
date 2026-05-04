@@ -13,7 +13,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.lang.NonNull;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,7 +27,7 @@ public class PlatformUserService {
   private final AuditLogService auditLogService;
 
   @Transactional
-  public @NonNull User createPlatformUser(@NonNull CreatePlatformUserRequest request) {
+  public User createPlatformUser(CreatePlatformUserRequest request) {
     if (!request.getRole().equals("PLATFORM_ADMIN") && !request.getRole().equals("SUPPORT_ADMIN")) {
       throw new IllegalArgumentException("Invalid role. Must be PLATFORM_ADMIN or SUPPORT_ADMIN.");
     }
@@ -36,16 +35,15 @@ public class PlatformUserService {
       throw new IllegalArgumentException("Email already in use");
     }
 
-    User user =
-        User.builder()
-            .name(request.getName())
-            .email(request.getEmail())
-            .passwordHash(passwordEncoder.encode(request.getPassword()))
-            .role(request.getRole())
-            .scope("PLATFORM")
-            .tenantId(null)
-            .isActive(true)
-            .build();
+    User user = User.builder()
+        .name(request.getName())
+        .email(request.getEmail())
+        .passwordHash(passwordEncoder.encode(request.getPassword()))
+        .role(request.getRole())
+        .scope("PLATFORM")
+        .tenantId(null)
+        .isActive(true)
+        .build();
 
     User saved = Objects.requireNonNull(userRepository.save(Objects.requireNonNull(user)));
     auditLogService.log(AuditAction.CREATE_PLATFORM_ADMIN, null, saved.getId(),
@@ -54,16 +52,15 @@ public class PlatformUserService {
   }
 
   @Transactional(readOnly = true)
-  public @NonNull Page<User> getPlatformUsers(@NonNull Pageable pageable) {
+  public Page<User> getPlatformUsers(Pageable pageable) {
     return Objects.requireNonNull(userRepository.findByTenantIdIsNull(pageable));
   }
 
   @Transactional(readOnly = true)
-  public @NonNull Map<String, Object> getPlatformUser(@NonNull Long id) {
-    User user =
-        userRepository
-            .findByIdAndTenantIdIsNull(id)
-            .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
+  public Map<String, Object> getPlatformUser(Long id) {
+    User user = userRepository
+        .findByIdAndTenantIdIsNull(id)
+        .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
 
     Map<String, Object> response = new HashMap<>();
     response.put("id", user.getId());
@@ -77,14 +74,13 @@ public class PlatformUserService {
   }
 
   @Transactional
-  public @NonNull User updatePlatformUserRole(@NonNull Long id, @NonNull String role) {
+  public User updatePlatformUserRole(Long id, String role) {
     if (!role.equals("PLATFORM_ADMIN") && !role.equals("SUPPORT_ADMIN")) {
       throw new IllegalArgumentException("Invalid role. Must be PLATFORM_ADMIN or SUPPORT_ADMIN.");
     }
-    User user =
-        userRepository
-            .findByIdAndTenantIdIsNull(id)
-            .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
+    User user = userRepository
+        .findByIdAndTenantIdIsNull(id)
+        .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
 
     if (user.getRole().equals("ROOT")) {
       throw new IllegalArgumentException("Cannot modify ROOT user role");
@@ -95,11 +91,10 @@ public class PlatformUserService {
   }
 
   @Transactional
-  public void suspendPlatformUser(@NonNull Long id) {
-    User user =
-        userRepository
-            .findByIdAndTenantIdIsNull(id)
-            .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
+  public void suspendPlatformUser(Long id) {
+    User user = userRepository
+        .findByIdAndTenantIdIsNull(id)
+        .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
 
     if (user.getRole().equals("ROOT")) {
       throw new IllegalArgumentException("Cannot suspend ROOT user");
@@ -113,11 +108,10 @@ public class PlatformUserService {
   }
 
   @Transactional
-  public void activatePlatformUser(@NonNull Long id) {
-    User user =
-        userRepository
-            .findByIdAndTenantIdIsNull(id)
-            .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
+  public void activatePlatformUser(Long id) {
+    User user = userRepository
+        .findByIdAndTenantIdIsNull(id)
+        .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
 
     user.setIsActive(true);
     userRepository.save(user);
@@ -127,11 +121,10 @@ public class PlatformUserService {
   }
 
   @Transactional
-  public void deactivatePlatformUser(@NonNull Long id) {
-    User user =
-        userRepository
-            .findByIdAndTenantIdIsNull(id)
-            .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
+  public void deactivatePlatformUser(Long id) {
+    User user = userRepository
+        .findByIdAndTenantIdIsNull(id)
+        .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
 
     if (user.getRole().equals("ROOT")) {
       throw new IllegalArgumentException("Cannot deactivate ROOT user");
@@ -142,12 +135,11 @@ public class PlatformUserService {
   }
 
   @Transactional
-  public @NonNull Map<String, String> resetPlatformUserPassword(
-      @NonNull Long id, @NonNull String newPassword) {
-    User user =
-        userRepository
-            .findByIdAndTenantIdIsNull(id)
-            .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
+  public Map<String, String> resetPlatformUserPassword(
+      Long id, String newPassword) {
+    User user = userRepository
+        .findByIdAndTenantIdIsNull(id)
+        .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
 
     user.setPasswordHash(passwordEncoder.encode(newPassword));
     user.setResetToken(null);

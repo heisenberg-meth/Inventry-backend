@@ -1,9 +1,7 @@
 package com.ims.tenant.controller;
 
 import com.ims.model.Customer;
-import com.ims.shared.rbac.RequiresRole;
 import com.ims.tenant.service.CustomerService;
-import com.ims.tenant.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -12,7 +10,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.lang.NonNull;
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import java.util.Objects;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,63 +30,64 @@ import org.springframework.web.bind.annotation.RestController;
 public class CustomerController {
 
   private final CustomerService customerService;
-  private final OrderService orderService;
   private final com.ims.tenant.service.CustomerImportService importService;
   private final com.ims.shared.utils.CsvExportService csvExportService;
   private final com.ims.tenant.repository.CustomerRepository customerRepository;
 
   @GetMapping
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "List customers")
-  public @NonNull ResponseEntity<Page<Customer>> list(@NonNull Pageable pageable) {
+  public ResponseEntity<Page<Customer>> list(Pageable pageable) {
     return ResponseEntity.ok(Objects.requireNonNull(customerService.getCustomers(pageable)));
   }
 
   @PostMapping
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Create customer")
-  public @NonNull ResponseEntity<Customer> create(@RequestBody @NonNull Customer customer) {
+  public ResponseEntity<Customer> create(@RequestBody Customer customer) {
     return ResponseEntity.status(HttpStatus.CREATED).body(Objects.requireNonNull(customerService.create(customer)));
   }
 
   @GetMapping("/{id}")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Get customer")
-  public @NonNull ResponseEntity<Customer> get(@PathVariable @NonNull Long id) {
+  public ResponseEntity<Customer> get(@PathVariable Long id) {
     return ResponseEntity.ok(Objects.requireNonNull(customerService.getById(id)));
   }
 
   @PutMapping("/{id}")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Update customer")
-  public @NonNull ResponseEntity<Customer> update(@PathVariable @NonNull Long id, @RequestBody @NonNull Customer customer) {
+  public ResponseEntity<Customer> update(@PathVariable Long id,
+      @RequestBody Customer customer) {
     return ResponseEntity.ok(Objects.requireNonNull(customerService.update(id, customer)));
   }
 
   @DeleteMapping("/{id}")
-  @RequiresRole({"ADMIN"})
+  @PreAuthorize("hasRole('ADMIN')")
   @Operation(summary = "Delete customer")
-  public @NonNull ResponseEntity<Void> delete(@PathVariable @NonNull Long id) {
+  public ResponseEntity<Void> delete(@PathVariable Long id) {
     customerService.delete(id);
     return ResponseEntity.noContent().build();
   }
 
   @GetMapping("/{id}/ledger")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Get full ledger for customer")
-  public ResponseEntity<java.util.Map<String, Object>> getCustomerLedger(@PathVariable @NonNull Long id) {
+  public ResponseEntity<java.util.Map<String, Object>> getCustomerLedger(@PathVariable Long id) {
     return ResponseEntity.ok(customerService.getCustomerLedger(id));
   }
 
   @PostMapping("/bulk-import")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Bulk import customers via CSV")
-  public ResponseEntity<java.util.Map<String, Object>> bulkImport(@org.springframework.web.bind.annotation.RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+  public ResponseEntity<java.util.Map<String, Object>> bulkImport(
+      @org.springframework.web.bind.annotation.RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
     return ResponseEntity.ok(importService.importCustomers(file));
   }
 
   @GetMapping("/export")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Export customers as CSV")
   public ResponseEntity<String> export() {
     var data = customerRepository.findAll().stream().map(c -> {
@@ -101,10 +101,12 @@ public class CustomerController {
       return map;
     }).collect(java.util.stream.Collectors.toList());
 
-    String csv = csvExportService.exportToCsv(java.util.List.of("ID", "Name", "Phone", "Email", "Address", "GSTIN"), data);
+    String csv = csvExportService.exportToCsv(java.util.List.of("ID", "Name", "Phone", "Email", "Address", "GSTIN"),
+        data);
     return ResponseEntity.ok()
         .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=customers.csv")
         .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "text/csv")
         .body(csv);
+
   }
 }

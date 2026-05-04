@@ -2,7 +2,7 @@ package com.ims.platform.controller;
 
 import com.ims.model.SystemConfig;
 import com.ims.platform.service.SystemConfigService;
-import com.ims.shared.rbac.RequiresRole;
+import org.springframework.security.access.prepost.PreAuthorize;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,21 +28,22 @@ public class SystemConfigController {
   private final SystemConfigService systemConfigService;
 
   @GetMapping
-  @RequiresRole({"ROOT"})
+  @PreAuthorize("hasRole('ROOT')")
   @Operation(summary = "List all global configs")
   public ResponseEntity<List<SystemConfig>> list() {
     return ResponseEntity.ok(systemConfigService.getAllConfigs());
   }
 
   @PatchMapping("/{key}")
-  @RequiresRole({"ROOT"})
+  @PreAuthorize("hasRole('ROOT')")
   @Operation(summary = "Update global feature flag/config")
   public ResponseEntity<SystemConfig> update(
-      @PathVariable @NonNull String key, @RequestBody Map<String, String> body) {
+      @PathVariable String key, @RequestBody Map<String, String> body) {
     String value = body.get("value");
     if (value == null) {
       throw new IllegalArgumentException("Value is required");
     }
-    return ResponseEntity.ok(systemConfigService.updateConfig(Objects.requireNonNull(key), Objects.requireNonNull(value)));
+    return ResponseEntity
+        .ok(systemConfigService.updateConfig(Objects.requireNonNull(key), Objects.requireNonNull(value)));
   }
 }

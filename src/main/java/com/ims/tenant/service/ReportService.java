@@ -23,7 +23,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Pageable;
-import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -31,7 +30,7 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@SuppressWarnings("null")
+
 public class ReportService {
 
   private final ProductRepository productRepository;
@@ -57,7 +56,7 @@ public class ReportService {
   }
 
   @Cacheable(value = "reports", key = "T(com.ims.shared.auth.TenantContext).get() + ':purchases:' + #from + ':' + #to")
-  public @NonNull Map<String, Object> getPurchasesReport(@NonNull LocalDate from, @NonNull LocalDate to) {
+  public Map<String, Object> getPurchasesReport(LocalDate from, LocalDate to) {
     LocalDateTime fromDt = Objects.requireNonNull(from).atStartOfDay();
     LocalDateTime toDt = Objects.requireNonNull(to).atTime(LocalTime.MAX);
 
@@ -80,7 +79,7 @@ public class ReportService {
   }
 
   @Cacheable(value = "reports", key = "T(com.ims.shared.auth.TenantContext).get() + ':dashboard'")
-  public @NonNull Map<String, Object> getDashboard() {
+  public Map<String, Object> getDashboard() {
     LocalDateTime todayStart = LocalDate.now().atStartOfDay();
     LocalDateTime todayEnd = LocalDate.now().atTime(LocalTime.MAX);
 
@@ -147,7 +146,7 @@ public class ReportService {
   }
 
   @Cacheable(value = "reports", key = "T(com.ims.shared.auth.TenantContext).get() + ':stock-report'")
-  public @NonNull List<Map<String, Object>> getStockReport(@Nullable String filter) {
+  public List<Map<String, Object>> getStockReport(@Nullable String filter) {
     var products = Objects.requireNonNull(productRepository.findByIsActiveTrue(Pageable.unpaged())).getContent();
     List<Map<String, Object>> report = new ArrayList<>();
     int thresholdDays = getExpiryThreshold();
@@ -210,7 +209,7 @@ public class ReportService {
   }
 
   @Cacheable(value = "reports", key = "T(com.ims.shared.auth.TenantContext).get() + ':sales:' + #from + ':' + #to")
-  public @NonNull Map<String, Object> getSalesAnalytics(@NonNull LocalDate from, @NonNull LocalDate to) {
+  public Map<String, Object> getSalesAnalytics(LocalDate from, LocalDate to) {
     LocalDateTime fromDt = Objects.requireNonNull(from).atStartOfDay();
     LocalDateTime toDt = Objects.requireNonNull(to).atTime(LocalTime.MAX);
 
@@ -232,7 +231,7 @@ public class ReportService {
     return analytics;
   }
 
-  public @NonNull Map<String, Object> getProfitLoss(@NonNull LocalDate from, @NonNull LocalDate to) {
+  public Map<String, Object> getProfitLoss(LocalDate from, LocalDate to) {
     LocalDateTime fromDt = Objects.requireNonNull(from).atStartOfDay();
     LocalDateTime toDt = Objects.requireNonNull(to).atTime(LocalTime.MAX);
 

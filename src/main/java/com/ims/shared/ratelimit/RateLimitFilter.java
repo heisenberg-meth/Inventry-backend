@@ -19,17 +19,23 @@ import org.springframework.web.filter.OncePerRequestFilter;
 /**
  * Sliding-window rate limiter backed by Redis (Valkey).
  *
- * <p>Three tiers are enforced:
+ * <p>
+ * Three tiers are enforced:
  *
  * <ul>
- *   <li><b>Auth</b> — strict per-IP limit for {@code /auth/**} and {@code /api/auth/**} endpoints
- *       to mitigate credential stuffing and brute-force attacks.
- *   <li><b>Tenant</b> — generous per-tenant+IP limit for authenticated API traffic.
- *   <li><b>Public</b> — per-IP limit for any other unauthenticated traffic.
+ * <li><b>Auth</b> — strict per-IP limit for {@code /auth/**} and
+ * {@code /api/auth/**} endpoints
+ * to mitigate credential stuffing and brute-force attacks.
+ * <li><b>Tenant</b> — generous per-tenant+IP limit for authenticated API
+ * traffic.
+ * <li><b>Public</b> — per-IP limit for any other unauthenticated traffic.
  * </ul>
  *
- * <p>Limits are configured via {@code app.rate-limit.*} properties in {@code application.yml}. If
- * Redis is unavailable the filter fails open (logs a warning and allows the request) so that a
+ * <p>
+ * Limits are configured via {@code app.rate-limit.*} properties in
+ * {@code application.yml}. If
+ * Redis is unavailable the filter fails open (logs a warning and allows the
+ * request) so that a
  * cache outage does not take down the API.
  */
 @Component
@@ -39,22 +45,30 @@ public class RateLimitFilter extends OncePerRequestFilter {
   private static final int STATUS_TOO_MANY_REQUESTS = 429;
   private static final long MILLIS_PER_SECOND = 1000L;
 
-  /** Paths that should never be rate limited (health probes, docs, swagger assets). */
-  private static final List<String> EXCLUDED_PREFIXES =
-      List.of(
-          "/actuator",
-          "/swagger-ui",
-          "/v3/api-docs",
-          "/api-docs",
-          "/swagger-resources",
-          "/webjars",
-          "/favicon.ico",
-          "/error");
+  /**
+   * Paths that should never be rate limited (health probes, docs, swagger
+   * assets).
+   */
+  private static final List<String> EXCLUDED_PREFIXES = List.of(
+      "/actuator",
+      "/swagger-ui",
+      "/v3/api-docs",
+      "/api-docs",
+      "/swagger-resources",
+      "/webjars",
+      "/favicon.ico",
+      "/error");
 
-  /** Explicit prefixes that route to the authentication endpoints (strict brute-force tier). */
+  /**
+   * Explicit prefixes that route to the authentication endpoints (strict
+   * brute-force tier).
+   */
   private static final List<String> AUTH_PREFIXES = List.of("/auth", "/api/auth");
 
-  /** Shared format string for config-validation errors; pinned by {@code RateLimitFilterTest}. */
+  /**
+   * Shared format string for config-validation errors; pinned by
+   * {@code RateLimitFilterTest}.
+   */
   private static final String CONFIG_POSITIVE_MESSAGE = "%s must be >= 1 (got %d)";
 
   private final RedisTemplate<String, Object> redisTemplate;
@@ -71,8 +85,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
       @Value("${app.rate-limit.public-rpm:100}") int publicRpm,
       @Value("${app.rate-limit.authenticated-rpm:500}") int tenantRpm,
       @Value("${app.rate-limit.window-seconds:60}") int windowSeconds) {
-    // Error messages reference the config property keys (not the Java field names) so operators
-    // can grep the stack trace against their application.yml without a translation step.
+    // Error messages reference the config property keys (not the Java field names)
+    // so operators
+    // can grep the stack trace against their application.yml without a translation
+    // step.
     requirePositive("app.rate-limit.auth-rpm", authRpm);
     requirePositive("app.rate-limit.public-rpm", publicRpm);
     requirePositive("app.rate-limit.authenticated-rpm", tenantRpm);
@@ -159,8 +175,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
         return;
       }
     } catch (Exception e) {
-      // Fail open if Redis/Valkey is unreachable — do not block legitimate traffic because of
-      // an infrastructure issue. The full exception is logged so ops can diagnose the outage.
+      // Fail open if Redis/Valkey is unreachable — do not block legitimate traffic
+      // because of
+      // an infrastructure issue. The full exception is logged so ops can diagnose the
+      // outage.
       log.warn("Rate limit check skipped due to cache backend failure", e);
     }
 
@@ -168,8 +186,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
   }
 
   /**
-   * Resolves the client IP, honoring the first entry of {@code X-Forwarded-For} when the request
-   * comes through a trusted proxy (e.g. Nginx). Falls back to {@code X-Real-IP} and finally to the
+   * Resolves the client IP, honoring the first entry of {@code X-Forwarded-For}
+   * when the request
+   * comes through a trusted proxy (e.g. Nginx). Falls back to {@code X-Real-IP}
+   * and finally to the
    * remote address.
    */
   private String resolveClientIp(HttpServletRequest req) {
@@ -189,7 +209,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
   }
 
   /**
-   * Returns the request path with any servlet/context prefix stripped, so that prefix matching
+   * Returns the request path with any servlet/context prefix stripped, so that
+   * prefix matching
    * works regardless of how the app is deployed (root or under a context path).
    */
   private String normalizedPath(HttpServletRequest req) {
@@ -208,7 +229,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
     return uri;
   }
 
-  /** {@code true} iff {@code path} equals {@code prefix} or starts with {@code prefix + '/'}. */
+  /**
+   * {@code true} iff {@code path} equals {@code prefix} or starts with
+   * {@code prefix + '/'}.
+   */
   private boolean matchesPrefix(String path, String prefix) {
     if (path.equals(prefix)) {
       return true;
@@ -217,8 +241,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
   }
 
   /**
-   * Throws {@link IllegalArgumentException} if {@code value} is not positive. The message quotes
-   * the {@code configKey} verbatim so operators can grep their {@code application.yml}.
+   * Throws {@link IllegalArgumentException} if {@code value} is not positive. The
+   * message quotes
+   * the {@code configKey} verbatim so operators can grep their
+   * {@code application.yml}.
    */
   private static void requirePositive(String configKey, int value) {
     if (value <= 0) {
@@ -236,8 +262,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
   }
 
   /**
-   * Extracts the tenant id from a bearer token, or {@code null} if the token is absent, malformed,
-   * or does not carry a tenant claim. Invalid tokens fall through to the public tier.
+   * Extracts the tenant id from a bearer token, or {@code null} if the token is
+   * absent, malformed,
+   * or does not carry a tenant claim. Invalid tokens fall through to the public
+   * tier.
    */
   private String resolveTenantId(HttpServletRequest req) {
     String authHeader = req.getHeader("Authorization");

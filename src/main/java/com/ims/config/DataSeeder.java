@@ -22,7 +22,6 @@ public class DataSeeder implements CommandLineRunner {
         seedPlatformAdmin();
     }
 
-    @SuppressWarnings("null")
     private void seedPlatformAdmin() {
         String adminEmail = "admin@platform.com";
         if (userRepository.findByEmailUnfiltered(adminEmail).isEmpty()) {

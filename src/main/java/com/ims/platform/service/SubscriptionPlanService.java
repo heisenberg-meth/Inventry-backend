@@ -17,14 +17,12 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@SuppressWarnings("null")
 public class SubscriptionPlanService {
 
   private final SubscriptionPlanRepository planRepository;
@@ -33,7 +31,7 @@ public class SubscriptionPlanService {
   private final ObjectMapper objectMapper;
 
   @Transactional
-  public SubscriptionPlan createPlan(@NonNull CreateSubscriptionPlanRequest request) {
+  public SubscriptionPlan createPlan(CreateSubscriptionPlanRequest request) {
     if (planRepository.existsByName(request.getName())) {
       throw new IllegalArgumentException("Plan name already exists: " + request.getName());
     }
@@ -47,17 +45,16 @@ public class SubscriptionPlanService {
       }
     }
 
-    SubscriptionPlan plan =
-        SubscriptionPlan.builder()
-            .name(request.getName())
-            .price(request.getPrice())
-            .currency(request.getCurrency() != null ? request.getCurrency() : "INR")
-            .billingCycle(request.getBillingCycle())
-            .features(features)
-            .maxUsers(request.getMaxUsers())
-            .maxProducts(request.getMaxProducts())
-            .status("ACTIVE")
-            .build();
+    SubscriptionPlan plan = SubscriptionPlan.builder()
+        .name(request.getName())
+        .price(request.getPrice())
+        .currency(request.getCurrency() != null ? request.getCurrency() : "INR")
+        .billingCycle(request.getBillingCycle())
+        .features(features)
+        .maxUsers(request.getMaxUsers())
+        .maxProducts(request.getMaxProducts())
+        .status("ACTIVE")
+        .build();
 
     SubscriptionPlan saved = planRepository.save(plan);
     auditLogService.log(AuditAction.CREATE_PLAN, null, null, "Created plan: " + saved.getName());
@@ -74,7 +71,7 @@ public class SubscriptionPlanService {
   }
 
   @Transactional(readOnly = true)
-  public SubscriptionPlan findOne(@NonNull Long id) {
+  public SubscriptionPlan findOne(Long id) {
     return planRepository
         .findById(id)
         .orElseThrow(() -> new EntityNotFoundException("Subscription plan not found"));
@@ -82,7 +79,7 @@ public class SubscriptionPlanService {
 
   @Transactional
   public SubscriptionPlan updatePlan(
-      @NonNull Long id, @NonNull UpdateSubscriptionPlanRequest request) {
+      Long id, UpdateSubscriptionPlanRequest request) {
     SubscriptionPlan plan = findOne(id);
 
     if (request.getName() != null) {
@@ -111,7 +108,7 @@ public class SubscriptionPlanService {
   }
 
   @Transactional
-  public Map<String, String> deletePlan(@NonNull Long id) {
+  public Map<String, String> deletePlan(Long id) {
     SubscriptionPlan plan = findOne(id);
     plan.setStatus("DELETED");
     plan.setUpdatedAt(LocalDateTime.now());
@@ -122,7 +119,7 @@ public class SubscriptionPlanService {
   }
 
   @Transactional
-  public Map<String, String> activatePlan(@NonNull Long id) {
+  public Map<String, String> activatePlan(Long id) {
     SubscriptionPlan plan = findOne(id);
     plan.setStatus("ACTIVE");
     plan.setUpdatedAt(LocalDateTime.now());
@@ -131,7 +128,7 @@ public class SubscriptionPlanService {
   }
 
   @Transactional
-  public Map<String, String> deactivatePlan(@NonNull Long id) {
+  public Map<String, String> deactivatePlan(Long id) {
     SubscriptionPlan plan = findOne(id);
     plan.setStatus("INACTIVE");
     plan.setUpdatedAt(LocalDateTime.now());

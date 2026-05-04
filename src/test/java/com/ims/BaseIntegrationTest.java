@@ -10,6 +10,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.springframework.cache.Cache;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -24,6 +25,7 @@ import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
+import org.mockito.ArgumentMatchers;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import java.util.Collections;
 import java.util.Objects;
@@ -39,7 +41,7 @@ import org.springframework.test.context.DynamicPropertySource;
 @ActiveProfiles("test")
 @Testcontainers
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-@SuppressWarnings("null")
+
 public abstract class BaseIntegrationTest {
 
   @Container
@@ -140,7 +142,7 @@ public abstract class BaseIntegrationTest {
       // Ensure tenant context is set during cleanup to avoid Hibernate issues
       TenantContext.setTenantId(1L);
       entityManager.flush();
-      
+
       // PostgreSQL: Disable triggers to allow truncation of tables with FKs
       jdbcTemplate.execute("SET session_replication_role = 'replica'");
 
@@ -213,10 +215,10 @@ public abstract class BaseIntegrationTest {
     doReturn(0L).when(zSetOperations).zCard(anyString());
 
     // Cache Mocks for TenantAwareCacheResolver
-    org.springframework.cache.Cache dummyCache = new org.springframework.cache.concurrent.ConcurrentMapCache("dummy");
+    Cache dummyCache = new org.springframework.cache.concurrent.ConcurrentMapCache("dummy");
     doReturn(Collections.singletonList(dummyCache))
         .when(tenantAwareCacheResolver)
-        .resolveCaches(org.mockito.ArgumentMatchers.<CacheOperationInvocationContext<?>>any());
+        .resolveCaches(ArgumentMatchers.<CacheOperationInvocationContext<?>>any());
     doReturn(dummyCache).when(cacheManager).getCache(anyString());
   }
 }

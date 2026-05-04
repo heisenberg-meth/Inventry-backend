@@ -5,7 +5,6 @@ import com.ims.dto.request.CreateTicketRequest;
 import com.ims.model.SupportMessage;
 import com.ims.model.SupportTicket;
 import com.ims.shared.auth.JwtAuthDetails;
-import com.ims.shared.rbac.RequiresRole;
 import com.ims.tenant.service.SupportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -18,7 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.lang.NonNull;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -38,40 +37,37 @@ public class TenantSupportController {
   private final SupportService supportService;
 
   @PostMapping
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "Create support ticket")
   public ResponseEntity<SupportTicket> createTicket(
-      @NonNull @Valid @RequestBody CreateTicketRequest request) {
+      @Valid @RequestBody CreateTicketRequest request) {
     JwtAuthDetails auth = getAuthDetails();
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(supportService.createTicket(
-            Objects.requireNonNull(auth.getTenantId()),
             Objects.requireNonNull(auth.getUserId()), request));
   }
 
   @GetMapping
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "List my tenant tickets")
-  public ResponseEntity<Page<SupportTicket>> listTickets(@NonNull Pageable pageable) {
-    JwtAuthDetails auth = getAuthDetails();
+  public ResponseEntity<Page<SupportTicket>> listTickets(Pageable pageable) {
     return ResponseEntity.ok(
-        supportService.listTenantTickets(Objects.requireNonNull(auth.getTenantId()), pageable));
+        supportService.listTenantTickets(pageable));
   }
 
   @GetMapping("/{id}")
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "Get ticket details")
-  public ResponseEntity<Map<String, Object>> getTicketDetails(@NonNull @PathVariable Long id) {
-    JwtAuthDetails auth = getAuthDetails();
+  public ResponseEntity<Map<String, Object>> getTicketDetails(@PathVariable Long id) {
     return ResponseEntity.ok(
-        supportService.getTenantTicketDetails(Objects.requireNonNull(auth.getTenantId()), id));
+        supportService.getTenantTicketDetails(id));
   }
 
   @PostMapping("/{id}/messages")
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "Add message to ticket")
   public ResponseEntity<SupportMessage> addMessage(
-      @NonNull @PathVariable Long id, @NonNull @Valid @RequestBody AddMessageRequest request) {
+      @PathVariable Long id, @Valid @RequestBody AddMessageRequest request) {
     JwtAuthDetails auth = getAuthDetails();
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(supportService.addMessage(
@@ -79,12 +75,11 @@ public class TenantSupportController {
   }
 
   @PatchMapping("/{id}/close")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Close ticket")
-  public ResponseEntity<SupportTicket> closeTicket(@NonNull @PathVariable Long id) {
-    JwtAuthDetails auth = getAuthDetails();
+  public ResponseEntity<SupportTicket> closeTicket(@PathVariable Long id) {
     return ResponseEntity.ok(
-        supportService.closeTicketByTenant(Objects.requireNonNull(auth.getTenantId()), id));
+        supportService.closeTicketByTenant(id));
   }
 
   private JwtAuthDetails getAuthDetails() {

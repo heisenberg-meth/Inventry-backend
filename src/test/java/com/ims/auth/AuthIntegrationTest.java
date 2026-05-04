@@ -24,16 +24,20 @@ import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest(properties = {
     "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
-    "spring.cache.type=none"
+    "spring.cache.type=none",
+    "app.security.allowed-origins=http://localhost:3000,http://localhost:5173"
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@SuppressWarnings("null")
+
 public class AuthIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired private MockMvc mockMvc;
-  @Autowired private ObjectMapper objectMapper;
-  @Autowired private SignupService signupService;
+  @Autowired
+  private MockMvc mockMvc;
+  @Autowired
+  private ObjectMapper objectMapper;
+  @Autowired
+  private SignupService signupService;
 
   @BeforeEach
   void setup() {
@@ -54,6 +58,14 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
     // 3. Verify users (simulating email verification)
     verifyUser("admin1@t1.com");
     verifyUser("admin2@t2.com");
+    // 3. Verify users (simulating email verification) - use @Query to avoid version
+    // conflicts
+    userRepository.findByEmailUnfiltered("admin1@t1.com").ifPresent(u -> {
+      userRepository.updateVerificationStatus(u.getId(), true);
+    });
+    userRepository.findByEmailUnfiltered("admin2@t2.com").ifPresent(u -> {
+      userRepository.updateVerificationStatus(u.getId(), true);
+    });
 
     // 4. Login Tenant 1
     String t1Token = login("admin1@t1.com", "password123", t1Response.getCompanyCode());
@@ -109,16 +121,15 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
     loginRequest.setEmail(email);
     loginRequest.setPassword(password);
     loginRequest.setCompanyCode(workspace);
-    
+
     String loginJson = objectMapper.writeValueAsString(loginRequest);
-    MvcResult result =
-        mockMvc
-            .perform(
-                post("/api/auth/login")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(loginJson))
-            .andExpect(status().isOk())
-            .andReturn();
+    MvcResult result = mockMvc
+        .perform(
+            post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(loginJson))
+        .andExpect(status().isOk())
+        .andReturn();
 
     String responseJson = result.getResponse().getContentAsString();
     LoginResponse response = objectMapper.readValue(responseJson, LoginResponse.class);

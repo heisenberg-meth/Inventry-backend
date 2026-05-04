@@ -9,9 +9,9 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface SupplierRepository extends JpaRepository<Supplier, Long> {
-  // findById is inherited
 
   @Override
   @NonNull
+
   Page<Supplier> findAll(@NonNull Pageable pageable);
 }

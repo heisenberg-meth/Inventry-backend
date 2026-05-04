@@ -2,9 +2,7 @@ package com.ims.tenant.service;
 
 import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditResource;
-
 import com.ims.model.Supplier;
-import com.ims.shared.rbac.RequiresPermission;
 import com.ims.tenant.repository.SupplierRepository;
 import com.ims.tenant.repository.OrderRepository;
 import com.ims.tenant.repository.InvoiceRepository;
@@ -15,7 +13,8 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.lang.NonNull;
+import org.springframework.security.access.prepost.PreAuthorize;
+
 import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,18 +29,18 @@ public class SupplierService {
   private final PaymentRepository paymentRepository;
   private final com.ims.shared.audit.AuditLogService auditLogService;
 
-  public @NonNull Page<Supplier> getSuppliers(@NonNull Pageable pageable) {
+  public Page<Supplier> getSuppliers(Pageable pageable) {
     return Objects.requireNonNull(supplierRepository.findAll(pageable));
   }
 
-  public @NonNull Supplier getById(@NonNull Long id) {
+  public Supplier getById(Long id) {
     return Objects.requireNonNull(supplierRepository
         .findById(id)
         .orElseThrow(() -> new EntityNotFoundException("Supplier not found")));
   }
 
   @Transactional
-  public @NonNull Supplier create(@NonNull Supplier supplier) {
+  public Supplier create(Supplier supplier) {
     supplier.setTenantId(com.ims.shared.auth.TenantContext.getTenantId());
     Supplier savedSupplier = Objects.requireNonNull(supplierRepository.save(supplier));
 
@@ -55,7 +54,7 @@ public class SupplierService {
   }
 
   @Transactional
-  public @NonNull Supplier update(@NonNull Long id, @NonNull Supplier updates) {
+  public Supplier update(Long id, Supplier updates) {
     Supplier supplier = getById(id);
     if (updates.getName() != null) {
       supplier.setName(updates.getName());
@@ -84,8 +83,8 @@ public class SupplierService {
   }
 
   @Transactional
-  @RequiresPermission("delete_supplier")
-  public void delete(@NonNull Long id) {
+  @PreAuthorize("hasAuthority('delete_supplier')")
+  public void delete(Long id) {
     Supplier supplier = getById(id);
     supplierRepository.delete(supplier);
 
@@ -96,7 +95,7 @@ public class SupplierService {
         "Deleted supplier: " + supplier.getName());
   }
 
-  public Map<String, Object> getSupplierLedger(@NonNull Long id) {
+  public Map<String, Object> getSupplierLedger(Long id) {
     Supplier supplier = getById(id);
 
     List<com.ims.model.Order> orders = orderRepository.findBySupplierId(id, Pageable.unpaged()).getContent();

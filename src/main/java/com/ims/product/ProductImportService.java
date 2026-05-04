@@ -14,10 +14,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Objects;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@SuppressWarnings("null")
 public class ProductImportService {
 
     private final ProductRepository productRepository;
@@ -66,7 +67,7 @@ public class ProductImportService {
                                         .name(categoryName)
                                         .description("Auto-created during import")
                                         .build();
-                                return categoryRepository.save(newCat);
+                                return Objects.requireNonNull(categoryRepository.save(newCat), "Saved category must not be null");
                             });
 
                     Product product = Product.builder()
@@ -88,7 +89,7 @@ public class ProductImportService {
                 }
             }
 
-            productRepository.saveAll(products);
+            Objects.requireNonNull(productRepository.saveAll(products), "Saved products must not be null");
 
         } catch (Exception e) {
             log.error("Failed to import products", e);

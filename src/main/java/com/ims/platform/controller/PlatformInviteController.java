@@ -2,7 +2,6 @@ package com.ims.platform.controller;
 
 import com.ims.model.PlatformInvite;
 import com.ims.platform.service.PlatformInviteService;
-import com.ims.shared.rbac.RequiresRole;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -10,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -21,7 +21,7 @@ public class PlatformInviteController {
   private final PlatformInviteService inviteService;
 
   @PostMapping
-  @RequiresRole("ROOT")
+  @PreAuthorize("hasRole('ROOT')")
   @SecurityRequirement(name = "bearerAuth")
   @Operation(summary = "Create platform admin invite")
   public ResponseEntity<PlatformInvite> create(@RequestBody Map<String, String> body) {
@@ -29,7 +29,7 @@ public class PlatformInviteController {
   }
 
   @GetMapping
-  @RequiresRole("ROOT")
+  @PreAuthorize("hasRole('ROOT')")
   @SecurityRequirement(name = "bearerAuth")
   @Operation(summary = "List all platform invites")
   public ResponseEntity<List<PlatformInvite>> list() {
@@ -37,7 +37,7 @@ public class PlatformInviteController {
   }
 
   @DeleteMapping("/{id}")
-  @RequiresRole("ROOT")
+  @PreAuthorize("hasRole('ROOT')")
   @SecurityRequirement(name = "bearerAuth")
   @Operation(summary = "Revoke invite")
   public ResponseEntity<Void> revoke(@PathVariable Long id) {

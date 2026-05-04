@@ -1,5 +1,6 @@
 package com.ims.shared.auth;
 
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,9 +11,10 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.MDC;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.http.HttpHeaders;
 import org.springframework.lang.NonNull;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -31,7 +33,7 @@ public class JwtFilter extends OncePerRequestFilter {
   protected void doFilterInternal(
       @NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain chain)
       throws ServletException, IOException {
-    String authHeader = request.getHeader("Authorization");
+    String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
 
     if (authHeader == null || !authHeader.startsWith("Bearer ")) {
       chain.doFilter(request, response);
@@ -65,25 +67,40 @@ public class JwtFilter extends OncePerRequestFilter {
         return;
       }
 
-      Long userId = jwtUtil.extractUserId(token);
-      Long tenantId = jwtUtil.extractTenantId(token);
-      String role = jwtUtil.extractRole(token);
-      String scope = jwtUtil.extractScope(token);
-      String businessType = jwtUtil.extractBusinessType(token);
-      boolean isPlatformUser = jwtUtil.extractIsPlatformUser(token);
+      Claims claims = jwtUtil.extractAllClaims(token);
+      Long userId = claims.get("user_id", Long.class);
+      Long tenantId = claims.get("tenant_id", Long.class);
+      String role = claims.get("role", String.class);
+      String scope = claims.get("scope", String.class);
+      String businessType = claims.get("business_type", String.class);
+      boolean isPlatformUser = Boolean.TRUE.equals(claims.get("is_platform_user", Boolean.class));
 
-      TenantContext.setTenantId(tenantId);
+      // 🔑 Normalize to ROLE_ prefix for Spring Security
+      var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role));
 
-      UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-          userId, null, List.of(new SimpleGrantedAuthority(role)));
+      var auth = new JwtAuthenticationToken(
+          String.valueOf(userId),
+          userId,
+          tenantId,
+          authorities);
 
-      // Store additional details for downstream use
+      // Set details for backward compatibility with existing code
       auth.setDetails(new JwtAuthDetails(userId, tenantId, role, scope, businessType, isPlatformUser));
+
       SecurityContextHolder.getContext().setAuthentication(auth);
+
+      if (tenantId != null) {
+        TenantContext.setTenantId(tenantId);
+        MDC.put("tenantId", String.valueOf(tenantId));
+      }
 
       chain.doFilter(request, response);
     } finally {
-      TenantContext.clear(); // CRITICAL — prevents tenant bleed between requests
+      TenantContext.clear();
+      MDC.remove("tenantId");
+      // SecurityContext is typically cleared by the framework, but manual clearing is
+      // safer
+      // if we aren't using the standard SecurityContextPersistenceFilter correctly
     }
   }
 

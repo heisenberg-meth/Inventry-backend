@@ -1,6 +1,5 @@
 package com.ims.platform.controller;
 
-import com.ims.shared.rbac.RequiresRole;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -12,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,7 +27,7 @@ public class PlatformHealthController {
     private final RedisTemplate<String, Object> redisTemplate;
 
     @GetMapping("/extended")
-    @RequiresRole({"ROOT"})
+    @PreAuthorize("hasRole('ROOT')")
     @Operation(summary = "Deep health check", description = "Checks DB, Redis, and Disk space")
     public ResponseEntity<Map<String, Object>> getExtendedHealth() {
         Map<String, Object> health = new LinkedHashMap<>();

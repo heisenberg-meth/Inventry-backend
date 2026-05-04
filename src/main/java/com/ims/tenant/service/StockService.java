@@ -16,7 +16,6 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.lang.NonNull;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@SuppressWarnings("null")
+
 public class StockService {
 
   private final ProductService productService;
@@ -47,17 +46,17 @@ public class StockService {
     }
   }
 
-  public @NonNull Page<WarehouseProduct> getProductsByLocation(@NonNull String location, @NonNull Pageable pageable) {
+  public Page<WarehouseProduct> getProductsByLocation(String location, Pageable pageable) {
     checkWarehouseType();
     return Objects.requireNonNull(warehouseProductRepository.findByLocation(location, pageable));
   }
 
-  public @NonNull Page<TransferOrder> getTransferOrders(@NonNull Pageable pageable) {
+  public Page<TransferOrder> getTransferOrders(Pageable pageable) {
     checkWarehouseType();
     return Objects.requireNonNull(transferOrderRepository.findAll(pageable));
   }
 
-  public @NonNull TransferOrder getTransferOrderById(@NonNull Long id) {
+  public TransferOrder getTransferOrderById(Long id) {
     checkWarehouseType();
     return Objects.requireNonNull(transferOrderRepository
         .findById(id)
@@ -66,8 +65,8 @@ public class StockService {
 
   @Transactional
   @CacheEvict(value = { "stock", "products" }, allEntries = true)
-  public @NonNull TransferOrder updateTransferStatus(@NonNull Long id, @NonNull TransferOrderStatusRequest request,
-      @NonNull Long userId) {
+  public TransferOrder updateTransferStatus(Long id, TransferOrderStatusRequest request,
+      Long userId) {
     checkWarehouseType();
     TransferOrder order = transferOrderRepository
         .findById(id)
@@ -125,7 +124,7 @@ public class StockService {
 
   @Transactional
   @CacheEvict(value = { "stock", "products" }, allEntries = true)
-  public void stockIn(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
+  public void stockIn(Long productId, int qty, String notes, Long userId) {
     Product product = productService
         .findByIdWithLock(productId)
         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
@@ -156,7 +155,7 @@ public class StockService {
 
   @Transactional
   @CacheEvict(value = { "stock", "products" }, allEntries = true)
-  public void stockOut(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
+  public void stockOut(Long productId, int qty, String notes, Long userId) {
     // Pessimistic write lock prevents concurrent oversell
     Product product = productService
         .findByIdWithLock(productId)
@@ -195,7 +194,7 @@ public class StockService {
 
   @Transactional
   @CacheEvict(value = { "stock", "products" }, allEntries = true)
-  public void stockAdjust(@NonNull Long productId, int qty, String notes, @NonNull Long userId) {
+  public void stockAdjust(Long productId, int qty, String notes, Long userId) {
     Product product = productService
         .findByIdWithLock(productId)
         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
@@ -224,12 +223,12 @@ public class StockService {
         product.getStock());
   }
 
-  public @NonNull Page<StockMovement> getMovements(@NonNull Pageable pageable) {
+  public Page<StockMovement> getMovements(Pageable pageable) {
     return Objects.requireNonNull(stockMovementRepository.findAllByOrderByCreatedAtDesc(pageable));
   }
 
-  public @NonNull Page<StockMovement> getFilteredMovements(
-      @NonNull Long productId, LocalDateTime from, LocalDateTime to, @NonNull Pageable pageable) {
+  public Page<StockMovement> getFilteredMovements(
+      Long productId, LocalDateTime from, LocalDateTime to, Pageable pageable) {
     return Objects.requireNonNull(stockMovementRepository.findByFilters(productId, from, to, pageable));
   }
 }

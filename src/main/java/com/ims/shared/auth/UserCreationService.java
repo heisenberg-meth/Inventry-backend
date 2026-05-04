@@ -4,7 +4,6 @@ import com.ims.model.User;
 import com.ims.tenant.repository.UserRepository;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
-import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,7 +15,7 @@ public class UserCreationService {
   private final UserRepository userRepository;
 
   @Transactional(propagation = Propagation.REQUIRED)
-  public User createUserForTenant(@NonNull User user, @NonNull Long tenantId) {
+  public User createUserForTenant(User user, Long tenantId) {
     Long oldTenantId = TenantContext.getTenantId();
     try {
       TenantContext.setTenantId(Objects.requireNonNull(tenantId));

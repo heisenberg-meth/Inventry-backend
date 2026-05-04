@@ -5,7 +5,6 @@ import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditResource;
 
 import com.ims.dto.CategoryRequest;
-import com.ims.shared.rbac.RequiresPermission;
 import com.ims.product.ProductRepository;
 import com.ims.shared.auth.TenantContext;
 import java.util.Objects;
@@ -17,30 +16,33 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.lang.NonNull;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Transactional
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@SuppressWarnings("null")
 public class CategoryService {
 
   private final CategoryRepository categoryRepository;
   private final ProductRepository productRepository;
   private final com.ims.shared.audit.AuditLogService auditLogService;
+  private final io.micrometer.core.instrument.MeterRegistry meterRegistry;
+  private final io.micrometer.observation.ObservationRegistry observationRegistry;
 
-  @Cacheable(cacheResolver = "tenantAwareCacheResolver", value = "categories", key = "'list:' + #tenantId + ':' + #pageable.pageNumber + ':' + #pageable.pageSize")
-  public Page<Category> getCategories(Long tenantId, @NonNull Pageable pageable) {
+  @Cacheable(cacheResolver = "tenantAwareCacheResolver", value = "categories", key = "'list:' + #pageable.pageNumber + ':' + #pageable.pageSize")
+  public Page<Category> getCategories(Pageable pageable) {
+    Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
       log.error("Tenant ID is missing in CategoryService.getCategories");
-      throw new IllegalArgumentException("Tenant context is missing");
+      throw new IllegalStateException("Missing tenant context");
     }
     return categoryRepository.findByTenantId(tenantId, pageable);
   }
 
-  public Category getById(@NonNull Long id) {
+  public Category getById(Long id) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
       throw new IllegalStateException("Tenant context is missing");
@@ -53,31 +55,40 @@ public class CategoryService {
   @Transactional
   @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "categories", allEntries = true)
   public Category create(CategoryRequest request) {
-    if (categoryRepository.existsByNameIgnoreCaseAndTenantId(request.getName(), TenantContext.getTenantId())) {
-      throw new IllegalArgumentException("Category with this name already exists");
-    }
+    return io.micrometer.observation.Observation.createNotStarted("ims.category.create", observationRegistry)
+        .contextualName("create-category")
+        .lowCardinalityKeyValue("tenantId", String.valueOf(TenantContext.getTenantId()))
+        .observe(() -> {
+          if (categoryRepository.existsByNameIgnoreCaseAndTenantId(request.getName(), TenantContext.getTenantId())) {
+            throw new IllegalArgumentException("Category with this name already exists");
+          }
 
-    Category category = Category.builder()
-        .tenantId(TenantContext.getTenantId())
-        .name(request.getName())
-        .description(request.getDescription())
-        .taxRate(request.getTaxRate() != null ? request.getTaxRate() : java.math.BigDecimal.ZERO)
-        .build();
+          Category category = Category.builder()
+              .tenantId(TenantContext.getTenantId())
+              .name(request.getName())
+              .description(request.getDescription())
+              .taxRate(request.getTaxRate() != null ? request.getTaxRate() : java.math.BigDecimal.ZERO)
+              .build();
 
-    Category savedCategory = Objects.requireNonNull(categoryRepository.save(category));
+          Category savedCategory = categoryRepository.save(category);
 
-    auditLogService.logAudit(
-        AuditAction.CREATE,
-        AuditResource.CATEGORY,
-        savedCategory.getId(),
-        "Created category: " + savedCategory.getName());
+          auditLogService.logAudit(
+              AuditAction.CREATE,
+              AuditResource.CATEGORY,
+              savedCategory.getId(),
+              "Created category: " + savedCategory.getName());
 
-    return savedCategory;
+          // Custom Metric: Category Creation
+          meterRegistry.counter("ims.category.created", "tenantId", String.valueOf(TenantContext.getTenantId()))
+              .increment();
+
+          return savedCategory;
+        });
   }
 
   @Transactional
   @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "categories", allEntries = true)
-  public Category update(@NonNull Long id, CategoryRequest request) {
+  public Category update(Long id, CategoryRequest request) {
     Category category = getById(id);
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
@@ -108,8 +119,8 @@ public class CategoryService {
 
   @Transactional
   @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "categories", allEntries = true)
-  @RequiresPermission("delete_category")
-  public void delete(@NonNull Long id) {
+  @PreAuthorize("hasAuthority('delete_category')")
+  public void delete(Long id) {
     Category category = getById(id);
     long productCount = productRepository.countByCategoryId(id);
 
@@ -125,6 +136,9 @@ public class CategoryService {
         AuditResource.CATEGORY,
         id,
         "Deleted category: " + category.getName());
+
+    // Custom Metric: Category Deletion
+    meterRegistry.counter("ims.category.deleted", "tenantId", String.valueOf(TenantContext.getTenantId())).increment();
   }
 
   public CategoryResponse toResponse(Category category) {

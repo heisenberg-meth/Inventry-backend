@@ -1,0 +1,54 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: inventry-business-rules
+  namespace: inventry
+  labels:
+    app: prometheus
+    role: alert-rules
+spec:
+  groups:
+  - name: infra-alerts
+    rules:
+    - alert: HighCpuUsage
+      expr: rate(container_cpu_usage_seconds_total{pod=~"inventry-backend.*"}[5m]) > 0.8
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High CPU usage on {{ $labels.pod }}"
+        description: "CPU usage above 80% for 5 minutes"
+    - alert: HighMemoryUsage
+      expr: container_memory_usage_bytes{pod=~"inventry-backend.*"} / container_spec_memory_limit_bytes > 0.9
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High memory usage on {{ $labels.pod }}"
+        description: "Memory usage above 90% for 5 minutes"
+  - name: business-alerts
+    rules:
+    - alert: TenantDataLeakDetected
+      expr: rate(ims_category_create_error[5m]) > 0.1
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Possible tenant data leak detected"
+        description: "High rate of category creation errors, possible tenant isolation failure"
+    - alert: AuthFailureSpike
+      expr: rate(http_server_requests_seconds_count{status="403"}[5m]) > 0.5
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Spike in 403 Forbidden errors"
+        description: "High rate of auth failures, possible brute force or misconfigured RBAC"
+    - alert: CategoryServiceErrorRate
+      expr: rate(ims_category_create_error[5m]) / rate(ims_category_create_success[5m]) > 0.1
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High category service error rate"
+        description: "Error rate for category operations above 10%"

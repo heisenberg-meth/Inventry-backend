@@ -2,7 +2,6 @@ package com.ims.tenant.controller;
 
 import com.ims.dto.PaymentRequest;
 import com.ims.model.Payment;
-import com.ims.shared.rbac.RequiresRole;
 import com.ims.tenant.service.PaymentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -12,9 +11,9 @@ import lombok.RequiredArgsConstructor;
 import java.util.Objects;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.lang.NonNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -32,7 +31,7 @@ public class PaymentController {
   private final PaymentService paymentService;
 
   @PostMapping
-  @RequiresRole({"ADMIN", "MANAGER", "STAFF"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "Record payment against invoice")
   public ResponseEntity<Payment> recordPayment(@Valid @RequestBody PaymentRequest request) {
     Payment payment = paymentService.recordPayment(
@@ -46,16 +45,16 @@ public class PaymentController {
   }
 
   @GetMapping
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "List mappings")
-  public ResponseEntity<Page<Payment>> list(@NonNull Pageable pageable) {
+  public ResponseEntity<Page<Payment>> list(Pageable pageable) {
     return ResponseEntity.ok(paymentService.getPayments(pageable));
   }
 
   @GetMapping("/{id}")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Get payment details")
-  public ResponseEntity<Payment> get(@NonNull @PathVariable Long id) {
+  public ResponseEntity<Payment> get(@PathVariable Long id) {
     return ResponseEntity.ok(paymentService.getById(id));
   }
 }

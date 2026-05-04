@@ -24,7 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@SuppressWarnings("null")
+
 public class ScheduledTasksService {
 
   private final TenantRepository tenantRepository;
@@ -45,7 +45,7 @@ public class ScheduledTasksService {
       try {
         TenantContext.setTenantId(tenant.getId());
         List<Product> lowStock = productRepository.findLowStock(tenant.getId());
-        
+
         for (Product p : lowStock) {
           // Create or update alert
           if (alertRepository.findByTypeAndResourceIdAndIsDismissedFalse("LOW_STOCK", p.getId()).isEmpty()) {
@@ -57,10 +57,11 @@ public class ScheduledTasksService {
                 .resourceId(p.getId())
                 .build();
             alertRepository.save(alert);
-            
+
             // Notify tenant admin if possible
             userRepository.findFirstByTenantIdAndRole(tenant.getId(), "ADMIN").ifPresent(admin -> {
-                notificationService.createNotification(admin.getId(), "Low Stock Alert", alert.getMessage(), "LOW_STOCK", p.getId());
+              notificationService.createNotification(admin.getId(), "Low Stock Alert", alert.getMessage(), "LOW_STOCK",
+                  p.getId());
             });
           }
         }
@@ -81,8 +82,9 @@ public class ScheduledTasksService {
       try {
         TenantContext.setTenantId(tenant.getId());
         // Simple unpaged check for all overdue
-        var overdue = invoiceRepository.findByStatusNotAndDueDateBefore("PAID", LocalDate.now(), org.springframework.data.domain.Pageable.unpaged());
-        
+        var overdue = invoiceRepository.findByStatusNotAndDueDateBefore("PAID", LocalDate.now(),
+            org.springframework.data.domain.Pageable.unpaged());
+
         for (Invoice inv : overdue.getContent()) {
           if (alertRepository.findByTypeAndResourceIdAndIsDismissedFalse("OVERDUE_INVOICE", inv.getId()).isEmpty()) {
             Alert alert = Alert.builder()
@@ -110,7 +112,7 @@ public class ScheduledTasksService {
     List<User> users = userRepository.findAll(); // Unfiltered by default usually
     int count = 0;
     for (User user : users) {
-      if (user.getResetToken() != null && user.getResetTokenExpiry() != null && 
+      if (user.getResetToken() != null && user.getResetTokenExpiry() != null &&
           LocalDateTime.now().isAfter(user.getResetTokenExpiry())) {
         user.setResetToken(null);
         user.setResetTokenExpiry(null);

@@ -1,0 +1,93 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  labels:
+    grafana_dashboard: "1"
+data:
+  ims-backend.json: |
+    {
+      "annotations": {
+        "list": []
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 0,
+      "links": [],
+      "panels": [
+        {
+          "title": "Request Rate",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "rate(http_server_requests_seconds_count[5m])",
+              "legendFormat": "{{method}} {{uri}}"
+            }
+          ]
+        },
+        {
+          "title": "Error Rate",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "rate(http_server_requests_seconds_count{status=~\"5..\"}[5m])",
+              "legendFormat": "Errors"
+            }
+          ]
+        },
+        {
+          "title": "Response Time (p95)",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, rate(http_server_requests_seconds_bucket[5m]))",
+              "legendFormat": "p95 latency"
+            }
+          ]
+        },
+        {
+          "title": "JVM Memory Used",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "jvm_memory_used_bytes{area=\"heap\"}",
+              "legendFormat": "{{id}}"
+            }
+          ]
+        },
+        {
+          "title": "DB Connection Pool",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "hikaricp_connections_active",
+              "legendFormat": "Active: {{pool}}"
+            },
+            {
+              "expr": "hikaricp_connections_idle",
+              "legendFormat": "Idle: {{pool}}"
+            }
+          ]
+        },
+        {
+          "title": "Cache Hit Rate",
+          "type": "timeseries",
+          "targets": [
+            {
+              "expr": "rate(cache_gets_total{result=\"hit\"}[5m]) / rate(cache_gets_total[5m])",
+              "legendFormat": "{{cache}} hit rate"
+            }
+          ]
+        }
+      ],
+      "schemaVersion": 38,
+      "templating": {
+        "list": []
+      },
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "title": "IMS Backend Dashboard",
+      "uid": "ims-backend"
+    }

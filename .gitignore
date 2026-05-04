@@ -42,3 +42,12 @@ IMS_PRD_Complete (1).docx
 Redo.md
 progress.txt
 PRD_Tenant_Onboarding_Hardening.docx
+
+### Secrets - NEVER COMMIT ###
+k8s/secrets.yaml
+k8s/**/*-secret*.yaml
+*.secret
+*.key
+*.pem
+.env.*
+secrets/

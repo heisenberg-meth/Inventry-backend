@@ -33,7 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@SuppressWarnings("null")
+
 public class AuthService {
 
   private static final int LOGOUT_EXPIRY_HOURS = 24;
@@ -124,11 +124,11 @@ public class AuthService {
 
     String scope = targetUser.getScope();
     String businessType = tenant.getBusinessType();
-    
+
     // Generate tokens with impersonation flag or just as the user
     String accessToken = jwtUtil.generateToken(
         targetUser.getId(), tenantId, targetUser.getRole(), scope, businessType, false);
-    
+
     log.info("ROOT user impersonating tenant admin: {} (tenant={})", targetUser.getEmail(), tenantId);
 
     return LoginResponse.builder()
@@ -154,10 +154,9 @@ public class AuthService {
 
   @Transactional
   public LoginResponse platformLogin(LoginRequest request) {
-    User user =
-        userRepository
-            .findByEmailUnfiltered(request.getEmail())
-            .orElseThrow(() -> new EntityNotFoundException("Invalid email or password"));
+    User user = userRepository
+        .findByEmailUnfiltered(request.getEmail())
+        .orElseThrow(() -> new EntityNotFoundException("Invalid email or password"));
 
     if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
       throw new IllegalArgumentException("Invalid email or password");
@@ -172,10 +171,8 @@ public class AuthService {
     }
 
     String scope = user.getScope();
-    String accessToken =
-        jwtUtil.generateToken(user.getId(), null, user.getRole(), scope, null, true);
-    String refreshToken =
-        jwtUtil.generateRefreshToken(user.getId(), null, user.getRole(), scope, null, true);
+    String accessToken = jwtUtil.generateToken(user.getId(), null, user.getRole(), scope, null, true);
+    String refreshToken = jwtUtil.generateRefreshToken(user.getId(), null, user.getRole(), scope, null, true);
 
     // Update last login (atomic update, no version increment)
     userRepository.updateLastLogin(user.getId(), LocalDateTime.now());
@@ -199,10 +196,9 @@ public class AuthService {
 
   @Transactional
   public LoginResponse login(LoginRequest request) {
-    User user =
-        userRepository
-            .findByEmailUnfiltered(request.getEmail())
-            .orElseThrow(() -> new EntityNotFoundException("Invalid email or password"));
+    User user = userRepository
+        .findByEmailUnfiltered(request.getEmail())
+        .orElseThrow(() -> new EntityNotFoundException("Invalid email or password"));
 
     if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
       throw new IllegalArgumentException("Invalid email or password");
@@ -219,10 +215,9 @@ public class AuthService {
 
     // Validate companyCode
     if (request.getCompanyCode() != null && !request.getCompanyCode().isBlank()) {
-      Tenant tenant =
-          tenantRepository
-              .findByCompanyCode(request.getCompanyCode())
-              .orElseThrow(() -> new EntityNotFoundException("Invalid company code"));
+      Tenant tenant = tenantRepository
+          .findByCompanyCode(request.getCompanyCode())
+          .orElseThrow(() -> new EntityNotFoundException("Invalid company code"));
       if (!Objects.equals(user.getTenantId(), tenant.getId())) {
         throw new IllegalArgumentException("User does not belong to this company");
       }
@@ -249,10 +244,10 @@ public class AuthService {
       }
     }
 
-    String accessToken =
-        jwtUtil.generateToken(user.getId(), tenantId, user.getRole(), scope, businessType, Boolean.TRUE.equals(user.getIsPlatformUser()));
-    String refreshToken =
-        jwtUtil.generateRefreshToken(user.getId(), tenantId, user.getRole(), scope, businessType, Boolean.TRUE.equals(user.getIsPlatformUser()));
+    String accessToken = jwtUtil.generateToken(user.getId(), tenantId, user.getRole(), scope, businessType,
+        Boolean.TRUE.equals(user.getIsPlatformUser()));
+    String refreshToken = jwtUtil.generateRefreshToken(user.getId(), tenantId, user.getRole(), scope, businessType,
+        Boolean.TRUE.equals(user.getIsPlatformUser()));
 
     // Update last login (atomic update, no version increment)
     userRepository.updateLastLogin(user.getId(), LocalDateTime.now());
@@ -319,10 +314,9 @@ public class AuthService {
     }
 
     Long userId = jwtUtil.extractUserId(refreshToken);
-    User user =
-        userRepository
-            .findByIdUnfiltered(userId)
-            .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User user = userRepository
+        .findByIdUnfiltered(userId)
+        .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     String scope = user.getScope();
     String businessType = null;
@@ -337,10 +331,10 @@ public class AuthService {
       }
     }
 
-    String newAccessToken =
-        jwtUtil.generateToken(user.getId(), tenantId, user.getRole(), scope, businessType, Boolean.TRUE.equals(user.getIsPlatformUser()));
-    String newRefreshToken =
-        jwtUtil.generateRefreshToken(user.getId(), tenantId, user.getRole(), scope, businessType, Boolean.TRUE.equals(user.getIsPlatformUser()));
+    String newAccessToken = jwtUtil.generateToken(user.getId(), tenantId, user.getRole(), scope, businessType,
+        Boolean.TRUE.equals(user.getIsPlatformUser()));
+    String newRefreshToken = jwtUtil.generateRefreshToken(user.getId(), tenantId, user.getRole(), scope, businessType,
+        Boolean.TRUE.equals(user.getIsPlatformUser()));
 
     // Blacklist old refresh token
     logout(refreshToken);
@@ -383,13 +377,12 @@ public class AuthService {
    * Get current user profile.
    */
   public Map<String, Object> getProfile(Long userId) {
-    User user =
-        userRepository
-            .findByIdUnfiltered(userId)
-            .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User user = userRepository
+        .findByIdUnfiltered(userId)
+        .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     Map<String, Object> result = new HashMap<>();
-    
+
     Map<String, Object> userMap = new HashMap<>();
     userMap.put("id", user.getId());
     userMap.put("name", user.getName());
@@ -400,7 +393,7 @@ public class AuthService {
     userMap.put("isPlatformUser", Boolean.TRUE.equals(user.getIsPlatformUser()));
     userMap.put("isActive", user.getIsActive());
     userMap.put("lastLogin", user.getLastLogin());
-    
+
     result.put("user", userMap);
 
     if (user.getTenantId() != null) {
@@ -426,10 +419,9 @@ public class AuthService {
    */
   @Transactional
   public Map<String, String> changePassword(Long userId, ChangePasswordRequest request) {
-    User user =
-        userRepository
-            .findByIdUnfiltered(userId)
-            .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User user = userRepository
+        .findByIdUnfiltered(userId)
+        .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
       throw new IllegalArgumentException("Current password is incorrect");
@@ -484,10 +476,9 @@ public class AuthService {
    */
   @Transactional
   public Map<String, String> resetPassword(ResetPasswordRequest request) {
-    User user =
-        userRepository
-            .findByResetToken(request.getResetToken())
-            .orElseThrow(() -> new IllegalArgumentException("Invalid or expired reset token"));
+    User user = userRepository
+        .findByResetToken(request.getResetToken())
+        .orElseThrow(() -> new IllegalArgumentException("Invalid or expired reset token"));
 
     if (user.getResetTokenExpiry() == null
         || LocalDateTime.now().isAfter(user.getResetTokenExpiry())) {
@@ -513,10 +504,9 @@ public class AuthService {
    * Get current user's role and permissions summary.
    */
   public Map<String, Object> getMyPermissions(Long userId) {
-    User user =
-        userRepository
-            .findByIdUnfiltered(userId)
-            .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User user = userRepository
+        .findByIdUnfiltered(userId)
+        .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     Map<String, Object> result = new HashMap<>();
     result.put("role", user.getRole());

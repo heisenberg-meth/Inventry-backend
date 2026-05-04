@@ -14,7 +14,7 @@ import org.springframework.web.client.RestTemplate;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@SuppressWarnings("null")
+
 public class WebhookService {
 
   private final WebhookRepository webhookRepository;

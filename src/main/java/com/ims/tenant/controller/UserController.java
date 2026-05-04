@@ -3,7 +3,6 @@ package com.ims.tenant.controller;
 import com.ims.dto.request.AssignPermissionsRequest;
 import com.ims.dto.request.CreateUserRequest;
 import com.ims.dto.response.UserResponse;
-import com.ims.shared.rbac.RequiresRole;
 import com.ims.tenant.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -12,11 +11,11 @@ import jakarta.validation.Valid;
 import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
-import org.springframework.lang.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -36,28 +35,28 @@ public class UserController {
   private final UserService userService;
 
   @PostMapping
-  @RequiresRole({"ADMIN"})
+  @PreAuthorize("hasRole('ADMIN')")
   @Operation(summary = "Create tenant user")
-  public ResponseEntity<UserResponse> createUser(@Valid @RequestBody @NonNull CreateUserRequest request) {
+  public ResponseEntity<UserResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED).body(userService.createUser(Objects.requireNonNull(request)));
   }
 
   @GetMapping
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "List tenant users")
-  public ResponseEntity<Page<UserResponse>> getUsers(@NonNull Pageable pageable) {
+  public ResponseEntity<Page<UserResponse>> getUsers(Pageable pageable) {
     return ResponseEntity.ok(userService.getUsers(Objects.requireNonNull(pageable)));
   }
 
   @GetMapping("/{id}")
-  @RequiresRole({"ADMIN", "MANAGER"})
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Get user details")
-  public ResponseEntity<UserResponse> getUser(@PathVariable @NonNull Long id) {
+  public ResponseEntity<UserResponse> getUser(@PathVariable Long id) {
     return ResponseEntity.ok(userService.getUserById(Objects.requireNonNull(id)));
   }
 
   @PatchMapping("/{id}/role")
-  @RequiresRole({"ADMIN"})
+  @PreAuthorize("hasRole('ADMIN')")
   @Operation(summary = "Update user role")
   public ResponseEntity<UserResponse> updateRole(
       @PathVariable Long id, @RequestBody Map<String, String> body) {
@@ -69,17 +68,18 @@ public class UserController {
   }
 
   @PostMapping("/{id}/permissions")
-  @RequiresRole({"ADMIN"})
+  @PreAuthorize("hasRole('ADMIN')")
   @Operation(summary = "Assign custom permissions to user")
   public ResponseEntity<UserResponse> assignPermissions(
-      @PathVariable @NonNull Long id, @Valid @RequestBody @NonNull AssignPermissionsRequest request) {
-    return ResponseEntity.ok(userService.assignPermissions(Objects.requireNonNull(id), Objects.requireNonNull(request)));
+      @PathVariable Long id, @Valid @RequestBody AssignPermissionsRequest request) {
+    return ResponseEntity
+        .ok(userService.assignPermissions(Objects.requireNonNull(id), Objects.requireNonNull(request)));
   }
 
   @DeleteMapping("/{id}")
-  @RequiresRole({"ADMIN"})
+  @PreAuthorize("hasRole('ADMIN')")
   @Operation(summary = "Deactivate user (soft delete)")
-  public ResponseEntity<Void> deactivateUser(@PathVariable @NonNull Long id) {
+  public ResponseEntity<Void> deactivateUser(@PathVariable Long id) {
     userService.deactivateUser(Objects.requireNonNull(id));
     return ResponseEntity.noContent().build();
   }

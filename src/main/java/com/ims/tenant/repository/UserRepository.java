@@ -5,9 +5,11 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -42,22 +44,23 @@ public interface UserRepository extends JpaRepository<User, Long> {
   @Query(value = "SELECT * FROM users WHERE tenant_id = :tenantId AND role = :role LIMIT 1", nativeQuery = true)
   Optional<User> findFirstByTenantIdAndRole(@Param("tenantId") Long tenantId, @Param("role") String role);
 
-  @Query(
-      value = "SELECT * FROM users WHERE tenant_id = :tenantId AND scope = 'TENANT'",
-      nativeQuery = true)
+  @Query(value = "SELECT * FROM users WHERE tenant_id = :tenantId AND scope = 'TENANT'", nativeQuery = true)
   Page<User> findByTenantIdAndScope(
       @Param("tenantId") Long tenantId, Pageable pageable);
 
-  @Query(
-      value =
-          "SELECT * FROM users WHERE tenant_id = :tenantId AND scope = 'TENANT'"
-              + " AND (name ILIKE '%' || :search || '%' OR email ILIKE '%' || :search || '%')",
-      nativeQuery = true)
+  @Query(value = "SELECT * FROM users WHERE tenant_id = :tenantId AND scope = 'TENANT'"
+      + " AND (name ILIKE '%' || :search || '%' OR email ILIKE '%' || :search || '%')", nativeQuery = true)
   Page<User> findByTenantIdAndSearch(
       @Param("tenantId") Long tenantId,
       @Param("search") String search,
       Pageable pageable);
+
   @org.springframework.data.jpa.repository.Modifying
   @Query("UPDATE User u SET u.lastLogin = :lastLogin WHERE u.id = :id")
   void updateLastLogin(@Param("id") Long id, @Param("lastLogin") java.time.LocalDateTime lastLogin);
+
+  @Modifying
+  @Transactional
+  @Query(value = "UPDATE users SET is_verified = :status WHERE id = :id", nativeQuery = true)
+  void updateVerificationStatus(@Param("id") Long id, @Param("status") boolean status);
 }

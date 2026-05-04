@@ -6,6 +6,7 @@ import com.ims.model.Permission;
 import com.ims.model.Role;
 import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditLogService;
+import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.repository.PermissionRepository;
 import com.ims.tenant.repository.RoleRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -13,7 +14,6 @@ import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,29 +27,36 @@ public class RoleService {
   private final AuditLogService auditLogService;
 
   @Transactional(readOnly = true)
-  public List<Role> findByTenant(@NonNull Long tenantId) {
+  public List<Role> findByTenant() {
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) throw new IllegalStateException("Missing tenant context");
     return roleRepository.findByTenantIdOrderByNameAsc(tenantId);
   }
 
   @Transactional(readOnly = true)
-  public Role findOne(@NonNull Long tenantId, @NonNull Long roleId) {
+  public Role findOne(Long roleId) {
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) throw new IllegalStateException("Missing tenant context");
+
     return roleRepository
         .findByIdAndTenantId(roleId, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Role not found"));
   }
 
   @Transactional
-  public Role create(@NonNull Long tenantId, @NonNull CreateRoleRequest request) {
+  public Role create(CreateRoleRequest request) {
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) throw new IllegalStateException("Missing tenant context");
+
     if (roleRepository.findByNameAndTenantId(request.getName(), tenantId).isPresent()) {
       throw new IllegalArgumentException("Role already exists: " + request.getName());
     }
 
-    Role role =
-        Role.builder()
-            .name(request.getName())
-            .description(request.getDescription())
-            .tenantId(tenantId)
-            .build();
+    Role role = Role.builder()
+        .name(request.getName())
+        .description(request.getDescription())
+        .tenantId(tenantId)
+        .build();
 
     Role saved = roleRepository.save(Objects.requireNonNull(role));
     auditLogService.log(
@@ -60,17 +67,16 @@ public class RoleService {
 
   @Transactional
   public Role assignPermissions(
-      @NonNull Long tenantId,
-      @NonNull Long roleId,
-      @NonNull AssignPermissionsRequest request) {
+      Long roleId,
+      AssignPermissionsRequest request) {
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) throw new IllegalStateException("Missing tenant context");
 
-    Role role =
-        roleRepository
-            .findByIdAndTenantId(roleId, tenantId)
-            .orElseThrow(() -> new EntityNotFoundException("Role not found"));
+    Role role = roleRepository
+        .findByIdAndTenantId(roleId, tenantId)
+        .orElseThrow(() -> new EntityNotFoundException("Role not found"));
 
-    List<Permission> permissions =
-        permissionRepository.findByIdIn(request.getPermissionIds());
+    List<Permission> permissions = permissionRepository.findByIdIn(request.getPermissionIds());
 
     if (permissions.size() != request.getPermissionIds().size()) {
       throw new IllegalArgumentException("Some permission IDs are invalid");

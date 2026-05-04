@@ -1,7 +1,6 @@
 package com.ims.platform.controller;
 
 import com.ims.platform.repository.TenantRepository;
-import com.ims.shared.rbac.RequiresRole;
 import com.ims.tenant.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -10,6 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,7 +25,7 @@ public class PlatformStatsController {
   private final UserRepository userRepository;
 
   @GetMapping("/stats")
-  @RequiresRole({"ROOT"})
+  @PreAuthorize("hasRole('ROOT')")
   @Operation(summary = "Platform-wide metrics")
   public ResponseEntity<Map<String, Object>> getStats() {
     Map<String, Object> stats = new LinkedHashMap<>();

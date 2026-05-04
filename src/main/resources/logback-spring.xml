@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    
+    <springProperty scope="context" name="LOGSTASH_HOST" source="logging.logstash.host" defaultValue="localhost:5000"/>
+    <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="ims-backend"/>
+    
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.classic.encoder.JsonEncoder">
+            <jsonFormatter class="ch.qos.logback.classic.encoder.JsonFormatter">
+                <prettyPrint>false</prettyPrint>
+            </jsonFormatter>
+            <pattern>{"timestamp":"%d{ISO8601}","level":"%p","thread":"%t","logger":"%c","message":"%m","traceId":"%X{traceId:-}","spanId":"%X{spanId:-}","correlationId":"%X{X-Correlation-ID:-}","tenantId":"%X{tenantId:-}","app":"${APP_NAME}"}%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Logstash appender for ELK stack (only in non-test profiles) -->
+    <springProfile name="!test">
+        <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+            <destination>${LOGSTASH_HOST}</destination>
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <customFields>{"app":"${APP_NAME}"}</customFields>
+            </encoder>
+        </appender>
+    </springProfile>
+
+    <root level="INFO">
+        <appender-ref ref="STDOUT"/>
+        <springProfile name="!test">
+            <appender-ref ref="LOGSTASH"/>
+        </springProfile>
+    </root>
+</configuration>
