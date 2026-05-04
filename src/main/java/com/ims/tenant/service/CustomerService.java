@@ -7,7 +7,6 @@ import com.ims.model.Invoice;
 import com.ims.model.Order;
 import com.ims.model.Payment;
 import com.ims.shared.auth.TenantContext;
-import com.ims.shared.exception.TenantContextException;
 import com.ims.tenant.repository.CustomerRepository;
 import com.ims.tenant.repository.InvoiceRepository;
 import com.ims.tenant.repository.OrderRepository;
@@ -37,11 +36,9 @@ public class CustomerService {
   }
 
   public Customer getById(Long id) {
-    TenantContext.assertTenantPresent();
-    return Objects.requireNonNull(
-        customerRepository
-            .findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Customer not found")));
+    return customerRepository
+        .findByIdAndTenantId(id, TenantContext.requireTenantId())
+        .orElseThrow(() -> new EntityNotFoundException("Customer not found"));
   }
 
   public CustomerResponse getCustomerResponseById(Long id) {
@@ -50,10 +47,7 @@ public class CustomerService {
 
   @Transactional
   public CustomerResponse create(CustomerRequest request) {
-    Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) {
-      throw new TenantContextException("Tenant context missing");
-    }
+    TenantContext.requireTenantId();
 
     Customer customer = new Customer();
     customer.setName(request.getName());
@@ -97,10 +91,11 @@ public class CustomerService {
   public Map<String, Object> getCustomerLedger(Long id) {
     Customer customer = getById(id);
 
-    List<Order> orders = orderRepository.findByCustomerId(TenantContext.requireTenantId(), id, Pageable.unpaged())
+    Long tenantId = TenantContext.requireTenantId();
+    List<Order> orders = orderRepository.findByCustomerId(tenantId, id, Pageable.unpaged())
         .getContent();
-    List<Invoice> invoices = invoiceRepository.findByCustomerId(id);
-    List<Payment> payments = paymentRepository.findByCustomerId(id);
+    List<Invoice> invoices = invoiceRepository.findByCustomerIdAndTenantId(id, tenantId);
+    List<Payment> payments = paymentRepository.findByCustomerIdAndTenantId(id, tenantId);
 
     return Objects.requireNonNull(
         Map.of(

@@ -16,4 +16,7 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
     @Query("SELECT c FROM Customer c WHERE c.tenantId = :tenantId")
     List<Customer> findAllByTenantId(@Param("tenantId") Long tenantId);
+
+    @Query("SELECT c FROM Customer c WHERE c.id = :id AND c.tenantId = :tenantId")
+    java.util.Optional<Customer> findByIdAndTenantId(@Param("id") Long id, @Param("tenantId") Long tenantId);
 }

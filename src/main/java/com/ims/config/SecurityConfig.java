@@ -121,10 +121,10 @@ public class SecurityConfig {
             ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
         .addFilterBefore(traceFilter, UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(ipWhitelistFilter, TraceFilter.class)
-        .addFilterAfter(rateLimitFilter, TraceFilter.class)
+        .addFilterAfter(tenantFilter, TraceFilter.class)
+        .addFilterAfter(rateLimitFilter, TenantFilter.class)
         .addFilterAfter(apiKeyFilter, RateLimitFilter.class)
-        .addFilterAfter(jwtFilter, ApiKeyFilter.class)
-        .addFilterAfter(tenantFilter, JwtFilter.class);
+        .addFilterAfter(jwtFilter, ApiKeyFilter.class);
   }
 
   @Bean

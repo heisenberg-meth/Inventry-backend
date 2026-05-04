@@ -35,7 +35,7 @@ public class PermissionService {
       Optional<Role> roleOpt;
 
       if (tenantId != null && !"ROOT".equals(roleName)) {
-        roleOpt = roleRepository.findByNameWithPermissions(roleName, tenantId.toString());
+        roleOpt = roleRepository.findByNameWithPermissions(roleName, tenantId);
       } else {
         roleOpt = roleRepository.findByNameAndTenantIdIsNullWithPermissions(roleName);
       }
@@ -56,7 +56,7 @@ public class PermissionService {
     }
 
     // FR-01-C: Fetch custom permissions directly from User entity
-    userRepository.findByIdWithPermissions(userId).ifPresent(user -> {
+    userRepository.findByIdWithPermissions(userId, tenantId).ifPresent(user -> {
       if (user.getCustomPermissions() != null && !user.getCustomPermissions().isEmpty()) {
         Set<String> customPerms = user.getCustomPermissions().stream()
             .map(Permission::getKey)

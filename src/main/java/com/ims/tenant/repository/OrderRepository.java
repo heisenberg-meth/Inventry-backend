@@ -18,91 +18,94 @@ import jakarta.persistence.LockModeType;
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT o FROM Order o WHERE o.id = :id")
-    java.util.Optional<Order> lockById(@Param("id") Long id);
+        @Lock(LockModeType.PESSIMISTIC_WRITE)
+        @Query("SELECT o FROM Order o WHERE o.id = :id AND o.tenantId = :tenantId")
+        java.util.Optional<Order> lockById(@Param("id") Long id, @Param("tenantId") Long tenantId);
 
-    @Query("SELECT o FROM Order o WHERE o.tenantId = :tenantId AND o.type = :type AND o.createdAt >= :from AND o.createdAt <= :to")
-    Page<Order> findByTypeAndDateRange(
-            @Param("tenantId") Long tenantId,
-            @Param("type") String type,
-            @Param("from") LocalDateTime from,
-            @Param("to") LocalDateTime to,
-            Pageable pageable);
+        @Query("SELECT o FROM Order o WHERE o.id = :id AND o.tenantId = :tenantId")
+        java.util.Optional<Order> findByIdAndTenantId(@Param("id") Long id, @Param("tenantId") Long tenantId);
 
-    @Query("SELECT o FROM Order o WHERE o.tenantId = :tenantId AND o.createdAt >= :from AND o.createdAt <= :to")
-    Page<Order> findByDateRange(
-            @Param("tenantId") Long tenantId,
-            @Param("from") LocalDateTime from,
-            @Param("to") LocalDateTime to,
-            Pageable pageable);
+        @Query("SELECT o FROM Order o WHERE o.tenantId = :tenantId AND o.type = :type AND o.createdAt >= :from AND o.createdAt <= :to")
+        Page<Order> findByTypeAndDateRange(
+                        @Param("tenantId") Long tenantId,
+                        @Param("type") String type,
+                        @Param("from") LocalDateTime from,
+                        @Param("to") LocalDateTime to,
+                        Pageable pageable);
 
-    List<Order> findByReferenceOrderId(Long referenceOrderId);
+        @Query("SELECT o FROM Order o WHERE o.tenantId = :tenantId AND o.createdAt >= :from AND o.createdAt <= :to")
+        Page<Order> findByDateRange(
+                        @Param("tenantId") Long tenantId,
+                        @Param("from") LocalDateTime from,
+                        @Param("to") LocalDateTime to,
+                        Pageable pageable);
 
-    // findById is inherited
+        List<Order> findByReferenceOrderId(Long referenceOrderId);
 
-    @Query("SELECT o FROM Order o WHERE o.tenantId = :tenantId")
-    Page<Order> findAllByTenantId(@Param("tenantId") Long tenantId, Pageable pageable);
+        // findById is inherited
 
-    @Query("SELECT o FROM Order o WHERE o.tenantId = :tenantId AND o.type = :type")
-    Page<Order> findByType(@Param("tenantId") Long tenantId, @Param("type") String type, Pageable pageable);
+        @Query("SELECT o FROM Order o WHERE o.tenantId = :tenantId")
+        Page<Order> findAllByTenantId(@Param("tenantId") Long tenantId, Pageable pageable);
 
-    @Query("SELECT o FROM Order o WHERE o.tenantId = :tenantId AND o.supplierId = :supplierId")
-    Page<Order> findBySupplierId(@Param("tenantId") Long tenantId, @Param("supplierId") Long supplierId,
-            Pageable pageable);
+        @Query("SELECT o FROM Order o WHERE o.tenantId = :tenantId AND o.type = :type")
+        Page<Order> findByType(@Param("tenantId") Long tenantId, @Param("type") String type, Pageable pageable);
 
-    @Query("SELECT o FROM Order o WHERE o.tenantId = :tenantId AND o.customerId = :customerId")
-    Page<Order> findByCustomerId(@Param("tenantId") Long tenantId, @Param("customerId") Long customerId,
-            Pageable pageable);
+        @Query("SELECT o FROM Order o WHERE o.tenantId = :tenantId AND o.supplierId = :supplierId")
+        Page<Order> findBySupplierId(@Param("tenantId") Long tenantId, @Param("supplierId") Long supplierId,
+                        Pageable pageable);
 
-    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o "
-            + "WHERE o.tenantId = :tenantId AND o.type = :type AND o.createdAt >= :from AND o.createdAt <= :to")
-    BigDecimal sumAmountByTypeAndDateRange(
-            @Param("tenantId") Long tenantId,
-            @Param("type") String type,
-            @Param("from") LocalDateTime from,
-            @Param("to") LocalDateTime to);
+        @Query("SELECT o FROM Order o WHERE o.tenantId = :tenantId AND o.customerId = :customerId")
+        Page<Order> findByCustomerId(@Param("tenantId") Long tenantId, @Param("customerId") Long customerId,
+                        Pageable pageable);
 
-    @Query("SELECT COALESCE(SUM(o.taxAmount), 0) FROM Order o "
-            + "WHERE o.tenantId = :tenantId AND o.type = :type AND o.createdAt >= :from AND o.createdAt <= :to")
-    BigDecimal sumTaxAmountByTypeAndDateRange(
-            @Param("tenantId") Long tenantId,
-            @Param("type") String type,
-            @Param("from") LocalDateTime from,
-            @Param("to") LocalDateTime to);
+        @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o "
+                        + "WHERE o.tenantId = :tenantId AND o.type = :type AND o.createdAt >= :from AND o.createdAt <= :to")
+        BigDecimal sumAmountByTypeAndDateRange(
+                        @Param("tenantId") Long tenantId,
+                        @Param("type") String type,
+                        @Param("from") LocalDateTime from,
+                        @Param("to") LocalDateTime to);
 
-    @Query("SELECT COUNT(o) FROM Order o "
-            + "WHERE o.tenantId = :tenantId AND o.type = :type AND o.createdAt >= :from AND o.createdAt <= :to")
-    long countByTypeAndDateRange(
-            @Param("tenantId") Long tenantId,
-            @Param("type") String type,
-            @Param("from") LocalDateTime from,
-            @Param("to") LocalDateTime to);
+        @Query("SELECT COALESCE(SUM(o.taxAmount), 0) FROM Order o "
+                        + "WHERE o.tenantId = :tenantId AND o.type = :type AND o.createdAt >= :from AND o.createdAt <= :to")
+        BigDecimal sumTaxAmountByTypeAndDateRange(
+                        @Param("tenantId") Long tenantId,
+                        @Param("type") String type,
+                        @Param("from") LocalDateTime from,
+                        @Param("to") LocalDateTime to);
 
-    @Query("""
-            SELECT YEAR(o.createdAt) as year, MONTH(o.createdAt) as month, SUM(o.totalAmount) as revenue
-            FROM Order o
-            WHERE o.tenantId = :tenantId AND o.type = :type
-              AND o.createdAt >= :from
-            GROUP BY YEAR(o.createdAt), MONTH(o.createdAt)
-            ORDER BY YEAR(o.createdAt), MONTH(o.createdAt)
-            """)
-    List<MonthlyRevenue> getMonthlyRevenue(
-            @Param("tenantId") Long tenantId,
-            @Param("type") String type,
-            @Param("from") LocalDateTime from);
+        @Query("SELECT COUNT(o) FROM Order o "
+                        + "WHERE o.tenantId = :tenantId AND o.type = :type AND o.createdAt >= :from AND o.createdAt <= :to")
+        long countByTypeAndDateRange(
+                        @Param("tenantId") Long tenantId,
+                        @Param("type") String type,
+                        @Param("from") LocalDateTime from,
+                        @Param("to") LocalDateTime to);
 
-    @Query("""
-            SELECT o.status as status, COUNT(o) as count
-            FROM Order o
-            WHERE o.tenantId = :tenantId AND o.createdAt >= :from
-            GROUP BY o.status
-            """)
-    List<OrderStatusStat> getOrderStatusStats(@Param("tenantId") Long tenantId, @Param("from") LocalDateTime from);
+        @Query("""
+                        SELECT YEAR(o.createdAt) as year, MONTH(o.createdAt) as month, SUM(o.totalAmount) as revenue
+                        FROM Order o
+                        WHERE o.tenantId = :tenantId AND o.type = :type
+                          AND o.createdAt >= :from
+                        GROUP BY YEAR(o.createdAt), MONTH(o.createdAt)
+                        ORDER BY YEAR(o.createdAt), MONTH(o.createdAt)
+                        """)
+        List<MonthlyRevenue> getMonthlyRevenue(
+                        @Param("tenantId") Long tenantId,
+                        @Param("type") String type,
+                        @Param("from") LocalDateTime from);
 
-    java.util.Optional<Order> findByIdempotencyKey(String idempotencyKey);
+        @Query("""
+                        SELECT o.status as status, COUNT(o) as count
+                        FROM Order o
+                        WHERE o.tenantId = :tenantId AND o.createdAt >= :from
+                        GROUP BY o.status
+                        """)
+        List<OrderStatusStat> getOrderStatusStats(@Param("tenantId") Long tenantId, @Param("from") LocalDateTime from);
 
-    @Query("SELECT o FROM Order o WHERE o.idempotencyKey = :key AND o.tenantId = :tenantId")
-    java.util.Optional<Order> findByIdempotencyKeyAndTenantId(@Param("key") String idempotencyKey,
-            @Param("tenantId") Long tenantId);
+        java.util.Optional<Order> findByIdempotencyKey(String idempotencyKey);
+
+        @Query("SELECT o FROM Order o WHERE o.idempotencyKey = :key AND o.tenantId = :tenantId")
+        java.util.Optional<Order> findByIdempotencyKeyAndTenantId(@Param("key") String idempotencyKey,
+                        @Param("tenantId") Long tenantId);
 }

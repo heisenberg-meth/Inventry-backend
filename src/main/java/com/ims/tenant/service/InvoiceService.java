@@ -57,8 +57,9 @@ public class InvoiceService {
 
   @Transactional
   public Invoice createManual(CreateInvoiceRequest request) {
+    Long tenantId = TenantContext.requireTenantId();
     Order order = orderRepository
-        .findById(Objects.requireNonNull(request.getOrderId()))
+        .findByIdAndTenantId(Objects.requireNonNull(request.getOrderId()), tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
     if (!"SALE".equals(order.getType())) {
@@ -73,6 +74,7 @@ public class InvoiceService {
 
     Invoice invoice = Objects.requireNonNull(
         Invoice.builder()
+            .tenantId(tenantId)
             .orderId(Objects.requireNonNull(order.getId()))
             .invoiceNumber(invoiceNumber)
             .amount(order.getTotalAmount())
@@ -92,8 +94,9 @@ public class InvoiceService {
 
   @Transactional
   public Invoice updateStatus(Long id, InvoiceStatusRequest request) {
+    Long tenantId = TenantContext.requireTenantId();
     Invoice invoice = invoiceRepository
-        .findById(id)
+        .findByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
 
     InvoiceStatus currentStatus = invoice.getStatus();
@@ -116,8 +119,10 @@ public class InvoiceService {
   public Invoice createFromOrder(Order order) {
     String invoiceNumber = incrementAndGetInvoiceNumber();
 
+    Long tenantId = TenantContext.requireTenantId();
     Invoice invoice = Objects.requireNonNull(
         Invoice.builder()
+            .tenantId(tenantId)
             .orderId(Objects.requireNonNull(order.getId()))
             .invoiceNumber(invoiceNumber)
             .amount(order.getTotalAmount())
@@ -136,8 +141,10 @@ public class InvoiceService {
     // Use CN prefix in place of the invoice's "INV-" prefix.
     String invoiceNumber = "CN-" + incrementAndGetInvoiceNumber().substring(INVOICE_PREFIX_LENGTH);
 
+    Long tenantId = TenantContext.requireTenantId();
     Invoice creditNote = Objects.requireNonNull(
         Invoice.builder()
+            .tenantId(tenantId)
             .orderId(Objects.requireNonNull(returnOrder.getId()))
             .invoiceNumber(invoiceNumber)
             .amount(Objects.requireNonNull(returnOrder.getTotalAmount().negate()))
@@ -180,12 +187,13 @@ public class InvoiceService {
   @Transactional(readOnly = true)
   public byte[] generatePdf(Long id) {
     try {
+      Long tenantId = TenantContext.requireTenantId();
       Invoice invoice = invoiceRepository
-          .findById(id)
+          .findByIdAndTenantId(id, tenantId)
           .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
 
       Order order = orderRepository
-          .findById(Objects.requireNonNull(invoice.getOrderId()))
+          .findByIdAndTenantId(Objects.requireNonNull(invoice.getOrderId()), tenantId)
           .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
       Tenant tenant = tenantRepository
@@ -198,7 +206,7 @@ public class InvoiceService {
 
       if (order.getCustomerId() != null) {
         Customer customer = customerRepository
-            .findById(order.getCustomerId())
+            .findByIdAndTenantId(order.getCustomerId(), tenantId)
             .orElse(null);
         if (customer != null) {
           customerName = customer.getName();
@@ -213,8 +221,8 @@ public class InvoiceService {
           .map(
               item -> {
                 Product product = productRepository
-                    .findById(
-                        Objects.requireNonNull(item.getProductId(), "product id required"))
+                    .findByIdAndTenantId(
+                        Objects.requireNonNull(item.getProductId(), "product id required"), tenantId)
                     .orElseThrow(() -> new EntityNotFoundException("Product not found"));
                 Map<String, Object> map = new HashMap<>();
                 map.put("productName", product.getName());
@@ -262,21 +270,20 @@ public class InvoiceService {
   }
 
   public Page<Invoice> getInvoices(Pageable pageable) {
-    TenantContext.assertTenantPresent();
-    return Objects.requireNonNull(invoiceRepository.findAllByActiveTrue(pageable));
+    Long tenantId = TenantContext.requireTenantId();
+    return Objects.requireNonNull(invoiceRepository.findAllByTenantId(tenantId, pageable));
   }
 
   public Page<Invoice> getOverdueInvoices(Pageable pageable) {
-    TenantContext.assertTenantPresent();
+    Long tenantId = TenantContext.requireTenantId();
     return Objects.requireNonNull(
-        invoiceRepository.findByStatusNotAndDueDateBefore(InvoiceStatus.PAID, LocalDate.now(), pageable));
+        invoiceRepository.findOverdueByTenantId(tenantId, InvoiceStatus.PAID, LocalDate.now(), pageable));
   }
 
   public Invoice getInvoiceById(Long id) {
-    TenantContext.assertTenantPresent();
-    return Objects.requireNonNull(
-        invoiceRepository
-            .findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Invoice not found")));
+    Long tenantId = TenantContext.requireTenantId();
+    return invoiceRepository
+        .findByIdAndTenantId(id, tenantId)
+        .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
   }
 }

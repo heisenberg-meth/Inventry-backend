@@ -1,6 +1,7 @@
 package com.ims.tenant.controller;
 
 import com.ims.model.StockMovement;
+import com.ims.shared.auth.TenantContext;
 import com.ims.shared.rbac.RequiresRole;
 import com.ims.tenant.repository.StockMovementRepository;
 import com.ims.tenant.service.ReportService;
@@ -152,6 +153,7 @@ public class ReportController {
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
       Pageable pageable) {
-    return ResponseEntity.ok(stockMovementRepository.findByFilters(productId, from, to, pageable));
+    return ResponseEntity
+        .ok(stockMovementRepository.findByFilters(TenantContext.requireTenantId(), productId, from, to, pageable));
   }
 }

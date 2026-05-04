@@ -35,7 +35,7 @@ public class AuditLogService {
 
     AuditLog auditEntry = Objects.requireNonNull(
         AuditLog.builder()
-            .tenantId(tenantId != null ? tenantId : TenantContext.getTenantId())
+            .tenantId(tenantId != null ? tenantId : TenantContext.requireTenantId())
             .userId(userId)
             .action(Objects.requireNonNull(action.name()))
             .details(Objects.requireNonNull(details))
@@ -73,6 +73,7 @@ public class AuditLogService {
       log.warn("Legacy log called with non-enum value: {}. Logging as string.", action);
       AuditLog auditEntry = Objects.requireNonNull(
           AuditLog.builder()
+              .tenantId(tenantId != null ? tenantId : TenantContext.requireTenantId())
               .userId(userId)
               .action(action)
               .details(details)
@@ -99,7 +100,7 @@ public class AuditLogService {
 
     String fullDetails = String.format(
         "[%s:%s] %s", resource.name(), resourceId != null ? resourceId : "N/A", details);
-    log(action, tenantId != null ? tenantId : TenantContext.PLATFORM_TENANT_ID,
+    log(action, tenantId,
         userId != null ? userId : TenantContext.PLATFORM_TENANT_ID, Objects.requireNonNull(fullDetails));
   }
 
@@ -130,7 +131,8 @@ public class AuditLogService {
     if (isSystemAdmin()) {
       logs = auditLogRepository.findAllGlobal(pageable);
     } else {
-      logs = auditLogRepository.findAll(pageable);
+      Long tenantId = TenantContext.requireTenantId();
+      logs = auditLogRepository.findByTenantId(tenantId, pageable);
     }
 
     if (isSystemAdmin() && systemConfigService.isSupportModeEnabled()) {

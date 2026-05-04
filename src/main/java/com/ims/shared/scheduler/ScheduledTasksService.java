@@ -56,8 +56,10 @@ public class ScheduledTasksService {
   private void processLowStockProduct(Product p) {
     Long tenantId = p.getTenantId();
     TenantContext.runWithTenant(tenantId, () -> {
-      if (alertRepository.findByTypeAndResourceIdAndIsDismissedFalse("LOW_STOCK", p.getId()).isEmpty()) {
+      if (alertRepository.findByTypeAndResourceIdAndTenantIdAndIsDismissedFalse("LOW_STOCK", p.getId(), tenantId)
+          .isEmpty()) {
         Alert alert = Alert.builder()
+            .tenantId(tenantId)
             .type("LOW_STOCK")
             .severity("HIGH")
             .message("Low stock for " + p.getName() + " (" + p.getStock() + " remaining)")
@@ -96,8 +98,10 @@ public class ScheduledTasksService {
   private void processOverdueInvoice(Invoice inv) {
     Long tenantId = Objects.requireNonNull(inv.getTenantId());
     TenantContext.runWithTenant(tenantId, () -> {
-      if (alertRepository.findByTypeAndResourceIdAndIsDismissedFalse("OVERDUE_INVOICE", inv.getId()).isEmpty()) {
+      if (alertRepository
+          .findByTypeAndResourceIdAndTenantIdAndIsDismissedFalse("OVERDUE_INVOICE", inv.getId(), tenantId).isEmpty()) {
         Alert alert = Alert.builder()
+            .tenantId(tenantId)
             .type("OVERDUE_INVOICE")
             .severity("MEDIUM")
             .message("Invoice " + inv.getInvoiceNumber() + " is overdue since " + inv.getDueDate())

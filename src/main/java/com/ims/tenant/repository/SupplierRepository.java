@@ -16,4 +16,7 @@ public interface SupplierRepository extends JpaRepository<Supplier, Long> {
 
     @Query("SELECT s FROM Supplier s WHERE s.tenantId = :tenantId")
     List<Supplier> findAllByTenantId(@Param("tenantId") Long tenantId);
+
+    @Query("SELECT s FROM Supplier s WHERE s.id = :id AND s.tenantId = :tenantId")
+    java.util.Optional<Supplier> findByIdAndTenantId(@Param("id") Long id, @Param("tenantId") Long tenantId);
 }

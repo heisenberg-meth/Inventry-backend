@@ -12,4 +12,7 @@ import org.springframework.stereotype.Repository;
 public interface TransferOrderRepository extends JpaRepository<TransferOrder, Long> {
     @Query("SELECT t FROM TransferOrder t WHERE t.tenantId = :tenantId")
     Page<TransferOrder> findAllByTenantId(@Param("tenantId") Long tenantId, Pageable pageable);
+
+    @Query("SELECT t FROM TransferOrder t WHERE t.id = :id AND t.tenantId = :tenantId")
+    java.util.Optional<TransferOrder> findByIdAndTenantId(@Param("id") Long id, @Param("tenantId") Long tenantId);
 }

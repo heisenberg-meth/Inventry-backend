@@ -43,6 +43,7 @@ public class SupportService {
     Long tenantId = com.ims.shared.auth.TenantContext.requireTenantId();
 
     SupportTicket initialTicket = SupportTicket.builder()
+        .tenantId(tenantId)
         .createdBy(userId)
         .title(request.getTitle())
         .description(request.getDescription())
@@ -61,15 +62,15 @@ public class SupportService {
 
   @Transactional(readOnly = true)
   public Page<SupportTicket> listTenantTickets(Pageable pageable) {
-    TenantContext.assertTenantPresent();
-    return Objects.requireNonNull(ticketRepository.findAll(pageable));
+    Long tenantId = TenantContext.requireTenantId();
+    return Objects.requireNonNull(ticketRepository.findAllByTenantId(tenantId, pageable));
   }
 
   @Transactional(readOnly = true)
   public Map<String, Object> getTenantTicketDetails(Long ticketId) {
-    TenantContext.assertTenantPresent();
+    Long tenantId = TenantContext.requireTenantId();
     SupportTicket ticket = ticketRepository
-        .findById(ticketId)
+        .findByIdAndTenantId(ticketId, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
 
     List<SupportMessage> messages = messageRepository.findByTicketIdOrderByCreatedAtAsc(ticketId);
@@ -82,9 +83,9 @@ public class SupportService {
 
   @Transactional
   public SupportTicket closeTicketByTenant(Long ticketId) {
-    TenantContext.assertTenantPresent();
+    Long tenantId = TenantContext.requireTenantId();
     SupportTicket ticket = ticketRepository
-        .findById(ticketId)
+        .findByIdAndTenantId(ticketId, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
 
     ticket.setStatus(SupportTicketStatus.CLOSED);

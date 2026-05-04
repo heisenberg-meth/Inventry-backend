@@ -7,6 +7,7 @@ import com.ims.model.Role;
 import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditLogService;
 import com.ims.shared.audit.AuditResource;
+import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.repository.PermissionRepository;
 import com.ims.tenant.repository.RoleRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -29,24 +30,30 @@ public class RoleService {
 
   @Transactional(readOnly = true)
   public List<Role> findAll() {
-    return Objects.requireNonNull(roleRepository.findAllByOrderByNameAsc());
+    return Objects
+        .requireNonNull(roleRepository.findAllByTenantId(TenantContext.requireTenantId()));
   }
 
   @Transactional(readOnly = true)
   public Role findOne(Long roleId) {
-    return Objects.requireNonNull(
-        roleRepository
-            .findById(roleId)
-            .orElseThrow(() -> new EntityNotFoundException("Role not found")));
+    Long tenantId = TenantContext.requireTenantId();
+    return roleRepository
+        .findByIdAndTenantId(roleId, tenantId)
+        .orElseThrow(() -> new EntityNotFoundException("Role not found"));
   }
 
   @Transactional
   public Role create(CreateRoleRequest request) {
-    if (roleRepository.findByName(request.getName()).isPresent()) {
+    if (roleRepository.findByNameAndTenantId(request.getName(), TenantContext.requireTenantId())
+        .isPresent()) {
       throw new IllegalArgumentException("Role already exists: " + request.getName());
     }
 
-    Role role = Role.builder().name(request.getName()).description(request.getDescription()).build();
+    Role role = Role.builder()
+        .name(request.getName())
+        .description(request.getDescription())
+        .tenantId(TenantContext.requireTenantId())
+        .build();
 
     Role saved = roleRepository.save(Objects.requireNonNull(role));
     auditLogService.logAudit(
@@ -60,8 +67,9 @@ public class RoleService {
   public Role assignPermissions(
       Long roleId, AssignPermissionsRequest request) {
 
+    Long tenantId = TenantContext.requireTenantId();
     Role role = roleRepository
-        .findById(roleId)
+        .findByIdAndTenantId(roleId, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Role not found"));
 
     List<Permission> permissions = permissionRepository.findByIdIn(request.getPermissionIds());

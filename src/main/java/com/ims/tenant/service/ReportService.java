@@ -135,7 +135,7 @@ public class ReportService {
     // Expiring soon — only for PHARMACY tenants
     if ("PHARMACY".equals(securityContextAccessor.getBusinessType().orElse(null))) {
       LocalDate threshold = LocalDate.now().plusDays(getExpiryThreshold());
-      long expiringSoon = pharmacyProductRepository.countExpiring(threshold);
+      long expiringSoon = pharmacyProductRepository.countExpiring(threshold, tenantId);
       dashboard.put("expiring_soon_count", expiringSoon);
     }
 
@@ -329,8 +329,9 @@ public class ReportService {
 
   @Transactional
   public void dismissAlert(Long id) {
+    Long tenantId = TenantContext.requireTenantId();
     alertRepository
-        .findById(id)
+        .findByIdAndTenantId(id, tenantId)
         .ifPresent(
             a -> {
               a.setIsDismissed(true);

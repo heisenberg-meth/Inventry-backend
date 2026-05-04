@@ -95,9 +95,9 @@ public class ProductService {
   @Cacheable(value = "products", key = "'id:' + #id", cacheResolver = "tenantAwareCacheResolver")
   public ProductResponse getProductById(Long id) {
     Objects.requireNonNull(id, "product id required");
-    securityContextAccessor.requireTenantId();
+    Long tenantId = securityContextAccessor.requireTenantId();
     ProductResponse response = productRepository
-        .findByIdWithDetails(id)
+        .findByIdWithDetails(id, tenantId)
         .map(view -> toResponse(Objects.requireNonNull(view)))
         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
@@ -105,8 +105,8 @@ public class ProductService {
   }
 
   public Optional<Product> findByIdWithLock(Long id) {
-    securityContextAccessor.requireTenantId();
-    return productRepository.findByIdWithLock(id);
+    Long tenantId = securityContextAccessor.requireTenantId();
+    return productRepository.findByIdWithLock(id, tenantId);
   }
 
   @Transactional
@@ -148,6 +148,7 @@ public class ProductService {
 
     Product product = Objects.requireNonNull(
         Product.builder()
+            .tenantId(tenantId)
             .name(Objects.requireNonNull(request.getName()))
             .sku(Objects.requireNonNull(request.getSku()))
             .barcode(request.getBarcode())
@@ -182,6 +183,7 @@ public class ProductService {
       var pd = Objects.requireNonNull(request.getPharmacyDetails());
       pp = Objects.requireNonNull(
           PharmacyProduct.builder()
+              .tenantId(tenantId)
               .product(product)
               .batchNumber(pd.getBatchNumber())
               .expiryDate(LocalDate.parse(pd.getExpiryDate()))
@@ -196,6 +198,7 @@ public class ProductService {
       var wd = Objects.requireNonNull(request.getWarehouseDetails());
       wp = Objects.requireNonNull(
           WarehouseProduct.builder()
+              .tenantId(tenantId)
               .product(product)
               .storageLocation(wd.getStorageLocation())
               .zone(wd.getZone())
@@ -220,8 +223,9 @@ public class ProductService {
       Long id, CreateProductRequest request) {
     Objects.requireNonNull(id, "product id required");
     Objects.requireNonNull(request, "request body required");
+    Long tenantId = securityContextAccessor.requireTenantId();
     Product tmpProduct = productRepository
-        .findById(id)
+        .findByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
     Product product = Objects.requireNonNull(tmpProduct);
 
@@ -270,7 +274,7 @@ public class ProductService {
       var pd = Objects.requireNonNull(request.getPharmacyDetails());
       PharmacyProduct tmpPp = pharmacyProductRepository
           .findById(Objects.requireNonNull(product.getId()))
-          .orElse(PharmacyProduct.builder().product(product).build());
+          .orElse(PharmacyProduct.builder().tenantId(tenantId).product(product).build());
       PharmacyProduct fetchedPp = Objects.requireNonNull(tmpPp);
 
       pp = Objects.requireNonNull(fetchedPp);
@@ -301,7 +305,7 @@ public class ProductService {
       var wd = Objects.requireNonNull(request.getWarehouseDetails());
       WarehouseProduct tmpWp = warehouseProductRepository
           .findById(Objects.requireNonNull(product.getId()))
-          .orElse(WarehouseProduct.builder().product(product).build());
+          .orElse(WarehouseProduct.builder().tenantId(tenantId).product(product).build());
       WarehouseProduct fetchedWp = Objects.requireNonNull(tmpWp);
 
       wp = Objects.requireNonNull(fetchedWp);
@@ -336,8 +340,9 @@ public class ProductService {
       @CacheEvict(value = "dashboard", key = "'dashboard'", cacheResolver = "tenantAwareCacheResolver")
   })
   public void deleteProduct(Long id) {
+    Long tenantId = securityContextAccessor.requireTenantId();
     Product tmpProduct = productRepository
-        .findById(id)
+        .findByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
     Product product = Objects.requireNonNull(tmpProduct);
     product.setActive(false);
@@ -355,13 +360,15 @@ public class ProductService {
   @RequiresPermission("create_product")
   public ProductResponse duplicateProduct(Long id) {
     Objects.requireNonNull(id, "product id required");
+    Long tenantId = securityContextAccessor.requireTenantId();
     Product tmpOriginal = productRepository
-        .findById(id)
+        .findByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
     Product original = Objects.requireNonNull(tmpOriginal);
 
     Product clone = Objects.requireNonNull(
         Product.builder()
+            .tenantId(tenantId)
             .name(Objects.requireNonNull(original.getName()) + " (Copy)")
             .sku(Objects.requireNonNull(generateUniqueSku(original.getSku())))
             .barcode("COPY-" + UUID.randomUUID().toString().substring(0, 8)) // Barcode should be unique
@@ -382,9 +389,10 @@ public class ProductService {
     WarehouseProduct wp = null;
 
     if ("PHARMACY".equals(businessType)) {
-      var originalPp = pharmacyProductRepository.findById(id).orElse(null);
+      var originalPp = pharmacyProductRepository.findByIdAndTenantId(id, tenantId).orElse(null);
       if (originalPp != null) {
         pp = PharmacyProduct.builder()
+            .tenantId(tenantId)
             .product(savedProduct)
             .batchNumber(originalPp.getBatchNumber())
             .expiryDate(originalPp.getExpiryDate())
@@ -395,9 +403,10 @@ public class ProductService {
         pp = pharmacyProductRepository.save(pp);
       }
     } else if ("WAREHOUSE".equals(businessType)) {
-      var originalWp = warehouseProductRepository.findById(id).orElse(null);
+      var originalWp = warehouseProductRepository.findByIdAndTenantId(id, tenantId).orElse(null);
       if (originalWp != null) {
         wp = WarehouseProduct.builder()
+            .tenantId(tenantId)
             .product(savedProduct)
             .storageLocation(originalWp.getStorageLocation())
             .zone(originalWp.getZone())
@@ -469,7 +478,8 @@ public class ProductService {
     }
 
     LocalDate threshold = LocalDate.now().plusDays(thresholdDays);
-    List<ProductResponse> list = Objects.requireNonNull(pharmacyProductRepository.findExpiring(threshold)).stream()
+    List<ProductResponse> list = Objects.requireNonNull(pharmacyProductRepository.findExpiring(threshold, tenantId))
+        .stream()
         .map(this::toResponse)
         .collect(Collectors.toList());
 

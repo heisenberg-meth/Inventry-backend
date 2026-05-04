@@ -4,9 +4,9 @@ import com.ims.model.Invoice;
 import com.ims.model.InvoiceStatus;
 import com.ims.model.Payment;
 import com.ims.shared.auth.TenantContext;
-import com.ims.shared.exception.ResourceNotFoundException;
 import com.ims.tenant.repository.InvoiceRepository;
 import com.ims.tenant.repository.PaymentRepository;
+import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Objects;
@@ -33,15 +33,21 @@ public class PaymentService {
       String reference,
       String notes,
       Long userId) {
+    Long tenantId = TenantContext.requireTenantId();
     Invoice invoice = invoiceRepository
-        .findById(invoiceId)
-        .orElseThrow(() -> new ResourceNotFoundException("Invoice not found: " + invoiceId));
+        .findByIdAndTenantId(invoiceId, tenantId)
+        .orElseThrow(() -> new EntityNotFoundException("Invoice not found: " + invoiceId));
+
+    if (invoice == null) {
+      throw new EntityNotFoundException("Invoice not found");
+    }
 
     if (InvoiceStatus.PAID == invoice.getStatus()) {
       throw new IllegalArgumentException("Invoice is already fully PAID");
     }
 
     Payment payment = Payment.builder()
+        .tenantId(tenantId)
         .invoiceId(invoiceId)
         .amount(amount)
         .paymentMode(mode)
@@ -70,21 +76,20 @@ public class PaymentService {
       invoice.setStatus(InvoiceStatus.PARTIAL);
     }
 
-    invoiceRepository.save(Objects.requireNonNull(invoice));
+    invoiceRepository.save(invoice);
 
-    return Objects.requireNonNull(payment);
+    return payment;
   }
 
   public Page<Payment> getPayments(Pageable pageable) {
-    TenantContext.assertTenantPresent();
-    return paymentRepository.findAll(pageable);
+    Long tenantId = TenantContext.requireTenantId();
+    return paymentRepository.findAllByTenantId(tenantId, pageable);
   }
 
   public Payment getById(Long id) {
-    TenantContext.assertTenantPresent();
-    return Objects.requireNonNull(
-        paymentRepository
-            .findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Payment not found: " + id)));
+    Long tenantId = TenantContext.requireTenantId();
+    return paymentRepository
+        .findByIdAndTenantId(id, tenantId)
+        .orElseThrow(() -> new EntityNotFoundException("Payment not found: " + id));
   }
 }

@@ -2,6 +2,7 @@ package com.ims.tenant.domain.warehouse;
 
 import com.ims.model.TransferOrder;
 import com.ims.model.TransferOrderStatus;
+import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.repository.TransferOrderRepository;
 import jakarta.persistence.EntityNotFoundException;
 import com.ims.tenant.dto.TransferOrderRequest;
@@ -29,8 +30,10 @@ public class TransferOrderService {
     int quantity = Objects.requireNonNull(request.getQuantity());
     String notes = Objects.requireNonNull(request.getNotes() != null ? request.getNotes() : "");
 
+    Long tenantId = TenantContext.requireTenantId();
     // Create transfer order
     TransferOrder transfer = TransferOrder.builder()
+        .tenantId(tenantId)
         .productId(productId)
         .quantity(quantity)
         .fromLocation(fromLocation)
@@ -54,14 +57,16 @@ public class TransferOrderService {
 
   @Transactional(readOnly = true)
   public Page<TransferOrder> getTransfers(Pageable pageable) {
-    return Objects.requireNonNull(transferOrderRepository.findAll(pageable));
+    Long tenantId = TenantContext.requireTenantId();
+    return Objects.requireNonNull(transferOrderRepository.findAllByTenantId(tenantId, pageable));
   }
 
   @Transactional
   public TransferOrder updateStatus(
       Long id, TransferOrderStatus status, Long userId) {
+    Long tenantId = TenantContext.requireTenantId();
     TransferOrder transfer = transferOrderRepository
-        .findById(id)
+        .findByIdAndTenantId(id, tenantId)
         .orElseThrow(
             () -> new EntityNotFoundException("Transfer order not found"));
 

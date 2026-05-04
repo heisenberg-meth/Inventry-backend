@@ -58,7 +58,8 @@ public class StockTransactionService {
                         throw new IllegalArgumentException("Quantity must be positive");
 
                 // Use DB Pessimistic Lock (SELECT FOR UPDATE)
-                productRepository.findByIdWithLock(productId)
+                Long tenantId = TenantContext.requireTenantId();
+                productRepository.findByIdWithLock(productId, tenantId)
                                 .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
 
                 int updated = productRepository.incrementStock(productId, qty,
@@ -68,13 +69,14 @@ public class StockTransactionService {
                 }
 
                 Product product = productRepository
-                                .findById(productId)
+                                .findByIdAndTenantId(productId, tenantId)
                                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
                 int newStock = product.getStock();
                 int previousStock = newStock - qty;
 
                 StockMovement tmpMovement = StockMovement.builder()
+                                .tenantId(tenantId)
                                 .productId(productId)
                                 .movementType("IN")
                                 .quantity(qty)
@@ -102,7 +104,8 @@ public class StockTransactionService {
                         throw new IllegalArgumentException("Quantity must be positive");
 
                 // Use DB Pessimistic Lock (SELECT FOR UPDATE)
-                productRepository.findByIdWithLock(productId)
+                Long tenantId = TenantContext.requireTenantId();
+                productRepository.findByIdWithLock(productId, tenantId)
                                 .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
 
                 int updated = productRepository.decrementStockIfAvailable(productId, qty,
@@ -110,7 +113,7 @@ public class StockTransactionService {
                 if (updated == 0) {
                         // Either product not found or insufficient stock
                         Product product = Objects.requireNonNull(productRepository
-                                        .findById(productId)
+                                        .findByIdAndTenantId(productId, tenantId)
                                         .orElseThrow(() -> new EntityNotFoundException(
                                                         "Product not found: " + productId)));
                         throw new InsufficientStockException(
@@ -120,13 +123,14 @@ public class StockTransactionService {
                 }
 
                 Product product = productRepository
-                                .findById(productId)
+                                .findByIdAndTenantId(productId, tenantId)
                                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
                 int newStock = product.getStock();
                 int previousStock = newStock + qty;
 
                 StockMovement tmpMovement = StockMovement.builder()
+                                .tenantId(tenantId)
                                 .productId(productId)
                                 .movementType("OUT")
                                 .quantity(qty)
@@ -154,14 +158,15 @@ public class StockTransactionService {
                         return;
 
                 // Use DB Pessimistic Lock (SELECT FOR UPDATE)
-                productRepository.findByIdWithLock(productId)
+                Long tenantId = TenantContext.requireTenantId();
+                productRepository.findByIdWithLock(productId, tenantId)
                                 .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
 
                 int updated = productRepository.adjustStockIfValid(productId, qty,
                                 Objects.requireNonNull(LocalDateTime.now()));
                 if (updated == 0) {
                         Product product = Objects.requireNonNull(productRepository
-                                        .findById(productId)
+                                        .findByIdAndTenantId(productId, tenantId)
                                         .orElseThrow(() -> new EntityNotFoundException(
                                                         "Product not found: " + productId)));
                         throw new InsufficientStockException(
@@ -174,13 +179,14 @@ public class StockTransactionService {
                 }
 
                 Product product = productRepository
-                                .findById(productId)
+                                .findByIdAndTenantId(productId, tenantId)
                                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
                 int newStock = product.getStock();
                 int previousStock = newStock - qty;
 
                 StockMovement tmpMovement = StockMovement.builder()
+                                .tenantId(tenantId)
                                 .productId(productId)
                                 .movementType("ADJUSTMENT")
                                 .quantity(qty)
@@ -205,9 +211,10 @@ public class StockTransactionService {
         public TransferOrder updateTransferStatus(
                         Long id, TransferOrderStatusRequest request, Long userId) {
                 checkWarehouseType();
+                Long tenantId = TenantContext.requireTenantId();
                 TransferOrder order = Objects.requireNonNull(
                                 transferOrderRepository
-                                                .findById(id)
+                                                .findByIdAndTenantId(id, tenantId)
                                                 .orElseThrow(() -> new EntityNotFoundException(
                                                                 "Transfer Order not found")));
 
@@ -233,13 +240,14 @@ public class StockTransactionService {
 
                 if (TransferOrderStatus.COMPLETED == newStatus) {
                         WarehouseProduct tmpWp = warehouseProductRepository
-                                        .findById(Objects.requireNonNull(order.getProductId()))
+                                        .findByIdAndTenantId(Objects.requireNonNull(order.getProductId()), tenantId)
                                         .orElseThrow(() -> new EntityNotFoundException("Warehouse product not found"));
                         WarehouseProduct wp = Objects.requireNonNull(tmpWp);
                         wp.setStorageLocation(order.getToLocation());
                         warehouseProductRepository.save(wp);
 
                         StockMovement tmpMovement = StockMovement.builder()
+                                        .tenantId(tenantId)
                                         .productId(order.getProductId())
                                         .movementType("TRANSFER")
                                         .quantity(order.getQuantity())

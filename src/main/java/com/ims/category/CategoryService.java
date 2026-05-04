@@ -43,11 +43,9 @@ public class CategoryService {
   }
 
   public Category getById(Long id) {
-    TenantContext.assertTenantPresent();
-    return Objects.requireNonNull(
-        categoryRepository
-            .findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Category not found")));
+    return categoryRepository
+        .findByIdAndTenantId(id, TenantContext.requireTenantId())
+        .orElseThrow(() -> new EntityNotFoundException("Category not found"));
   }
 
   @Transactional
@@ -61,6 +59,7 @@ public class CategoryService {
 
     Category category = Objects.requireNonNull(
         Category.builder()
+            .tenantId(tenantId)
             .name(name)
             .description(request.getDescription())
             .taxRate(Objects.requireNonNull(request.getTaxRate() != null ? request.getTaxRate() : BigDecimal.ZERO))
@@ -112,7 +111,8 @@ public class CategoryService {
   @RequiresPermission("delete_category")
   public void delete(Long id) {
     Category category = getById(id);
-    long productCount = productRepository.countByCategoryId(id);
+    Long tenantId = TenantContext.requireTenantId();
+    long productCount = productRepository.countByCategoryIdAndTenantId(id, tenantId);
 
     if (productCount > 0) {
       throw new DataIntegrityViolationException(

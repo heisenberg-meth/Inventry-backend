@@ -21,6 +21,9 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
   @Query("SELECT COUNT(c) > 0 FROM Category c WHERE c.tenantId = :tenantId AND LOWER(c.name) = LOWER(:name)")
   boolean existsByNameIgnoreCaseAndTenantId(@Param("name") String name, @Param("tenantId") Long tenantId);
 
+  @Query("SELECT c FROM Category c WHERE c.id = :id AND c.tenantId = :tenantId")
+  Optional<Category> findByIdAndTenantId(@Param("id") Long id, @Param("tenantId") Long tenantId);
+
   @Query("SELECT c FROM Category c WHERE c.tenantId = :tenantId AND LOWER(c.name) = LOWER(:name)")
   Optional<Category> findByNameIgnoreCaseAndTenantId(@Param("name") String name, @Param("tenantId") Long tenantId);
 }

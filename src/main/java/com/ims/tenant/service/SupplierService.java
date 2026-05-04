@@ -10,7 +10,6 @@ import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditLogService;
 import com.ims.shared.audit.AuditResource;
 import com.ims.shared.auth.TenantContext;
-import com.ims.shared.exception.TenantContextException;
 import com.ims.shared.rbac.RequiresPermission;
 import com.ims.tenant.repository.InvoiceRepository;
 import com.ims.tenant.repository.OrderRepository;
@@ -44,11 +43,9 @@ public class SupplierService {
   }
 
   public Supplier getById(Long id) {
-    TenantContext.assertTenantPresent();
-    return Objects.requireNonNull(
-        supplierRepository
-            .findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Supplier not found")));
+    return supplierRepository
+        .findByIdAndTenantId(id, TenantContext.requireTenantId())
+        .orElseThrow(() -> new EntityNotFoundException("Supplier not found"));
   }
 
   public SupplierResponse getSupplierResponseById(Long id) {
@@ -58,10 +55,7 @@ public class SupplierService {
   @Transactional
   public SupplierResponse create(
       SupplierRequest request) {
-    Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) {
-      throw new TenantContextException("Tenant context is missing");
-    }
+    TenantContext.requireTenantId();
 
     Supplier supplier = new Supplier();
     supplier.setName(request.getName());
@@ -83,10 +77,7 @@ public class SupplierService {
   @Transactional
   public SupplierResponse update(
       Long id, SupplierRequest updates) {
-    Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) {
-      throw new TenantContextException("Tenant context is missing");
-    }
+    TenantContext.requireTenantId();
 
     Supplier supplier = getById(id);
     if (updates.getName() != null) {
@@ -118,10 +109,7 @@ public class SupplierService {
   @Transactional
   @RequiresPermission("delete_supplier")
   public void delete(Long id) {
-    Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) {
-      throw new TenantContextException("Tenant context is missing");
-    }
+    TenantContext.requireTenantId();
 
     Supplier supplier = getById(id);
     supplierRepository.delete(supplier);
@@ -133,10 +121,11 @@ public class SupplierService {
   public Map<String, Object> getSupplierLedger(Long id) {
     Supplier supplier = getById(id);
 
-    List<Order> orders = orderRepository.findBySupplierId(TenantContext.requireTenantId(), id, Pageable.unpaged())
+    Long tenantId = TenantContext.requireTenantId();
+    List<Order> orders = orderRepository.findBySupplierId(tenantId, id, Pageable.unpaged())
         .getContent();
-    List<Invoice> invoices = invoiceRepository.findBySupplierId(id);
-    List<Payment> payments = paymentRepository.findBySupplierId(id);
+    List<Invoice> invoices = invoiceRepository.findBySupplierIdAndTenantId(id, tenantId);
+    List<Payment> payments = paymentRepository.findBySupplierIdAndTenantId(id, tenantId);
 
     return Objects.requireNonNull(
         Map.of(

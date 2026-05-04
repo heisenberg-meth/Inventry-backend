@@ -65,8 +65,8 @@ public class OrderService {
 
   @Transactional
   public Order createPurchaseOrder(OrderRequest request, Long userId, String idempotencyKey) {
+    Long tenantId = TenantContext.requireTenantId();
     if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-      Long tenantId = TenantContext.requireTenantId();
       var existing = orderRepository.findByIdempotencyKeyAndTenantId(idempotencyKey, tenantId);
       if (existing.isPresent()) {
         log.info("Returning existing purchase order for idempotency key: {}", idempotencyKey);
@@ -78,12 +78,13 @@ public class OrderService {
 
     // Validate supplier
     supplierRepository
-        .findById(Objects.requireNonNull(supplierId))
+        .findByIdAndTenantId(Objects.requireNonNull(supplierId), tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Supplier not found"));
 
     // Bulk fetch and validate products
     Set<Long> productIds = itemRequests.stream().map(OrderItemRequest::getProductId).collect(Collectors.toSet());
-    Map<Long, Product> productMap = productRepository.findAllById(Objects.requireNonNull(productIds)).stream()
+    Map<Long, Product> productMap = productRepository
+        .findAllByIdInAndTenantId(Objects.requireNonNull(productIds), tenantId).stream()
         .collect(Collectors.toMap(Product::getId, Function.identity()));
 
     if (productMap.size() < productIds.size()) {
@@ -112,6 +113,7 @@ public class OrderService {
 
       orderItems.add(
           OrderItem.builder()
+              .tenantId(tenantId)
               .productId(Objects.requireNonNull(item.getProductId()))
               .quantity(qty)
               .unitPrice(Objects.requireNonNull(unitPrice))
@@ -122,6 +124,7 @@ public class OrderService {
     }
 
     Order order = Order.builder()
+        .tenantId(tenantId)
         .type("PURCHASE")
         .status(com.ims.model.OrderStatus.PENDING)
         .supplierId(supplierId)
@@ -153,8 +156,8 @@ public class OrderService {
 
   @Transactional
   public Order createSalesOrder(OrderRequest request, Long userId, String idempotencyKey) {
+    Long tenantId = TenantContext.requireTenantId();
     if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-      Long tenantId = TenantContext.requireTenantId();
       var existing = orderRepository.findByIdempotencyKeyAndTenantId(idempotencyKey, tenantId);
       if (existing.isPresent()) {
         log.info("Returning existing sales order for idempotency key: {}", idempotencyKey);
@@ -166,13 +169,14 @@ public class OrderService {
 
     if (customerId != null) {
       customerRepository
-          .findById(customerId)
+          .findByIdAndTenantId(customerId, tenantId)
           .orElseThrow(() -> new EntityNotFoundException("Customer not found"));
     }
 
     // Bulk fetch products and pharmacy details
     Set<Long> productIds = itemRequests.stream().map(OrderItemRequest::getProductId).collect(Collectors.toSet());
-    Map<Long, Product> productMap = productRepository.findAllById(Objects.requireNonNull(productIds)).stream()
+    Map<Long, Product> productMap = productRepository
+        .findAllByIdInAndTenantId(Objects.requireNonNull(productIds), tenantId).stream()
         .collect(Collectors.toMap(Product::getId, Function.identity()));
 
     if (productMap.size() < productIds.size()) {
@@ -182,7 +186,7 @@ public class OrderService {
     }
 
     Map<Long, PharmacyProduct> pharmacyProductMap = pharmacyProductRepository
-        .findAllById(Objects.requireNonNull(productIds)).stream()
+        .findAllByProductIdInAndTenantId(Objects.requireNonNull(productIds), tenantId).stream()
         .collect(
             Collectors.toMap(pp -> pp.getProduct().getId(), Function.identity()));
 
@@ -216,6 +220,7 @@ public class OrderService {
 
       orderItems.add(
           OrderItem.builder()
+              .tenantId(tenantId)
               .productId(Objects.requireNonNull(productId))
               .quantity(qty)
               .unitPrice(Objects.requireNonNull(unitPrice))
@@ -235,6 +240,7 @@ public class OrderService {
     }
 
     Order salesOrder = Order.builder()
+        .tenantId(tenantId)
         .type("SALE")
         .status(OrderStatus.PENDING)
         .customerId(customerId)
@@ -271,8 +277,8 @@ public class OrderService {
 
   @Transactional
   public Order createReturnOrder(OrderRequest request, Long userId, String idempotencyKey) {
+    Long tenantId = TenantContext.requireTenantId();
     if (idempotencyKey != null && !idempotencyKey.isBlank()) {
-      Long tenantId = TenantContext.requireTenantId();
       var existing = orderRepository.findByIdempotencyKeyAndTenantId(idempotencyKey, tenantId);
       if (existing.isPresent()) {
         log.info("Returning existing return order for idempotency key: {}", idempotencyKey);
@@ -283,7 +289,7 @@ public class OrderService {
     List<OrderItemRequest> returnItems = request.getItems();
 
     Order originalOrder = orderRepository
-        .lockById(originalOrderId)
+        .lockById(originalOrderId, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Original order not found"));
 
     if (!"SALE".equals(originalOrder.getType())) {
@@ -294,6 +300,7 @@ public class OrderService {
     BigDecimal returnTax = BigDecimal.ZERO;
 
     Order initialReturnOrder = Order.builder()
+        .tenantId(tenantId)
         .type("RETURN")
         .status(com.ims.model.OrderStatus.COMPLETED)
         .customerId(originalOrder.getCustomerId())
@@ -347,6 +354,7 @@ public class OrderService {
 
       returnOrderItems.add(
           OrderItem.builder()
+              .tenantId(tenantId)
               .productId(Objects.requireNonNull(productId))
               .quantity(qty)
               .unitPrice(Objects.requireNonNull(unitPrice))
@@ -394,8 +402,9 @@ public class OrderService {
 
   @Transactional(readOnly = true)
   public Map<String, Object> getOrderWithItems(Long id) {
+    Long tenantId = TenantContext.requireTenantId();
     Order order = orderRepository
-        .findById(id)
+        .findByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
     List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
     return Objects.requireNonNull(Map.of("order", order, "items", items));
@@ -403,8 +412,9 @@ public class OrderService {
 
   @Transactional(readOnly = true)
   public byte[] generateOrderPdf(Long id) {
+    Long tenantId = TenantContext.requireTenantId();
     Order order = orderRepository
-        .findById(id)
+        .findByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
     com.ims.model.Tenant tenant = tenantRepository
@@ -415,13 +425,15 @@ public class OrderService {
     String partnerAddress = "N/A";
 
     if ("SALE".equals(order.getType()) && order.getCustomerId() != null) {
-      var customer = customerRepository.findById(Objects.requireNonNull(order.getCustomerId())).orElse(null);
+      var customer = customerRepository.findByIdAndTenantId(Objects.requireNonNull(order.getCustomerId()), tenantId)
+          .orElse(null);
       if (customer != null) {
         partnerName = customer.getName();
         partnerAddress = customer.getAddress();
       }
     } else if ("PURCHASE".equals(order.getType()) && order.getSupplierId() != null) {
-      var supplier = supplierRepository.findById(Objects.requireNonNull(order.getSupplierId())).orElse(null);
+      var supplier = supplierRepository.findByIdAndTenantId(Objects.requireNonNull(order.getSupplierId()), tenantId)
+          .orElse(null);
       if (supplier != null) {
         partnerName = supplier.getName();
         partnerAddress = supplier.getAddress();
@@ -497,9 +509,10 @@ public class OrderService {
 
   @Transactional
   public Order confirmOrder(Long id, Long userId) {
+    Long tenantId = TenantContext.requireTenantId();
     Order order = Objects.requireNonNull(
         orderRepository
-            .findById(id)
+            .findByIdAndTenantId(id, tenantId)
             .orElseThrow(() -> new EntityNotFoundException("Order not found")));
 
     validateTransition(order, com.ims.model.OrderStatus.CONFIRMED);
@@ -536,9 +549,10 @@ public class OrderService {
 
   @Transactional
   public Order shipOrder(Long id, Long userId) {
+    Long tenantId = TenantContext.requireTenantId();
     Order order = Objects.requireNonNull(
         orderRepository
-            .findById(id)
+            .findByIdAndTenantId(id, tenantId)
             .orElseThrow(() -> new EntityNotFoundException("Order not found")));
 
     validateTransition(order, com.ims.model.OrderStatus.SHIPPED);
@@ -555,9 +569,10 @@ public class OrderService {
 
   @Transactional
   public Order completeOrder(Long id, Long userId) {
+    Long tenantId = TenantContext.requireTenantId();
     Order order = Objects.requireNonNull(
         orderRepository
-            .findById(id)
+            .findByIdAndTenantId(id, tenantId)
             .orElseThrow(() -> new EntityNotFoundException("Order not found")));
 
     if ("PURCHASE".equals(order.getType())) {
@@ -588,9 +603,10 @@ public class OrderService {
 
   @Transactional
   public Order cancelOrder(Long id, Long userId) {
+    Long tenantId = TenantContext.requireTenantId();
     Order order = Objects.requireNonNull(
         orderRepository
-            .findById(id)
+            .findByIdAndTenantId(id, tenantId)
             .orElseThrow(() -> new EntityNotFoundException("Order not found")));
 
     validateTransition(order, com.ims.model.OrderStatus.CANCELLED);

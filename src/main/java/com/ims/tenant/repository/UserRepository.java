@@ -18,128 +18,133 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> findByEmail(String email);
+        Optional<User> findByEmail(String email);
 
-    /**
-     * Optimized detail fetch with JOIN FETCH for roles and permissions.
-     * Prevents N+1 queries when accessing these relationships in the detail view.
-     */
-    @Query("""
-            SELECT u FROM User u
-            LEFT JOIN FETCH u.role r
-            LEFT JOIN FETCH r.permissions
-            LEFT JOIN FETCH u.customPermissions
-            WHERE u.id = :id
-            """)
-    Optional<User> findByIdWithFullDetails(@Param("id") Long id);
+        /**
+         * Optimized detail fetch with JOIN FETCH for roles and permissions.
+         * Prevents N+1 queries when accessing these relationships in the detail view.
+         */
+        @Query("""
+                        SELECT u FROM User u
+                        LEFT JOIN FETCH u.role r
+                        LEFT JOIN FETCH r.permissions
+                        LEFT JOIN FETCH u.customPermissions
+                        WHERE u.id = :id AND u.tenantId = :tenantId
+                        """)
+        Optional<User> findByIdWithFullDetails(@Param("id") Long id, @Param("tenantId") Long tenantId);
 
-    /**
-     * Legacy method maintained for compatibility during migration.
-     */
-    @Query("SELECT u FROM User u LEFT JOIN FETCH u.customPermissions WHERE u.id = :id")
-    Optional<User> findByIdWithPermissions(@Param("id") Long id);
+        @Query("SELECT u FROM User u WHERE u.id = :id AND u.tenantId = :tenantId")
+        Optional<User> findByIdAndTenantId(@Param("id") Long id, @Param("tenantId") Long tenantId);
 
-    @Query(value = "SELECT u.* FROM users u WHERE u.email = :email", nativeQuery = true)
-    Optional<User> findByEmailGlobal(@Param("email") String email);
+        /**
+         * Legacy method maintained for compatibility during migration.
+         */
+        @Query("SELECT u FROM User u LEFT JOIN FETCH u.customPermissions WHERE u.id = :id AND u.tenantId = :tenantId")
+        Optional<User> findByIdWithPermissions(@Param("id") Long id, @Param("tenantId") Long tenantId);
 
-    @Query(value = "SELECT * FROM users WHERE id = :id", nativeQuery = true)
-    Optional<User> findByIdGlobal(@Param("id") Long id);
+        @Query(value = "SELECT u.* FROM users u WHERE u.email = :email", nativeQuery = true)
+        Optional<User> findByEmailGlobal(@Param("email") String email);
 
-    @Query(value = "SELECT r.name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = :userId", nativeQuery = true)
-    Optional<String> findRoleNameByUserId(@Param("userId") Long userId);
+        @Query(value = "SELECT * FROM users WHERE id = :id", nativeQuery = true)
+        Optional<User> findByIdGlobal(@Param("id") Long id);
 
-    // findById is inherited
+        @Query(value = "SELECT r.name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = :userId", nativeQuery = true)
+        Optional<String> findRoleNameByUserId(@Param("userId") Long userId);
 
-    @Query(value = "SELECT * FROM users WHERE id = :id AND tenant_id IS NULL", nativeQuery = true)
-    Optional<User> findByIdAndTenantIdIsNull(@Param("id") Long id);
+        // findById is inherited
 
-    @Query(value = "SELECT * FROM users WHERE tenant_id IS NULL", nativeQuery = true)
-    Page<User> findByTenantIdIsNull(Pageable pageable);
+        @Query(value = "SELECT * FROM users WHERE id = :id AND tenant_id IS NULL", nativeQuery = true)
+        Optional<User> findByIdAndTenantIdIsNull(@Param("id") Long id);
 
-    @Query("SELECT COUNT(u) FROM User u WHERE u.isActive = true")
-    long countActive();
+        @Query(value = "SELECT * FROM users WHERE tenant_id IS NULL", nativeQuery = true)
+        Page<User> findByTenantIdIsNull(Pageable pageable);
 
-    @Query("SELECT COUNT(u) FROM User u WHERE u.isActive = true")
-    long countActiveGlobal();
+        @Query("SELECT COUNT(u) FROM User u WHERE u.isActive = true")
+        long countActive();
 
-    @Query(value = "SELECT COUNT(*) FROM users WHERE tenant_id = :tenantId AND is_active = true", nativeQuery = true)
-    long countActiveByTenantId(@Param("tenantId") Long tenantId);
+        @Query("SELECT COUNT(u) FROM User u WHERE u.isActive = true")
+        long countActiveGlobal();
 
-    boolean existsByEmail(String email);
+        @Query(value = "SELECT COUNT(*) FROM users WHERE tenant_id = :tenantId AND is_active = true", nativeQuery = true)
+        long countActiveByTenantId(@Param("tenantId") Long tenantId);
 
-    @Query("SELECT COUNT(u) > 0 FROM User u WHERE u.email = :email")
-    boolean existsByEmailGlobal(@Param("email") String email);
+        boolean existsByEmail(String email);
 
-    @Query(value = "SELECT * FROM users WHERE reset_token = :token AND tenant_id = :tenantId", nativeQuery = true)
-    Optional<User> findByResetToken(@Param("token") String token, @Param("tenantId") Long tenantId);
+        @Query("SELECT COUNT(u) > 0 FROM User u WHERE u.email = :email")
+        boolean existsByEmailGlobal(@Param("email") String email);
 
-    /**
-     * Optimized user summary listing using interface projection.
-     * Resolves roles in a single JOIN query.
-     */
-    @Query("""
-            SELECT u.id as id, u.name as name, u.email as email,
-                   r.name as roleName, u.scope as scope,
-                   u.isActive as isActive, u.createdAt as createdAt
-            FROM User u
-            LEFT JOIN u.role r
-            WHERE u.scope = 'TENANT'
-            """)
-    Page<UserSummaryView> findSummaries(Pageable pageable);
+        @Query(value = "SELECT * FROM users WHERE reset_token = :token AND tenant_id = :tenantId", nativeQuery = true)
+        Optional<User> findByResetToken(@Param("token") String token, @Param("tenantId") Long tenantId);
 
-    @Query(value = "SELECT u.* FROM users u JOIN roles r ON u.role_id = r.id WHERE u.tenant_id = :tenantId AND r.name = :role LIMIT 1", nativeQuery = true)
-    Optional<User> findFirstByTenantIdAndRole(
-            @Param("tenantId") Long tenantId, @Param("role") String role);
+        /**
+         * Optimized user summary listing using interface projection.
+         * Resolves roles in a single JOIN query.
+         */
+        @Query("""
+                        SELECT u.id as id, u.name as name, u.email as email,
+                               r.name as roleName, u.scope as scope,
+                               u.isActive as isActive, u.createdAt as createdAt
+                        FROM User u
+                        LEFT JOIN u.role r
+                        WHERE u.scope = 'TENANT' AND u.tenantId = :tenantId
+                        """)
+        Page<UserSummaryView> findSummaries(@Param("tenantId") Long tenantId, Pageable pageable);
 
-    default Optional<User> findFirstByTenantIdAndAdminRole(Long tenantId) {
-        return findFirstByTenantIdAndRole(tenantId, UserRole.TENANT_ADMIN.name());
-    }
+        @Query(value = "SELECT u.* FROM users u JOIN roles r ON u.role_id = r.id WHERE u.tenant_id = :tenantId AND r.name = :role LIMIT 1", nativeQuery = true)
+        Optional<User> findFirstByTenantIdAndRole(
+                        @Param("tenantId") Long tenantId, @Param("role") String role);
 
-    @Query(value = "SELECT * FROM users WHERE tenant_id = :tenantId AND scope = 'TENANT'", nativeQuery = true)
-    Page<User> findByTenantIdAndScope(@Param("tenantId") Long tenantId, Pageable pageable);
+        default Optional<User> findFirstByTenantIdAndAdminRole(Long tenantId) {
+                return findFirstByTenantIdAndRole(tenantId, UserRole.TENANT_ADMIN.name());
+        }
 
-    @Query(value = "SELECT u.* FROM users u "
-            + "WHERE u.tenant_id = :tenantId AND u.scope = 'TENANT'"
-            + " AND (u.name ILIKE '%' || :search || '%' OR u.email ILIKE '%' || :search || '%')", nativeQuery = true)
-    Page<User> findByTenantIdAndSearch(
-            @Param("tenantId") Long tenantId, @Param("search") String search, Pageable pageable);
+        @Query(value = "SELECT * FROM users WHERE tenant_id = :tenantId AND scope = 'TENANT'", nativeQuery = true)
+        Page<User> findByTenantIdAndScope(@Param("tenantId") Long tenantId, Pageable pageable);
 
-    @Transactional
-    @Modifying
-    @Query("UPDATE User u SET u.lastLogin = :lastLogin WHERE u.id = :id")
-    void updateLastLogin(@Param("id") Long id, @Param("lastLogin") LocalDateTime lastLogin);
+        @Query(value = "SELECT u.* FROM users u "
+                        + "WHERE u.tenant_id = :tenantId AND u.scope = 'TENANT'"
+                        + " AND (u.name ILIKE '%' || :search || '%' OR u.email ILIKE '%' || :search || '%')", nativeQuery = true)
+        Page<User> findByTenantIdAndSearch(
+                        @Param("tenantId") Long tenantId, @Param("search") String search, Pageable pageable);
 
-    @Query(value = "SELECT EXISTS(SELECT 1 FROM users WHERE tenant_id = :tenantId)", nativeQuery = true)
-    boolean existsByTenantId(@Param("tenantId") Long tenantId);
+        @Transactional
+        @Modifying
+        @Query("UPDATE User u SET u.lastLogin = :lastLogin WHERE u.id = :id")
+        void updateLastLogin(@Param("id") Long id, @Param("lastLogin") LocalDateTime lastLogin);
 
-    List<User> findByResetTokenIsNotNullAndResetTokenExpiryBefore(
-            LocalDateTime now);
+        @Query(value = "SELECT EXISTS(SELECT 1 FROM users WHERE tenant_id = :tenantId)", nativeQuery = true)
+        boolean existsByTenantId(@Param("tenantId") Long tenantId);
 
-    @Modifying(clearAutomatically = true)
-    @Query("""
-            UPDATE User u
-            SET u.resetToken = null,
-                u.resetTokenExpiry = null
-            WHERE u.resetTokenExpiry < :now
-            """)
-    int clearExpiredResetTokens(@Param("now") LocalDateTime now);
+        List<User> findByResetTokenIsNotNullAndResetTokenExpiryBefore(
+                        LocalDateTime now);
 
-    @Modifying(clearAutomatically = true)
-    @Query(value = "UPDATE users SET reset_token = null, reset_token_expiry = null WHERE reset_token_expiry < :now", nativeQuery = true)
-    int clearAllExpiredResetTokens(@Param("now") LocalDateTime now);
+        @Modifying(clearAutomatically = true)
+        @Query("""
+                        UPDATE User u
+                        SET u.resetToken = null,
+                            u.resetTokenExpiry = null
+                        WHERE u.resetTokenExpiry < :now
+                        """)
+        int clearExpiredResetTokens(@Param("now") LocalDateTime now);
 
-    @Transactional
-    @Modifying
-    @Query(value = "UPDATE users SET failed_attempts = 0 WHERE id = :id", nativeQuery = true)
-    void resetFailedAttempts(@Param("id") Long id);
+        @Modifying(clearAutomatically = true)
+        @Query(value = "UPDATE users SET reset_token = null, reset_token_expiry = null WHERE reset_token_expiry < :now", nativeQuery = true)
+        int clearAllExpiredResetTokens(@Param("now") LocalDateTime now);
 
-    @Transactional
-    @Modifying
-    @Query(value = "UPDATE users SET failed_attempts = failed_attempts + 1, lockout_until = CASE WHEN failed_attempts + 1 >= :maxFailedAttempts THEN :plusMinutes ELSE lockout_until END WHERE id = :id", nativeQuery = true)
-    void recordFailedAttempt(@Param("id") Long id, @Param("maxFailedAttempts") int maxFailedAttempts, @Param("plusMinutes") LocalDateTime plusMinutes);
+        @Transactional
+        @Modifying
+        @Query(value = "UPDATE users SET failed_attempts = 0 WHERE id = :id", nativeQuery = true)
+        void resetFailedAttempts(@Param("id") Long id);
 
-    @Transactional
-    @Modifying
-    @Query(value = "UPDATE users SET two_factor_secret = :secret, two_factor_enabled = :enabled WHERE id = :id", nativeQuery = true)
-    void updateTwoFactorSettings(@Param("id") Long id, @Param("secret") String secret, @Param("enabled") boolean enabled);
+        @Transactional
+        @Modifying
+        @Query(value = "UPDATE users SET failed_attempts = failed_attempts + 1, lockout_until = CASE WHEN failed_attempts + 1 >= :maxFailedAttempts THEN :plusMinutes ELSE lockout_until END WHERE id = :id", nativeQuery = true)
+        void recordFailedAttempt(@Param("id") Long id, @Param("maxFailedAttempts") int maxFailedAttempts,
+                        @Param("plusMinutes") LocalDateTime plusMinutes);
+
+        @Transactional
+        @Modifying
+        @Query(value = "UPDATE users SET two_factor_secret = :secret, two_factor_enabled = :enabled WHERE id = :id", nativeQuery = true)
+        void updateTwoFactorSettings(@Param("id") Long id, @Param("secret") String secret,
+                        @Param("enabled") boolean enabled);
 }
