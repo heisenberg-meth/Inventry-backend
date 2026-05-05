@@ -111,7 +111,9 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
         .content(productReq))
         .andExpect(status().isCreated())
         .andReturn();
-    Map<String, Object> product = objectMapper.readValue(prodResult.getResponse().getContentAsString(), Map.class);
+     Map<String, Object> product = objectMapper.readValue(prodResult.getResponse().getContentAsString(),
+         new com.fasterxml.jackson.core.type.TypeReference<>() {
+         });
     Number productId = (Number) product.get("id");
 
     mockMvc.perform(post("/api/tenant/stock/in")
@@ -133,7 +135,9 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
         .content(customerReq))
         .andExpect(status().isCreated())
         .andReturn();
-    Map<String, Object> customer = objectMapper.readValue(custResult.getResponse().getContentAsString(), Map.class);
+     Map<String, Object> customer = objectMapper.readValue(custResult.getResponse().getContentAsString(),
+         new com.fasterxml.jackson.core.type.TypeReference<>() {
+         });
     Number customerId = (Number) customer.get("id");
 
     // 2. Create Order (Sale)

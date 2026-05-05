@@ -4,8 +4,6 @@ spring:
     username: ims_user
     password: changeme
     driver-class-name: org.postgresql.Driver
-  flyway:
-    clean-on-validation-error: true
   jpa:
     hibernate:
       ddl-auto: none

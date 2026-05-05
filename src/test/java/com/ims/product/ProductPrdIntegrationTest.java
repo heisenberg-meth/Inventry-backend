@@ -15,9 +15,6 @@ public class ProductPrdIntegrationTest extends BaseIntegrationTest {
         @Autowired
         private ProductRepository productRepository;
 
-        @Autowired
-        private ProductService productService;
-
         @BeforeEach
         void setUp() {
                 cleanupDatabase();

@@ -157,6 +157,7 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
         .content(customerReq))
         .andExpect(status().isCreated())
         .andReturn();
+    @SuppressWarnings("unchecked")
     Map<String, Object> customer = objectMapper.readValue(custResult.getResponse().getContentAsString(), Map.class);
     Number customerId = (Number) customer.get("id");
 

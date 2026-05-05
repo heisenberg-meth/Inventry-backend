@@ -38,6 +38,7 @@ class RateLimitFilterTest {
   private RateLimitFilter filter;
 
   @BeforeEach
+  @SuppressWarnings({"unchecked"})
   void setup() {
     redisTemplate = mock(RedisTemplate.class);
     zSet = mock(ZSetOperations.class);

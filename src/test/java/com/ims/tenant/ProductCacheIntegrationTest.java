@@ -2,7 +2,6 @@ package com.ims.tenant;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import static org.junit.jupiter.api.Assertions.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.BaseIntegrationTest;
 import com.ims.TestDataFactory;
@@ -19,6 +18,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import java.util.Objects;
 
 @SpringBootTest(properties = {
     "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration"
@@ -42,7 +42,12 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
     cleanupDatabase();
     mockRedisAndCache();
     // Clear cache before each test
-    cacheManager.getCacheNames().forEach(name -> cacheManager.getCache(name).clear());
+    cacheManager.getCacheNames().forEach(name -> {
+      org.springframework.cache.Cache cache = cacheManager.getCache(name);
+      if (cache != null) {
+        cache.clear();
+      }
+    });
   }
 
   @Test
@@ -66,8 +71,8 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
         .andExpect(status().isOk());
 
     // 2. Verify cache contains data
-    org.springframework.cache.Cache cache = cacheManager.getCache("products");
-    assertNotNull(cache, "Products cache should exist");
+    org.springframework.cache.Cache cache = Objects.requireNonNull(cacheManager.getCache("products"),
+        "Products cache should exist");
 
     // We expect at least one entry in the cache now
     // Since it's ConcurrentMapCache, we can check native cache if needed,
