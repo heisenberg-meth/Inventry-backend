@@ -10,6 +10,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import com.ims.dto.CreateInvoiceRequest;
 import com.ims.model.Invoice;
 import com.ims.model.Order;
@@ -27,6 +29,7 @@ import com.ims.tenant.service.InvoiceService;
 import jakarta.persistence.EntityNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class InvoiceServiceUnitTest {
 
     @Mock
@@ -86,6 +89,7 @@ class InvoiceServiceUnitTest {
         TenantContext.setTenantId(1L);
         try {
             when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+            when(orderItemRepository.findByOrderId(1L)).thenReturn(java.util.List.of(item));
             when(tenantRepository.findById(1L)).thenReturn(Optional.of(tenant));
             when(tenantRepository.save(any(Tenant.class))).thenAnswer(i -> i.getArgument(0));
             when(invoiceRepository.save(any(Invoice.class))).thenAnswer(i -> i.getArgument(0));

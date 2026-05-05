@@ -6,10 +6,6 @@ app:
   security:
     allowed-origins: "http://localhost:3000,http://localhost:5173"
 
-logging:
-  logstash:
-    host: localhost:5000
-
 spring:
   datasource:
     url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
@@ -23,5 +19,8 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        jdbc:
+          lob:
+            non_contextual_creation: true
   cache:
     type: none

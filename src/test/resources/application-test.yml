@@ -16,7 +16,6 @@ spring:
     hibernate:
       ddl-auto: create-drop
     show-sql: false
-    database-platform: org.hibernate.dialect.H2Dialect
     properties:
       hibernate:
         jdbc:
@@ -37,12 +36,7 @@ app:
     expiry-seconds: 86400
     refresh-expiry-seconds: 604800
   security:
-    allowed-origins: "*"
-  cache:
-    product-ttl-minutes: 15
-    stock-ttl-minutes: 5
-    report-ttl-minutes: 30
-    tenant-ttl-hours: 1
+    allowed-origins: '*'
   rate-limit:
     auth-rpm: 20
     public-rpm: 50

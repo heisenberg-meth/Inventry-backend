@@ -3,6 +3,7 @@ package com.ims.tenant;
 import java.util.Objects;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -73,6 +74,7 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
     // Create customer
     TenantContext.setTenantId(tenantId);
     Customer customer = customerService.create(Customer.builder().name("Test Customer").build());
+    assertNotNull(customer.getId());
     TenantContext.clear();
 
     // Create product
@@ -81,13 +83,12 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
     createReq.setSku("PROD-" + UUID.randomUUID().toString().substring(0, 8));
     createReq.setSalePrice(new BigDecimal("100.00"));
 
-    MvcResult prodResult = mockMvc.perform(post("/api/tenant/products")
+    mockMvc.perform(post("/api/tenant/products")
         .header("Authorization", "Bearer " + token)
         .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
         .content(Objects.requireNonNull(objectMapper.writeValueAsString(createReq))))
         .andExpect(status().isCreated())
         .andReturn();
-
     // Verify product was created
     mockMvc.perform(get("/api/tenant/products")
         .header("Authorization", "Bearer " + token))

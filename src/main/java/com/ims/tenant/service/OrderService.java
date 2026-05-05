@@ -45,7 +45,24 @@ public class OrderService {
   @Transactional
   public Map<String, Object> createPurchaseOrder(Map<String, Object> request, Long userId) {
     Long supplierId = Long.valueOf(request.get("supplier_id").toString());
-    List<Map<String, Object>> items = (List<Map<String, Object>>) request.get("items");
+    Object rawItems = request.get("items");
+    if (!(rawItems instanceof List<?> list)) {
+      throw new IllegalArgumentException("Invalid items format: expected list");
+    }
+    List<Map<String, Object>> items = new java.util.ArrayList<>();
+    for (Object item : list) {
+      if (!(item instanceof Map<?, ?> map)) {
+        throw new IllegalArgumentException("Invalid item structure: expected object");
+      }
+      Map<String, Object> typedMap = new java.util.HashMap<>();
+      for (Map.Entry<?, ?> entry : map.entrySet()) {
+        if (!(entry.getKey() instanceof String key)) {
+          throw new IllegalArgumentException("Invalid key type in item: expected String");
+        }
+        typedMap.put(key, entry.getValue());
+      }
+      items.add(typedMap);
+    }
 
     // Validate supplier belongs to tenant
     supplierRepository
@@ -135,7 +152,24 @@ public class OrderService {
     Long customerId = request.containsKey("customer_id")
         ? Long.valueOf(request.get("customer_id").toString())
         : null;
-    List<Map<String, Object>> items = (List<Map<String, Object>>) request.get("items");
+    Object rawItems = request.get("items");
+    if (!(rawItems instanceof List<?> list)) {
+      throw new IllegalArgumentException("Invalid items format: expected list");
+    }
+    List<Map<String, Object>> items = new java.util.ArrayList<>();
+    for (Object item : list) {
+      if (!(item instanceof Map<?, ?> map)) {
+        throw new IllegalArgumentException("Invalid item structure: expected object");
+      }
+      Map<String, Object> typedMap = new java.util.HashMap<>();
+      for (Map.Entry<?, ?> entry : map.entrySet()) {
+        if (!(entry.getKey() instanceof String key)) {
+          throw new IllegalArgumentException("Invalid key type in item: expected String");
+        }
+        typedMap.put(key, entry.getValue());
+      }
+      items.add(typedMap);
+    }
     // Validate customer if provided
     if (customerId != null) {
       customerRepository
@@ -263,7 +297,24 @@ public class OrderService {
   @Transactional
   public Order createReturnOrder(Map<String, Object> request, Long userId) {
     Long originalOrderId = Long.valueOf(request.get("original_order_id").toString());
-    List<Map<String, Object>> returnItems = (List<Map<String, Object>>) request.get("items");
+    Object rawItems = request.get("items");
+    if (!(rawItems instanceof List<?> list)) {
+      throw new IllegalArgumentException("Invalid items format: expected list");
+    }
+    List<Map<String, Object>> returnItems = new java.util.ArrayList<>();
+    for (Object item : list) {
+      if (!(item instanceof Map<?, ?> map)) {
+        throw new IllegalArgumentException("Invalid item structure: expected object");
+      }
+      Map<String, Object> typedMap = new java.util.HashMap<>();
+      for (Map.Entry<?, ?> entry : map.entrySet()) {
+        if (!(entry.getKey() instanceof String key)) {
+          throw new IllegalArgumentException("Invalid key type in item: expected String");
+        }
+        typedMap.put(key, entry.getValue());
+      }
+      returnItems.add(typedMap);
+    }
 
     Order originalOrder = orderRepository.findById(originalOrderId)
         .orElseThrow(() -> new EntityNotFoundException("Original order not found"));

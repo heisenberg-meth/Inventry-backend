@@ -2,8 +2,8 @@ package com.ims;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.cache.CacheManager;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.data.redis.core.RedisTemplate;
 
 @SpringBootTest(properties = {
@@ -12,11 +12,15 @@ import org.springframework.data.redis.core.RedisTemplate;
 })
 class ImsApplicationTests {
 
-  @MockBean
-  private RedisTemplate<String, Object> redisTemplate;
+  @TestConfiguration
+  static class TestConfig {
 
-  @MockBean
-  private CacheManager cacheManager;
+    @Bean
+    @SuppressWarnings("unchecked")
+    RedisTemplate<String, Object> redisTemplate() {
+      return org.mockito.Mockito.mock(RedisTemplate.class);
+    }
+  }
 
   @Test
   void contextLoads() {
