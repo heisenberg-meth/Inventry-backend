@@ -19,54 +19,53 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class AuthE2ETest extends BaseIntegrationTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+        @Autowired
+        private MockMvc mockMvc;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+        @Autowired
+        private ObjectMapper objectMapper;
 
-    @Test
-    void fullAuthFlow_signupVerifyLogin_returnsAccessToken() throws Exception {
-        cleanupDatabase();
-        mockRedisAndCache();
+        @Test
+        void fullAuthFlow_signupVerifyLogin_returnsAccessToken() throws Exception {
+                cleanupDatabase();
+                mockRedisAndCache();
 
-        String uniqueEmail = "e2e-" + System.currentTimeMillis() + "@test.com";
-        String uniqueSlug = "e2e-" + System.currentTimeMillis();
-        
-        SignupRequest signupRequest = new SignupRequest();
-        signupRequest.setBusinessName("E2E Test Biz");
-        signupRequest.setWorkspaceSlug(uniqueSlug);
-        signupRequest.setBusinessType("RETAIL");
-        signupRequest.setOwnerName("E2E Owner");
-        signupRequest.setOwnerEmail(uniqueEmail);
-        signupRequest.setPassword("password123");
+                String uniqueEmail = "e2e-" + System.currentTimeMillis() + "@test.com";
+                String uniqueSlug = "e2e-" + System.currentTimeMillis();
 
-        MvcResult signupResult = mockMvc.perform(post("/api/auth/signup")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(signupRequest)))
-                .andExpect(status().isCreated())
-                .andReturn();
+                SignupRequest signupRequest = new SignupRequest();
+                signupRequest.setBusinessName("E2E Test Biz");
+                signupRequest.setWorkspaceSlug(uniqueSlug);
+                signupRequest.setBusinessType("RETAIL");
+                signupRequest.setOwnerName("E2E Owner");
+                signupRequest.setOwnerEmail(uniqueEmail);
+                signupRequest.setPassword("password123");
 
-        SignupResponse signupResponse = objectMapper.readValue(
-                signupResult.getResponse().getContentAsString(),
-                SignupResponse.class
-        );
+                MvcResult signupResult = mockMvc.perform(post("/api/auth/signup")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(signupRequest)))
+                                .andExpect(status().isCreated())
+                                .andReturn();
 
-        verifyUser(uniqueEmail);
+                SignupResponse signupResponse = objectMapper.readValue(
+                                signupResult.getResponse().getContentAsString(),
+                                SignupResponse.class);
 
-        String companyCode = signupResponse.getCompanyCode();
+                verifyUser(uniqueEmail);
 
-        LoginRequest loginRequest = new LoginRequest();
-        loginRequest.setEmail(uniqueEmail);
-        loginRequest.setPassword(signupRequest.getPassword());
-        loginRequest.setCompanyCode(companyCode);
+                String companyCode = signupResponse.getCompanyCode();
 
-        mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accessToken").exists())
-                .andExpect(jsonPath("$.refreshToken").exists())
-                .andExpect(jsonPath("$.expiresIn").exists());
-    }
+                LoginRequest loginRequest = new LoginRequest();
+                loginRequest.setEmail(uniqueEmail);
+                loginRequest.setPassword(signupRequest.getPassword());
+                loginRequest.setCompanyCode(companyCode);
+
+                mockMvc.perform(post("/api/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(loginRequest)))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.accessToken").exists())
+                                .andExpect(jsonPath("$.refreshToken").exists())
+                                .andExpect(jsonPath("$.expiresIn").exists());
+        }
 }

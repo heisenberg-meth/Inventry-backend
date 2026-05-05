@@ -30,7 +30,6 @@ public class GlobalExceptionHandler {
   private static final int STATUS_CONFLICT = 409;
   private static final int STATUS_INTERNAL_ERROR = 500;
 
-
   @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
   public ResponseEntity<Map<String, Object>> handleAuthentication(
       org.springframework.security.core.AuthenticationException ex, HttpServletRequest request) {
@@ -46,9 +45,8 @@ public class GlobalExceptionHandler {
         .getFieldErrors()
         .forEach(err -> fieldErrors.put(err.getField(), err.getDefaultMessage()));
 
-    Map<String, Object> body =
-        errorBody(
-            STATUS_BAD_REQUEST, "VALIDATION_FAILED", "Validation failed", request.getRequestURI());
+    Map<String, Object> body = errorBody(
+        STATUS_BAD_REQUEST, "VALIDATION_FAILED", "Validation failed", request.getRequestURI());
     body.put("fields", fieldErrors);
     return ResponseEntity.badRequest().body(body);
   }
@@ -77,8 +75,8 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(InsufficientStockException.class)
   public ResponseEntity<Map<String, Object>> handleInsufficientStock(
       InsufficientStockException ex, HttpServletRequest request) {
-    Map<String, Object> body =
-        errorBody(STATUS_UNPROCESSABLE, "INSUFFICIENT_STOCK", ex.getMessage(), request.getRequestURI());
+    Map<String, Object> body = errorBody(STATUS_UNPROCESSABLE, "INSUFFICIENT_STOCK", ex.getMessage(),
+        request.getRequestURI());
     body.put("available_stock", ex.getAvailableStock());
     body.put("requested_qty", ex.getRequestedQty());
     return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(body);
@@ -121,7 +119,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(Exception.class)
   public ResponseEntity<Map<String, Object>> handleAll(Exception ex, HttpServletRequest request) {
     log.error("Unexpected error occurred at [{}]: {}", request.getRequestURI(), ex.getMessage(), ex);
-    
+
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
         .body(
             errorBody(

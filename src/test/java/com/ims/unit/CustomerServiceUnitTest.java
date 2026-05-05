@@ -45,8 +45,7 @@ class CustomerServiceUnitTest {
                 customerRepository,
                 orderRepository,
                 invoiceRepository,
-                paymentRepository
-        );
+                paymentRepository);
     }
 
     @Test

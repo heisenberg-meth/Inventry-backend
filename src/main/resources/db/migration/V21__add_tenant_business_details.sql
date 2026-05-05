@@ -2,6 +2,7 @@
 -- V21__add_tenant_business_details.sql
 -- Add address and gstin to tenants for professional invoicing
 -- ============================================
-
-ALTER TABLE tenants ADD COLUMN address TEXT;
-ALTER TABLE tenants ADD COLUMN gstin VARCHAR(20);
+ALTER TABLE tenants
+ADD COLUMN address TEXT;
+ALTER TABLE tenants
+ADD COLUMN gstin VARCHAR(20);

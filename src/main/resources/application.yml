@@ -1,8 +1,6 @@
 spring:
   profiles:
     active: ${activatedProperties:test}
-  mvc:
-    throw-exception-if-no-handler-found: true
   web:
     resources:
       add-mappings: false
@@ -23,7 +21,7 @@ spring:
       properties:
         hibernate:
           multiTenancy: DISCRIMINATOR
-          tenant_identifier_resolver: com.inventry.tenant.TenantIdentifierResolver
+          tenant_identifier_resolver: com.ims.config.HibernateTenantResolver
           format_sql: true
           use_sql_comments: true
     show-sql: false
@@ -50,15 +48,16 @@ management:
       probes:
         enabled: true
   metrics:
-    export:
-      prometheus:
-        enabled: true
     distribution:
       percentiles-histogram:
         http:
           server:
             requests: true
         ims: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
 
 app:
   jwt:

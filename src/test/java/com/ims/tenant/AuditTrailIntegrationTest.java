@@ -51,7 +51,7 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
         void testProductAuditLogging() throws Exception {
                 String uniqueEmail = TestDataFactory.email();
                 String uniqueSlug = TestDataFactory.slug();
-                
+
                 SignupRequest signup = new SignupRequest();
                 signup.setBusinessName(TestDataFactory.business());
                 signup.setWorkspaceSlug(uniqueSlug);

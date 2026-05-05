@@ -15,7 +15,7 @@ public class TestDataFactory {
     public static String slug() {
         return "slug_" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
     }
-    
+
     public static String sku() {
         return "SKU-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
     }

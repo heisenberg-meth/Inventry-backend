@@ -2,6 +2,7 @@ package com.ims.tenant;
 
 import java.util.Objects;
 import java.util.UUID;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -13,6 +14,7 @@ import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.request.SignupRequest;
 import com.ims.dto.request.LoginRequest;
 import com.ims.dto.response.SignupResponse;
+import com.ims.dto.response.ProductResponse;
 import com.ims.model.Customer;
 import com.ims.shared.auth.SignupService;
 import com.ims.shared.auth.TenantContext;
@@ -91,6 +93,101 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
         .andReturn();
     // Verify product was created
     mockMvc.perform(get("/api/tenant/products")
+        .header("Authorization", "Bearer " + token))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void testOrderConfirmationFlow() throws Exception {
+    // 1. Setup Tenant and Product
+    String uniqueEmail = TestDataFactory.email();
+    String uniqueSlug = TestDataFactory.slug();
+    SignupRequest signup = new SignupRequest();
+    signup.setBusinessName(TestDataFactory.business());
+    signup.setWorkspaceSlug(uniqueSlug);
+    signup.setBusinessType("RETAIL");
+    signup.setOwnerName("Admin");
+    signup.setOwnerEmail(uniqueEmail);
+    signup.setPassword("password123");
+    SignupResponse signupResponse = signupService.signup(signup);
+    verifyUser(uniqueEmail);
+    String token = login(uniqueEmail, "password123", signupResponse.getCompanyCode());
+
+    // Create product
+    CreateProductRequest createReq = new CreateProductRequest();
+    createReq.setName("Test Product");
+    createReq.setSku("SKU-" + UUID.randomUUID().toString().substring(0, 8));
+    createReq.setSalePrice(new BigDecimal("100.00"));
+
+    MvcResult prodResult = mockMvc.perform(post("/api/tenant/products")
+        .header("Authorization", "Bearer " + token)
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(objectMapper.writeValueAsString(createReq)))
+        .andExpect(status().isCreated())
+        .andReturn();
+
+    ProductResponse product = objectMapper.readValue(prodResult.getResponse().getContentAsString(),
+        ProductResponse.class);
+
+    // Add stock
+    String stockInPayload = String.format("""
+        {
+          "productId": %d,
+          "quantity": 10,
+          "notes": "Initial stock"
+        }
+        """, product.getId());
+
+    mockMvc.perform(post("/api/tenant/stock/in")
+        .header("Authorization", "Bearer " + token)
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(stockInPayload))
+        .andExpect(status().isOk());
+
+    // Create Customer
+    String customerReq = """
+        {
+          "name": "Test Customer",
+          "email": "cust_flow@test.com"
+        }
+        """;
+    MvcResult custResult = mockMvc.perform(post("/api/tenant/customers")
+        .header("Authorization", "Bearer " + token)
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(customerReq))
+        .andExpect(status().isCreated())
+        .andReturn();
+    Map<String, Object> customer = objectMapper.readValue(custResult.getResponse().getContentAsString(), Map.class);
+    Number customerId = (Number) customer.get("id");
+
+    // 2. Create Order
+    String orderPayload = String.format("""
+        {
+          "customer_id": %d,
+          "items": [
+            {
+              "product_id": %d,
+              "quantity": 5,
+              "unit_price": 100.0
+            }
+          ]
+        }
+        """, customerId.longValue(), product.getId());
+
+    MvcResult orderResult = mockMvc.perform(post("/api/tenant/orders/sale")
+        .header("Authorization", "Bearer " + token)
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(orderPayload))
+        .andExpect(status().isCreated())
+        .andReturn();
+
+    Map<String, Object> orderResponse = objectMapper.readValue(orderResult.getResponse().getContentAsString(),
+        new com.fasterxml.jackson.core.type.TypeReference<>() {
+        });
+    Number orderId = (Number) orderResponse.get("order_id");
+
+    // 3. Confirm Order (Hits stock movement)
+    mockMvc.perform(post("/api/tenant/orders/" + orderId + "/confirm")
         .header("Authorization", "Bearer " + token))
         .andExpect(status().isOk());
   }

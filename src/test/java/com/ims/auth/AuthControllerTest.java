@@ -31,14 +31,14 @@ class AuthControllerTest extends BaseIntegrationTest {
     @Test
     void shouldRejectUnauthorizedRequest() throws Exception {
         mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                            {
-                                "email": "nonexistent@test.com",
-                                "password": "wrongpassword",
-                                "companyCode": "INVALID"
-                            }
-                            """))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                            "email": "nonexistent@test.com",
+                            "password": "wrongpassword",
+                            "companyCode": "INVALID"
+                        }
+                        """))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -54,14 +54,14 @@ class AuthControllerTest extends BaseIntegrationTest {
         signupRequest.setPassword("password123");
 
         MvcResult signupResult = mockMvc.perform(post("/api/auth/signup")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(signupRequest)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(signupRequest)))
                 .andExpect(status().isCreated())
                 .andReturn();
 
         String signupJson = signupResult.getResponse().getContentAsString();
-        com.ims.dto.response.SignupResponse signupResponse = 
-            objectMapper.readValue(signupJson, com.ims.dto.response.SignupResponse.class);
+        com.ims.dto.response.SignupResponse signupResponse = objectMapper.readValue(signupJson,
+                com.ims.dto.response.SignupResponse.class);
 
         // 2. Verify user and login
         verifyUser("testauth@test.com");
@@ -72,8 +72,8 @@ class AuthControllerTest extends BaseIntegrationTest {
         loginRequest.setCompanyCode(signupResponse.getCompanyCode());
 
         mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").exists())
                 .andExpect(jsonPath("$.refreshToken").exists())
@@ -84,7 +84,7 @@ class AuthControllerTest extends BaseIntegrationTest {
     void shouldRejectInvalidToken() throws Exception {
         // Invalid token should return 401 (unauthorized)
         mockMvc.perform(post("/api/auth/logout")
-                        .header("Authorization", "Bearer invalid_token_here"))
+                .header("Authorization", "Bearer invalid_token_here"))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -100,8 +100,8 @@ class AuthControllerTest extends BaseIntegrationTest {
         signupRequest.setPassword("password123");
 
         mockMvc.perform(post("/api/auth/signup")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(signupRequest)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(signupRequest)))
                 .andExpect(status().isCreated());
 
         // Now try login with wrong password for existing user
@@ -111,8 +111,8 @@ class AuthControllerTest extends BaseIntegrationTest {
         loginRequest.setCompanyCode("TEST-BIZ");
 
         mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isUnauthorized());
     }
 }

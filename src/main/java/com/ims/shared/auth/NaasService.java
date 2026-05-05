@@ -11,7 +11,7 @@ import org.springframework.web.client.RestTemplate;
 public class NaasService {
 
     private final RestTemplate restTemplate = new RestTemplate();
-    
+
     @Getter
     private String noMessage = "No"; // Default fallback
 

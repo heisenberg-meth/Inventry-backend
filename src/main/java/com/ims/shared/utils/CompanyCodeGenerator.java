@@ -10,7 +10,7 @@ public class CompanyCodeGenerator {
 
     public String generateCode(String businessName) {
         String prefix = businessName.replaceAll("[^A-Za-z]", "")
-                                    .toUpperCase();
+                .toUpperCase();
 
         if (prefix.length() >= 4) {
             prefix = prefix.substring(0, 4);

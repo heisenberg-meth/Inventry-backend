@@ -23,7 +23,6 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.core.env.Profiles;
 import org.springframework.beans.factory.annotation.Value;
-
 import org.springframework.core.env.Environment;
 
 @Configuration
@@ -61,17 +60,16 @@ public class SecurityConfig {
                 .accessDeniedHandler(naasAccessDeniedHandler))
         .authorizeHttpRequests(
             auth -> auth.requestMatchers(
-                    "/api/auth/login",
-                    "/api/auth/signup",
-                    "/api/auth/forgot-password",
-                    "/api/auth/reset-password",
-                    "/api/auth/verify-email",
-                    "/api/auth/resend-verification",
-                    "/api/auth/check-email",
-                    "/api/auth/check-slug",
-                    "/api/auth/check-company-code",
-                    "/api/platform/auth/login"
-                )
+                "/api/auth/login",
+                "/api/auth/signup",
+                "/api/auth/forgot-password",
+                "/api/auth/reset-password",
+                "/api/auth/verify-email",
+                "/api/auth/resend-verification",
+                "/api/auth/check-email",
+                "/api/auth/check-slug",
+                "/api/auth/check-company-code",
+                "/api/platform/auth/login")
                 .permitAll()
                 .requestMatchers("/api/platform/invites/accept", "/api/platform/invites/complete")
                 .permitAll()

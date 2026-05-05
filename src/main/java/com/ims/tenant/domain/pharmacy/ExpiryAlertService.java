@@ -14,7 +14,6 @@ public class ExpiryAlertService {
 
   private static final int EXPIRY_THRESHOLD_DAYS = 30;
 
-
   private final PharmacyProductRepository pharmacyProductRepository;
 
   @Scheduled(cron = "0 0 8 * * *")
@@ -23,12 +22,11 @@ public class ExpiryAlertService {
     List<PharmacyProduct> expiring = pharmacyProductRepository.findByExpiryDateBefore(threshold);
 
     expiring.forEach(
-        pp ->
-            log.warn(
-                "EXPIRY ALERT: tenant={} product={} expires={}",
-                pp.getProduct().getTenantId(),
-                pp.getProduct().getName(),
-                pp.getExpiryDate()));
+        pp -> log.warn(
+            "EXPIRY ALERT: tenant={} product={} expires={}",
+            pp.getProduct().getTenantId(),
+            pp.getProduct().getName(),
+            pp.getExpiryDate()));
 
     log.info(
         "Expiry check complete. {} products expiring within {} days.",

@@ -40,13 +40,13 @@ public class PlatformAnalyticsService {
         revenue.put("mrr", mrr);
         revenue.put("arr", mrr.multiply(BigDecimal.valueOf(12)));
         revenue.put("active_subscriptions", activeSubscriptions.size());
-        
+
         return revenue;
     }
 
     public Map<String, Object> getTenantAnalytics() {
         var tenants = tenantRepository.findAll();
-        
+
         // Simplified trend: grouped by month of creation
         var trend = tenants.stream()
                 .collect(Collectors.groupingBy(t -> t.getCreatedAt().getMonth().name(), Collectors.counting()));
@@ -55,7 +55,7 @@ public class PlatformAnalyticsService {
         analytics.put("total_tenants", tenants.size());
         analytics.put("active_tenants", tenants.stream().filter(t -> "ACTIVE".equals(t.getStatus())).count());
         analytics.put("signup_trend", trend);
-        
+
         return analytics;
     }
 
@@ -67,7 +67,7 @@ public class PlatformAnalyticsService {
         usage.put("total_users", totalUsers);
         usage.put("active_users", activeUsers);
         usage.put("avg_users_per_tenant", totalUsers > 0 ? (double) totalUsers / tenantRepository.count() : 0);
-        
+
         return usage;
     }
 }

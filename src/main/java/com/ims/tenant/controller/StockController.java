@@ -72,21 +72,21 @@ public class StockController {
     return ResponseEntity.ok(Objects.requireNonNull(stockService.updateTransferStatus(id, request, userId)));
   }
 
-    @PostMapping("/in")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
-    @Operation(summary = "Record stock received")
-    public ResponseEntity<Map<String, String>> stockIn(@RequestBody StockInRequest request) {
-        Long userId = extractUserId();
-        Long productId = request.getProductId();
-        int quantity = request.getQuantity();
-        String notes = request.getNotes() != null ? request.getNotes() : "";
+  @PostMapping("/in")
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+  @Operation(summary = "Record stock received")
+  public ResponseEntity<Map<String, String>> stockIn(@RequestBody StockInRequest request) {
+    Long userId = extractUserId();
+    Long productId = request.getProductId();
+    int quantity = request.getQuantity();
+    String notes = request.getNotes() != null ? request.getNotes() : "";
 
-        if (productId == null || quantity <= 0) {
-            throw new IllegalArgumentException("productId and valid quantity are required");
-        }
+    if (productId == null || quantity <= 0) {
+      throw new IllegalArgumentException("productId and valid quantity are required");
+    }
 
-        stockService.stockIn(productId, quantity, notes, userId);
-        return ResponseEntity.ok(Map.of("message", "Stock in recorded successfully"));
+    stockService.stockIn(productId, quantity, notes, userId);
+    return ResponseEntity.ok(Map.of("message", "Stock in recorded successfully"));
   }
 
   @PostMapping("/out")
@@ -137,7 +137,10 @@ public class StockController {
   }
 
   private Long extractUserId() {
-    return (Long) Objects
-        .requireNonNull(Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal());
+    var auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth instanceof com.ims.shared.auth.JwtAuthenticationToken jwtAuth) {
+      return jwtAuth.getUserId();
+    }
+    return null;
   }
 }

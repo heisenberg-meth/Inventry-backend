@@ -22,8 +22,8 @@ public class HibernateTenantResolver implements CurrentTenantIdentifierResolver<
             if (environment.acceptsProfiles(org.springframework.core.env.Profiles.of("test"))) {
                 return 1L;
             }
-            throw new IllegalStateException(
-                    "No tenant context found. Multi-tenant isolation requires a valid tenant ID.");
+            // Return 0L during startup/system operations where no tenant is present
+            return 0L;
         }
 
         return tenantId;

@@ -1,7 +1,8 @@
 -- Add gateway fields to payments
-ALTER TABLE payments ADD COLUMN gateway_transaction_id VARCHAR(255);
-ALTER TABLE payments ADD COLUMN status VARCHAR(50) DEFAULT 'PENDING';
-
+ALTER TABLE payments
+ADD COLUMN gateway_transaction_id VARCHAR(255);
+ALTER TABLE payments
+ADD COLUMN status VARCHAR(50) DEFAULT 'PENDING';
 -- Create payment_gateway_logs table
 CREATE TABLE payment_gateway_logs (
     id BIGSERIAL PRIMARY KEY,
@@ -11,5 +12,4 @@ CREATE TABLE payment_gateway_logs (
     raw_payload TEXT,
     created_at TIMESTAMP DEFAULT NOW()
 );
-
 CREATE INDEX idx_pg_logs_tenant ON payment_gateway_logs(tenant_id);

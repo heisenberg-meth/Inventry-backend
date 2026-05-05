@@ -2,6 +2,7 @@ package com.ims.tenant;
 
 import java.util.Objects;
 import java.util.UUID;
+import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -77,6 +78,101 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
         .header("Authorization", "Bearer " + token)
         .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
         .content(Objects.requireNonNull(objectMapper.writeValueAsString(productRequest))))
+        .andExpect(status().isCreated());
+  }
+
+  @Test
+  void testInvoiceCreation() throws Exception {
+    // 1. Setup Tenant
+    String uniqueEmail = TestDataFactory.email();
+    String uniqueSlug = TestDataFactory.slug();
+    SignupRequest signup = new SignupRequest();
+    signup.setBusinessName(TestDataFactory.business());
+    signup.setWorkspaceSlug(uniqueSlug);
+    signup.setBusinessType("RETAIL");
+    signup.setOwnerName("Admin");
+    signup.setOwnerEmail(uniqueEmail);
+    signup.setPassword("password123");
+    SignupResponse signupResponse = signupService.signup(signup);
+    verifyUser(uniqueEmail);
+    String token = login(uniqueEmail, "password123", signupResponse.getCompanyCode());
+
+    // 1.5 Create Product and Customer
+    String productReq = """
+        {
+          "name": "Test Product",
+          "sku": "PROD-BILL-1",
+          "salePrice": 100.0
+        }
+        """;
+    MvcResult prodResult = mockMvc.perform(post("/api/tenant/products")
+        .header("Authorization", "Bearer " + token)
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(productReq))
+        .andExpect(status().isCreated())
+        .andReturn();
+    Map<String, Object> product = objectMapper.readValue(prodResult.getResponse().getContentAsString(), Map.class);
+    Number productId = (Number) product.get("id");
+
+    mockMvc.perform(post("/api/tenant/stock/in")
+        .header("Authorization", "Bearer " + token)
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(String.format("{\"productId\": %d, \"quantity\": 10, \"notes\": \"Stock for billing test\"}",
+            productId.longValue())))
+        .andExpect(status().isOk());
+
+    String customerReq = """
+        {
+          "name": "Test Customer",
+          "email": "cust@test.com"
+        }
+        """;
+    MvcResult custResult = mockMvc.perform(post("/api/tenant/customers")
+        .header("Authorization", "Bearer " + token)
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(customerReq))
+        .andExpect(status().isCreated())
+        .andReturn();
+    Map<String, Object> customer = objectMapper.readValue(custResult.getResponse().getContentAsString(), Map.class);
+    Number customerId = (Number) customer.get("id");
+
+    // 2. Create Order (Sale)
+    String orderPayload = String.format("""
+        {
+          "customer_id": %d,
+          "items": [
+            {
+              "product_id": %d,
+              "quantity": 2,
+              "unit_price": 100.0
+            }
+          ]
+        }
+        """, customerId.longValue(), productId.longValue());
+
+    MvcResult orderResult = mockMvc.perform(post("/api/tenant/orders/sale")
+        .header("Authorization", "Bearer " + token)
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(orderPayload))
+        .andExpect(status().isCreated())
+        .andReturn();
+
+    Map<String, Object> orderResponse = objectMapper.readValue(orderResult.getResponse().getContentAsString(),
+        new com.fasterxml.jackson.core.type.TypeReference<>() {
+        });
+    Number orderId = (Number) orderResponse.get("order_id");
+
+    // 3. Create Invoice
+    String invoicePayload = String.format("""
+        {
+          "orderId": %d
+        }
+        """, orderId.longValue());
+
+    mockMvc.perform(post("/api/tenant/invoices")
+        .header("Authorization", "Bearer " + token)
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(invoicePayload))
         .andExpect(status().isCreated());
   }
 

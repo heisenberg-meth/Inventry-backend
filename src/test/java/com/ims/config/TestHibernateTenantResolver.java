@@ -16,7 +16,8 @@ public class TestHibernateTenantResolver implements CurrentTenantIdentifierResol
     Long tenantId = TenantContext.getTenantId();
     // In tests, we prefer an explicit tenant, but fall back to default if needed.
     // However, to match the main resolver's design, we could also throw here.
-    // Given Fix 1 added setupTenant() to BaseIntegrationTest, tenantId should usually be present.
+    // Given Fix 1 added setupTenant() to BaseIntegrationTest, tenantId should
+    // usually be present.
     if (tenantId == null) {
       return DEFAULT_TENANT_ID;
     }

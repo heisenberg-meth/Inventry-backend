@@ -25,10 +25,10 @@ public class SubscriptionService {
     public Subscription extendSubscription(Long id, int days) {
         Subscription subscription = subscriptionRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Subscription not found"));
-        
+
         subscription.setEndDate(subscription.getEndDate().plusDays(days));
         subscription.setUpdatedAt(LocalDateTime.now());
-        
+
         log.info("Subscription {} extended by {} days", id, days);
         return subscriptionRepository.save(subscription);
     }

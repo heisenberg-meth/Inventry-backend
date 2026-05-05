@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
-    
+
     <springProperty scope="context" name="LOGSTASH_HOST" source="logging.logstash.host" defaultValue="localhost:5000"/>
     <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="ims-backend"/>
-    
+
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="ch.qos.logback.classic.encoder.JsonEncoder">
             <jsonFormatter class="ch.qos.logback.classic.encoder.JsonFormatter">

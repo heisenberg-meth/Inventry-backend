@@ -40,9 +40,13 @@ public class Tenant {
   @Column(name = "business_type", nullable = false)
   private String businessType;
 
-  @Column @Builder.Default private String plan = "FREE";
+  @Column
+  @Builder.Default
+  private String plan = "FREE";
 
-  @Column @Builder.Default private String status = "ACTIVE";
+  @Column
+  @Builder.Default
+  private String status = "ACTIVE";
 
   @Column(name = "invoice_sequence")
   @Builder.Default

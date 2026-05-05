@@ -54,7 +54,7 @@ public class ProductImportService {
                     String name = data[0].trim();
                     BigDecimal salePrice = new BigDecimal(data[1].trim());
                     int stock = Integer.parseInt(data[2].trim());
-                    
+
                     String sku = data.length > 3 ? data[3].trim() : null;
                     String categoryName = data.length > 4 ? data[4].trim() : "General";
 
@@ -67,7 +67,8 @@ public class ProductImportService {
                                         .name(categoryName)
                                         .description("Auto-created during import")
                                         .build();
-                                return Objects.requireNonNull(categoryRepository.save(newCat), "Saved category must not be null");
+                                return Objects.requireNonNull(categoryRepository.save(newCat),
+                                        "Saved category must not be null");
                             });
 
                     Product product = Product.builder()
@@ -97,9 +98,8 @@ public class ProductImportService {
         }
 
         return Map.of(
-            "success_count", successCount,
-            "fail_count", failCount,
-            "errors", errors
-        );
+                "success_count", successCount,
+                "fail_count", failCount,
+                "errors", errors);
     }
 }

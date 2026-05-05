@@ -6,9 +6,9 @@ CREATE TABLE email_verifications (
     expires_at TIMESTAMP NOT NULL,
     created_at TIMESTAMP DEFAULT NOW()
 );
-
 -- Add is_verified column to users
-ALTER TABLE users ADD COLUMN is_verified BOOLEAN DEFAULT FALSE;
-
+ALTER TABLE users
+ADD COLUMN is_verified BOOLEAN DEFAULT FALSE;
 -- Update existing users to be verified (optional, for backward compatibility)
-UPDATE users SET is_verified = TRUE;
+UPDATE users
+SET is_verified = TRUE;

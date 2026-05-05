@@ -32,9 +32,12 @@ import org.springframework.test.web.servlet.MvcResult;
 @ActiveProfiles("test")
 public class RbacIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired private MockMvc mockMvc;
-  @Autowired private ObjectMapper objectMapper;
-  @Autowired private SignupService signupService;
+  @Autowired
+  private MockMvc mockMvc;
+  @Autowired
+  private ObjectMapper objectMapper;
+  @Autowired
+  private SignupService signupService;
 
   @BeforeEach
   void setup() {
@@ -46,28 +49,27 @@ public class RbacIntegrationTest extends BaseIntegrationTest {
   void testRBAC() throws Exception {
     String uniqueEmail = TestDataFactory.email();
     String uniqueSlug = "rbac-" + UUID.randomUUID().toString().substring(0, 8);
-    
+
     com.ims.dto.response.SignupResponse response = signupService.signup(
         createSignupRequest(TestDataFactory.business(), uniqueSlug, uniqueEmail));
     verifyUser(uniqueEmail);
     String token = login(uniqueEmail, "password123", response.getCompanyCode());
-
 
     // 1. Create a product first (with all mandatory fields)
     CreateProductRequest createReq = new CreateProductRequest();
     createReq.setName("RBAC Product");
     createReq.setSku("RBAC-" + UUID.randomUUID().toString().substring(0, 8));
     createReq.setSalePrice(new BigDecimal("10.00"));
-    
+
     mockMvc.perform(post("/api/tenant/products")
-            .header("Authorization", "Bearer " + token)
-            .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
-            .content(Objects.requireNonNull(objectMapper.writeValueAsString(createReq))))
+        .header("Authorization", "Bearer " + token)
+        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+        .content(Objects.requireNonNull(objectMapper.writeValueAsString(createReq))))
         .andExpect(status().isCreated());
 
     // 2. ADMIN can access products
     mockMvc.perform(get("/api/tenant/products")
-            .header("Authorization", "Bearer " + token))
+        .header("Authorization", "Bearer " + token))
         .andExpect(status().isOk());
   }
 
@@ -89,8 +91,8 @@ public class RbacIntegrationTest extends BaseIntegrationTest {
     loginRequest.setCompanyCode(workspace);
 
     MvcResult result = mockMvc.perform(post("/api/auth/login")
-            .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
-            .content(Objects.requireNonNull(objectMapper.writeValueAsString(loginRequest))))
+        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+        .content(Objects.requireNonNull(objectMapper.writeValueAsString(loginRequest))))
         .andExpect(status().isOk())
         .andReturn();
 

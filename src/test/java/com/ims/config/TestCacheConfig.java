@@ -21,7 +21,6 @@ public class TestCacheConfig {
         // Use ConcurrentMapCacheManager for tests - simple in-memory cache
         // The tenantAwareCacheResolver from CacheConfig will wrap these caches
         return new ConcurrentMapCacheManager(
-                "products", "categories", "stock", "reports", "tenant"
-        );
+                "products", "categories", "stock", "reports", "tenant");
     }
 }

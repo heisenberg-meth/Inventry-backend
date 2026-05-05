@@ -99,17 +99,17 @@ public class StockService {
       warehouseProductRepository.save(wp);
 
       // Log stock movement
-stockMovementRepository.save(
-            StockMovement.builder()
-                .productId(order.getProductId())
-                .tenantId(TenantContext.getTenantId())
-                .movementType("TRANSFER")
-                .quantity(order.getQuantity())
-                .notes("Transfer from " + order.getFromLocation() + " to " + order.getToLocation())
-                .createdBy(userId)
-                .referenceId(order.getId())
-                .referenceType("TRANSFER_ORDER")
-                .build());
+      stockMovementRepository.save(
+          StockMovement.builder()
+              .productId(order.getProductId())
+              .tenantId(TenantContext.getTenantId())
+              .movementType("TRANSFER")
+              .quantity(order.getQuantity())
+              .notes("Transfer from " + order.getFromLocation() + " to " + order.getToLocation())
+              .createdBy(userId)
+              .referenceId(order.getId())
+              .referenceType("TRANSFER_ORDER")
+              .build());
 
       log.info(
           "Transfer order COMPLETED: id={} product={} quantity={} {} -> {}",
@@ -135,17 +135,17 @@ stockMovementRepository.save(
     product.setUpdatedAt(LocalDateTime.now());
     productRepository.save(product);
 
-stockMovementRepository.save(
-            StockMovement.builder()
-                .productId(productId)
-                .tenantId(TenantContext.getTenantId())
-                .movementType("IN")
-                .quantity(qty)
-                .previousStock(previousStock)
-                .newStock(product.getStock())
-                .notes(notes)
-                .createdBy(userId)
-                .build());
+    stockMovementRepository.save(
+        StockMovement.builder()
+            .productId(productId)
+            .tenantId(TenantContext.getTenantId())
+            .movementType("IN")
+            .quantity(qty)
+            .previousStock(previousStock)
+            .newStock(product.getStock())
+            .notes(notes)
+            .createdBy(userId)
+            .build());
 
     log.info(
         "Stock IN: product={} qty={} {}→{}",
@@ -175,17 +175,17 @@ stockMovementRepository.save(
     product.setUpdatedAt(LocalDateTime.now());
     productRepository.save(product);
 
-stockMovementRepository.save(
-            StockMovement.builder()
-                .productId(productId)
-                .tenantId(TenantContext.getTenantId())
-                .movementType("OUT")
-                .quantity(qty)
-                .previousStock(previousStock)
-                .newStock(product.getStock())
-                .notes(notes)
-                .createdBy(userId)
-                .build());
+    stockMovementRepository.save(
+        StockMovement.builder()
+            .productId(productId)
+            .tenantId(TenantContext.getTenantId())
+            .movementType("OUT")
+            .quantity(qty)
+            .previousStock(previousStock)
+            .newStock(product.getStock())
+            .notes(notes)
+            .createdBy(userId)
+            .build());
 
     log.info(
         "Stock OUT: product={} qty={} {}→{}",
@@ -207,17 +207,17 @@ stockMovementRepository.save(
     product.setUpdatedAt(LocalDateTime.now());
     productRepository.save(product);
 
-stockMovementRepository.save(
-            StockMovement.builder()
-                .productId(productId)
-                .tenantId(TenantContext.getTenantId())
-                .movementType("ADJUSTMENT")
-                .quantity(qty)
-                .previousStock(previousStock)
-                .newStock(product.getStock())
-                .notes(notes)
-                .createdBy(userId)
-                .build());
+    stockMovementRepository.save(
+        StockMovement.builder()
+            .productId(productId)
+            .tenantId(TenantContext.getTenantId())
+            .movementType("ADJUSTMENT")
+            .quantity(qty)
+            .previousStock(previousStock)
+            .newStock(product.getStock())
+            .notes(notes)
+            .createdBy(userId)
+            .build());
 
     log.info(
         "Stock ADJUST: product={} qty={} {}→{}",

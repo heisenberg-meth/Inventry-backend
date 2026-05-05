@@ -76,10 +76,15 @@ public class OrderService {
     Order order = Order.builder()
         .type("PURCHASE")
         .status("RECEIVED")
+        .tenantId(com.ims.shared.auth.TenantContext.getTenantId())
         .supplierId(supplierId)
         .notes(request.getOrDefault("notes", "").toString())
         .createdBy(userId)
         .build();
+
+    if (order.getTenantId() == null) {
+      throw new IllegalStateException("TenantContext missing - cannot create purchase order");
+    }
 
     // Calculate totals and validate items
     for (Map<String, Object> item : items) {
@@ -244,6 +249,7 @@ public class OrderService {
     Order order = Order.builder()
         .type("SALE")
         .status("PENDING")
+        .tenantId(com.ims.shared.auth.TenantContext.getTenantId())
         .customerId(customerId)
         .totalAmount(totalAmount)
         .taxAmount(taxAmount)
@@ -251,6 +257,10 @@ public class OrderService {
         .notes(request.getOrDefault("notes", "").toString())
         .createdBy(userId)
         .build();
+
+    if (order.getTenantId() == null) {
+      throw new IllegalStateException("TenantContext missing - cannot create sales order");
+    }
     order = Objects.requireNonNull(orderRepository.save(Objects.requireNonNull(order)));
 
     // Save items
@@ -329,11 +339,16 @@ public class OrderService {
     Order returnOrder = Order.builder()
         .type("RETURN")
         .status("COMPLETED")
+        .tenantId(com.ims.shared.auth.TenantContext.getTenantId())
         .customerId(originalOrder.getCustomerId())
         .referenceOrderId(originalOrderId)
         .notes(request.getOrDefault("notes", "Customer return").toString())
         .createdBy(userId)
         .build();
+
+    if (returnOrder.getTenantId() == null) {
+      throw new IllegalStateException("TenantContext missing - cannot create return order");
+    }
 
     returnOrder = orderRepository.save(returnOrder);
 

@@ -72,7 +72,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
    */
   private static final String CONFIG_POSITIVE_MESSAGE = "%s must be >= 1 (got %d)";
 
-private final RedisTemplate<String, Object> redisTemplate;
+  private final RedisTemplate<String, Object> redisTemplate;
   private final JwtUtil jwtUtil;
   private final boolean redisAvailable;
   private final int authRpm;

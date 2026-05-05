@@ -104,8 +104,11 @@ public class OrderController {
   }
 
   private Long extractUserId() {
-    return (Long) Objects
-        .requireNonNull(Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal());
+    var auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth instanceof com.ims.shared.auth.JwtAuthenticationToken jwtAuth) {
+      return jwtAuth.getUserId();
+    }
+    return null;
   }
 
   @GetMapping("/{id}")

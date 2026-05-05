@@ -34,7 +34,8 @@ public class CreateProductRequest {
 
   private Integer reorderLevel;
 
-  @Valid private PharmacyDetailsRequest pharmacyDetails;
+  @Valid
+  private PharmacyDetailsRequest pharmacyDetails;
 
   private WarehouseDetailsRequest warehouseDetails;
 

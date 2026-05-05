@@ -31,7 +31,7 @@ public class PlatformHealthController {
     @Operation(summary = "Deep health check", description = "Checks DB, Redis, and Disk space")
     public ResponseEntity<Map<String, Object>> getExtendedHealth() {
         Map<String, Object> health = new LinkedHashMap<>();
-        
+
         // 1. Database Health
         try (var conn = dataSource.getConnection()) {
             health.put("database", Map.of("status", "UP", "message", "Connection successful"));
@@ -54,10 +54,9 @@ public class PlatformHealthController {
         long total = root.getTotalSpace();
         long free = root.getUsableSpace();
         health.put("disk", Map.of(
-            "total_gb", total / (1024 * 1024 * 1024),
-            "free_gb", free / (1024 * 1024 * 1024),
-            "usage_percent", total > 0 ? (double) (total - free) / total * 100 : 0
-        ));
+                "total_gb", total / (1024 * 1024 * 1024),
+                "free_gb", free / (1024 * 1024 * 1024),
+                "usage_percent", total > 0 ? (double) (total - free) / total * 100 : 0));
 
         health.put("system_time", java.time.LocalDateTime.now().toString());
 

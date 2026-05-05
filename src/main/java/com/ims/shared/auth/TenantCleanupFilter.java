@@ -13,7 +13,7 @@ import java.io.IOException;
 public class TenantCleanupFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(
-            @NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain chain) 
+            @NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain chain)
             throws ServletException, IOException {
         try {
             chain.doFilter(request, response);

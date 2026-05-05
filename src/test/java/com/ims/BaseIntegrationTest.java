@@ -10,7 +10,6 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.springframework.cache.Cache;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -25,14 +24,10 @@ import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
-import org.mockito.ArgumentMatchers;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import java.util.Collections;
 import java.util.Objects;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.ArgumentMatchers.anyString;
-import org.springframework.cache.interceptor.CacheOperationInvocationContext;
-
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -113,9 +108,11 @@ public abstract class BaseIntegrationTest {
   protected ZSetOperations<String, Object> zSetOperations;
   @MockitoBean
   protected org.springframework.data.redis.connection.RedisConnectionFactory redisConnectionFactory;
-  @MockitoBean
+
+  // Use real beans for caching in tests instead of mocks
+  @Autowired
   protected org.springframework.cache.CacheManager cacheManager;
-  @MockitoBean(name = "tenantAwareCacheResolver")
+  @Autowired
   protected org.springframework.cache.interceptor.CacheResolver tenantAwareCacheResolver;
 
   protected long systemTenantId;
@@ -211,12 +208,5 @@ public abstract class BaseIntegrationTest {
     doReturn(zSetOperations).when(redisTemplate).opsForZSet();
     doReturn(1L).when(valueOperations).increment(anyString());
     doReturn(0L).when(zSetOperations).zCard(anyString());
-
-    // Cache Mocks for TenantAwareCacheResolver
-    Cache dummyCache = new org.springframework.cache.concurrent.ConcurrentMapCache("dummy");
-    doReturn(Collections.singletonList(dummyCache))
-        .when(tenantAwareCacheResolver)
-        .resolveCaches(ArgumentMatchers.<CacheOperationInvocationContext<?>>any());
-    doReturn(dummyCache).when(cacheManager).getCache(anyString());
   }
 }

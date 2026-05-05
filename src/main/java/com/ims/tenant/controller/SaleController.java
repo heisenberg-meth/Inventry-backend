@@ -29,7 +29,11 @@ public class SaleController {
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "Record a sale with billing", description = "Creates a sales order and automatically generates an invoice")
   public ResponseEntity<Map<String, Object>> createSale(@RequestBody Map<String, Object> request) {
-    Long userId = (Long) Objects.requireNonNull(SecurityContextHolder.getContext().getAuthentication()).getPrincipal();
+    var auth = SecurityContextHolder.getContext().getAuthentication();
+    Long userId = null;
+    if (auth instanceof com.ims.shared.auth.JwtAuthenticationToken jwtAuth) {
+      userId = jwtAuth.getUserId();
+    }
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(orderService.createSalesOrder(request, Objects.requireNonNull(userId)));
   }

@@ -17,17 +17,17 @@ public class BusinessMetricsService {
                 .description("Number of orders created")
                 .tag("type", "business")
                 .register(meterRegistry);
-        
+
         this.lowStockAlerts = Counter.builder("ims.alerts.low_stock")
                 .description("Number of low stock alerts triggered")
                 .tag("type", "business")
                 .register(meterRegistry);
-        
+
         this.failedPayments = Counter.builder("ims.payments.failed")
                 .description("Number of failed payments")
                 .tag("type", "business")
                 .register(meterRegistry);
-        
+
         this.activeTenants = Counter.builder("ims.tenants.active")
                 .description("Number of active tenants")
                 .tag("type", "business")

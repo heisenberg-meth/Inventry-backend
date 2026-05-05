@@ -27,7 +27,11 @@ public class PaymentGatewayController {
   public ResponseEntity<Map<String, Object>> initiate(@RequestBody Map<String, Object> body) {
     Long invoiceId = Long.valueOf(body.get("invoice_id").toString());
     BigDecimal amount = new BigDecimal(body.get("amount").toString());
-    Long userId = (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    var auth = SecurityContextHolder.getContext().getAuthentication();
+    Long userId = null;
+    if (auth instanceof com.ims.shared.auth.JwtAuthenticationToken jwtAuth) {
+      userId = jwtAuth.getUserId();
+    }
 
     return ResponseEntity.ok(gatewayService.initiatePayment(invoiceId, amount, userId));
   }

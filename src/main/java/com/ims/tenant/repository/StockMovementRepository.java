@@ -19,13 +19,12 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, Lo
     return findByTenantIdOrderByCreatedAtDesc(TenantContext.getTenantId(), pageable);
   }
 
-  @Query(
-      "SELECT sm FROM StockMovement sm WHERE "
-          + "sm.tenantId = :tenantId "
-          + "AND (:productId IS NULL OR sm.productId = :productId) "
-          + "AND (:from IS NULL OR sm.createdAt >= :from) "
-          + "AND (:to IS NULL OR sm.createdAt <= :to) "
-          + "ORDER BY sm.createdAt DESC")
+  @Query("SELECT sm FROM StockMovement sm WHERE "
+      + "sm.tenantId = :tenantId "
+      + "AND (:productId IS NULL OR sm.productId = :productId) "
+      + "AND (:from IS NULL OR sm.createdAt >= :from) "
+      + "AND (:to IS NULL OR sm.createdAt <= :to) "
+      + "ORDER BY sm.createdAt DESC")
   Page<StockMovement> findByFilters(
       @Param("tenantId") Long tenantId,
       @Param("productId") Long productId,

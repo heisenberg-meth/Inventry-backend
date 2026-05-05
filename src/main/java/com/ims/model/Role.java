@@ -39,10 +39,7 @@ public class Role {
   private Long tenantId;
 
   @ManyToMany(fetch = jakarta.persistence.FetchType.EAGER)
-  @JoinTable(
-      name = "role_permissions",
-      joinColumns = @JoinColumn(name = "role_id"),
-      inverseJoinColumns = @JoinColumn(name = "permission_id"))
+  @JoinTable(name = "role_permissions", joinColumns = @JoinColumn(name = "role_id"), inverseJoinColumns = @JoinColumn(name = "permission_id"))
   @Builder.Default
   private List<Permission> permissions = new ArrayList<>();
 

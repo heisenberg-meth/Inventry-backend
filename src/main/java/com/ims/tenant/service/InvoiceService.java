@@ -66,6 +66,7 @@ public class InvoiceService {
                 String invoiceNumber = incrementAndGetInvoiceNumber();
 
                 Invoice invoice = Invoice.builder()
+                                .tenantId(TenantContext.getTenantId())
                                 .orderId(order.getId())
                                 .invoiceNumber(invoiceNumber)
                                 .amount(order.getTotalAmount())
@@ -77,6 +78,10 @@ public class InvoiceService {
                                                                 ? request.getDueDate()
                                                                 : LocalDate.now().plusDays(DEFAULT_DUE_DAYS))
                                 .build();
+
+                if (invoice.getTenantId() == null) {
+                        throw new IllegalStateException("TenantContext missing - cannot create invoice");
+                }
 
                 log.info("Manual invoice created: {} for order {}", invoiceNumber, order.getId());
                 return invoiceRepository.save(invoice);
@@ -113,6 +118,7 @@ public class InvoiceService {
                 String invoiceNumber = incrementAndGetInvoiceNumber();
 
                 Invoice invoice = Invoice.builder()
+                                .tenantId(TenantContext.getTenantId())
                                 .orderId(order.getId())
                                 .invoiceNumber(invoiceNumber)
                                 .amount(order.getTotalAmount())
@@ -121,6 +127,10 @@ public class InvoiceService {
                                 .status("UNPAID")
                                 .dueDate(LocalDate.now().plusDays(DEFAULT_DUE_DAYS))
                                 .build();
+
+                if (invoice.getTenantId() == null) {
+                        throw new IllegalStateException("TenantContext missing - cannot create invoice");
+                }
 
                 log.info("Invoice created: {} for order {}", invoiceNumber, order.getId());
                 return invoiceRepository.save(invoice);
@@ -131,6 +141,7 @@ public class InvoiceService {
                 String invoiceNumber = "CN-" + incrementAndGetInvoiceNumber().substring(4);
 
                 Invoice creditNote = Invoice.builder()
+                                .tenantId(TenantContext.getTenantId())
                                 .orderId(returnOrder.getId())
                                 .invoiceNumber(invoiceNumber)
                                 .amount(returnOrder.getTotalAmount().negate())
@@ -143,6 +154,10 @@ public class InvoiceService {
                                 .dueDate(LocalDate.now())
                                 .paidAt(LocalDateTime.now())
                                 .build();
+
+                if (creditNote.getTenantId() == null) {
+                        throw new IllegalStateException("TenantContext missing - cannot create credit note");
+                }
 
                 log.info("Credit note created: {} for return order {}", invoiceNumber, returnOrder.getId());
                 return invoiceRepository.save(creditNote);

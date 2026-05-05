@@ -29,14 +29,16 @@ public class RoleService {
   @Transactional(readOnly = true)
   public List<Role> findByTenant() {
     Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) throw new IllegalStateException("Missing tenant context");
+    if (tenantId == null)
+      throw new IllegalStateException("Missing tenant context");
     return roleRepository.findByTenantIdOrderByNameAsc(tenantId);
   }
 
   @Transactional(readOnly = true)
   public Role findOne(Long roleId) {
     Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) throw new IllegalStateException("Missing tenant context");
+    if (tenantId == null)
+      throw new IllegalStateException("Missing tenant context");
 
     return roleRepository
         .findByIdAndTenantId(roleId, tenantId)
@@ -46,7 +48,8 @@ public class RoleService {
   @Transactional
   public Role create(CreateRoleRequest request) {
     Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) throw new IllegalStateException("Missing tenant context");
+    if (tenantId == null)
+      throw new IllegalStateException("Missing tenant context");
 
     if (roleRepository.findByNameAndTenantId(request.getName(), tenantId).isPresent()) {
       throw new IllegalArgumentException("Role already exists: " + request.getName());
@@ -70,7 +73,8 @@ public class RoleService {
       Long roleId,
       AssignPermissionsRequest request) {
     Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) throw new IllegalStateException("Missing tenant context");
+    if (tenantId == null)
+      throw new IllegalStateException("Missing tenant context");
 
     Role role = roleRepository
         .findByIdAndTenantId(roleId, tenantId)
