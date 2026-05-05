@@ -16,6 +16,8 @@ metadata:
 spec:
   serviceName: "ims-postgres"
   replicas: 1
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
   selector:
     matchLabels:
       app: ims-postgres
@@ -35,13 +37,13 @@ spec:
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
-                  name: ims-db-secret
-                  key: username
+                  name: inventry-secrets
+                  key: db-username
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: ims-db-secret
-                  key: password
+                  name: inventry-secrets
+                  key: db-password
           volumeMounts:
             - name: postgres-storage
               mountPath: /var/lib/postgresql/data

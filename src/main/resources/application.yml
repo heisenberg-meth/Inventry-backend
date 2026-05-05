@@ -1,6 +1,6 @@
 spring:
   profiles:
-    active: ${activatedProperties:test}
+    active: ${activatedProperties:local}
   web:
     resources:
       add-mappings: false
@@ -70,4 +70,4 @@ logging:
     level: "%5p [${spring.application.name},%X{traceId},%X{spanId}]"
   zipkin:
     base-url: http://zipkin:9411
-    enabled: true
+    enabled: false

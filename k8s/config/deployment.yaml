@@ -17,8 +17,8 @@ spec:
     spec:
       containers:
       - name: inventry
-        image: inventry-backend:latest
-        imagePullPolicy: IfNotPresent
+        image: inventry-backend:IMAGE_TAG
+        imagePullPolicy: Always
         ports:
         - containerPort: 8080
           name: http

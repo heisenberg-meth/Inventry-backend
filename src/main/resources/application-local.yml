@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ims_db
+    username: ims_user
+    password: changeme
+  data:
+    redis:
+      host: localhost
+      password: ""
+  jpa:
+    hibernate:
+      ddl-auto: validate

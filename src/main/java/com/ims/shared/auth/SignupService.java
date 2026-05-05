@@ -12,10 +12,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(rollbackFor = Exception.class)
 
 public class SignupService {
 
@@ -29,7 +31,6 @@ public class SignupService {
   private final com.ims.shared.audit.AuditLogService auditLogService;
   private final com.ims.shared.utils.CompanyCodeGenerator companyCodeGenerator;
 
-  // No @Transactional here — each step manages its own transaction
   public SignupResponse signup(SignupRequest request) {
     String normalizedEmail = request.getOwnerEmail().trim().toLowerCase();
 
@@ -50,7 +51,6 @@ public class SignupService {
         .businessType(request.getBusinessType())
         .workspaceSlug(workspaceSlug)
         .companyCode(companyCode)
-        .status("ACTIVE")
         .status("ACTIVE")
         .plan("FREE")
         .address(request.getAddress())

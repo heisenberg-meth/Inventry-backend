@@ -68,5 +68,10 @@
     "name": "logging.zipkin.enabled",
     "type": "java.lang.String",
     "description": "A description for 'logging.zipkin.enabled'"
+  },
+  {
+    "name": "logging.zipkin.base-url",
+    "type": "java.lang.String",
+    "description": "A description for 'logging.zipkin.base-url'"
   }
 ]}

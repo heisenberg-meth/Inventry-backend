@@ -24,7 +24,15 @@ jobs:
           cache: maven
       
       - name: Run tests
-        run: mvn clean test -Dtest="!com.ims.tenant.**"
+        run: mvn clean test
+
+      - name: Upload test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: target/surefire-reports/
+          retention-days: 30
 
   build:
     needs: test
@@ -93,6 +101,13 @@ jobs:
       
       - name: Deploy to Kubernetes
         run: |
-          kubectl set image deployment/ims-backend ims-backend=${{ needs.build.outputs.image-tag }} --record
-          kubectl apply -f k8s/
-          kubectl rollout status deployment/ims-backend --timeout=5m
+          kubectl set image deployment/inventry-backend inventry=${{ needs.build.outputs.image-tag }}
+          kubectl annotate deployment/inventry-backend kubernetes.io/change-cause="Deployment ${{ github.sha }}" --overwrite
+          kubectl create secret generic inventry-secrets \
+            --from-literal=db-url='jdbc:postgresql://ims-postgres:5432/ims_db' \
+            --from-literal=db-username='ims_user' \
+            --from-literal=db-password='${{ secrets.DB_PASSWORD }}' \
+            --from-literal=jwt-secret='${{ secrets.JWT_SECRET }}' \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl apply -f k8s/config/
+          kubectl rollout status deployment/inventry-backend --timeout=5m
