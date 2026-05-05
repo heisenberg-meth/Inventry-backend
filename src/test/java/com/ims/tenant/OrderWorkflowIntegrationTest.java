@@ -90,17 +90,17 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
     ProductResponse product = objectMapper.readValue(prodResult.getResponse().getContentAsString(),
         ProductResponse.class);
 
-        // 2. Stock In (100 units)
-        StockInRequest stockInReq = new StockInRequest();
-        stockInReq.setProductId(product.getId());
-        stockInReq.setQuantity(100);
-        stockInReq.setNotes("Initial Stock");
-        
-        mockMvc.perform(post("/api/tenant/stock/in")
-                .header("Authorization", "Bearer " + token)
-                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
-                .content(Objects.requireNonNull(objectMapper.writeValueAsString(stockInReq)))
-                .andExpect(status().isOk());
+    // 2. Stock In (100 units)
+    StockInRequest stockInReq = new StockInRequest();
+    stockInReq.setProductId(product.getId());
+    stockInReq.setQuantity(100);
+    stockInReq.setNotes("Initial Stock");
+
+    mockMvc.perform(post("/api/tenant/stock/in")
+        .header("Authorization", "Bearer " + token)
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(objectMapper.writeValueAsString(stockInReq)))
+        .andExpect(status().isOk());
 
     verifyStock(token, product.getId(), 100);
 

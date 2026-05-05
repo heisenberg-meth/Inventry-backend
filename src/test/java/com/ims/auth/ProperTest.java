@@ -8,6 +8,7 @@ import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.LoginRequest;
 import com.ims.dto.request.SignupRequest;
 import com.ims.dto.response.SignupResponse;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,11 +19,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-@SpringBootTest(properties = {
-        "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
-        "spring.cache.type=none",
-        "app.security.allowed-origins=http://localhost:3000,http://localhost:5173"
-})
+@SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class ProperTest extends BaseIntegrationTest {
@@ -41,12 +38,15 @@ class ProperTest extends BaseIntegrationTest {
 
     @Test
     void signupReturns201() throws Exception {
+        String uniqueEmail = "proper-" + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
+        String uniqueSlug = "proper-" + UUID.randomUUID().toString().substring(0, 8);
+
         SignupRequest request = new SignupRequest();
         request.setBusinessName("Proper Biz");
-        request.setWorkspaceSlug("proper-test");
+        request.setWorkspaceSlug(uniqueSlug);
         request.setBusinessType("RETAIL");
         request.setOwnerName("Proper Owner");
-        request.setOwnerEmail("proper@test.com");
+        request.setOwnerEmail(uniqueEmail);
         request.setPassword("password123");
 
         mockMvc.perform(post("/api/auth/signup")
@@ -56,27 +56,30 @@ class ProperTest extends BaseIntegrationTest {
     }
 
     @Test
-    void loginWithWrongPasswordReturns404() throws Exception {
+    void loginWithWrongPasswordReturns401() throws Exception {
         LoginRequest request = new LoginRequest();
-        request.setEmail("nonexistent@test.com");
+        request.setEmail("nonexistent-" + UUID.randomUUID().toString().substring(0, 8) + "@test.com");
         request.setPassword("wrong");
         request.setCompanyCode("INVALID");
 
         mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
     void signupThenVerifyThenLoginReturns200() throws Exception {
+        String uniqueEmail = "flow-proper-" + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
+        String uniqueSlug = "flow-proper-" + UUID.randomUUID().toString().substring(0, 8);
+
         // 1. Signup
         SignupRequest signupRequest = new SignupRequest();
         signupRequest.setBusinessName("Flow Biz");
-        signupRequest.setWorkspaceSlug("flow-proper");
+        signupRequest.setWorkspaceSlug(uniqueSlug);
         signupRequest.setBusinessType("RETAIL");
         signupRequest.setOwnerName("Flow Owner");
-        signupRequest.setOwnerEmail("flow-proper@test.com");
+        signupRequest.setOwnerEmail(uniqueEmail);
         signupRequest.setPassword("password123");
 
         MvcResult signupResult = mockMvc.perform(post("/api/auth/signup")
@@ -89,11 +92,11 @@ class ProperTest extends BaseIntegrationTest {
                 signupResult.getResponse().getContentAsString(), SignupResponse.class);
 
         // 2. Verify user
-        verifyUser("flow-proper@test.com");
+        verifyUser(uniqueEmail);
 
         // 3. Login after verification
         LoginRequest loginRequest = new LoginRequest();
-        loginRequest.setEmail("flow-proper@test.com");
+        loginRequest.setEmail(uniqueEmail);
         loginRequest.setPassword("password123");
         loginRequest.setCompanyCode(signupResponse.getCompanyCode());
 

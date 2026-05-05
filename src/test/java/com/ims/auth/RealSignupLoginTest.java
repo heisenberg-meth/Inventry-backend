@@ -47,16 +47,16 @@ class RealSignupLoginTest extends BaseIntegrationTest {
         }
 
         @Test
-        void loginWithWrongPasswordReturns404() throws Exception {
+        void loginWithWrongPasswordReturns401() throws Exception {
                 LoginRequest request = new LoginRequest();
-                request.setEmail("nonexistent@test.com");
+                request.setEmail("nonexistent-" + java.util.UUID.randomUUID().toString().substring(0, 8) + "@test.com");
                 request.setPassword("wrong");
                 request.setCompanyCode("INVALID");
 
                 mockMvc.perform(post("/api/auth/login")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request)))
-                                .andExpect(status().isNotFound()); // 404 - EntityNotFoundException
+                                .andExpect(status().isUnauthorized()); // 401
         }
 
         @Test

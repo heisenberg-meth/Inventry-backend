@@ -4,6 +4,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.UUID;
+
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.LoginRequest;
 import com.ims.dto.request.SignupRequest;
@@ -18,11 +20,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-@SpringBootTest(properties = {
-        "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
-        "spring.cache.type=none",
-        "app.security.allowed-origins=http://localhost:3000,http://localhost:5173"
-})
+@SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class ExactTest extends BaseIntegrationTest {
@@ -41,12 +39,15 @@ class ExactTest extends BaseIntegrationTest {
 
     @Test
     void signupReturns201() throws Exception {
+        String uniqueEmail = "exact-" + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
+        String uniqueSlug = "exact-" + UUID.randomUUID().toString().substring(0, 8);
+
         SignupRequest request = new SignupRequest();
         request.setBusinessName("Exact Biz");
-        request.setWorkspaceSlug("exact-test");
+        request.setWorkspaceSlug(uniqueSlug);
         request.setBusinessType("RETAIL");
         request.setOwnerName("Exact Owner");
-        request.setOwnerEmail("exact@test.com");
+        request.setOwnerEmail(uniqueEmail);
         request.setPassword("password123");
 
         mockMvc.perform(post("/api/auth/signup")
@@ -56,27 +57,30 @@ class ExactTest extends BaseIntegrationTest {
     }
 
     @Test
-    void loginWithWrongPasswordReturns404() throws Exception {
+    void loginWithWrongPasswordReturns401() throws Exception {
         LoginRequest request = new LoginRequest();
-        request.setEmail("nonexistent@test.com");
+        request.setEmail("nonexistent-" + UUID.randomUUID().toString().substring(0, 8) + "@test.com");
         request.setPassword("wrong");
         request.setCompanyCode("INVALID");
 
         mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound()); // 404 - EntityNotFoundException
+                .andExpect(status().isUnauthorized()); // 401 - Invalid credentials
     }
 
     @Test
     void signupThenVerifyThenLoginReturns200() throws Exception {
+        String uniqueEmail = "flow-" + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
+        String uniqueSlug = "flow-" + UUID.randomUUID().toString().substring(0, 8);
+
         // 1. Signup
         SignupRequest signupRequest = new SignupRequest();
         signupRequest.setBusinessName("Flow Biz");
-        signupRequest.setWorkspaceSlug("flow-exact");
+        signupRequest.setWorkspaceSlug(uniqueSlug);
         signupRequest.setBusinessType("RETAIL");
         signupRequest.setOwnerName("Flow Owner");
-        signupRequest.setOwnerEmail("flow@exact.com");
+        signupRequest.setOwnerEmail(uniqueEmail);
         signupRequest.setPassword("password123");
 
         MvcResult signupResult = mockMvc.perform(post("/api/auth/signup")
@@ -89,11 +93,11 @@ class ExactTest extends BaseIntegrationTest {
                 signupResult.getResponse().getContentAsString(), SignupResponse.class);
 
         // 2. Verify user
-        verifyUser("flow@exact.com");
+        verifyUser(uniqueEmail);
 
         // 3. Login succeeds
         LoginRequest loginRequest = new LoginRequest();
-        loginRequest.setEmail("flow@exact.com");
+        loginRequest.setEmail(uniqueEmail);
         loginRequest.setPassword("password123");
         loginRequest.setCompanyCode(signupResponse.getCompanyCode());
 

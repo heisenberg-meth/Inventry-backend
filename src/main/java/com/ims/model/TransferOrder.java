@@ -1,6 +1,5 @@
 package com.ims.model;
 
-import org.hibernate.annotations.TenantId;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -25,7 +24,6 @@ public class TransferOrder {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @TenantId
   @Column(name = "tenant_id", nullable = false)
   private Long tenantId;
 
@@ -41,9 +39,12 @@ public class TransferOrder {
   @Column(name = "quantity", nullable = false)
   private Integer quantity;
 
-  @Column @Builder.Default private String status = "PENDING";
+  @Column
+  @Builder.Default
+  private String status = "PENDING";
 
-  @Column private String notes;
+  @Column
+  private String notes;
 
   @Column(name = "created_by")
   private Long createdBy;

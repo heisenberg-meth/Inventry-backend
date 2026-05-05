@@ -1,6 +1,5 @@
 package com.ims.model;
 
-import org.hibernate.annotations.TenantId;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -34,7 +33,6 @@ public class User {
   @Version
   private Long version;
 
-  @TenantId
   @Column(name = "tenant_id")
   private Long tenantId;
 
@@ -62,10 +60,7 @@ public class User {
   private Boolean isPlatformUser = false;
 
   @ManyToMany(fetch = jakarta.persistence.FetchType.EAGER)
-  @JoinTable(
-      name = "user_permissions",
-      joinColumns = @JoinColumn(name = "user_id"),
-      inverseJoinColumns = @JoinColumn(name = "permission_id"))
+  @JoinTable(name = "user_permissions", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "permission_id"))
   @Builder.Default
   private Set<Permission> customPermissions = new HashSet<>();
 

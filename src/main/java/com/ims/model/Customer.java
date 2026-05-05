@@ -1,6 +1,5 @@
 package com.ims.model;
 
-import org.hibernate.annotations.TenantId;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -25,20 +24,23 @@ public class Customer {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @TenantId
   @Column(name = "tenant_id", nullable = false)
   private Long tenantId;
 
   @Column(nullable = false)
   private String name;
 
-  @Column private String phone;
+  @Column
+  private String phone;
 
-  @Column private String email;
+  @Column
+  private String email;
 
-  @Column private String address;
+  @Column
+  private String address;
 
-  @Column private String gstin;
+  @Column
+  private String gstin;
 
   @Column(name = "created_at")
   @Builder.Default

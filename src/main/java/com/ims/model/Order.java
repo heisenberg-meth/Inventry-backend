@@ -1,6 +1,5 @@
 package com.ims.model;
 
-import org.hibernate.annotations.TenantId;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -26,14 +25,15 @@ public class Order {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @TenantId
   @Column(name = "tenant_id", nullable = false)
   private Long tenantId;
 
   @Column(nullable = false)
   private String type;
 
-  @Column @Builder.Default private String status = "PENDING";
+  @Column
+  @Builder.Default
+  private String status = "PENDING";
 
   @Column(name = "customer_id")
   private Long customerId;
@@ -51,7 +51,8 @@ public class Order {
   @Builder.Default
   private BigDecimal discount = BigDecimal.ZERO;
 
-  @Column private String notes;
+  @Column
+  private String notes;
 
   @Column(name = "created_by")
   private Long createdBy;

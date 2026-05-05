@@ -90,7 +90,7 @@ public class SignupService {
           .expiresAt(java.time.LocalDateTime.now().plusHours(24))
           .build();
       emailVerificationRepository.save(verification);
-      log.info("Signup: Created email verification token for user={}", user.getId());
+      log.info("Signup: Email verification token created");
 
       auditLogService.log(
           AuditAction.SIGNUP,

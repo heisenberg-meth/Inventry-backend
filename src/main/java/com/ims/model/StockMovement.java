@@ -1,6 +1,5 @@
 package com.ims.model;
 
-import org.hibernate.annotations.TenantId;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -25,7 +24,6 @@ public class StockMovement {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @TenantId
   @Column(name = "tenant_id", nullable = false)
   private Long tenantId;
 
@@ -50,7 +48,8 @@ public class StockMovement {
   @Column(name = "reference_type")
   private String referenceType;
 
-  @Column private String notes;
+  @Column
+  private String notes;
 
   @Column(name = "created_by")
   private Long createdBy;

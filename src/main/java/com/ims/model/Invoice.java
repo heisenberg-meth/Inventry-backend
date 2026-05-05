@@ -1,6 +1,5 @@
 package com.ims.model;
 
-import org.hibernate.annotations.TenantId;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -27,7 +26,6 @@ public class Invoice {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @TenantId
   @Column(name = "tenant_id", nullable = false)
   private Long tenantId;
 
@@ -47,7 +45,9 @@ public class Invoice {
   @Builder.Default
   private BigDecimal discount = BigDecimal.ZERO;
 
-  @Column @Builder.Default private String status = "UNPAID";
+  @Column
+  @Builder.Default
+  private String status = "UNPAID";
 
   @Column(name = "due_date")
   private LocalDate dueDate;
