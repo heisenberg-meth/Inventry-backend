@@ -15,6 +15,7 @@ import com.ims.tenant.service.WarehouseProductRepository;
 import com.ims.platform.repository.TenantRepository;
 import com.ims.platform.service.SystemConfigService;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -87,17 +88,29 @@ public class ProductService {
   @Transactional
   @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "products", allEntries = true)
   public ProductResponse createProduct(CreateProductRequest request) {
-    Long tenantId = getTenantId();
-    if (tenantId != null) {
-      var tenant = tenantRepository
-          .findById(tenantId)
-          .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
-      if (tenant.getMaxProducts() != null) {
-        long currentCount = productRepository.countActiveByTenant(tenantId);
-        if (currentCount >= tenant.getMaxProducts()) {
-          throw new IllegalArgumentException(
-              "Product limit reached for your plan (" + tenant.getMaxProducts() + ")");
-        }
+    // Get tenant ID from context - must be set for product creation
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) {
+      throw new IllegalStateException("TenantContext not set - cannot create product");
+    }
+
+    // Check product limits
+    var tenant = tenantRepository
+        .findById(tenantId)
+        .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+    if (tenant.getMaxProducts() != null) {
+      long currentCount = productRepository.countActiveByTenant(tenantId);
+      if (currentCount >= tenant.getMaxProducts()) {
+        throw new IllegalArgumentException(
+            "Product limit reached for your plan (" + tenant.getMaxProducts() + ")");
+      }
+    }
+
+    // Check for duplicate SKU
+    if (request.getSku() != null && !request.getSku().isBlank()) {
+      if (productRepository.existsBySkuAndTenantId(request.getSku(), tenantId)) {
+        throw new DataIntegrityViolationException(
+            "Product with SKU '" + request.getSku() + "' already exists");
       }
     }
 
@@ -115,6 +128,7 @@ public class ProductService {
     }
 
     Product product = Product.builder()
+        .tenantId(tenantId)
         .name(request.getName())
         .sku(request.getSku())
         .barcode(request.getBarcode())

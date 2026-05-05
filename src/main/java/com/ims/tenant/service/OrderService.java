@@ -2,7 +2,6 @@ package com.ims.tenant.service;
 
 import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditResource;
-
 import com.ims.model.Order;
 import com.ims.model.OrderItem;
 import com.ims.product.Product;
@@ -46,7 +45,6 @@ public class OrderService {
   @Transactional
   public Map<String, Object> createPurchaseOrder(Map<String, Object> request, Long userId) {
     Long supplierId = Long.valueOf(request.get("supplier_id").toString());
-    @SuppressWarnings("unchecked")
     List<Map<String, Object>> items = (List<Map<String, Object>>) request.get("items");
 
     // Validate supplier belongs to tenant
@@ -137,7 +135,6 @@ public class OrderService {
     Long customerId = request.containsKey("customer_id")
         ? Long.valueOf(request.get("customer_id").toString())
         : null;
-    @SuppressWarnings("unchecked")
     List<Map<String, Object>> items = (List<Map<String, Object>>) request.get("items");
     // Validate customer if provided
     if (customerId != null) {
@@ -266,7 +263,6 @@ public class OrderService {
   @Transactional
   public Order createReturnOrder(Map<String, Object> request, Long userId) {
     Long originalOrderId = Long.valueOf(request.get("original_order_id").toString());
-    @SuppressWarnings("unchecked")
     List<Map<String, Object>> returnItems = (List<Map<String, Object>>) request.get("items");
 
     Order originalOrder = orderRepository.findById(originalOrderId)

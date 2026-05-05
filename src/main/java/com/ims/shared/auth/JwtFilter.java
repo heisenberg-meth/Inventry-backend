@@ -12,6 +12,7 @@ import java.util.HexFormat;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.lang.NonNull;
@@ -25,7 +26,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class JwtFilter extends OncePerRequestFilter {
 
   private final JwtUtil jwtUtil;
-  private final RedisTemplate<String, Object> redisTemplate;
+  private RedisTemplate<String, Object> redisTemplate;
+
+  @Autowired(required = false)
+  public void setRedisTemplate(RedisTemplate<String, Object> redisTemplate) {
+    this.redisTemplate = redisTemplate;
+  }
 
   private static final int BEARER_PREFIX_LENGTH = 7;
 
@@ -52,7 +58,9 @@ public class JwtFilter extends OncePerRequestFilter {
       String tokenHash = hashToken(token);
       Boolean isBlacklisted = false;
       try {
-        isBlacklisted = redisTemplate.hasKey("jwt:blacklist:" + tokenHash);
+        if (redisTemplate != null) {
+          isBlacklisted = redisTemplate.hasKey("jwt:blacklist:" + tokenHash);
+        }
       } catch (Exception e) {
         logger.warn("Redis unavailable for JWT blacklist check: " + e.getMessage());
       }

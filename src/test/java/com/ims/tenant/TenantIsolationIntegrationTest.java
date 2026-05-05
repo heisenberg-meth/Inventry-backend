@@ -4,6 +4,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import java.util.UUID;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.LoginRequest;
@@ -49,28 +50,28 @@ class TenantIsolationIntegrationTest extends BaseIntegrationTest {
 
                 // Create users directly in DB for each tenant
                 String passwordHash = passwordEncoder.encode("password123");
+                String t1Email = "tenant1-" + UUID.randomUUID() + "@test.com";
+                String t2Email = "tenant2-" + UUID.randomUUID() + "@test.com";
 
-        // User for tenant 1
-        jdbcTemplate.update(
-            "INSERT INTO users (name, email, password_hash, role, scope, tenant_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            "Tenant1 User", "tenant1@test.com", passwordHash, "ADMIN", "TENANT", tenant1Id, true
-        );
-        
-        // User for tenant 2
-        jdbcTemplate.update(
-            "INSERT INTO users (name, email, password_hash, role, scope, tenant_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            "Tenant2 User", "tenant2@test.com", passwordHash, "ADMIN", "TENANT", tenant2Id, true
-        );
+                // User for tenant 1
+                jdbcTemplate.update(
+                                "INSERT INTO users (name, email, password_hash, role, scope, tenant_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                                "Tenant1 User", t1Email, passwordHash, "ADMIN", "TENANT", tenant1Id, true);
 
-        // Verify users
-        verifyUser("tenant1@test.com");
-        verifyUser("tenant2@test.com");
+                // User for tenant 2
+                jdbcTemplate.update(
+                                "INSERT INTO users (name, email, password_hash, role, scope, tenant_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                                "Tenant2 User", t2Email, passwordHash, "ADMIN", "TENANT", tenant2Id, true);
 
-        // Login tenant 1
-        tenant1Token = loginAndGetToken("tenant1@test.com", "password123", "T1001");
-        
-        // Login tenant 2
-        tenant2Token = loginAndGetToken("tenant2@test.com", "password123", "T2001");
+                // Verify users
+                verifyUser(t1Email);
+                verifyUser(t2Email);
+
+                // Login tenant 1
+                tenant1Token = loginAndGetToken(t1Email, "password123", "T1001");
+
+                // Login tenant 2
+                tenant2Token = loginAndGetToken(t2Email, "password123", "T2001");
         }
 
         private String loginAndGetToken(String email, String password, String companyCode) throws Exception {
@@ -91,47 +92,45 @@ class TenantIsolationIntegrationTest extends BaseIntegrationTest {
                 return response.getAccessToken();
         }
 
-    @Test
-    void tenant1CannotAccessTenant2Data() throws Exception {
-        // Create a product in tenant1
-        String productPayload = """
-                {
-                    "name": "Tenant1 Product",
-                    "sku": "T1-SKU-001",
-                    "purchasePrice": 5.99,
-                    "salePrice": 10.99,
-                    "quantity": 100
-                }
-                """;
+        @Test
+        void tenant1CannotAccessTenant2Data() throws Exception {
+                // Create a product in tenant1
+                String productPayload = "{\n" +
+                                "\"name\": \"Tenant1 Product\",\n" +
+                                "\"sku\": \"T1-SKU-" + UUID.randomUUID().toString().substring(0, 8) + "\",\n" +
+                                "\"purchasePrice\": 5.99,\n" +
+                                "\"salePrice\": 10.99,\n" +
+                                "\"quantity\": 100\n" +
+                                "}";
 
-        MockHttpServletRequestBuilder createProductBuilder = post("/api/tenant/products")
-                .header("Authorization", "Bearer " + tenant1Token)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(productPayload);
-        mockMvc.perform(createProductBuilder)
-                .andExpect(status().isCreated());
+                MockHttpServletRequestBuilder createProductBuilder = post("/api/tenant/products")
+                                .header("Authorization", "Bearer " + tenant1Token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(productPayload);
+                mockMvc.perform(createProductBuilder)
+                                .andExpect(status().isCreated());
 
-        // Try to access product from tenant2 context
-        MockHttpServletRequestBuilder getProductsBuilder = get("/api/tenant/products")
-                .header("Authorization", "Bearer " + tenant2Token);
-        mockMvc.perform(getProductsBuilder)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content").isEmpty());
-    }
+                // Try to access product from tenant2 context
+                MockHttpServletRequestBuilder getProductsBuilder = get("/api/tenant/products")
+                                .header("Authorization", "Bearer " + tenant2Token);
+                mockMvc.perform(getProductsBuilder)
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.content").isEmpty());
+        }
 
-    @Test
-    void tenantContextIsIsolated() throws Exception {
-        // Verify tenant context is set correctly for each tenant
-        MockHttpServletRequestBuilder getTenant1Builder = get("/api/tenant/settings")
-                .header("Authorization", "Bearer " + tenant1Token);
-        mockMvc.perform(getTenant1Builder)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.workspace_slug").value("t1"));
+        @Test
+        void tenantContextIsIsolated() throws Exception {
+                // Verify tenant context is set correctly for each tenant
+                MockHttpServletRequestBuilder getTenant1Builder = get("/api/tenant/settings")
+                                .header("Authorization", "Bearer " + tenant1Token);
+                mockMvc.perform(getTenant1Builder)
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.workspace_slug").value("t1"));
 
-        MockHttpServletRequestBuilder getTenant2Builder = get("/api/tenant/settings")
-                .header("Authorization", "Bearer " + tenant2Token);
-        mockMvc.perform(getTenant2Builder)
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.workspace_slug").value("t2"));
-    }
+                MockHttpServletRequestBuilder getTenant2Builder = get("/api/tenant/settings")
+                                .header("Authorization", "Bearer " + tenant2Token);
+                mockMvc.perform(getTenant2Builder)
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.workspace_slug").value("t2"));
+        }
 }

@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.BaseIntegrationTest;
+import com.ims.TestDataFactory;
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.request.LoginRequest;
 import com.ims.dto.request.SignupRequest;
@@ -17,12 +18,16 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import java.math.BigDecimal;
 import java.util.Objects;
+import java.util.UUID;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
+    "spring.cache.type=none"
+})
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 public class RbacIntegrationTest extends BaseIntegrationTest {
@@ -34,19 +39,24 @@ public class RbacIntegrationTest extends BaseIntegrationTest {
   @BeforeEach
   void setup() {
     cleanupDatabase();
+    mockRedisAndCache();
   }
 
   @Test
   void testRBAC() throws Exception {
-    com.ims.dto.response.SignupResponse response = signupService.signup(createSignupRequest("RBAC Corp", "rbac-corp", "admin@rbac.com"));
-    verifyUser("admin@rbac.com");
-    String token = login("admin@rbac.com", "password123", response.getCompanyCode());
+    String uniqueEmail = TestDataFactory.email();
+    String uniqueSlug = "rbac-" + UUID.randomUUID().toString().substring(0, 8);
+    
+    com.ims.dto.response.SignupResponse response = signupService.signup(
+        createSignupRequest(TestDataFactory.business(), uniqueSlug, uniqueEmail));
+    verifyUser(uniqueEmail);
+    String token = login(uniqueEmail, "password123", response.getCompanyCode());
 
 
     // 1. Create a product first (with all mandatory fields)
     CreateProductRequest createReq = new CreateProductRequest();
     createReq.setName("RBAC Product");
-    createReq.setSku("RBAC-001");
+    createReq.setSku("RBAC-" + UUID.randomUUID().toString().substring(0, 8));
     createReq.setSalePrice(new BigDecimal("10.00"));
     
     mockMvc.perform(post("/api/tenant/products")

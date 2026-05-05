@@ -1,6 +1,7 @@
 package com.ims.tenant.repository;
 
 import com.ims.model.StockMovement;
+import com.ims.shared.auth.TenantContext;
 import java.time.LocalDateTime;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -12,17 +13,28 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface StockMovementRepository extends JpaRepository<StockMovement, Long> {
 
-  Page<StockMovement> findAllByOrderByCreatedAtDesc(Pageable pageable);
+  Page<StockMovement> findByTenantIdOrderByCreatedAtDesc(Long tenantId, Pageable pageable);
+
+  default Page<StockMovement> findAllByOrderByCreatedAtDesc(Pageable pageable) {
+    return findByTenantIdOrderByCreatedAtDesc(TenantContext.getTenantId(), pageable);
+  }
 
   @Query(
       "SELECT sm FROM StockMovement sm WHERE "
-          + "(:productId IS NULL OR sm.productId = :productId) "
+          + "sm.tenantId = :tenantId "
+          + "AND (:productId IS NULL OR sm.productId = :productId) "
           + "AND (:from IS NULL OR sm.createdAt >= :from) "
           + "AND (:to IS NULL OR sm.createdAt <= :to) "
           + "ORDER BY sm.createdAt DESC")
   Page<StockMovement> findByFilters(
+      @Param("tenantId") Long tenantId,
       @Param("productId") Long productId,
       @Param("from") LocalDateTime from,
       @Param("to") LocalDateTime to,
       Pageable pageable);
+
+  default Page<StockMovement> findByFilters(
+      Long productId, LocalDateTime from, LocalDateTime to, Pageable pageable) {
+    return findByFilters(TenantContext.getTenantId(), productId, from, to, pageable);
+  }
 }

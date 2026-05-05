@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.BaseIntegrationTest;
+import com.ims.TestDataFactory;
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.request.LoginRequest;
 import com.ims.dto.request.SignupRequest;
@@ -48,17 +49,20 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
 
         @Test
         void testProductAuditLogging() throws Exception {
+                String uniqueEmail = TestDataFactory.email();
+                String uniqueSlug = TestDataFactory.slug();
+                
                 SignupRequest signup = new SignupRequest();
-                signup.setBusinessName("Audit Corp");
-                signup.setWorkspaceSlug("audit-corp");
+                signup.setBusinessName(TestDataFactory.business());
+                signup.setWorkspaceSlug(uniqueSlug);
                 signup.setBusinessType("RETAIL");
                 signup.setOwnerName("Admin");
-                signup.setOwnerEmail("admin@audit.com");
+                signup.setOwnerEmail(uniqueEmail);
                 signup.setPassword("password123");
                 com.ims.dto.response.SignupResponse response = signupService.signup(signup);
-                verifyUser("admin@audit.com");
+                verifyUser(uniqueEmail);
 
-                String token = login("admin@audit.com", "password123", response.getCompanyCode());
+                String token = login(uniqueEmail, "password123", response.getCompanyCode());
 
                 // 1. Create Product
                 CreateProductRequest createReq = new CreateProductRequest();
@@ -102,16 +106,20 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
         @Test
         void testAuditIsolation() throws Exception {
                 // Tenant 1
+                String email1 = TestDataFactory.email();
+                String slug1 = TestDataFactory.slug();
                 com.ims.dto.response.SignupResponse r1 = signupService
-                                .signup(createSignupRequest("T1", "t1-audit", "admin@t1.com"));
-                verifyUser("admin@t1.com");
-                String t1Token = login("admin@t1.com", "password123", r1.getCompanyCode());
+                                .signup(createSignupRequest(TestDataFactory.business(), slug1, email1));
+                verifyUser(email1);
+                String t1Token = login(email1, "password123", r1.getCompanyCode());
 
                 // Tenant 2
+                String email2 = TestDataFactory.email();
+                String slug2 = TestDataFactory.slug();
                 com.ims.dto.response.SignupResponse r2 = signupService
-                                .signup(createSignupRequest("T2", "t2-audit", "admin@t2.com"));
-                verifyUser("admin@t2.com");
-                String t2Token = login("admin@t2.com", "password123", r2.getCompanyCode());
+                                .signup(createSignupRequest(TestDataFactory.business(), slug2, email2));
+                verifyUser(email2);
+                String t2Token = login(email2, "password123", r2.getCompanyCode());
 
                 // T1 performs an action
                 CreateProductRequest createReq = new CreateProductRequest();

@@ -47,7 +47,8 @@ public class UserService {
   private static final List<String> VALID_TENANT_ROLES = List.of("ADMIN", "MANAGER", "STAFF");
 
   public Page<UserResponse> getUsers(Pageable pageable) {
-    return userRepository.findAll(Objects.requireNonNull(pageable)).map(this::toResponse);
+    Long tenantId = getTenantId();
+    return userRepository.findByTenantIdAndScope(tenantId, pageable).map(this::toResponse);
   }
 
   public UserResponse getUserById(Long id) {

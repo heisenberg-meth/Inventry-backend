@@ -8,6 +8,7 @@ import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.LoginRequest;
 import com.ims.dto.request.SignupRequest;
 import com.ims.dto.response.SignupResponse;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,11 +20,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
-@SpringBootTest(properties = {
-        "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
-        "spring.cache.type=none",
-        "app.security.allowed-origins=http://localhost:3000,http://localhost:5173"
-})
+@SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class ExactCopyTest extends BaseIntegrationTest {
@@ -42,12 +39,15 @@ class ExactCopyTest extends BaseIntegrationTest {
 
     @Test
     void signupReturns201() throws Exception {
+        String uniqueEmail = "copy-" + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
+        String uniqueSlug = "copy-" + UUID.randomUUID().toString().substring(0, 8);
+
         SignupRequest request = new SignupRequest();
         request.setBusinessName("Copy Biz");
-        request.setWorkspaceSlug("copy-test");
+        request.setWorkspaceSlug(uniqueSlug);
         request.setBusinessType("RETAIL");
         request.setOwnerName("Copy Owner");
-        request.setOwnerEmail("copy@test.com");
+        request.setOwnerEmail(uniqueEmail);
         request.setPassword("password123");
 
         mockMvc.perform(post("/api/auth/signup")
@@ -57,27 +57,30 @@ class ExactCopyTest extends BaseIntegrationTest {
     }
 
     @Test
-    void loginWithWrongPasswordReturns404() throws Exception {
+    void loginWithWrongPasswordReturns401() throws Exception {
         LoginRequest request = new LoginRequest();
-        request.setEmail("nonexistent@test.com");
+        request.setEmail("nonexistent-" + UUID.randomUUID().toString().substring(0, 8) + "@test.com");
         request.setPassword("wrong");
         request.setCompanyCode("INVALID");
 
         mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound()); // 404
+                .andExpect(status().isUnauthorized()); // 401
     }
 
     @Test
     void signupThenVerifyThenLoginReturns200() throws Exception {
+        String uniqueEmail = "flow-copy-" + UUID.randomUUID().toString().substring(0, 8) + "@test.com";
+        String uniqueSlug = "flow-copy-" + UUID.randomUUID().toString().substring(0, 8);
+
         // 1. Signup
         SignupRequest signupRequest = new SignupRequest();
         signupRequest.setBusinessName("Flow Biz");
-        signupRequest.setWorkspaceSlug("flow-exact");
+        signupRequest.setWorkspaceSlug(uniqueSlug);
         signupRequest.setBusinessType("RETAIL");
         signupRequest.setOwnerName("Flow Owner");
-        signupRequest.setOwnerEmail("flow-exact@test.com");
+        signupRequest.setOwnerEmail(uniqueEmail);
         signupRequest.setPassword("password123");
 
         MockHttpServletRequestBuilder signupBuilder = post("/api/auth/signup")
@@ -91,11 +94,11 @@ class ExactCopyTest extends BaseIntegrationTest {
                 signupResult.getResponse().getContentAsString(), SignupResponse.class);
 
         // 2. Verify user
-        verifyUser("flow-exact@test.com");
+        verifyUser(uniqueEmail);
 
-        // 3. Login after verification
+        // 3. Login after verification (200 OK)
         LoginRequest loginRequest = new LoginRequest();
-        loginRequest.setEmail("flow-exact@test.com");
+        loginRequest.setEmail(uniqueEmail);
         loginRequest.setPassword("password123");
         loginRequest.setCompanyCode(signupResponse.getCompanyCode());
 

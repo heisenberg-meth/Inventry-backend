@@ -1,6 +1,7 @@
 package com.ims.auth;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ims.TestDataFactory;
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.LoginRequest;
 import com.ims.dto.request.SignupRequest;
@@ -31,30 +32,31 @@ class SignupLoginTest extends BaseIntegrationTest {
 
     @Test
     void signupThenLogin() throws Exception {
-        // 1. Signup (returns 200 OK with SignupResponse)
+        String uniqueEmail = TestDataFactory.email();
+        String uniqueSlug = TestDataFactory.slug();
+
         SignupRequest signupRequest = new SignupRequest();
-        signupRequest.setBusinessName("Test Business");
-        signupRequest.setWorkspaceSlug("test-simple");
+        signupRequest.setBusinessName(TestDataFactory.business());
+        signupRequest.setWorkspaceSlug(uniqueSlug);
         signupRequest.setBusinessType("RETAIL");
         signupRequest.setOwnerName("Test Owner");
-        signupRequest.setOwnerEmail("simple@test.com");
+        signupRequest.setOwnerEmail(uniqueEmail);
         signupRequest.setPassword("password123");
 
         MvcResult signupResult = mockMvc.perform(post("/api/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(signupRequest)))
-                .andExpect(status().isOk())  // 200 OK, not 201
+                .andExpect(status().isCreated())
                 .andReturn();
 
         SignupResponse signupResponse = objectMapper.readValue(
                 signupResult.getResponse().getContentAsString(), SignupResponse.class);
 
-        // 2. Verify user (simulate email verification)
-        verifyUser("simple@test.com");
+        verifyUser(uniqueEmail);
 
         // 3. Login after verification (should succeed)
         LoginRequest loginRequest = new LoginRequest();
-        loginRequest.setEmail("simple@test.com");
+        loginRequest.setEmail(uniqueEmail);
         loginRequest.setPassword("password123");
         loginRequest.setCompanyCode(signupResponse.getCompanyCode());
 
