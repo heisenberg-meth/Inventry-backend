@@ -11,7 +11,6 @@ import com.ims.TestDataFactory;
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.request.SignupRequest;
 import com.ims.dto.request.LoginRequest;
-import com.ims.dto.response.ProductResponse;
 import com.ims.dto.response.SignupResponse;
 import com.ims.shared.auth.SignupService;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,7 +51,7 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
   void testPharmacyProductCreation() throws Exception {
     String uniqueEmail = TestDataFactory.email();
     String uniqueSlug = TestDataFactory.slug();
-    
+
     SignupRequest signup = new SignupRequest();
     signup.setBusinessName(TestDataFactory.business());
     signup.setWorkspaceSlug(uniqueSlug);
@@ -77,10 +76,10 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
     createReq.setPharmacyDetails(pharm);
 
     mockMvc.perform(post("/api/tenant/products")
-            .header("Authorization", "Bearer " + token)
-            .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
-            .content(Objects.requireNonNull(objectMapper.writeValueAsString(createReq))))
-            .andExpect(status().isCreated());
+        .header("Authorization", "Bearer " + token)
+        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+        .content(Objects.requireNonNull(objectMapper.writeValueAsString(createReq))))
+        .andExpect(status().isCreated());
   }
 
   private String login(String email, String password, String workspace) throws Exception {
@@ -90,13 +89,13 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
     loginRequest.setCompanyCode(workspace);
 
     MvcResult result = mockMvc.perform(post("/api/auth/login")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(loginRequest)))
-            .andExpect(status().isOk())
-            .andReturn();
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(objectMapper.writeValueAsString(loginRequest)))
+        .andExpect(status().isOk())
+        .andReturn();
 
     String responseJson = result.getResponse().getContentAsString();
-    com.ims.dto.response.LoginResponse loginResponse = objectMapper.readValue(responseJson, 
+    com.ims.dto.response.LoginResponse loginResponse = objectMapper.readValue(responseJson,
         com.ims.dto.response.LoginResponse.class);
     return loginResponse.getAccessToken();
   }

@@ -6,14 +6,11 @@ import java.util.UUID;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.ims.BaseIntegrationTest;
 import com.ims.TestDataFactory;
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.request.SignupRequest;
 import com.ims.dto.request.LoginRequest;
-import com.ims.dto.request.StockInRequest;
-import com.ims.dto.response.ProductResponse;
 import com.ims.dto.response.SignupResponse;
 import com.ims.model.Customer;
 import com.ims.shared.auth.SignupService;
@@ -59,7 +56,7 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
     // 1. Setup Tenant and Data
     String uniqueEmail = TestDataFactory.email();
     String uniqueSlug = TestDataFactory.slug();
-    
+
     SignupRequest signup = new SignupRequest();
     signup.setBusinessName(TestDataFactory.business());
     signup.setWorkspaceSlug(uniqueSlug);
@@ -83,14 +80,14 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
     createReq.setName("Test Product");
     createReq.setSku("PROD-" + UUID.randomUUID().toString().substring(0, 8));
     createReq.setSalePrice(new BigDecimal("100.00"));
-    
+
     MvcResult prodResult = mockMvc.perform(post("/api/tenant/products")
         .header("Authorization", "Bearer " + token)
         .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
         .content(Objects.requireNonNull(objectMapper.writeValueAsString(createReq))))
         .andExpect(status().isCreated())
         .andReturn();
-        
+
     // Verify product was created
     mockMvc.perform(get("/api/tenant/products")
         .header("Authorization", "Bearer " + token))
@@ -110,7 +107,7 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
         .andReturn();
 
     String responseJson = result.getResponse().getContentAsString();
-    com.ims.dto.response.LoginResponse loginResponse = objectMapper.readValue(responseJson, 
+    com.ims.dto.response.LoginResponse loginResponse = objectMapper.readValue(responseJson,
         com.ims.dto.response.LoginResponse.class);
     return loginResponse.getAccessToken();
   }

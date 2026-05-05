@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.lang.NonNull;
@@ -71,30 +72,28 @@ public class RateLimitFilter extends OncePerRequestFilter {
    */
   private static final String CONFIG_POSITIVE_MESSAGE = "%s must be >= 1 (got %d)";
 
-  private final RedisTemplate<String, Object> redisTemplate;
+private final RedisTemplate<String, Object> redisTemplate;
   private final JwtUtil jwtUtil;
+  private final boolean redisAvailable;
   private final int authRpm;
   private final int publicRpm;
   private final int tenantRpm;
   private final int windowSeconds;
 
   public RateLimitFilter(
-      RedisTemplate<String, Object> redisTemplate,
+      @Autowired(required = false) RedisTemplate<String, Object> redisTemplate,
       JwtUtil jwtUtil,
       @Value("${app.rate-limit.auth-rpm:20}") int authRpm,
       @Value("${app.rate-limit.public-rpm:100}") int publicRpm,
       @Value("${app.rate-limit.authenticated-rpm:500}") int tenantRpm,
       @Value("${app.rate-limit.window-seconds:60}") int windowSeconds) {
-    // Error messages reference the config property keys (not the Java field names)
-    // so operators
-    // can grep the stack trace against their application.yml without a translation
-    // step.
     requirePositive("app.rate-limit.auth-rpm", authRpm);
     requirePositive("app.rate-limit.public-rpm", publicRpm);
     requirePositive("app.rate-limit.authenticated-rpm", tenantRpm);
     requirePositive("app.rate-limit.window-seconds", windowSeconds);
     this.redisTemplate = redisTemplate;
     this.jwtUtil = jwtUtil;
+    this.redisAvailable = redisTemplate != null;
     this.authRpm = authRpm;
     this.publicRpm = publicRpm;
     this.tenantRpm = tenantRpm;
@@ -116,6 +115,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
   protected void doFilterInternal(
       @NonNull HttpServletRequest req, @NonNull HttpServletResponse res, @NonNull FilterChain chain)
       throws ServletException, IOException {
+
+    if (!redisAvailable) {
+      chain.doFilter(req, res);
+      return;
+    }
 
     String clientIp = resolveClientIp(req);
     String tenantId = resolveTenantId(req);

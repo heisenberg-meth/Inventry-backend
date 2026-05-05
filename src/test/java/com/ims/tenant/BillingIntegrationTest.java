@@ -11,12 +11,8 @@ import com.ims.TestDataFactory;
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.request.SignupRequest;
 import com.ims.dto.request.LoginRequest;
-import com.ims.dto.response.ProductResponse;
 import com.ims.dto.response.SignupResponse;
 import com.ims.shared.auth.SignupService;
-import com.ims.shared.auth.TenantContext;
-import com.ims.tenant.service.CustomerService;
-import com.ims.model.Customer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,8 +39,6 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
   private ObjectMapper objectMapper;
   @Autowired
   private SignupService signupService;
-  @Autowired
-  private CustomerService customerService;
 
   @BeforeEach
   void setup() {
@@ -57,7 +51,7 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
     // 1. Setup Tenant and Data
     String uniqueEmail = TestDataFactory.email();
     String uniqueSlug = TestDataFactory.slug();
-    
+
     SignupRequest signup = new SignupRequest();
     signup.setBusinessName(TestDataFactory.business());
     signup.setWorkspaceSlug(uniqueSlug);
@@ -70,7 +64,6 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
     SignupResponse response = signupService.signup(signup);
     verifyUser(uniqueEmail);
 
-    Long tenantId = tenantRepository.findByWorkspaceSlug(uniqueSlug).orElseThrow().getId();
     String token = login(uniqueEmail, "password123", response.getCompanyCode());
 
     // Create product
@@ -100,7 +93,7 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
         .andReturn();
 
     String responseJson = result.getResponse().getContentAsString();
-    com.ims.dto.response.LoginResponse loginResponse = objectMapper.readValue(responseJson, 
+    com.ims.dto.response.LoginResponse loginResponse = objectMapper.readValue(responseJson,
         com.ims.dto.response.LoginResponse.class);
     return loginResponse.getAccessToken();
   }

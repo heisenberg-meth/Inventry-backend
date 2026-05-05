@@ -1,10 +1,7 @@
 package com.ims.tenant;
 
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.BaseIntegrationTest;
 import com.ims.TestDataFactory;
@@ -18,12 +15,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cache.interceptor.CacheOperationInvocationContext;
-
 import java.math.BigDecimal;
 import java.util.Objects;
 import java.util.UUID;
-
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -55,7 +49,7 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
   void testProductCreation() throws Exception {
     String uniqueEmail = TestDataFactory.email();
     String uniqueSlug = TestDataFactory.slug();
-    
+
     SignupRequest signup = new SignupRequest();
     signup.setBusinessName(TestDataFactory.business());
     signup.setWorkspaceSlug(uniqueSlug);
@@ -74,16 +68,16 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
     createReq.setSalePrice(new BigDecimal("10.00"));
 
     MvcResult result = mockMvc.perform(post("/api/tenant/products")
-            .header("Authorization", "Bearer " + token)
-            .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
-            .content(Objects.requireNonNull(objectMapper.writeValueAsString(createReq))))
-            .andExpect(status().isCreated())
-            .andReturn();
+        .header("Authorization", "Bearer " + token)
+        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+        .content(Objects.requireNonNull(objectMapper.writeValueAsString(createReq))))
+        .andExpect(status().isCreated())
+        .andReturn();
 
     ProductResponse product = objectMapper.readValue(
-            result.getResponse().getContentAsString(),
-            ProductResponse.class);
-    
+        result.getResponse().getContentAsString(),
+        ProductResponse.class);
+
     assert product.getId() != null;
   }
 
@@ -94,13 +88,13 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
     loginRequest.setCompanyCode(workspace);
 
     MvcResult result = mockMvc.perform(post("/api/auth/login")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(loginRequest)))
-            .andExpect(status().isOk())
-            .andReturn();
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(objectMapper.writeValueAsString(loginRequest)))
+        .andExpect(status().isOk())
+        .andReturn();
 
     String responseJson = result.getResponse().getContentAsString();
-    com.ims.dto.response.LoginResponse loginResponse = objectMapper.readValue(responseJson, 
+    com.ims.dto.response.LoginResponse loginResponse = objectMapper.readValue(responseJson,
         com.ims.dto.response.LoginResponse.class);
     return loginResponse.getAccessToken();
   }
