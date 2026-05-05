@@ -18,7 +18,6 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -77,21 +76,29 @@ public class ProductService {
   public ProductResponse getProductById(Long id) {
     Product product = productRepository
         .findById(id)
+        .filter(p -> !p.getIsDeleted())
         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
     return toResponse(product);
   }
 
   public java.util.Optional<Product> findByIdWithLock(Long id) {
-    return productRepository.findByIdWithLock(id);
+    Long tenantId = TenantContext.getTenantId();
+    return productRepository.findByIdWithLockAndTenantId(id, tenantId);
   }
 
   @Transactional
   @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "products", allEntries = true)
   public ProductResponse createProduct(CreateProductRequest request) {
-    // Get tenant ID from context - must be set for product creation
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
       throw new IllegalStateException("TenantContext not set - cannot create product");
+    }
+
+    // PRD 4.4 - Check for duplicate SKU using dedicated method
+    if (request.getSku() != null && !request.getSku().isBlank()) {
+      if (productRepository.existsByTenantIdAndSku(tenantId, request.getSku())) {
+        throw new IllegalStateException("SKU already exists");
+      }
     }
 
     // Check product limits
@@ -106,18 +113,8 @@ public class ProductService {
       }
     }
 
-    // Check for duplicate SKU
-    if (request.getSku() != null && !request.getSku().isBlank()) {
-      if (productRepository.existsBySkuAndTenantId(request.getSku(), tenantId)) {
-        throw new DataIntegrityViolationException(
-            "Product with SKU '" + request.getSku() + "' already exists");
-      }
-    }
-
     String businessType = getBusinessType();
 
-    // Validate pharmacy products must have pharmacy_details and extension must be
-    // enabled
     if ("PHARMACY".equals(businessType)) {
       if (!systemConfigService.isPharmacyEnabled()) {
         throw new IllegalStateException("Pharmacy extension is currently disabled globally");
@@ -131,6 +128,7 @@ public class ProductService {
         .tenantId(tenantId)
         .name(request.getName())
         .sku(request.getSku())
+        .description(request.getDescription())
         .barcode(request.getBarcode())
         .categoryId(request.getCategoryId())
         .unit(request.getUnit())
@@ -139,10 +137,15 @@ public class ProductService {
         .reorderLevel(
             request.getReorderLevel() != null ? request.getReorderLevel() : DEFAULT_REORDER_LEVEL)
         .stock(0)
-        .isActive(true)
+        .isDeleted(false)
         .build();
 
-    product = productRepository.save(product);
+    try {
+      product = productRepository.save(product);
+    } catch (DataIntegrityViolationException e) {
+      // PRD 4.6 - Concurrency & Data Integrity
+      throw new IllegalStateException("SKU already exists");
+    }
 
     auditLogService.logAudit(
         AuditAction.CREATE,
@@ -150,7 +153,7 @@ public class ProductService {
         product.getId(),
         "Created product: " + product.getName() + " (SKU: " + product.getSku() + ")");
 
-    // Pharmacy extension — same @Transactional
+    // Extensions
     if ("PHARMACY".equals(businessType) && request.getPharmacyDetails() != null) {
       var pd = request.getPharmacyDetails();
       PharmacyProduct pp = PharmacyProduct.builder()
@@ -164,7 +167,6 @@ public class ProductService {
       pharmacyProductRepository.save(pp);
     }
 
-    // Warehouse extension — same @Transactional
     if ("WAREHOUSE".equals(businessType) && request.getWarehouseDetails() != null) {
       var wd = request.getWarehouseDetails();
       WarehouseProduct wp = WarehouseProduct.builder()
@@ -186,13 +188,23 @@ public class ProductService {
   public ProductResponse updateProduct(Long id, CreateProductRequest request) {
     Product product = productRepository
         .findById(id)
+        .filter(p -> !p.getIsDeleted())
         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
     if (request.getName() != null) {
       product.setName(request.getName());
     }
     if (request.getSku() != null) {
+      // Check uniqueness if SKU is changing
+      if (!request.getSku().equals(product.getSku())) {
+        if (productRepository.existsByTenantIdAndSku(product.getTenantId(), request.getSku())) {
+          throw new IllegalStateException("SKU already exists");
+        }
+      }
       product.setSku(request.getSku());
+    }
+    if (request.getDescription() != null) {
+      product.setDescription(request.getDescription());
     }
     if (request.getBarcode() != null) {
       product.setBarcode(request.getBarcode());
@@ -212,9 +224,12 @@ public class ProductService {
     if (request.getReorderLevel() != null) {
       product.setReorderLevel(request.getReorderLevel());
     }
-    product.setUpdatedAt(LocalDateTime.now());
 
-    product = productRepository.save(product);
+    try {
+      product = productRepository.save(product);
+    } catch (DataIntegrityViolationException e) {
+      throw new IllegalStateException("SKU already exists");
+    }
 
     auditLogService.logAudit(
         AuditAction.UPDATE,
@@ -224,7 +239,7 @@ public class ProductService {
 
     String businessType = getBusinessType();
 
-    // Pharmacy extension update
+    // Extensions updates
     if ("PHARMACY".equals(businessType) && request.getPharmacyDetails() != null) {
       var pd = request.getPharmacyDetails();
       PharmacyProduct pp = pharmacyProductRepository
@@ -245,7 +260,6 @@ public class ProductService {
       pharmacyProductRepository.save(pp);
     }
 
-    // Warehouse extension update
     if ("WAREHOUSE".equals(businessType) && request.getWarehouseDetails() != null) {
       var wd = request.getWarehouseDetails();
       WarehouseProduct wp = warehouseProductRepository
@@ -274,8 +288,9 @@ public class ProductService {
     Product product = productRepository
         .findById(id)
         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
-    product.setIsActive(false);
-    product.setUpdatedAt(LocalDateTime.now());
+
+    // PRD 4.1.3 Soft Delete
+    product.setIsDeleted(true);
     productRepository.save(product);
 
     auditLogService.logAudit(
@@ -291,20 +306,22 @@ public class ProductService {
   @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "products", allEntries = true)
   public ProductResponse duplicateProduct(Long id) {
     Product original = productRepository.findById(id)
+        .filter(p -> !p.getIsDeleted())
         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
     Product clone = Product.builder()
         .tenantId(original.getTenantId())
         .name(original.getName() + " (Copy)")
         .sku(generateUniqueSku(original.getSku(), original.getTenantId()))
-        .barcode(null) // Barcode should be unique
+        .description(original.getDescription())
+        .barcode(null)
         .categoryId(original.getCategoryId())
         .unit(original.getUnit())
         .purchasePrice(original.getPurchasePrice())
         .salePrice(original.getSalePrice())
-        .stock(0) // Reset stock
+        .stock(0)
         .reorderLevel(original.getReorderLevel())
-        .isActive(true)
+        .isDeleted(false)
         .build();
 
     Product saved = productRepository.save(clone);
@@ -319,11 +336,10 @@ public class ProductService {
   private String generateUniqueSku(String originalSku, Long tenantId) {
     if (originalSku == null)
       return null;
-    // Remove existing -COPY or -COPY-N suffix to get base
     String baseSku = originalSku.replaceAll("-COPY(-\\d+)?$", "");
     String newSku = baseSku + "-COPY";
     int counter = 1;
-    while (productRepository.existsBySkuAndTenantId(newSku, tenantId)) {
+    while (productRepository.existsByTenantIdAndSku(tenantId, newSku)) {
       newSku = baseSku + "-COPY-" + counter++;
     }
     return newSku;
@@ -355,7 +371,7 @@ public class ProductService {
       thresholdDays = tenantRepository
           .findById(tenantId)
           .map(Tenant::getExpiryThresholdDays)
-          .orElse(DEFAULT_REORDER_LEVEL * 3); // 30
+          .orElse(DEFAULT_REORDER_LEVEL * 3);
     }
 
     LocalDate threshold = LocalDate.now().plusDays(thresholdDays);
@@ -400,6 +416,7 @@ public class ProductService {
         .id(product.getId())
         .name(product.getName())
         .sku(product.getSku())
+        .description(product.getDescription())
         .barcode(product.getBarcode())
         .categoryId(product.getCategoryId())
         .unit(product.getUnit())
@@ -407,10 +424,9 @@ public class ProductService {
         .salePrice(product.getSalePrice())
         .stock(product.getStock())
         .reorderLevel(product.getReorderLevel())
-        .isActive(product.getIsActive())
+        .isDeleted(product.getIsDeleted())
         .createdAt(product.getCreatedAt());
 
-    // Enrich with pharmacy details if available
     Long productId = product.getId();
     if (productId != null) {
       pharmacyProductRepository
@@ -426,7 +442,6 @@ public class ProductService {
               });
     }
 
-    // Enrich with warehouse details if available
     if (productId != null) {
       warehouseProductRepository
           .findById(productId)
@@ -455,7 +470,7 @@ public class ProductService {
         .salePrice(view.getSalePrice())
         .stock(view.getStock())
         .reorderLevel(view.getReorderLevel())
-        .isActive(view.getIsActive())
+        .isDeleted(view.getIsDeleted())
         .createdAt(view.getCreatedAt())
         .batchNumber(view.getBatchNumber())
         .expiryDate(view.getExpiryDate())
@@ -481,7 +496,7 @@ public class ProductService {
         .salePrice(product.getSalePrice())
         .stock(product.getStock())
         .reorderLevel(product.getReorderLevel())
-        .isActive(product.getIsActive())
+        .isDeleted(product.getIsDeleted())
         .createdAt(product.getCreatedAt())
         .batchNumber(pp.getBatchNumber())
         .expiryDate(pp.getExpiryDate())

@@ -2,30 +2,21 @@ package com.ims.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "payment_gateway_logs")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class PaymentGatewayLog {
-
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
-
-  @Column(name = "tenant_id", nullable = false)
-  private Long tenantId;
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true)
+public class PaymentGatewayLog extends BaseEntity {
 
   @Column(name = "payment_id")
   private Long paymentId;
@@ -35,8 +26,4 @@ public class PaymentGatewayLog {
 
   @Column(name = "raw_payload", columnDefinition = "TEXT")
   private String rawPayload;
-
-  @Column(name = "created_at")
-  @Builder.Default
-  private LocalDateTime createdAt = LocalDateTime.now();
 }

@@ -1,17 +1,16 @@
 package com.ims.category;
 
+import com.ims.model.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "categories")
@@ -19,15 +18,9 @@ import lombok.Builder;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class Category {
-
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
-
-  @Column(name = "tenant_id", nullable = false)
-  private Long tenantId;
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true)
+public class Category extends BaseEntity {
 
   @Column(nullable = false)
   private String name;
@@ -38,8 +31,4 @@ public class Category {
   @Column(name = "tax_rate")
   @Builder.Default
   private java.math.BigDecimal taxRate = java.math.BigDecimal.ZERO;
-
-  @Column(name = "created_at")
-  @Builder.Default
-  private LocalDateTime createdAt = LocalDateTime.now();
 }

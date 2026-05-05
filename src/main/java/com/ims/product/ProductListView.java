@@ -27,7 +27,7 @@ public interface ProductListView {
 
     Integer getReorderLevel();
 
-    Boolean getIsActive();
+    Boolean getIsDeleted();
 
     java.time.LocalDateTime getCreatedAt();
 
@@ -52,9 +52,9 @@ public interface ProductListView {
     String getBin();
 
     /**
-     * Helper to bridge isActive to status string until schema is unified.
+     * Helper to bridge isDeleted to status string.
      */
     default String getStatus() {
-        return Boolean.TRUE.equals(getIsActive()) ? "ACTIVE" : "INACTIVE";
+        return Boolean.TRUE.equals(getIsDeleted()) ? "DELETED" : "ACTIVE";
     }
 }

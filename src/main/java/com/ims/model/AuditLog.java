@@ -30,8 +30,22 @@ public class AuditLog {
   @Column(name = "user_id")
   private Long userId;
 
+  @Column(name = "entity_type")
+  private String entityType;
+
+  @Column(name = "entity_id")
+  private Long entityId;
+
   @Column(nullable = false)
   private String action;
+
+  @Column(name = "old_value", columnDefinition = "jsonb")
+  @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+  private String oldValue;
+
+  @Column(name = "new_value", columnDefinition = "jsonb")
+  @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+  private String newValue;
 
   @Column(columnDefinition = "TEXT")
   private String details;

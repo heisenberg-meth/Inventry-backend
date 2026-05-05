@@ -6,9 +6,15 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class CreateProductRequest {
   @NotBlank(message = "Product name is required")
   @Size(max = 255)
@@ -16,6 +22,8 @@ public class CreateProductRequest {
 
   @Size(max = 100)
   private String sku;
+
+  private String description;
 
   @Size(max = 100)
   private String barcode;

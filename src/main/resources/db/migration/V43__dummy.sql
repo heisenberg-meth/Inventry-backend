@@ -1,0 +1,1 @@
+-- Dummy migration to satisfy Flyway after renaming V43 to V44

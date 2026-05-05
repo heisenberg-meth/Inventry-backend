@@ -23,6 +23,7 @@ public class PaymentGatewayService {
   private final PaymentRepository paymentRepository;
   private final InvoiceRepository invoiceRepository;
   private final PaymentGatewayLogRepository logRepository;
+  private final com.ims.tenant.service.PaymentService paymentService;
 
   @Transactional
   public Map<String, Object> initiatePayment(Long invoiceId, BigDecimal amount, Long userId) {
@@ -56,24 +57,47 @@ public class PaymentGatewayService {
     log.info("Processing payment gateway webhook: {}", event);
 
     // Simplified: in real scenario, validate signature here
+    // Extract tenantId from payload if possible, otherwise use 0 for global log
+    Long tenantId = payload.containsKey("tenant_id") ? Long.valueOf(payload.get("tenant_id").toString()) : 0L;
 
     PaymentGatewayLog pgLog = PaymentGatewayLog.builder()
-        .tenantId(0L) // Webhooks are usually global, need to extract tenant from payload if possible
+        .tenantId(tenantId)
         .eventType(event)
         .rawPayload(payload.toString())
         .build();
     logRepository.save(pgLog);
 
     if ("payment.captured".equals(event)) {
-      // Map<String, Object> data = (Map<String, Object>) payload.get("payload");
-      // Map<String, Object> paymentData = (Map<String, Object>) data.get("payment");
-
-      // In real scenario, find payment by gatewayTransactionId
-      // For this demo, let's assume we find it.
-      // Payment payment =
-      // paymentRepository.findByGatewayTransactionId(gatewayOrderId);
-      // update payment.status = 'COMPLETED'
-      // update invoice.status = 'PAID'
+      Object payloadObj = payload.get("payload");
+      if (payloadObj instanceof Map) {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = (Map<String, Object>) payloadObj;
+        Object paymentObj = data.get("payment");
+        if (paymentObj instanceof Map) {
+          @SuppressWarnings("unchecked")
+          Map<String, Object> paymentData = (Map<String, Object>) paymentObj;
+          String gatewayOrderId = (String) paymentData.get("order_id");
+          String reference = (String) paymentData.get("id");
+          if (gatewayOrderId != null) {
+            paymentService.updatePaymentStatus(gatewayOrderId, "COMPLETED", reference);
+          }
+        }
+      }
+    } else if ("payment.failed".equals(event)) {
+      Object payloadObj = payload.get("payload");
+      if (payloadObj instanceof Map) {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = (Map<String, Object>) payloadObj;
+        Object paymentObj = data.get("payment");
+        if (paymentObj instanceof Map) {
+          @SuppressWarnings("unchecked")
+          Map<String, Object> paymentData = (Map<String, Object>) paymentObj;
+          String gatewayOrderId = (String) paymentData.get("order_id");
+          if (gatewayOrderId != null) {
+            paymentService.updatePaymentStatus(gatewayOrderId, "FAILED", null);
+          }
+        }
+      }
     }
   }
 }

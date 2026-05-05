@@ -14,4 +14,8 @@ public interface TenantRepository extends JpaRepository<Tenant, Long> {
   Optional<Tenant> findByCompanyCode(String companyCode);
 
   boolean existsByCompanyCode(String companyCode);
+
+  @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+  @org.springframework.data.jpa.repository.Query("SELECT t FROM Tenant t WHERE t.id = :id")
+  Optional<Tenant> findByIdWithLock(@org.springframework.data.repository.query.Param("id") Long id);
 }

@@ -16,6 +16,7 @@ public class ProductResponse {
   private Long id;
   private String name;
   private String sku;
+  private String description;
   private String barcode;
   private Long categoryId;
   private String unit;
@@ -23,7 +24,7 @@ public class ProductResponse {
   private BigDecimal salePrice;
   private Integer stock;
   private Integer reorderLevel;
-  private Boolean isActive;
+  private Boolean isDeleted;
   private LocalDateTime createdAt;
 
   // Pharmacy extension fields

@@ -78,7 +78,7 @@ public class ProductImportService {
                             .sku(sku)
                             .categoryId(category.getId())
                             .unit("Unit")
-                            .isActive(true)
+                            .isDeleted(false)
                             .reorderLevel(10)
                             .build();
 

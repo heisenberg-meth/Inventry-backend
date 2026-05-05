@@ -2,6 +2,7 @@ package com.ims.tenant.service;
 
 import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditResource;
+import com.ims.shared.auth.TenantContext;
 import com.ims.model.Order;
 import com.ims.model.OrderItem;
 import com.ims.product.Product;
@@ -44,7 +45,14 @@ public class OrderService {
 
   @Transactional
   public Map<String, Object> createPurchaseOrder(Map<String, Object> request, Long userId) {
+    Long tenantId = TenantContext.getTenantId();
     Long supplierId = Long.valueOf(request.get("supplier_id").toString());
+
+    var supplierOpt = supplierRepository.findActiveByIdAndTenantId(supplierId, tenantId);
+    if (supplierOpt.isEmpty()) {
+      throw new EntityNotFoundException("Supplier not found or does not belong to your tenant");
+    }
+
     Object rawItems = request.get("items");
     if (!(rawItems instanceof List<?> list)) {
       throw new IllegalArgumentException("Invalid items format: expected list");
@@ -63,11 +71,6 @@ public class OrderService {
       }
       items.add(typedMap);
     }
-
-    // Validate supplier belongs to tenant
-    supplierRepository
-        .findById(Objects.requireNonNull(supplierId))
-        .orElseThrow(() -> new EntityNotFoundException("Supplier not found"));
 
     BigDecimal totalAmount = BigDecimal.ZERO;
     BigDecimal taxAmount = BigDecimal.ZERO;
@@ -154,6 +157,7 @@ public class OrderService {
 
   @Transactional
   public Map<String, Object> createSalesOrder(Map<String, Object> request, Long userId) {
+    Long tenantId = TenantContext.getTenantId();
     Long customerId = request.containsKey("customer_id")
         ? Long.valueOf(request.get("customer_id").toString())
         : null;
@@ -175,11 +179,11 @@ public class OrderService {
       }
       items.add(typedMap);
     }
-    // Validate customer if provided
+    // Validate customer belongs to tenant if provided
     if (customerId != null) {
       customerRepository
-          .findById(customerId)
-          .orElseThrow(() -> new EntityNotFoundException("Customer not found"));
+          .findByIdAndTenantId(customerId, tenantId)
+          .orElseThrow(() -> new EntityNotFoundException("Customer not found or does not belong to your tenant"));
     }
 
     // CHECK ALL stock availability BEFORE processing any items
@@ -188,7 +192,7 @@ public class OrderService {
       int qty = Integer.parseInt(item.get("quantity").toString());
 
       Product product = productRepository
-          .findById(Objects.requireNonNull(productId))
+          .findByIdAndTenantId(productId, tenantId)
           .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
 
       if (product.getStock() < qty) {
@@ -405,28 +409,32 @@ public class OrderService {
   }
 
   public Page<Order> getOrders(Pageable pageable) {
-    return Objects.requireNonNull(orderRepository.findAll(pageable));
+    Long tenantId = TenantContext.getTenantId();
+    return Objects.requireNonNull(orderRepository.findAllByTenantId(tenantId, pageable));
   }
 
   public Page<Order> getOrdersByType(String type, Pageable pageable) {
-    return Objects.requireNonNull(orderRepository.findByType(type, pageable));
+    Long tenantId = TenantContext.getTenantId();
+    return Objects.requireNonNull(orderRepository.findByTenantIdAndType(tenantId, type, pageable));
   }
 
   public Map<String, Object> getOrderWithItems(Long id) {
+    Long tenantId = TenantContext.getTenantId();
     Order order = orderRepository
-        .findById(id)
+        .findByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
-    List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
+    List<OrderItem> items = orderItemRepository.findByOrderIdAndTenantId(order.getId(), tenantId);
     return Objects.requireNonNull(Map.of("order", order, "items", items));
   }
 
   @Transactional(readOnly = true)
   public byte[] generateOrderPdf(Long id) {
-    Order order = orderRepository.findById(id)
+    Long tenantId = TenantContext.getTenantId();
+    Order order = orderRepository.findByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
     com.ims.model.Tenant tenant = tenantRepository
-        .findById(Objects.requireNonNull(com.ims.shared.auth.TenantContext.getTenantId()))
+        .findById(tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
     String partnerName = "N/A";
@@ -446,7 +454,7 @@ public class OrderService {
       }
     }
 
-    List<OrderItem> orderItems = orderItemRepository.findByOrderId(order.getId());
+    List<OrderItem> orderItems = orderItemRepository.findByOrderIdAndTenantId(order.getId(), tenantId);
     List<Map<String, Object>> items = orderItems.stream().map(item -> {
       var product = productRepository.findById(item.getProductId()).orElse(null);
       Map<String, Object> map = new java.util.HashMap<>();
@@ -479,14 +487,15 @@ public class OrderService {
 
   @Transactional
   public Order confirmOrder(Long id, Long userId) {
-    Order order = orderRepository.findById(id)
+    Long tenantId = TenantContext.getTenantId();
+    Order order = orderRepository.findByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
     if (!"PENDING".equals(order.getStatus())) {
       throw new IllegalStateException("Only PENDING orders can be confirmed");
     }
 
-    List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
+    List<OrderItem> items = orderItemRepository.findByOrderIdAndTenantId(order.getId(), tenantId);
 
     if ("SALE".equals(order.getType())) {
       // Validate and reduce stock
@@ -515,7 +524,8 @@ public class OrderService {
 
   @Transactional
   public Order shipOrder(Long id, Long userId) {
-    Order order = orderRepository.findById(id)
+    Long tenantId = TenantContext.getTenantId();
+    Order order = orderRepository.findByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
     if (!"CONFIRMED".equals(order.getStatus())) {
@@ -531,7 +541,8 @@ public class OrderService {
 
   @Transactional
   public Order completeOrder(Long id, Long userId) {
-    Order order = orderRepository.findById(id)
+    Long tenantId = TenantContext.getTenantId();
+    Order order = orderRepository.findByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
     if (!"SHIPPED".equals(order.getStatus()) && !"CONFIRMED".equals(order.getStatus())) {
@@ -539,8 +550,7 @@ public class OrderService {
     }
 
     if ("PURCHASE".equals(order.getType()) && !"RECEIVED".equals(order.getStatus())) {
-      // For purchase, completion means receiving goods
-      List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
+      List<OrderItem> items = orderItemRepository.findByOrderIdAndTenantId(order.getId(), tenantId);
       for (OrderItem item : items) {
         stockService.stockIn(Objects.requireNonNull(item.getProductId()), item.getQuantity(),
             "Received Purchase Order #" + order.getId(), userId);
@@ -558,7 +568,8 @@ public class OrderService {
 
   @Transactional
   public Order cancelOrder(Long id, Long userId) {
-    Order order = orderRepository.findById(id)
+    Long tenantId = TenantContext.getTenantId();
+    Order order = orderRepository.findByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
     if ("COMPLETED".equals(order.getStatus()) || "RECEIVED".equals(order.getStatus())
@@ -566,10 +577,9 @@ public class OrderService {
       throw new IllegalStateException("Cannot cancel an order that is already " + order.getStatus());
     }
 
-    // If it was CONFIRMED or SHIPPED, we might need to revert stock for SALES
     if ("SALE".equals(order.getType())
         && ("CONFIRMED".equals(order.getStatus()) || "SHIPPED".equals(order.getStatus()))) {
-      List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
+      List<OrderItem> items = orderItemRepository.findByOrderIdAndTenantId(order.getId(), tenantId);
       for (OrderItem item : items) {
         stockService.stockIn(Objects.requireNonNull(item.getProductId()), item.getQuantity(),
             "Cancelled Sale Order #" + order.getId(), userId);
@@ -584,17 +594,20 @@ public class OrderService {
   }
 
   public Page<Order> getOrdersBySupplier(Long supplierId, Pageable pageable) {
-    return Objects.requireNonNull(orderRepository.findBySupplierId(supplierId, pageable));
+    Long tenantId = TenantContext.getTenantId();
+    return Objects.requireNonNull(orderRepository.findByTenantIdAndSupplierId(tenantId, supplierId, pageable));
   }
 
   public Page<Order> getOrdersByCustomer(Long customerId, Pageable pageable) {
-    return Objects.requireNonNull(orderRepository.findByCustomerId(customerId, pageable));
+    Long tenantId = TenantContext.getTenantId();
+    return Objects.requireNonNull(orderRepository.findByTenantIdAndCustomerId(tenantId, customerId, pageable));
   }
 
   @Transactional
   public Order updateOrderStatus(Long id, String status) {
+    Long tenantId = TenantContext.getTenantId();
     Order order = orderRepository
-        .findById(id)
+        .findByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
     order.setStatus(status);
     return Objects.requireNonNull(orderRepository.save(order));

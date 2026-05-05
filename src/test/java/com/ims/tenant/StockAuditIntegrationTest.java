@@ -54,7 +54,7 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
         .salePrice(BigDecimal.valueOf(10.0))
         .stock(50)
         .reorderLevel(5)
-        .isActive(true)
+        .isDeleted(false)
         .build();
     p1 = productRepository.save(Objects.requireNonNull(p1));
     product1Id = p1.getId();
@@ -73,7 +73,7 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
         .salePrice(BigDecimal.valueOf(20.0))
         .stock(100)
         .reorderLevel(10)
-        .isActive(true)
+        .isDeleted(false)
         .build();
     p2 = productRepository.save(Objects.requireNonNull(p2));
     product2Id = p2.getId();

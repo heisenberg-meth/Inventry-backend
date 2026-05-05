@@ -118,14 +118,14 @@ public class ReportService {
   }
 
   public BigDecimal getInventoryValuation() {
-    return productRepository.findByIsActiveTrue(Pageable.unpaged()).getContent().stream()
-        .map(p -> p.getSalePrice() != null ? p.getSalePrice().multiply(BigDecimal.valueOf(p.getStock()))
+    return productRepository.findByIsDeletedFalse(Pageable.unpaged()).getContent().stream()
+        .map(p -> p.getPurchasePrice() != null ? p.getPurchasePrice().multiply(BigDecimal.valueOf(p.getStock()))
             : BigDecimal.ZERO)
         .reduce(BigDecimal.ZERO, BigDecimal::add);
   }
 
   public List<Map<String, Object>> getCategoryDistribution() {
-    var products = productRepository.findByIsActiveTrue(Pageable.unpaged()).getContent();
+    var products = productRepository.findByIsDeletedFalse(Pageable.unpaged()).getContent();
     var categories = categoryRepository.findAll();
     var categoryMap = categories.stream()
         .collect(Collectors.toMap(com.ims.category.Category::getId, com.ims.category.Category::getName));
@@ -147,7 +147,7 @@ public class ReportService {
 
   @Cacheable(value = "reports", key = "T(com.ims.shared.auth.TenantContext).get() + ':stock-report'")
   public List<Map<String, Object>> getStockReport(@Nullable String filter) {
-    var products = Objects.requireNonNull(productRepository.findByIsActiveTrue(Pageable.unpaged())).getContent();
+    var products = Objects.requireNonNull(productRepository.findByIsDeletedFalse(Pageable.unpaged())).getContent();
     List<Map<String, Object>> report = new ArrayList<>();
     int thresholdDays = getExpiryThreshold();
 

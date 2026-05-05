@@ -8,14 +8,14 @@ import org.springframework.stereotype.Service;
 @Service
 public class CsvExportService {
 
-    public String exportToCsv(List<String> headers, List<Map<String, Object>> data) {
+    public String exportToCsv(List<String> headers, List<Map<String, Object>> filtered) {
         StringBuilder csv = new StringBuilder();
 
         // Add headers
         csv.append(String.join(",", headers)).append("\n");
 
         // Add data rows
-        for (Map<String, Object> row : data) {
+        for (Map<String, Object> row : filtered) {
             String line = headers.stream()
                     .map(header -> {
                         Object value = row.get(header);

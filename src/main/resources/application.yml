@@ -6,8 +6,8 @@ spring:
       add-mappings: false
   datasource:
     url: jdbc:postgresql://postgres:5432/inventry
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    username: ${DB_USERNAME:ims_user}
+    password: ${DB_PASSWORD:changeme}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 20
@@ -61,7 +61,7 @@ management:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:1kA2LI4GBW8Goua0gdEsWSyAT4OH+npD172GmO8lisg=}  # Base64-encoded 256-bit key
+    secret: ${JWT_SECRET}  # Must be set in environment - no fallback for security
     expiry-seconds: 86400
     refresh-expiry-seconds: 604800
 

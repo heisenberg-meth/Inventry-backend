@@ -2,27 +2,23 @@ package com.ims.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "order_items")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class OrderItem {
-
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true)
+public class OrderItem extends BaseEntity {
 
   @Column(name = "order_id", nullable = false)
   private Long orderId;

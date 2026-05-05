@@ -2,9 +2,6 @@ package com.ims.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -12,22 +9,18 @@ import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "invoices")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class Invoice {
-
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
-
-  @Column(name = "tenant_id", nullable = false)
-  private Long tenantId;
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true)
+public class Invoice extends BaseEntity {
 
   @Column(name = "order_id")
   private Long orderId;
@@ -57,8 +50,4 @@ public class Invoice {
 
   @Column(name = "parent_invoice_id")
   private Long parentInvoiceId;
-
-  @Column(name = "created_at")
-  @Builder.Default
-  private LocalDateTime createdAt = LocalDateTime.now();
 }

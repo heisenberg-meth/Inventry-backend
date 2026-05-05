@@ -1,0 +1,60 @@
+package com.ims.shared.notification;
+
+import com.ims.model.Alert;
+import com.ims.model.Notification;
+import com.ims.product.Product;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class AlertService {
+
+    private final AlertRepository alertRepository;
+    private final NotificationRepository notificationRepository;
+
+    @Async
+    @Transactional
+    public void checkLowStock(Product product) {
+        if (product.getStock() <= product.getReorderLevel()) {
+            String severity = product.getStock() == 0 ? "CRITICAL" : "WARNING";
+            String message = String.format("Stock for product %s (%s) is %s. Level: %d, Reorder at: %d",
+                    product.getName(), product.getSku(), severity, product.getStock(), product.getReorderLevel());
+
+            log.warn("Low stock alert triggered: {}", message);
+
+            Alert alert = Alert.builder()
+                    .tenantId(product.getTenantId())
+                    .type("LOW_STOCK")
+                    .severity(severity)
+                    .message(message)
+                    .resourceId(product.getId())
+                    .createdAt(LocalDateTime.now())
+                    .isDismissed(false)
+                    .build();
+            alertRepository.save(alert);
+        }
+    }
+
+    @Transactional
+    public void createNotification(Long tenantId, Long userId, String title, String message, String type,
+            Long resourceId) {
+        Notification notification = Notification.builder()
+                .tenantId(tenantId)
+                .userId(userId)
+                .title(title)
+                .message(message)
+                .type(type)
+                .resourceId(resourceId)
+                .isRead(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+        notificationRepository.save(notification);
+    }
+}

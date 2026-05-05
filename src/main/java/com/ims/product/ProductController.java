@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/tenant/products")
+@RequestMapping({"/api/v1/products", "/api/tenant/products"})
 @RequiredArgsConstructor
 @Tag(name = "Tenant - Products", description = "Product management")
 @SecurityRequirement(name = "bearerAuth")
@@ -124,7 +124,7 @@ public class ProductController {
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Export all products as CSV")
   public ResponseEntity<String> exportProducts() {
-    var products = productRepository.findByIsActiveTrue(org.springframework.data.domain.Pageable.unpaged())
+    var products = productRepository.findByIsDeletedFalse(org.springframework.data.domain.Pageable.unpaged())
         .getContent();
 
     var data = products.stream().map(p -> {

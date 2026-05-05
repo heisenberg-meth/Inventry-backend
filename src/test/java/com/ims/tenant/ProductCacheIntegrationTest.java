@@ -37,7 +37,6 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
   @Autowired
   private CacheManager cacheManager;
 
-  @SuppressWarnings("null")
   @BeforeEach
   void setup() throws Exception {
     cleanupDatabase();

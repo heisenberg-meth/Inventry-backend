@@ -93,7 +93,7 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
         .andExpect(status().isOk());
 
     // Mock Redis blacklist check for next request
-    doReturn(true).when(redisTemplate).hasKey(anyString());
+    doReturn(true).when(this.redisTemplate).hasKey(anyString());
 
     mockMvc
         .perform(get("/api/tenant/users").header("Authorization", "Bearer " + t1Token))

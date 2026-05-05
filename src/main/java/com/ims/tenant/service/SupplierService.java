@@ -3,11 +3,12 @@ package com.ims.tenant.service;
 import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditResource;
 import com.ims.model.Supplier;
+import com.ims.shared.auth.TenantContext;
+import com.ims.shared.exception.ResourceNotFoundException;
 import com.ims.tenant.repository.SupplierRepository;
 import com.ims.tenant.repository.OrderRepository;
 import com.ims.tenant.repository.InvoiceRepository;
 import com.ims.tenant.repository.PaymentRepository;
-import jakarta.persistence.EntityNotFoundException;
 import java.util.Map;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -29,18 +30,29 @@ public class SupplierService {
   private final com.ims.shared.audit.AuditLogService auditLogService;
 
   public Page<Supplier> getSuppliers(Pageable pageable) {
-    return Objects.requireNonNull(supplierRepository.findAll(pageable));
+    Long tenantId = TenantContext.getTenantId();
+    return Objects.requireNonNull(supplierRepository.findAllActiveByTenantId(tenantId, pageable));
   }
 
   public Supplier getById(Long id) {
+    Long tenantId = TenantContext.getTenantId();
     return Objects.requireNonNull(supplierRepository
-        .findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Supplier not found")));
+        .findActiveByIdAndTenantId(id, tenantId)
+        .orElseThrow(() -> new ResourceNotFoundException("Supplier not found or has been deleted")));
   }
 
   @Transactional
   public Supplier create(Supplier supplier) {
-    supplier.setTenantId(com.ims.shared.auth.TenantContext.getTenantId());
+    Long tenantId = TenantContext.getTenantId();
+    supplier.setTenantId(tenantId);
+
+    if (supplier.getEmail() != null && supplierRepository.existsByTenantIdAndEmailAndIsDeletedFalse(tenantId, supplier.getEmail())) {
+      throw new IllegalArgumentException("Supplier with this email already exists for this tenant");
+    }
+    if (supplier.getPhone() != null && supplierRepository.existsByTenantIdAndPhoneAndIsDeletedFalse(tenantId, supplier.getPhone())) {
+      throw new IllegalArgumentException("Supplier with this phone already exists for this tenant");
+    }
+
     Supplier savedSupplier = Objects.requireNonNull(supplierRepository.save(supplier));
 
     auditLogService.logAudit(
@@ -55,14 +67,23 @@ public class SupplierService {
   @Transactional
   public Supplier update(Long id, Supplier updates) {
     Supplier supplier = getById(id);
-    if (updates.getName() != null) {
-      supplier.setName(updates.getName());
+    Long tenantId = TenantContext.getTenantId();
+
+    if (updates.getEmail() != null && !updates.getEmail().equals(supplier.getEmail())) {
+      if (supplierRepository.existsByTenantIdAndEmailAndIsDeletedFalse(tenantId, updates.getEmail())) {
+        throw new IllegalArgumentException("Supplier with this email already exists");
+      }
+      supplier.setEmail(updates.getEmail());
     }
-    if (updates.getPhone() != null) {
+    if (updates.getPhone() != null && !updates.getPhone().equals(supplier.getPhone())) {
+      if (supplierRepository.existsByTenantIdAndPhoneAndIsDeletedFalse(tenantId, updates.getPhone())) {
+        throw new IllegalArgumentException("Supplier with this phone already exists");
+      }
       supplier.setPhone(updates.getPhone());
     }
-    if (updates.getEmail() != null) {
-      supplier.setEmail(updates.getEmail());
+
+    if (updates.getName() != null) {
+      supplier.setName(updates.getName());
     }
     if (updates.getAddress() != null) {
       supplier.setAddress(updates.getAddress());
@@ -70,6 +91,7 @@ public class SupplierService {
     if (updates.getGstin() != null) {
       supplier.setGstin(updates.getGstin());
     }
+
     Supplier updatedSupplier = Objects.requireNonNull(supplierRepository.save(supplier));
 
     auditLogService.logAudit(
@@ -85,21 +107,23 @@ public class SupplierService {
   @PreAuthorize("hasAuthority('delete_supplier')")
   public void delete(Long id) {
     Supplier supplier = getById(id);
-    supplierRepository.delete(supplier);
+    supplier.setIsDeleted(true);
+    supplierRepository.save(supplier);
 
     auditLogService.logAudit(
         AuditAction.DELETE,
         AuditResource.SUPPLIER,
         id,
-        "Deleted supplier: " + supplier.getName());
+        "Soft-deleted supplier: " + supplier.getName());
   }
 
   public Map<String, Object> getSupplierLedger(Long id) {
     Supplier supplier = getById(id);
+    Long tenantId = TenantContext.getTenantId();
 
-    List<com.ims.model.Order> orders = orderRepository.findBySupplierId(id, Pageable.unpaged()).getContent();
-    List<com.ims.model.Invoice> invoices = invoiceRepository.findBySupplierId(id);
-    List<com.ims.model.Payment> payments = paymentRepository.findBySupplierId(id);
+    List<com.ims.model.Order> orders = orderRepository.findByTenantIdAndSupplierId(tenantId, id, Pageable.unpaged()).getContent();
+    List<com.ims.model.Invoice> invoices = invoiceRepository.findByTenantIdAndSupplierId(tenantId, id);
+    List<com.ims.model.Payment> payments = paymentRepository.findByTenantIdAndSupplierId(tenantId, id);
 
     return Map.of(
         "supplier", supplier,

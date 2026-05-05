@@ -82,7 +82,8 @@ public class ScheduledTasksService {
       try {
         TenantContext.setTenantId(tenant.getId());
         // Simple unpaged check for all overdue
-        var overdue = invoiceRepository.findByStatusNotAndDueDateBefore("PAID", LocalDate.now(),
+        var overdue = invoiceRepository.findByTenantIdAndStatusNotAndDueDateBefore(tenant.getId(), "PAID",
+            LocalDate.now(),
             org.springframework.data.domain.Pageable.unpaged());
 
         for (Invoice inv : overdue.getContent()) {

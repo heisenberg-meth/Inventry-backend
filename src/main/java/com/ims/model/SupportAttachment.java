@@ -2,27 +2,21 @@ package com.ims.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "support_attachments")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class SupportAttachment {
-
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true)
+public class SupportAttachment extends BaseEntity {
 
   @Column(name = "ticket_id", nullable = false)
   private Long ticketId;
@@ -32,8 +26,4 @@ public class SupportAttachment {
 
   @Column(name = "uploaded_by", nullable = false)
   private Long uploadedBy;
-
-  @Column(name = "created_at")
-  @Builder.Default
-  private LocalDateTime createdAt = LocalDateTime.now();
 }

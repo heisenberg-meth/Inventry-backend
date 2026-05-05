@@ -68,7 +68,7 @@ public class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
         .salePrice(BigDecimal.valueOf(10.0))
         .stock(100)
         .reorderLevel(10)
-        .isActive(true)
+        .isDeleted(false)
         .build();
     product = productRepository.save(Objects.requireNonNull(product));
     productId = product.getId();

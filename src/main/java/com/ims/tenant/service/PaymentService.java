@@ -27,7 +27,8 @@ public class PaymentService {
   @Transactional
   public Payment recordPayment(Long invoiceId, BigDecimal amount, String mode, String reference, String notes,
       Long userId) {
-    Invoice invoice = invoiceRepository.findById(invoiceId)
+    Long tenantId = TenantContext.getTenantId();
+    Invoice invoice = invoiceRepository.findByIdAndTenantId(tenantId, invoiceId)
         .orElseThrow(() -> new ResourceNotFoundException("Invoice not found: " + invoiceId));
 
     if ("PAID".equals(invoice.getStatus())) {
@@ -35,20 +36,17 @@ public class PaymentService {
     }
 
     Payment payment = Payment.builder()
-        .tenantId(TenantContext.getTenantId())
         .invoiceId(invoiceId)
         .amount(amount)
         .paymentMode(mode)
         .reference(reference)
         .notes(notes)
         .createdBy(userId)
-        .createdAt(LocalDateTime.now())
         .build();
 
     payment = paymentRepository.save(Objects.requireNonNull(payment));
 
-    // Update invoice status
-    BigDecimal totalPaid = paymentRepository.sumAmountByInvoiceId(invoiceId);
+    BigDecimal totalPaid = paymentRepository.sumAmountByTenantIdAndInvoiceId(tenantId, invoiceId);
     BigDecimal invoiceAmount = invoice.getAmount();
     if (invoice.getTaxAmount() != null) {
       invoiceAmount = invoiceAmount.add(invoice.getTaxAmount());
@@ -70,12 +68,59 @@ public class PaymentService {
     return Objects.requireNonNull(payment);
   }
 
+  @Transactional
+  public void updatePaymentStatus(String gatewayTransactionId, String status, String reference) {
+    Long tenantId = TenantContext.getTenantId();
+    Payment payment = paymentRepository.findByTenantIdAndGatewayTransactionId(tenantId, gatewayTransactionId)
+        .orElseThrow(() -> new ResourceNotFoundException("Payment not found for gateway transaction: " + gatewayTransactionId));
+
+    if ("COMPLETED".equals(payment.getStatus())) {
+      log.warn("Payment {} already COMPLETED, skipping", gatewayTransactionId);
+      return;
+    }
+
+    payment.setStatus(status);
+    payment.setReference(reference);
+    paymentRepository.save(payment);
+
+    if ("COMPLETED".equals(status)) {
+      updateInvoiceStatus(payment.getInvoiceId());
+    }
+  }
+
+  private void updateInvoiceStatus(Long invoiceId) {
+    Long tenantId = TenantContext.getTenantId();
+    Invoice invoice = invoiceRepository.findByIdAndTenantId(tenantId, invoiceId)
+        .orElseThrow(() -> new ResourceNotFoundException("Invoice not found: " + invoiceId));
+
+    BigDecimal totalPaid = paymentRepository.sumAmountByTenantIdAndInvoiceId(tenantId, invoiceId);
+    BigDecimal invoiceAmount = invoice.getAmount();
+    if (invoice.getTaxAmount() != null) {
+      invoiceAmount = invoiceAmount.add(invoice.getTaxAmount());
+    }
+    if (invoice.getDiscount() != null) {
+      invoiceAmount = invoiceAmount.subtract(invoice.getDiscount());
+    }
+
+    if (totalPaid.compareTo(invoiceAmount) >= 0) {
+      invoice.setStatus("PAID");
+      invoice.setPaidAt(LocalDateTime.now());
+    } else if (totalPaid.compareTo(BigDecimal.ZERO) > 0) {
+      invoice.setStatus("PARTIAL");
+    }
+
+    invoiceRepository.save(invoice);
+    log.info("Invoice {} status updated to {} based on total payments {}", invoiceId, invoice.getStatus(), totalPaid);
+  }
+
   public Page<Payment> getPayments(Pageable pageable) {
-    return paymentRepository.findAll(pageable);
+    Long tenantId = TenantContext.getTenantId();
+    return paymentRepository.findAllByTenantId(tenantId, pageable);
   }
 
   public Payment getById(Long id) {
-    return paymentRepository.findById(id)
+    Long tenantId = TenantContext.getTenantId();
+    return paymentRepository.findByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new ResourceNotFoundException("Payment not found: " + id));
   }
 }

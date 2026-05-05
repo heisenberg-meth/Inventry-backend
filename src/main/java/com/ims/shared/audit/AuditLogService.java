@@ -18,16 +18,53 @@ public class AuditLogService {
   private final SystemConfigService systemConfigService;
 
   public void log(AuditAction action, Long tenantId, Long userId, String details) {
-    log.info("AUDIT: tenant={} user={} action={} details={}", tenantId, userId, action, details);
+    log(action, tenantId, userId, null, null, null, null, details);
+  }
+
+  public void log(AuditAction action, Long tenantId, Long userId, String entityType, Long entityId, String oldValue,
+      String newValue, String details) {
+    log.info("AUDIT: tenant={} user={} action={} entity={}:{} details={}", tenantId, userId, action, entityType,
+        entityId, details);
 
     com.ims.model.AuditLog auditEntry = com.ims.model.AuditLog.builder()
         .tenantId(tenantId)
         .userId(userId)
         .action(action.name())
+        .entityType(entityType)
+        .entityId(entityId)
+        .oldValue(oldValue)
+        .newValue(newValue)
         .details(details)
         .build();
 
     Objects.requireNonNull(auditLogRepository.save(auditEntry), "Audit entry must not be null after save");
+  }
+
+  public void logChange(AuditAction action, AuditResource resource, Long resourceId, Object oldState, Object newState,
+      String details) {
+    Long tenantId = com.ims.shared.auth.TenantContext.getTenantId();
+    Long userId = null;
+
+    var auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth != null && auth.getDetails() instanceof JwtAuthDetails detailsObj) {
+      userId = detailsObj.getUserId();
+    }
+
+    String oldJson = toJson(oldState);
+    String newJson = toJson(newState);
+
+    log(action, tenantId, userId, resource.name(), resourceId, oldJson, newJson, details);
+  }
+
+  private String toJson(Object obj) {
+    if (obj == null)
+      return null;
+    try {
+      return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(obj);
+    } catch (Exception e) {
+      log.error("Failed to serialize audit state", e);
+      return null;
+    }
   }
 
   /**

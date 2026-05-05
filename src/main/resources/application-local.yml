@@ -1,6 +1,8 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/ims_db
+    url: jdbc:postgresql://localhost:5433/ims_db
+    username: ims_user
+    password: changeme
     username: ims_user
     password: changeme
   data:

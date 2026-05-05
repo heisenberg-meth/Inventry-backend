@@ -81,7 +81,6 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
         .andExpect(status().isCreated());
   }
 
-  @SuppressWarnings("unchecked")
   @Test
   void testInvoiceCreation() throws Exception {
     // 1. Setup Tenant

@@ -2,28 +2,23 @@ package com.ims.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "subscription_plans")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class SubscriptionPlan {
-
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true)
+public class SubscriptionPlan extends BaseEntity {
 
   @Column(nullable = false, unique = true)
   private String name;
@@ -58,18 +53,6 @@ public class SubscriptionPlan {
   @Builder.Default
   private String status = "ACTIVE";
 
-  @Column
-  @Builder.Default
-  private Integer version = 1;
-
   @Column(name = "updated_by")
   private Long updatedBy;
-
-  @Column(name = "created_at")
-  @Builder.Default
-  private LocalDateTime createdAt = LocalDateTime.now();
-
-  @Column(name = "updated_at")
-  @Builder.Default
-  private LocalDateTime updatedAt = LocalDateTime.now();
 }

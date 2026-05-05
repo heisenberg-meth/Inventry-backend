@@ -33,8 +33,8 @@ public class StockService {
   private final TenantService tenantService;
   private final WarehouseProductRepository warehouseProductRepository;
   private final TransferOrderRepository transferOrderRepository;
-  private final com.ims.product.ProductRepository productRepository; // Kept for JPA operations if needed, but primarily
-                                                                     // using productService
+  private final com.ims.shared.notification.AlertService alertService;
+  private final com.ims.product.ProductRepository productRepository;
 
   private void checkWarehouseType() {
     Long tenantId = TenantContext.getTenantId();
@@ -175,6 +175,9 @@ public class StockService {
     product.setUpdatedAt(LocalDateTime.now());
     productRepository.save(product);
 
+    // Trigger low stock check
+    alertService.checkLowStock(product);
+
     stockMovementRepository.save(
         StockMovement.builder()
             .productId(productId)
@@ -206,6 +209,11 @@ public class StockService {
     product.setStock(previousStock + qty); // qty can be negative for adjustment
     product.setUpdatedAt(LocalDateTime.now());
     productRepository.save(product);
+
+    // Trigger low stock check if adjustment reduces stock
+    if (qty < 0) {
+      alertService.checkLowStock(product);
+    }
 
     stockMovementRepository.save(
         StockMovement.builder()

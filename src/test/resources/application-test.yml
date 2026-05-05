@@ -1,34 +1,26 @@
 spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5433/ims_db
+    username: ims_user
+    password: changeme
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    clean-on-validation-error: true
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
       - org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration
       - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
-  web:
-    resources:
-      add-mappings: false
-  datasource:
-    url: jdbc:h2:mem:testdb
-    username: sa
-    password:
-    driver-class-name: org.h2.Driver
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
-    show-sql: false
-    properties:
-      hibernate:
-        jdbc:
-          lob:
-            non_contextual_creation: true
-  cache:
-    type: none
-  flyway:
-    enabled: false
-  data:
-    redis:
-      repositories:
-        enabled: false
+      - org.springframework.boot.autoconfigure.cache.RedisCacheAutoConfiguration
+  main:
+    allow-bean-definition-overriding: true
 
 app:
   jwt:
@@ -42,12 +34,3 @@ app:
     public-rpm: 50
     authenticated-rpm: 200
     window-seconds: 60
-
-management:
-  health:
-    redis:
-      enabled: false
-  endpoints:
-    web:
-      exposure:
-        include: health,info
