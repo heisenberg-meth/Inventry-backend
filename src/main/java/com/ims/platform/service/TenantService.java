@@ -44,6 +44,7 @@ public class TenantService {
   private final SubscriptionRepository subscriptionRepository;
   private final SubscriptionPlanRepository subscriptionPlanRepository;
   private final com.ims.shared.utils.CompanyCodeGenerator companyCodeGenerator;
+  private final com.ims.shared.metrics.BusinessMetricsService businessMetricsService;
 
   public Page<TenantResponse> getAllTenants(Pageable pageable) {
     Page<Tenant> tenants = tenantRepository.findAll(pageable);
@@ -99,6 +100,8 @@ public class TenantService {
         savedTenant.getId(),
         null,
         "Created tenant: " + savedTenant.getName());
+
+    businessMetricsService.setActiveTenants(1);
 
     return toResponse(savedTenant);
   }

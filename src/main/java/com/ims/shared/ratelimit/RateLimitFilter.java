@@ -55,6 +55,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
   private final RateLimiterService rateLimiterService;
   private final JwtUtil jwtUtil;
+  private final boolean enabled;
   private final int authRpm;
   private final int publicRpm;
   private final int authenticatedRpm;
@@ -64,6 +65,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
   public RateLimitFilter(
       RateLimiterService rateLimiterService,
       JwtUtil jwtUtil,
+      @Value("${app.rate-limit.enabled:true}") boolean enabled,
       @Value("${app.rate-limit.auth-rpm:20}") int authRpm,
       @Value("${app.rate-limit.public-rpm:50}") int publicRpm,
       @Value("${app.rate-limit.authenticated-rpm:200}") int authenticatedRpm,
@@ -87,6 +89,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
     this.rateLimiterService = rateLimiterService;
     this.jwtUtil = jwtUtil;
+    this.enabled = enabled;
     this.authRpm = authRpm;
     this.publicRpm = publicRpm;
     this.authenticatedRpm = authenticatedRpm;
@@ -96,6 +99,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
   @Override
   protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
+    if (!enabled) {
+      return true;
+    }
     String path = normalizedPath(request);
     for (String prefix : EXCLUDED_PREFIXES) {
       if (matchesPrefix(path, prefix)) {

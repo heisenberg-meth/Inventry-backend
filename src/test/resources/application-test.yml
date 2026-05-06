@@ -34,7 +34,9 @@ app:
   security:
     allowed-origins: '*'
   rate-limit:
-    auth-rpm: 20
-    public-rpm: 50
-    authenticated-rpm: 200
+    enabled: false
+    auth-rpm: 10000
+    public-rpm: 10000
+    authenticated-rpm: 10000
+    tenant-rpm: 10000
     window-seconds: 60

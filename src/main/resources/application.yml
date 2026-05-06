@@ -88,6 +88,7 @@ app:
     expiry-seconds: 86400
     refresh-expiry-seconds: 604800
   rate-limit:
+    enabled: ${RATE_LIMIT_ENABLED:true}
     auth-rpm: ${RATE_LIMIT_AUTH_RPM:20}
     public-rpm: ${RATE_LIMIT_PUBLIC_RPM:50}
     authenticated-rpm: ${RATE_LIMIT_AUTHENTICATED_RPM:200}
