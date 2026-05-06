@@ -4,16 +4,15 @@ import org.hibernate.context.spi.CurrentTenantIdentifierResolver;
 import org.springframework.stereotype.Component;
 
 @Component
-public class TenantIdentifierResolver implements CurrentTenantIdentifierResolver<String> {
+public class TenantIdentifierResolver implements CurrentTenantIdentifierResolver<Long> {
 
-    @Override
-    public String resolveCurrentTenantIdentifier() {
+    public Long resolveCurrentTenantIdentifier() {
         Long tenantId = TenantContext.getTenantId();
         if (tenantId == null) {
             throw new IllegalStateException(
                     "No tenant ID set in TenantContext. Ensure JwtFilter runs before Hibernate operations.");
         }
-        return tenantId.toString();
+        return tenantId;
     }
 
     @Override

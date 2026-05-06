@@ -1,0 +1,43 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  data:
+    redis:
+      url: ${REDIS_URL}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  flyway:
+    enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    producer:
+      acks: all
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+  security:
+    allowed-origins: ${ALLOWED_ORIGINS}
+  rate-limit:
+    auth-rpm: ${RATE_LIMIT_AUTH_RPM:20}
+    public-rpm: ${RATE_LIMIT_PUBLIC_RPM:50}
+    authenticated-rpm: ${RATE_LIMIT_AUTHENTICATED_RPM:200}
+    tenant-rpm: ${RATE_LIMIT_TENANT_RPM:1000}
+    window-seconds: ${RATE_LIMIT_WINDOW_SECONDS:60}
+
+logging:
+  level:
+    root: INFO
+    com.ims: INFO
+    org.springframework.web: INFO
+    org.hibernate.SQL: ERROR

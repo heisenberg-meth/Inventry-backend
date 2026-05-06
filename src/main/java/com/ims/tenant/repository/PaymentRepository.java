@@ -26,7 +26,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
   @Query("SELECT p FROM Payment p JOIN Invoice i ON p.invoiceId = i.id JOIN Order o ON i.orderId = o.id WHERE p.tenantId = :tenantId AND o.supplierId = :supplierId")
   List<Payment> findByTenantIdAndSupplierId(@Param("tenantId") Long tenantId, @Param("supplierId") Long supplierId);
 
-  @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.tenantId = :tenantId AND p.invoiceId = :invoiceId")
+  @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.tenantId = :tenantId AND p.invoiceId = :invoiceId AND (p.status = 'COMPLETED' OR p.status = 'SUCCESS')")
   BigDecimal sumAmountByTenantIdAndInvoiceId(@Param("tenantId") Long tenantId, @Param("invoiceId") Long invoiceId);
 
   @Query("SELECT p FROM Payment p WHERE p.tenantId = :tenantId AND p.gatewayTransactionId = :gatewayTransactionId")

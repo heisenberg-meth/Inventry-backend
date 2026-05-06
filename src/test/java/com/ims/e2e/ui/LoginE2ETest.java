@@ -9,10 +9,9 @@ import com.ims.e2e.ui.pages.LoginPage;
 
 class LoginE2ETest extends BasePlaywrightTest {
 
-    private final LoginPage loginPage = new LoginPage(page());
-
     @Test
     void shouldShowErrorOnInvalidCredentials() {
+        LoginPage loginPage = new LoginPage(page());
 
         loginPage.navigate();
 

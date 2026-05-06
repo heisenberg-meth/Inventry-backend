@@ -2,6 +2,7 @@ package com.ims.e2e.ui;
 
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
+import com.microsoft.playwright.options.LoadState;
 import com.microsoft.playwright.options.WaitForSelectorState;
 
 /**
@@ -29,8 +30,7 @@ public abstract class BasePage {
     }
 
     protected void clickAndWaitForNav(Locator locator) {
-        page.waitForNavigation(() -> {
-            locator.click();
-        });
+        locator.click();
+        page.waitForLoadState(LoadState.LOAD);
     }
 }

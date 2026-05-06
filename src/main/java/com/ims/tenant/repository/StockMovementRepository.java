@@ -36,4 +36,13 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, Lo
       Long productId, LocalDateTime from, LocalDateTime to, Pageable pageable) {
     return findByFilters(TenantContext.getTenantId(), productId, from, to, pageable);
   }
+
+  @Query("SELECT SUM(CASE " +
+         "  WHEN sm.movementType = 'IN' THEN sm.quantity " +
+         "  WHEN sm.movementType = 'OUT' THEN -sm.quantity " +
+         "  WHEN sm.movementType = 'ADJUSTMENT' THEN sm.quantity " +
+         "  ELSE 0 END) " +
+         "FROM StockMovement sm " +
+         "WHERE sm.productId = :productId AND sm.tenantId = :tenantId")
+  Integer calculateStock(@Param("productId") Long productId, @Param("tenantId") Long tenantId);
 }

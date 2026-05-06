@@ -8,7 +8,7 @@ spring:
     exclude:
       - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
   profiles:
-    active: ${activatedProperties:local}
+    active: ${SPRING_PROFILES_ACTIVE:local}
   web:
     resources:
       add-mappings: false
@@ -48,6 +48,17 @@ spring:
       timeout: 2000ms
       repositories:
         enabled: false
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+    consumer:
+      group-id: ims-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 
 management:
   endpoints:
@@ -76,6 +87,12 @@ app:
     secret: ${JWT_SECRET:ZGV2LW9ubHktc2VjcmV0LWNoYW5nZS1tZS1pbi1wcm9kLW1pbi0zMi1jaGFycyEh}
     expiry-seconds: 86400
     refresh-expiry-seconds: 604800
+  rate-limit:
+    auth-rpm: ${RATE_LIMIT_AUTH_RPM:20}
+    public-rpm: ${RATE_LIMIT_PUBLIC_RPM:50}
+    authenticated-rpm: ${RATE_LIMIT_AUTHENTICATED_RPM:200}
+    tenant-rpm: ${RATE_LIMIT_TENANT_RPM:1000}
+    window-seconds: ${RATE_LIMIT_WINDOW_SECONDS:60}
 
 logging:
   pattern:

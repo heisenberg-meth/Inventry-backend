@@ -52,6 +52,9 @@ public class SecurityConfig {
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .headers(headers -> headers
             .frameOptions(frame -> frame.deny())
+            .contentTypeOptions(org.springframework.security.config.Customizer.withDefaults())
+            .referrerPolicy(referrer -> referrer.policy(
+                org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
             .xssProtection(xss -> xss.headerValue(
                 org.springframework.security.web.header.writers.XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
             .contentSecurityPolicy(
@@ -77,13 +80,13 @@ public class SecurityConfig {
                 .permitAll()
                 .requestMatchers("/api/tenant/payments/gateway/webhook")
                 .permitAll()
-                .requestMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus")
+                .requestMatchers("/actuator/health", "/actuator/info")
                 .permitAll()
                 .requestMatchers("/actuator/**")
                 .hasRole("ADMIN")
                 .requestMatchers(
                     "/swagger-ui/**", "/api-docs/**", "/swagger-ui.html", "/v3/api-docs/**")
-                .permitAll()
+                .authenticated() // Secure Swagger by default, require auth
                 .anyRequest()
                 .authenticated())
         .addFilterBefore(traceFilter, UsernamePasswordAuthenticationFilter.class)

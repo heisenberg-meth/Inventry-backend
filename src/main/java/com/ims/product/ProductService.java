@@ -47,7 +47,7 @@ public class ProductService {
           pageable.getSort());
     }
 
-    return productRepository.findAllWithDetails(tenantId, pageable).map(this::toResponse);
+    return productRepository.findAllWithDetails(pageable).map(this::toResponse);
   }
 
   public List<ProductResponse> getNextProducts(Long lastId, int limit) {
@@ -56,7 +56,7 @@ public class ProductService {
       throw new IllegalStateException("Missing tenant context");
     }
     Pageable pageable = org.springframework.data.domain.PageRequest.of(0, Math.min(limit, MAX_PAGE_SIZE));
-    return productRepository.findNextProducts(tenantId, lastId, pageable).stream()
+    return productRepository.findNextProducts(lastId, pageable).stream()
         .map(this::toResponse)
         .collect(Collectors.toList());
   }
@@ -70,8 +70,7 @@ public class ProductService {
   }
 
   public java.util.Optional<Product> findByIdWithLock(Long id) {
-    Long tenantId = TenantContext.getTenantId();
-    return productRepository.findByIdWithLockAndTenantId(id, tenantId);
+    return productRepository.findByIdWithLock(id);
   }
 
   @Transactional
@@ -83,7 +82,7 @@ public class ProductService {
 
     // PRD 4.4 - Check for duplicate SKU using dedicated method
     if (request.getSku() != null && !request.getSku().isBlank()) {
-      if (productRepository.existsByTenantIdAndSku(tenantId, request.getSku())) {
+      if (productRepository.existsBySku(request.getSku())) {
         throw new IllegalStateException("SKU already exists");
       }
     }
@@ -93,7 +92,7 @@ public class ProductService {
         .findById(tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
     if (tenant.getMaxProducts() != null) {
-      long currentCount = productRepository.countActiveByTenant(tenantId);
+      long currentCount = productRepository.countActive();
       if (currentCount >= tenant.getMaxProducts()) {
         throw new IllegalArgumentException(
             "Product limit reached for your plan (" + tenant.getMaxProducts() + ")");
@@ -118,7 +117,7 @@ public class ProductService {
         .isDeleted(false)
         .build();
 
-    if (request.getSku() != null && productRepository.existsByTenantIdAndSku(tenantId, request.getSku())) {
+    if (request.getSku() != null && productRepository.existsBySku(request.getSku())) {
       throw new IllegalStateException("SKU already exists");
     }
 
@@ -154,7 +153,7 @@ public class ProductService {
     if (request.getSku() != null) {
       // Check uniqueness if SKU is changing
       if (!request.getSku().equals(product.getSku())) {
-        if (productRepository.existsByTenantIdAndSku(product.getTenantId(), request.getSku())) {
+        if (productRepository.existsBySku(request.getSku())) {
           throw new IllegalStateException("SKU already exists");
         }
       }
@@ -258,7 +257,7 @@ public class ProductService {
     String baseSku = originalSku.replaceAll("-COPY(-\\d+)?$", "");
     String newSku = baseSku + "-COPY";
     int counter = 1;
-    while (productRepository.existsByTenantIdAndSku(tenantId, newSku)) {
+    while (productRepository.existsBySku(newSku)) {
       newSku = baseSku + "-COPY-" + counter++;
     }
     return newSku;
@@ -269,7 +268,7 @@ public class ProductService {
     if (tenantId == null)
       return java.util.Collections.emptyList();
 
-    return productRepository.findLowStockByTenant(tenantId).stream()
+    return productRepository.findLowStock().stream()
         .map(this::toResponse)
         .collect(Collectors.toList());
   }
@@ -278,7 +277,7 @@ public class ProductService {
     Long tenantId = getTenantId();
     if (tenantId == null)
       return Page.empty();
-    return productRepository.searchFast(tenantId, query, pageable).map(this::toResponse);
+    return productRepository.searchFast(query, pageable).map(this::toResponse);
   }
 
   private java.util.Optional<JwtAuthDetails> getAuthDetails() {

@@ -42,6 +42,8 @@ public class OrderService {
   private final com.ims.shared.audit.AuditLogService auditLogService;
   private final com.ims.shared.pdf.PdfService pdfService;
   private final com.ims.platform.repository.TenantRepository tenantRepository;
+  private final com.ims.shared.outbox.OutboxService outboxService;
+  private final com.ims.shared.metrics.BusinessMetricsService businessMetricsService;
 
   private static final int PERCENTAGE_BASE = 100;
 
@@ -153,6 +155,10 @@ public class OrderService {
         order.getId(),
         String.format("Created purchase order #%d, Supplier: %d, Total: %s", order.getId(), order.getSupplierId(),
             totalAmount));
+
+    businessMetricsService.incrementOrdersCreated();
+
+    outboxService.saveEvent("ORDER", order.getId().toString(), "CREATED", order);
 
     return Objects.requireNonNull(Map.of("order_id", order.getId(), "total", totalAmount));
   }
@@ -282,6 +288,10 @@ public class OrderService {
         String.format("Created sales order #%d, Customer: %d, Total: %s", order.getId(), order.getCustomerId(),
             totalAmount));
 
+    businessMetricsService.incrementOrdersCreated();
+
+    outboxService.saveEvent("ORDER", order.getId().toString(), "CREATED", order);
+
     return Objects.requireNonNull(Map.of(
         "order_id", order.getId(),
         "total", totalAmount,
@@ -387,6 +397,8 @@ public class OrderService {
 
     auditLogService.logAudit(AuditAction.CREATE_RETURN_ORDER, AuditResource.ORDER, returnOrder.getId(),
         String.format("Processed return for order #%d, Total Credit: %s", originalOrderId, returnTotal));
+
+    outboxService.saveEvent("ORDER", returnOrder.getId().toString(), "RETURNED", returnOrder);
 
     return returnOrder;
   }
@@ -506,6 +518,9 @@ public class OrderService {
     order = orderRepository.save(order);
     auditLogService.logAudit(AuditAction.CONFIRM_ORDER, AuditResource.ORDER, id,
         "Confirmed " + order.getType() + " order #" + id);
+
+    outboxService.saveEvent("ORDER", order.getId().toString(), "CONFIRMED", order);
+
     return order;
   }
 
@@ -523,6 +538,9 @@ public class OrderService {
     order = orderRepository.save(order);
     auditLogService.logAudit(AuditAction.SHIP_ORDER, AuditResource.ORDER, id,
         "Shipped " + order.getType() + " order #" + id);
+
+    outboxService.saveEvent("ORDER", order.getId().toString(), "SHIPPED", order);
+
     return order;
   }
 
@@ -550,6 +568,9 @@ public class OrderService {
     order = orderRepository.save(order);
     auditLogService.logAudit(AuditAction.COMPLETE_ORDER, AuditResource.ORDER, id,
         "Completed " + order.getType() + " order #" + id);
+
+    outboxService.saveEvent("ORDER", order.getId().toString(), "COMPLETED", order);
+
     return order;
   }
 
@@ -577,6 +598,9 @@ public class OrderService {
     order = orderRepository.save(order);
     auditLogService.logAudit(AuditAction.CANCEL_ORDER, AuditResource.ORDER, id,
         "Cancelled " + order.getType() + " order #" + id);
+
+    outboxService.saveEvent("ORDER", order.getId().toString(), "CANCELLED", order);
+
     return order;
   }
 

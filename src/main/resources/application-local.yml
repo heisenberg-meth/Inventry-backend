@@ -21,6 +21,7 @@ app:
     allowed-origins: "http://localhost:3000,http://localhost:5173"
   rate-limit:
     auth-rpm: 20
-    public-rpm: 100
-    authenticated-rpm: 500
+    public-rpm: 50
+    authenticated-rpm: 200
+    tenant-rpm: 1000
     window-seconds: 60

@@ -14,7 +14,7 @@ public class UserCreationService {
 
   private final UserRepository userRepository;
 
-  @Transactional(propagation = Propagation.REQUIRED)
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
   public User createUserForTenant(User user, Long tenantId) {
     Long oldTenantId = TenantContext.getTenantId();
     try {

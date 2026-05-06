@@ -5,7 +5,6 @@ import com.ims.model.Notification;
 import com.ims.product.Product;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,9 +17,9 @@ public class AlertService {
 
     private final AlertRepository alertRepository;
     private final NotificationRepository notificationRepository;
+    private final com.ims.shared.outbox.OutboxService outboxService;
+    private final com.ims.shared.metrics.BusinessMetricsService businessMetricsService;
 
-    @Async
-    @Transactional
     public void checkLowStock(Product product) {
         if (product.getStock() <= product.getReorderLevel()) {
             String severity = product.getStock() == 0 ? "CRITICAL" : "WARNING";
@@ -38,7 +37,12 @@ public class AlertService {
                     .createdAt(LocalDateTime.now())
                     .isDismissed(false)
                     .build();
-            alertRepository.save(alert);
+            Alert saved = alertRepository.save(alert);
+
+            businessMetricsService.incrementLowStockAlerts();
+
+            // Fire outbox event for async processing (e.g. sending SMS/Email via Kafka)
+            outboxService.saveEvent("INVENTORY", product.getId().toString(), "LOW_STOCK_ALERT", saved);
         }
     }
 

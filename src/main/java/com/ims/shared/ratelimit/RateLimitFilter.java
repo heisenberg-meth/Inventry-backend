@@ -7,12 +7,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -44,12 +40,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class RateLimitFilter extends OncePerRequestFilter {
 
   private static final int STATUS_TOO_MANY_REQUESTS = 429;
-  private static final long MILLIS_PER_SECOND = 1000L;
 
-  /**
-   * Paths that should never be rate limited (health probes, docs, swagger
-   * assets).
-   */
   private static final List<String> EXCLUDED_PREFIXES = List.of(
       "/actuator",
       "/swagger-ui",
@@ -60,42 +51,45 @@ public class RateLimitFilter extends OncePerRequestFilter {
       "/favicon.ico",
       "/error");
 
-  /**
-   * Explicit prefixes that route to the authentication endpoints (strict
-   * brute-force tier).
-   */
   private static final List<String> AUTH_PREFIXES = List.of("/auth", "/api/auth");
 
-  /**
-   * Shared format string for config-validation errors; pinned by
-   * {@code RateLimitFilterTest}.
-   */
-  private static final String CONFIG_POSITIVE_MESSAGE = "%s must be >= 1 (got %d)";
-
-  private final RedisTemplate<String, Object> redisTemplate;
+  private final RateLimiterService rateLimiterService;
   private final JwtUtil jwtUtil;
-  private final boolean redisAvailable;
   private final int authRpm;
   private final int publicRpm;
+  private final int authenticatedRpm;
   private final int tenantRpm;
   private final int windowSeconds;
 
   public RateLimitFilter(
-      @Autowired(required = false) RedisTemplate<String, Object> redisTemplate,
+      RateLimiterService rateLimiterService,
       JwtUtil jwtUtil,
       @Value("${app.rate-limit.auth-rpm:20}") int authRpm,
-      @Value("${app.rate-limit.public-rpm:100}") int publicRpm,
-      @Value("${app.rate-limit.authenticated-rpm:500}") int tenantRpm,
+      @Value("${app.rate-limit.public-rpm:50}") int publicRpm,
+      @Value("${app.rate-limit.authenticated-rpm:200}") int authenticatedRpm,
+      @Value("${app.rate-limit.tenant-rpm:1000}") int tenantRpm,
       @Value("${app.rate-limit.window-seconds:60}") int windowSeconds) {
-    requirePositive("app.rate-limit.auth-rpm", authRpm);
-    requirePositive("app.rate-limit.public-rpm", publicRpm);
-    requirePositive("app.rate-limit.authenticated-rpm", tenantRpm);
-    requirePositive("app.rate-limit.window-seconds", windowSeconds);
-    this.redisTemplate = redisTemplate;
+    if (authRpm < 1) {
+      throw new IllegalArgumentException("app.rate-limit.auth-rpm must be >= 1 (got " + authRpm + ")");
+    }
+    if (publicRpm < 1) {
+      throw new IllegalArgumentException("app.rate-limit.public-rpm must be >= 1 (got " + publicRpm + ")");
+    }
+    if (authenticatedRpm < 1) {
+      throw new IllegalArgumentException(
+          "app.rate-limit.authenticated-rpm must be >= 1 (got " + authenticatedRpm + ")");
+    }
+    if (tenantRpm < 1) {
+      throw new IllegalArgumentException("app.rate-limit.tenant-rpm must be >= 1 (got " + tenantRpm + ")");
+    }
+    if (windowSeconds < 1) {
+      throw new IllegalArgumentException("app.rate-limit.window-seconds must be >= 1 (got " + windowSeconds + ")");
+    }
+    this.rateLimiterService = rateLimiterService;
     this.jwtUtil = jwtUtil;
-    this.redisAvailable = redisTemplate != null;
     this.authRpm = authRpm;
     this.publicRpm = publicRpm;
+    this.authenticatedRpm = authenticatedRpm;
     this.tenantRpm = tenantRpm;
     this.windowSeconds = windowSeconds;
   }
@@ -116,86 +110,66 @@ public class RateLimitFilter extends OncePerRequestFilter {
       @NonNull HttpServletRequest req, @NonNull HttpServletResponse res, @NonNull FilterChain chain)
       throws ServletException, IOException {
 
-    if (!redisAvailable) {
-      chain.doFilter(req, res);
-      return;
-    }
-
-    String clientIp = resolveClientIp(req);
-    String tenantId = resolveTenantId(req);
-
     String path = normalizedPath(req);
+    String clientIp = resolveClientIp(req);
+    Long userId = resolveUserId(req);
+    Long tenantId = resolveTenantId(req);
+
     boolean isAuthEndpoint = isAuthEndpoint(path);
 
     int limit;
     String key;
     String tier;
+
     if (isAuthEndpoint) {
       limit = authRpm;
       tier = "auth";
-      key = "rate:auth:" + clientIp;
-    } else if (tenantId != null) {
-      limit = tenantRpm;
-      tier = "tenant";
-      key = "rate:tenant:" + tenantId + ":" + clientIp;
+      key = "rate_limit:ip:" + clientIp;
+    } else if (userId != null) {
+      limit = authenticatedRpm;
+      tier = "user";
+      key = "rate_limit:user:" + userId;
     } else {
       limit = publicRpm;
       tier = "public";
-      key = "rate:public:" + clientIp;
+      key = "rate_limit:ip:" + clientIp;
     }
 
-    long now = System.currentTimeMillis();
-    long windowStart = now - (windowSeconds * MILLIS_PER_SECOND);
+    // 1. Check Primary Limit (User or IP)
+    if (!rateLimiterService.isAllowed(key, limit, windowSeconds)) {
+      handleRateLimitExceeded(res, tier, key, limit);
+      return;
+    }
 
-    try {
-      redisTemplate.opsForZSet().removeRangeByScore(key, 0, windowStart);
-      redisTemplate.opsForZSet().add(key, Objects.requireNonNull(String.valueOf(now)), now);
-      redisTemplate.expire(key, windowSeconds, TimeUnit.SECONDS);
-
-      Long count = redisTemplate.opsForZSet().zCard(key);
-      int currentCount = (count != null) ? count.intValue() : 0;
-
-      res.setHeader("X-RateLimit-Limit", String.valueOf(limit));
-      res.setHeader("X-RateLimit-Remaining", String.valueOf(Math.max(0, limit - currentCount)));
-      res.setHeader("X-RateLimit-Window-Seconds", String.valueOf(windowSeconds));
-
-      if (currentCount > limit) {
-        log.warn(
-            "Rate limit exceeded (tier={}, key={}, count={}, limit={})",
-            tier,
-            key,
-            currentCount,
-            limit);
-        res.setStatus(STATUS_TOO_MANY_REQUESTS);
-        res.setHeader("Retry-After", String.valueOf(windowSeconds));
-        res.setContentType("application/json");
-        res.getWriter()
-            .write(
-                String.format(
-                    "{\"error\":\"Too Many Requests\","
-                        + "\"message\":\"Rate limit exceeded. Try again in %d seconds.\","
-                        + "\"retry_after\":%d}",
-                    windowSeconds, windowSeconds));
+    // 2. Optional: Check Tenant-wide Limit
+    if (tenantId != null) {
+      String tenantKey = "rate_limit:tenant:" + tenantId;
+      if (!rateLimiterService.isAllowed(tenantKey, tenantRpm, windowSeconds)) {
+        handleRateLimitExceeded(res, "tenant", tenantKey, tenantRpm);
         return;
       }
-    } catch (Exception e) {
-      // Fail open if Redis/Valkey is unreachable — do not block legitimate traffic
-      // because of
-      // an infrastructure issue. The full exception is logged so ops can diagnose the
-      // outage.
-      log.warn("Rate limit check skipped due to cache backend failure", e);
     }
+
+    int currentCount = rateLimiterService.getCount(key);
+    res.setHeader("X-RateLimit-Limit", String.valueOf(limit));
+    res.setHeader("X-RateLimit-Remaining", String.valueOf(Math.max(0, limit - currentCount)));
+    res.setHeader("X-RateLimit-Window-Seconds", String.valueOf(windowSeconds));
 
     chain.doFilter(req, res);
   }
 
-  /**
-   * Resolves the client IP, honoring the first entry of {@code X-Forwarded-For}
-   * when the request
-   * comes through a trusted proxy (e.g. Nginx). Falls back to {@code X-Real-IP}
-   * and finally to the
-   * remote address.
-   */
+  private void handleRateLimitExceeded(HttpServletResponse res, String tier, String key, int limit) throws IOException {
+    log.warn("Rate limit exceeded (tier={}, key={}, limit={})", tier, key, limit);
+    res.setStatus(STATUS_TOO_MANY_REQUESTS);
+    res.setHeader("Retry-After", String.valueOf(windowSeconds));
+    res.setContentType("application/json");
+    res.getWriter()
+        .write(
+            String.format(
+                "{\"status\":\"error\",\"message\":\"Rate limit exceeded\",\"retry_after\":%d}",
+                windowSeconds));
+  }
+
   private String resolveClientIp(HttpServletRequest req) {
     String forwarded = req.getHeader("X-Forwarded-For");
     if (forwarded != null && !forwarded.isBlank()) {
@@ -212,11 +186,6 @@ public class RateLimitFilter extends OncePerRequestFilter {
     return req.getRemoteAddr() == null ? "unknown" : req.getRemoteAddr();
   }
 
-  /**
-   * Returns the request path with any servlet/context prefix stripped, so that
-   * prefix matching
-   * works regardless of how the app is deployed (root or under a context path).
-   */
   private String normalizedPath(HttpServletRequest req) {
     String servletPath = req.getServletPath();
     if (servletPath != null && !servletPath.isEmpty()) {
@@ -233,27 +202,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
     return uri;
   }
 
-  /**
-   * {@code true} iff {@code path} equals {@code prefix} or starts with
-   * {@code prefix + '/'}.
-   */
   private boolean matchesPrefix(String path, String prefix) {
     if (path.equals(prefix)) {
       return true;
     }
     return path.startsWith(prefix + "/");
-  }
-
-  /**
-   * Throws {@link IllegalArgumentException} if {@code value} is not positive. The
-   * message quotes
-   * the {@code configKey} verbatim so operators can grep their
-   * {@code application.yml}.
-   */
-  private static void requirePositive(String configKey, int value) {
-    if (value <= 0) {
-      throw new IllegalArgumentException(String.format(CONFIG_POSITIVE_MESSAGE, configKey, value));
-    }
   }
 
   private boolean isAuthEndpoint(String path) {
@@ -265,21 +218,27 @@ public class RateLimitFilter extends OncePerRequestFilter {
     return false;
   }
 
-  /**
-   * Extracts the tenant id from a bearer token, or {@code null} if the token is
-   * absent, malformed,
-   * or does not carry a tenant claim. Invalid tokens fall through to the public
-   * tier.
-   */
-  private String resolveTenantId(HttpServletRequest req) {
+  private Long resolveUserId(HttpServletRequest req) {
     String authHeader = req.getHeader("Authorization");
     if (authHeader == null || !authHeader.startsWith("Bearer ")) {
       return null;
     }
     String token = authHeader.substring("Bearer ".length());
     try {
-      Long id = jwtUtil.extractTenantId(token);
-      return id == null ? null : id.toString();
+      return jwtUtil.extractUserId(token);
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private Long resolveTenantId(HttpServletRequest req) {
+    String authHeader = req.getHeader("Authorization");
+    if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+      return null;
+    }
+    String token = authHeader.substring("Bearer ".length());
+    try {
+      return jwtUtil.extractTenantId(token);
     } catch (Exception e) {
       return null;
     }

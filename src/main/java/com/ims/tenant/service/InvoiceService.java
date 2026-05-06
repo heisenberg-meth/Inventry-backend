@@ -46,23 +46,24 @@ public class InvoiceService {
         private final OrderRepository orderRepository;
         private final CustomerRepository customerRepository;
         private final PdfService pdfService;
+        private final com.ims.shared.outbox.OutboxService outboxService;
 
         private static final int DEFAULT_DUE_DAYS = 30;
 
-  @Transactional
-  public Invoice createManual(CreateInvoiceRequest request) {
-    Long tenantId = TenantContext.getTenantId();
-    Order order = orderRepository
-            .findByIdAndTenantId(Objects.requireNonNull(request.getOrderId()), tenantId)
-            .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+        @Transactional
+        public Invoice createManual(CreateInvoiceRequest request) {
+                Long tenantId = TenantContext.getTenantId();
+                Order order = orderRepository
+                                .findByIdAndTenantId(Objects.requireNonNull(request.getOrderId()), tenantId)
+                                .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
-    if (!"SALE".equals(order.getType())) {
-            throw new IllegalArgumentException("Invoice can only be created for SALE orders");
-    }
+                if (!"SALE".equals(order.getType())) {
+                        throw new IllegalArgumentException("Invoice can only be created for SALE orders");
+                }
 
-    if (invoiceRepository.existsByTenantIdAndOrderId(tenantId, order.getId())) {
-            throw new IllegalArgumentException("Invoice already exists for this order");
-    }
+                if (invoiceRepository.existsByTenantIdAndOrderId(tenantId, order.getId())) {
+                        throw new IllegalArgumentException("Invoice already exists for this order");
+                }
 
                 String invoiceNumber = incrementAndGetInvoiceNumber();
 
@@ -85,15 +86,20 @@ public class InvoiceService {
                 }
 
                 log.info("Manual invoice created: {} for order {}", invoiceNumber, order.getId());
-                return invoiceRepository.save(invoice);
+                Invoice saved = invoiceRepository.save(invoice);
+
+                // Trigger async PDF generation or other downstream tasks
+                outboxService.saveEvent("INVOICE", saved.getId().toString(), "GENERATE", saved);
+
+                return saved;
         }
 
-  @Transactional
-  public Invoice updateStatus(Long id, InvoiceStatusRequest request) {
-    Long tenantId = TenantContext.getTenantId();
-    Invoice invoice = invoiceRepository
-            .findByIdAndTenantId(id, tenantId)
-            .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
+        @Transactional
+        public Invoice updateStatus(Long id, InvoiceStatusRequest request) {
+                Long tenantId = TenantContext.getTenantId();
+                Invoice invoice = invoiceRepository
+                                .findByIdAndTenantId(id, tenantId)
+                                .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
 
                 String currentStatus = invoice.getStatus();
                 String newStatus = request.getStatus();
@@ -115,18 +121,18 @@ public class InvoiceService {
                 return invoiceRepository.save(invoice);
         }
 
-  @Transactional
-  public Invoice createFromOrder(Order order) {
-    if (!"SALE".equals(order.getType())) {
-            throw new IllegalArgumentException("Invoice can only be created for SALE orders");
-    }
+        @Transactional
+        public Invoice createFromOrder(Order order) {
+                if (!"SALE".equals(order.getType())) {
+                        throw new IllegalArgumentException("Invoice can only be created for SALE orders");
+                }
 
-    Long tenantId = TenantContext.getTenantId();
-    var existing = invoiceRepository.findByTenantIdAndOrderId(tenantId, order.getId());
-    if (existing.isPresent()) {
-            log.warn("Invoice already exists for order {}, returning existing one", order.getId());
-            return existing.get();
-    }
+                Long tenantId = TenantContext.getTenantId();
+                var existing = invoiceRepository.findByTenantIdAndOrderId(tenantId, order.getId());
+                if (existing.isPresent()) {
+                        log.warn("Invoice already exists for order {}, returning existing one", order.getId());
+                        return existing.get();
+                }
 
                 String invoiceNumber = incrementAndGetInvoiceNumber();
 
@@ -146,7 +152,12 @@ public class InvoiceService {
                 }
 
                 log.info("Invoice created: {} for order {}", invoiceNumber, order.getId());
-                return invoiceRepository.save(invoice);
+                Invoice saved = invoiceRepository.save(invoice);
+
+                // Trigger async PDF generation or other downstream tasks
+                outboxService.saveEvent("INVOICE", saved.getId().toString(), "GENERATE", saved);
+
+                return saved;
         }
 
         @Transactional
@@ -190,31 +201,32 @@ public class InvoiceService {
                 return String.format("INV-%d-%s-%04d", tenant.getId(), dateStr, tenant.getInvoiceSequence());
         }
 
-  @Transactional(readOnly = true)
-  public byte[] generatePdf(Long id) {
-    Long tenantId = TenantContext.getTenantId();
-    Invoice invoice = invoiceRepository
-            .findByIdAndTenantId(id, tenantId)
-            .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
+        @Transactional(readOnly = true)
+        public byte[] generatePdf(Long id) {
+                Long tenantId = TenantContext.getTenantId();
+                Invoice invoice = invoiceRepository
+                                .findByIdAndTenantId(id, tenantId)
+                                .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
 
-    Order order = orderRepository
-            .findByIdAndTenantId(Objects.requireNonNull(invoice.getOrderId()), tenantId)
-            .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+                Order order = orderRepository
+                                .findByIdAndTenantId(Objects.requireNonNull(invoice.getOrderId()), tenantId)
+                                .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
-    Tenant tenant = tenantRepository
-            .findById(tenantId)
-            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+                Tenant tenant = tenantRepository
+                                .findById(tenantId)
+                                .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
-    Customer customer = customerRepository
-            .findByIdAndTenantId(Objects.requireNonNull(order.getCustomerId()), tenantId)
-            .orElseThrow(() -> new EntityNotFoundException("Customer not found"));
+                Customer customer = customerRepository
+                                .findByIdAndTenantId(Objects.requireNonNull(order.getCustomerId()), tenantId)
+                                .orElseThrow(() -> new EntityNotFoundException("Customer not found"));
 
-    List<OrderItem> orderItems = orderItemRepository.findByOrderIdAndTenantId(order.getId(), tenantId);
+                List<OrderItem> orderItems = orderItemRepository.findByOrderIdAndTenantId(order.getId(), tenantId);
 
                 List<Map<String, Object>> items = orderItems.stream()
                                 .map(item -> {
                                         Product product = productRepository
-                                                        .findByIdAndTenantId(Objects.requireNonNull(item.getProductId()), tenantId)
+                                                        .findByIdAndIsDeletedFalse(
+                                                                        Objects.requireNonNull(item.getProductId()))
                                                         .orElseThrow(() -> new EntityNotFoundException(
                                                                         "Product not found"));
                                         Map<String, Object> map = new HashMap<>();
@@ -256,20 +268,21 @@ public class InvoiceService {
                 return pdfService.generatePdfFromHtml("invoice-template", context);
         }
 
-  public Page<Invoice> getInvoices(Pageable pageable) {
-    Long tenantId = TenantContext.getTenantId();
-    return invoiceRepository.findAllByTenantId(tenantId, pageable);
-  }
+        public Page<Invoice> getInvoices(Pageable pageable) {
+                Long tenantId = TenantContext.getTenantId();
+                return invoiceRepository.findAllByTenantId(tenantId, pageable);
+        }
 
-  public Page<Invoice> getOverdueInvoices(Pageable pageable) {
-    Long tenantId = TenantContext.getTenantId();
-    return invoiceRepository.findByTenantIdAndStatusNotAndDueDateBefore(tenantId, "PAID", LocalDate.now(), pageable);
-  }
+        public Page<Invoice> getOverdueInvoices(Pageable pageable) {
+                Long tenantId = TenantContext.getTenantId();
+                return invoiceRepository.findByTenantIdAndStatusNotAndDueDateBefore(tenantId, "PAID", LocalDate.now(),
+                                pageable);
+        }
 
-  public Invoice getInvoiceById(Long id) {
-    Long tenantId = TenantContext.getTenantId();
-    return invoiceRepository
-            .findByIdAndTenantId(id, tenantId)
-            .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
-  }
+        public Invoice getInvoiceById(Long id) {
+                Long tenantId = TenantContext.getTenantId();
+                return invoiceRepository
+                                .findByIdAndTenantId(id, tenantId)
+                                .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
+        }
 }

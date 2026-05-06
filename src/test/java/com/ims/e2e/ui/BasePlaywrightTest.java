@@ -27,7 +27,7 @@ public abstract class BasePlaywrightTest {
     }
 
     @BeforeEach
-    void setUp() {
+    protected void setUp() {
         Playwright playwright = Playwright.create();
         playwrightTL.set(playwright);
 
@@ -52,7 +52,7 @@ public abstract class BasePlaywrightTest {
     }
 
     @AfterEach
-    void tearDown(TestInfo testInfo) {
+    protected void tearDown(TestInfo testInfo) {
         String name = testInfo.getDisplayName().replaceAll("[^a-zA-Z0-9]", "_");
         contextTL.get().tracing().stop(new Tracing.StopOptions()
                 .setPath(Paths.get("target/traces/" + name + ".zip")));

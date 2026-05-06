@@ -108,7 +108,7 @@ public class ProductPrdIntegrationTest extends BaseIntegrationTest {
                                 .build();
                 productRepository.save(p2);
 
-                var activeProducts = productRepository.findAllWithDetails(tenantId, PageRequest.of(0, 10));
+                var activeProducts = productRepository.findAllWithDetails(PageRequest.of(0, 10));
                 assertEquals(1, activeProducts.getContent().size());
                 assertEquals("Active Product", activeProducts.getContent().get(0).getName());
         }
@@ -165,11 +165,11 @@ public class ProductPrdIntegrationTest extends BaseIntegrationTest {
                                 .build();
                 productRepository.save(p2);
 
-                var results = productRepository.searchFast(tenantId, "laptop", PageRequest.of(0, 10));
+                var results = productRepository.searchFast("laptop", PageRequest.of(0, 10));
                 assertEquals(1, results.getContent().size());
                 assertEquals("Special Laptop", results.getContent().get(0).getName());
 
-                results = productRepository.searchFast(tenantId, "gaming", PageRequest.of(0, 10));
+                results = productRepository.searchFast("gaming", PageRequest.of(0, 10));
                 assertEquals(1, results.getContent().size());
                 assertEquals("Special Laptop", results.getContent().get(0).getName());
         }

@@ -16,6 +16,7 @@ public class AuditLogService {
 
   private final AuditLogRepository auditLogRepository;
   private final SystemConfigService systemConfigService;
+  private final com.ims.shared.outbox.OutboxService outboxService;
 
   public void log(AuditAction action, Long tenantId, Long userId, String details) {
     log(action, tenantId, userId, null, null, null, null, details);
@@ -37,7 +38,14 @@ public class AuditLogService {
         .details(details)
         .build();
 
-    Objects.requireNonNull(auditLogRepository.save(auditEntry), "Audit entry must not be null after save");
+    auditEntry = Objects.requireNonNull(auditLogRepository.save(auditEntry), "Audit entry must not be null after save");
+    
+    // Save to Outbox for async processing (e.g. sending to Kafka for cold storage)
+    try {
+        outboxService.saveEvent("AUDIT", auditEntry.getId().toString(), action.name(), auditEntry);
+    } catch (Exception e) {
+        log.warn("Failed to save audit event to outbox, proceeding anyway: {}", e.getMessage());
+    }
   }
 
   public void logChange(AuditAction action, AuditResource resource, Long resourceId, Object oldState, Object newState,

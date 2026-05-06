@@ -23,6 +23,8 @@ public class PaymentService {
 
   private final PaymentRepository paymentRepository;
   private final InvoiceRepository invoiceRepository;
+  private final com.ims.shared.outbox.OutboxService outboxService;
+  private final com.ims.shared.metrics.BusinessMetricsService businessMetricsService;
 
   @Transactional
   public Payment recordPayment(Long invoiceId, BigDecimal amount, String mode, String reference, String notes,
@@ -36,9 +38,11 @@ public class PaymentService {
     }
 
     Payment payment = Payment.builder()
+        .tenantId(tenantId)
         .invoiceId(invoiceId)
         .amount(amount)
         .paymentMode(mode)
+        .status("COMPLETED")
         .reference(reference)
         .notes(notes)
         .createdBy(userId)
@@ -65,6 +69,14 @@ public class PaymentService {
     invoiceRepository.save(Objects.requireNonNull(invoice));
     log.info("Payment recorded: {} for invoice {}. New status: {}", amount, invoiceId, invoice.getStatus());
 
+    // Save to Outbox for downstream processing
+    outboxService.saveEvent("PAYMENT", payment.getId().toString(), "RECORDED", java.util.Map.of(
+        "paymentId", payment.getId(),
+        "invoiceId", invoiceId,
+        "amount", amount,
+        "status", payment.getStatus()
+    ));
+
     return Objects.requireNonNull(payment);
   }
 
@@ -82,6 +94,10 @@ public class PaymentService {
     payment.setStatus(status);
     payment.setReference(reference);
     paymentRepository.save(payment);
+
+    if ("FAILED".equals(status)) {
+      businessMetricsService.incrementFailedPayments();
+    }
 
     if ("COMPLETED".equals(status)) {
       updateInvoiceStatus(payment.getInvoiceId());

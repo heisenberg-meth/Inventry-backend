@@ -26,6 +26,7 @@ import com.ims.tenant.repository.InvoiceRepository;
 import com.ims.tenant.repository.OrderItemRepository;
 import com.ims.tenant.repository.OrderRepository;
 import com.ims.tenant.service.InvoiceService;
+import com.ims.shared.outbox.OutboxService;
 import jakarta.persistence.EntityNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
@@ -46,6 +47,8 @@ class InvoiceServiceUnitTest {
     private CustomerRepository customerRepository;
     @Mock
     private PdfService pdfService;
+    @Mock
+    private OutboxService outboxService;
 
     private InvoiceService invoiceService;
 
@@ -58,7 +61,8 @@ class InvoiceServiceUnitTest {
                 tenantRepository,
                 orderRepository,
                 customerRepository,
-                pdfService);
+                pdfService,
+                outboxService);
         TenantContext.setTenantId(1L);
     }
 

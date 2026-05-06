@@ -143,13 +143,13 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
     // Stock out 46 -> stock is 4 (Low Stock!)
     stockService.stockOut(product1Id, 46, "Big sale", user1Id);
 
-    var lowStock = productRepository.findLowStock(testTenant1Id);
+    var lowStock = productRepository.findLowStock();
     assertThat(lowStock).hasSize(1);
     assertThat(lowStock.get(0).getId()).isEqualTo(product1Id);
 
     // Stock in 10 -> stock is 14 (Not low stock anymore)
     stockService.stockIn(product1Id, 10, "Restock", user1Id);
-    lowStock = productRepository.findLowStock(testTenant1Id);
+    lowStock = productRepository.findLowStock();
     assertThat(lowStock).isEmpty();
   }
 }
