@@ -59,6 +59,7 @@ class InvoiceServiceUnitTest {
                 orderRepository,
                 customerRepository,
                 pdfService);
+        TenantContext.setTenantId(1L);
     }
 
     @Test
@@ -74,6 +75,8 @@ class InvoiceServiceUnitTest {
                 .tenantId(1L)
                 .customerId(1L)
                 .totalAmount(new BigDecimal("100.00"))
+                .taxAmount(new BigDecimal("10.00"))
+                .discount(new BigDecimal("0.00"))
                 .build();
 
         OrderItem item = OrderItem.builder()
@@ -86,22 +89,17 @@ class InvoiceServiceUnitTest {
         CreateInvoiceRequest request = new CreateInvoiceRequest();
         request.setOrderId(1L);
 
-        TenantContext.setTenantId(1L);
-        try {
-            when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
-            when(orderItemRepository.findByOrderId(1L)).thenReturn(java.util.List.of(item));
-            when(tenantRepository.findById(1L)).thenReturn(Optional.of(tenant));
-            when(tenantRepository.save(any(Tenant.class))).thenAnswer(i -> i.getArgument(0));
-            when(invoiceRepository.save(any(Invoice.class))).thenAnswer(i -> i.getArgument(0));
+        when(orderRepository.findByIdAndTenantId(1L, 1L)).thenReturn(Optional.of(order));
+        when(orderItemRepository.findByOrderId(1L)).thenReturn(java.util.List.of(item));
+        when(tenantRepository.findByIdWithLock(1L)).thenReturn(Optional.of(tenant));
+        when(tenantRepository.save(any(Tenant.class))).thenAnswer(i -> i.getArgument(0));
+        when(invoiceRepository.save(any(Invoice.class))).thenAnswer(i -> i.getArgument(0));
 
-            Invoice result = invoiceService.createManual(request);
+        Invoice result = invoiceService.createManual(request);
 
-            assertNotNull(result);
-            verify(invoiceRepository).save(any(Invoice.class));
-            verify(tenantRepository).save(any(Tenant.class));
-        } finally {
-            TenantContext.clear();
-        }
+        assertNotNull(result);
+        verify(invoiceRepository).save(any(Invoice.class));
+        verify(tenantRepository).save(any(Tenant.class));
     }
 
     @Test
@@ -114,7 +112,7 @@ class InvoiceServiceUnitTest {
         CreateInvoiceRequest request = new CreateInvoiceRequest();
         request.setOrderId(1L);
 
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdAndTenantId(1L, 1L)).thenReturn(Optional.of(order));
 
         assertThrows(IllegalArgumentException.class, () -> {
             invoiceService.createManual(request);
@@ -126,7 +124,7 @@ class InvoiceServiceUnitTest {
         CreateInvoiceRequest request = new CreateInvoiceRequest();
         request.setOrderId(999L);
 
-        when(orderRepository.findById(999L)).thenReturn(Optional.empty());
+        when(orderRepository.findByIdAndTenantId(999L, 1L)).thenReturn(Optional.empty());
 
         assertThrows(EntityNotFoundException.class, () -> {
             invoiceService.createManual(request);

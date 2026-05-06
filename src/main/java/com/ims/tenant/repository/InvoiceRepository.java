@@ -13,17 +13,11 @@ import java.util.Optional;
 @Repository
 public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
 
-  @Query("SELECT i FROM Invoice i WHERE i.tenantId = :tenantId AND i.orderId = :orderId")
-  Optional<Invoice> findByTenantIdAndOrderId(@Param("tenantId") Long tenantId, @Param("orderId") Long orderId);
+  Optional<Invoice> findByTenantIdAndOrderId(Long tenantId, Long orderId);
 
-  @Query("SELECT i FROM Invoice i WHERE i.id = :id AND i.tenantId = :tenantId")
-  Optional<Invoice> findByIdAndTenantId(@Param("id") Long id, @Param("tenantId") Long tenantId);
+  Optional<Invoice> findByIdAndTenantId(Long id, Long tenantId);
 
-  @Query("SELECT i FROM Invoice i WHERE i.tenantId = :tenantId AND i.orderId = :orderId")
-  Optional<Invoice> findByOrderId(@Param("tenantId") Long tenantId, @Param("orderId") Long orderId);
-
-  @Query("SELECT i FROM Invoice i WHERE i.tenantId = :tenantId AND i.orderId = :orderId")
-  boolean existsByTenantIdAndOrderId(@Param("tenantId") Long tenantId, @Param("orderId") Long orderId);
+  boolean existsByTenantIdAndOrderId(Long tenantId, Long orderId);
 
   @Query("SELECT i FROM Invoice i JOIN Order o ON i.orderId = o.id WHERE i.tenantId = :tenantId AND o.customerId = :customerId")
   List<Invoice> findByTenantIdAndCustomerId(@Param("tenantId") Long tenantId, @Param("customerId") Long customerId);

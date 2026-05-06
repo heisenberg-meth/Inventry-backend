@@ -7,6 +7,7 @@ import com.ims.model.Order;
 import com.ims.model.OrderItem;
 import com.ims.product.Product;
 import com.ims.shared.exception.InsufficientStockException;
+import com.ims.product.ProductService;
 import com.ims.tenant.repository.CustomerRepository;
 import com.ims.tenant.repository.OrderItemRepository;
 import com.ims.tenant.repository.OrderRepository;
@@ -33,6 +34,7 @@ public class OrderService {
   private final OrderRepository orderRepository;
   private final OrderItemRepository orderItemRepository;
   private final ProductRepository productRepository;
+  private final ProductService productService;
   private final SupplierRepository supplierRepository;
   private final CustomerRepository customerRepository;
   private final StockService stockService;
@@ -184,28 +186,6 @@ public class OrderService {
       customerRepository
           .findByIdAndTenantId(customerId, tenantId)
           .orElseThrow(() -> new EntityNotFoundException("Customer not found or does not belong to your tenant"));
-    }
-
-    // CHECK ALL stock availability BEFORE processing any items
-    for (Map<String, Object> item : items) {
-      Long productId = Long.valueOf(item.get("product_id").toString());
-      int qty = Integer.parseInt(item.get("quantity").toString());
-
-      Product product = productRepository
-          .findByIdAndTenantId(productId, tenantId)
-          .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
-
-      if (product.getStock() < qty) {
-        throw new InsufficientStockException(
-            "Insufficient stock for product: "
-                + product.getName()
-                + ". Requested: "
-                + qty
-                + ", Available: "
-                + product.getStock(),
-            product.getStock(),
-            qty);
-      }
     }
 
     BigDecimal totalAmount = BigDecimal.ZERO;
@@ -368,8 +348,11 @@ public class OrderService {
           .orElseThrow(
               () -> new IllegalArgumentException("Product " + productId + " was not part of the original order"));
 
-      if (qty > originalItem.getQuantity()) {
-        throw new IllegalArgumentException("Cannot return more than originally purchased for product " + productId);
+      int alreadyReturned = orderItemRepository.sumReturnedQty(originalOrderId, productId);
+      if (alreadyReturned + qty > originalItem.getQuantity()) {
+        throw new IllegalArgumentException(
+            "Total returns (" + (alreadyReturned + qty) + ") exceed original quantity (" + originalItem.getQuantity()
+                + ") for product " + productId);
       }
 
       BigDecimal unitPrice = originalItem.getUnitPrice();
@@ -500,7 +483,7 @@ public class OrderService {
     if ("SALE".equals(order.getType())) {
       // Validate and reduce stock
       for (OrderItem item : items) {
-        Product product = productRepository.findById(Objects.requireNonNull(item.getProductId()))
+        Product product = productService.findByIdWithLock(Objects.requireNonNull(item.getProductId()))
             .orElseThrow(() -> new EntityNotFoundException("Product not found: " + item.getProductId()));
         if (product.getStock() < item.getQuantity()) {
           throw new InsufficientStockException("Insufficient stock for " + product.getName(), product.getStock(),

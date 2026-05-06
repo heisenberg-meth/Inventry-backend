@@ -4,7 +4,7 @@ import com.ims.shared.audit.TraceFilter;
 import com.ims.shared.auth.JwtFilter;
 import com.ims.shared.auth.NaasAccessDeniedHandler;
 import com.ims.shared.auth.NaasAuthenticationEntryPoint;
-import com.ims.shared.auth.TenantContextFilter;
+import com.ims.shared.auth.TenantFilter;
 import com.ims.shared.ratelimit.RateLimitFilter;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +34,7 @@ public class SecurityConfig {
   private final JwtFilter jwtFilter;
   private final RateLimitFilter rateLimitFilter;
   private final TraceFilter traceFilter;
-  private final TenantContextFilter tenantContextFilter;
+  private final TenantFilter tenantFilter;
   private final Environment environment;
   private final NaasAuthenticationEntryPoint naasAuthenticationEntryPoint;
   private final NaasAccessDeniedHandler naasAccessDeniedHandler;
@@ -45,6 +45,8 @@ public class SecurityConfig {
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http.csrf(csrf -> csrf.disable())
+        .formLogin(form -> form.disable())
+        .httpBasic(basic -> basic.disable())
         .cors(cors -> cors.configurationSource(corsConfigurationSource()))
         .sessionManagement(
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -86,8 +88,8 @@ public class SecurityConfig {
                 .authenticated())
         .addFilterBefore(traceFilter, UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-        .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
-        .addFilterBefore(tenantContextFilter, UsernamePasswordAuthenticationFilter.class);
+        .addFilterBefore(tenantFilter, UsernamePasswordAuthenticationFilter.class)
+        .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
     return http.build();
   }

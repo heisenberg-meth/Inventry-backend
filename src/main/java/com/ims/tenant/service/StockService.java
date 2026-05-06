@@ -1,11 +1,9 @@
 package com.ims.tenant.service;
 
 import com.ims.dto.TransferOrderStatusRequest;
-import com.ims.product.Product;
 import com.ims.model.StockMovement;
 import com.ims.model.TransferOrder;
 import com.ims.shared.auth.TenantContext;
-import com.ims.shared.exception.InsufficientStockException;
 import com.ims.tenant.domain.warehouse.WarehouseProduct;
 import com.ims.product.ProductService;
 import com.ims.platform.service.TenantService;
@@ -35,6 +33,7 @@ public class StockService {
   private final TransferOrderRepository transferOrderRepository;
   private final com.ims.shared.notification.AlertService alertService;
   private final com.ims.product.ProductRepository productRepository;
+  private final StockTransactionService stockTransactionService;
 
   private void checkWarehouseType() {
     Long tenantId = TenantContext.getTenantId();
@@ -126,113 +125,19 @@ public class StockService {
   @Transactional
   @CacheEvict(value = { "stock", "products" }, allEntries = true)
   public void stockIn(Long productId, int qty, String notes, Long userId) {
-    Product product = productService
-        .findByIdWithLock(productId)
-        .orElseThrow(() -> new EntityNotFoundException("Product not found"));
-
-    int previousStock = product.getStock();
-    product.setStock(previousStock + qty);
-    product.setUpdatedAt(LocalDateTime.now());
-    productRepository.save(product);
-
-    stockMovementRepository.save(
-        StockMovement.builder()
-            .productId(productId)
-            .tenantId(TenantContext.getTenantId())
-            .movementType("IN")
-            .quantity(qty)
-            .previousStock(previousStock)
-            .newStock(product.getStock())
-            .notes(notes)
-            .createdBy(userId)
-            .build());
-
-    log.info(
-        "Stock IN: product={} qty={} {}→{}",
-        productId,
-        qty,
-        previousStock,
-        product.getStock());
+    stockTransactionService.stockInInternal(productId, qty, notes, userId);
   }
 
   @Transactional
   @CacheEvict(value = { "stock", "products" }, allEntries = true)
   public void stockOut(Long productId, int qty, String notes, Long userId) {
-    // Pessimistic write lock prevents concurrent oversell
-    Product product = productService
-        .findByIdWithLock(productId)
-        .orElseThrow(() -> new EntityNotFoundException("Product not found"));
-
-    if (product.getStock() < qty) {
-      throw new InsufficientStockException(
-          "Insufficient stock. Requested: " + qty + ", Available: " + product.getStock(),
-          product.getStock(),
-          qty);
-    }
-
-    int previousStock = product.getStock();
-    product.setStock(previousStock - qty);
-    product.setUpdatedAt(LocalDateTime.now());
-    productRepository.save(product);
-
-    // Trigger low stock check
-    alertService.checkLowStock(product);
-
-    stockMovementRepository.save(
-        StockMovement.builder()
-            .productId(productId)
-            .tenantId(TenantContext.getTenantId())
-            .movementType("OUT")
-            .quantity(qty)
-            .previousStock(previousStock)
-            .newStock(product.getStock())
-            .notes(notes)
-            .createdBy(userId)
-            .build());
-
-    log.info(
-        "Stock OUT: product={} qty={} {}→{}",
-        productId,
-        qty,
-        previousStock,
-        product.getStock());
+    stockTransactionService.stockOutInternal(productId, qty, notes, userId);
   }
 
   @Transactional
   @CacheEvict(value = { "stock", "products" }, allEntries = true)
   public void stockAdjust(Long productId, int qty, String notes, Long userId) {
-    Product product = productService
-        .findByIdWithLock(productId)
-        .orElseThrow(() -> new EntityNotFoundException("Product not found"));
-
-    int previousStock = product.getStock();
-    product.setStock(previousStock + qty); // qty can be negative for adjustment
-    product.setUpdatedAt(LocalDateTime.now());
-    productRepository.save(product);
-
-    // Trigger low stock check if adjustment reduces stock
-    if (qty < 0) {
-      alertService.checkLowStock(product);
-    }
-
-    stockMovementRepository.save(
-        StockMovement.builder()
-            .productId(productId)
-            .tenantId(TenantContext.getTenantId())
-            .movementType("ADJUSTMENT")
-            .quantity(qty)
-            .previousStock(previousStock)
-            .newStock(product.getStock())
-            .notes(notes)
-            .createdBy(userId)
-            .build());
-
-    log.info(
-        "Stock ADJUST: product={} qty={} {}→{}",
-        productId,
-        qty,
-        previousStock,
-        product.getStock());
+    stockTransactionService.stockAdjustInternal(productId, qty, notes, userId);
   }
 
   public Page<StockMovement> getMovements(Pageable pageable) {

@@ -21,7 +21,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -110,7 +109,7 @@ public class SupportService {
   // ==================== PLATFORM-SIDE ====================
 
   @Transactional(readOnly = true)
-  public Page<SupportTicket> listAllTickets(@NonNull Pageable pageable) {
+  public Page<SupportTicket> listAllTickets(Pageable pageable) {
     return ticketRepository.findAll(pageable);
   }
 
@@ -121,7 +120,7 @@ public class SupportService {
   }
 
   @Transactional(readOnly = true)
-  public Map<String, Object> getPlatformTicketDetails(@NonNull Long ticketId) {
+  public Map<String, Object> getPlatformTicketDetails(Long ticketId) {
     SupportTicket ticket = ticketRepository
         .findById(ticketId)
         .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
@@ -136,7 +135,7 @@ public class SupportService {
 
   @Transactional
   public SupportTicket assignTicket(
-      @NonNull Long ticketId, AssignTicketRequest request) {
+      Long ticketId, AssignTicketRequest request) {
     SupportTicket ticket = ticketRepository
         .findById(ticketId)
         .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));
@@ -159,7 +158,7 @@ public class SupportService {
 
   @Transactional
   public SupportTicket updateStatus(
-      @NonNull Long ticketId, UpdateTicketStatusRequest request) {
+      Long ticketId, UpdateTicketStatusRequest request) {
     SupportTicket ticket = ticketRepository
         .findById(ticketId)
         .orElseThrow(() -> new EntityNotFoundException("Ticket not found"));

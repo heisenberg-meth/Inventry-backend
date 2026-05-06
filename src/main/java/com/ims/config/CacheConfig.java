@@ -10,7 +10,6 @@ import org.springframework.cache.interceptor.CacheResolver;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.NonNull;
-
 import java.util.Collection;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -29,10 +28,11 @@ public class CacheConfig {
      * Works with any CacheManager implementation (Redis, Caffeine, etc.).
      */
     @Bean
-    public CacheResolver tenantAwareCacheResolver(@NonNull CacheManager cacheManager) {
+    public CacheResolver tenantAwareCacheResolver(CacheManager cacheManager) {
         return new CacheResolver() {
             @Override
-            public @NonNull Collection<? extends Cache> resolveCaches(
+            @NonNull
+            public Collection<? extends Cache> resolveCaches(
                     @NonNull CacheOperationInvocationContext<?> context) {
 
                 Long tenantId = TenantContext.getTenantId();

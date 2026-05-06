@@ -62,6 +62,10 @@ public class Tenant {
   @Builder.Default
   private Integer expiryThresholdDays = 30;
 
+  @Column(name = "is_active")
+  @Builder.Default
+  private Boolean isActive = true;
+
   @Column
   private String address;
 

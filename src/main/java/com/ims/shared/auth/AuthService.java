@@ -159,18 +159,18 @@ public class AuthService {
   public LoginResponse platformLogin(LoginRequest request) {
     User user = userRepository
         .findByEmailUnfiltered(request.getEmail())
-        .orElseThrow(() -> new EntityNotFoundException("Invalid email or password"));
+        .orElseThrow(() -> new org.springframework.security.authentication.BadCredentialsException("Invalid email or password"));
 
     if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-      throw new IllegalArgumentException("Invalid email or password");
+      throw new org.springframework.security.authentication.BadCredentialsException("Invalid email or password");
     }
 
     if (!Boolean.TRUE.equals(user.getIsActive())) {
-      throw new IllegalArgumentException("Account is deactivated");
+      throw new org.springframework.security.authentication.DisabledException("Account is deactivated");
     }
 
     if (!"PLATFORM".equals(user.getScope())) {
-      throw new IllegalArgumentException("Only platform administrators can log in here");
+      throw new org.springframework.security.authentication.BadCredentialsException("Only platform administrators can log in here");
     }
 
     String scope = user.getScope();

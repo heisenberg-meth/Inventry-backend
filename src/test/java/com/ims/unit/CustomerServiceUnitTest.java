@@ -3,9 +3,7 @@ package com.ims.unit;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-
 import java.util.Optional;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,7 +12,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-
 import com.ims.model.Customer;
 import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.repository.CustomerRepository;
@@ -23,7 +20,7 @@ import com.ims.tenant.repository.OrderRepository;
 import com.ims.tenant.repository.PaymentRepository;
 import com.ims.tenant.service.CustomerService;
 
-import jakarta.persistence.EntityNotFoundException;
+import com.ims.shared.exception.ResourceNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
 class CustomerServiceUnitTest {
@@ -46,6 +43,7 @@ class CustomerServiceUnitTest {
                 orderRepository,
                 invoiceRepository,
                 paymentRepository);
+        TenantContext.setTenantId(1L);
     }
 
     @Test
@@ -57,7 +55,7 @@ class CustomerServiceUnitTest {
                 .build();
         Page<Customer> page = new PageImpl<>(java.util.List.of(customer));
 
-        when(customerRepository.findAll(PageRequest.of(0, 10))).thenReturn(page);
+        when(customerRepository.findAllByTenantId(eq(1L), any(PageRequest.class))).thenReturn(page);
 
         Page<Customer> result = customerService.getCustomers(PageRequest.of(0, 10));
 
@@ -74,7 +72,7 @@ class CustomerServiceUnitTest {
                 .tenantId(1L)
                 .build();
 
-        when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
+        when(customerRepository.findByIdAndTenantId(1L, 1L)).thenReturn(Optional.of(customer));
 
         Customer result = customerService.getById(1L);
 
@@ -84,64 +82,54 @@ class CustomerServiceUnitTest {
 
     @Test
     void getById_nonExistentCustomer_throwsException() {
-        when(customerRepository.findById(999L)).thenReturn(Optional.empty());
+        when(customerRepository.findByIdAndTenantId(999L, 1L)).thenReturn(Optional.empty());
 
-        assertThrows(EntityNotFoundException.class, () -> {
+        assertThrows(ResourceNotFoundException.class, () -> {
             customerService.getById(999L);
         });
     }
 
     @Test
     void create_withValidData_createsCustomer() {
-        TenantContext.setTenantId(1L);
-        try {
-            Customer customer = Customer.builder()
-                    .name("New Customer")
-                    .phone("1234567890")
-                    .build();
+        Customer customer = Customer.builder()
+                .name("New Customer")
+                .phone("1234567890")
+                .build();
 
-            when(customerRepository.save(any(Customer.class))).thenAnswer(i -> {
-                Customer c = i.getArgument(0);
-                c.setId(1L);
-                return c;
-            });
+        when(customerRepository.save(any(Customer.class))).thenAnswer(i -> {
+            Customer c = i.getArgument(0);
+            c.setId(1L);
+            return c;
+        });
 
-            Customer result = customerService.create(customer);
+        Customer result = customerService.create(customer);
 
-            assertNotNull(result);
-            assertEquals(1L, result.getTenantId());
-            verify(customerRepository).save(any(Customer.class));
-        } finally {
-            TenantContext.clear();
-        }
+        assertNotNull(result);
+        assertEquals(1L, result.getTenantId());
+        verify(customerRepository).save(any(Customer.class));
     }
 
     @Test
     void update_withValidData_updatesCustomer() {
-        TenantContext.setTenantId(1L);
-        try {
-            Customer existing = Customer.builder()
-                    .id(1L)
-                    .name("Old Name")
-                    .phone("0000000000")
-                    .tenantId(1L)
-                    .build();
+        Customer existing = Customer.builder()
+                .id(1L)
+                .name("Old Name")
+                .phone("0000000000")
+                .tenantId(1L)
+                .build();
 
-            Customer updates = Customer.builder()
-                    .name("New Name")
-                    .phone("1234567890")
-                    .build();
+        Customer updates = Customer.builder()
+                .name("New Name")
+                .phone("1234567890")
+                .build();
 
-            when(customerRepository.findById(1L)).thenReturn(Optional.of(existing));
-            when(customerRepository.save(any(Customer.class))).thenAnswer(i -> i.getArgument(0));
+        when(customerRepository.findByIdAndTenantId(1L, 1L)).thenReturn(Optional.of(existing));
+        when(customerRepository.save(any(Customer.class))).thenAnswer(i -> i.getArgument(0));
 
-            Customer result = customerService.update(1L, updates);
+        Customer result = customerService.update(1L, updates);
 
-            assertEquals("New Name", result.getName());
-            assertEquals("1234567890", result.getPhone());
-        } finally {
-            TenantContext.clear();
-        }
+        assertEquals("New Name", result.getName());
+        assertEquals("1234567890", result.getPhone());
     }
 
     @Test
@@ -151,11 +139,12 @@ class CustomerServiceUnitTest {
                 .tenantId(1L)
                 .build();
 
-        when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
-        doNothing().when(customerRepository).delete(customer);
+        when(customerRepository.findByIdAndTenantId(1L, 1L)).thenReturn(Optional.of(customer));
+        when(customerRepository.save(any(Customer.class))).thenAnswer(i -> i.getArgument(0));
 
         customerService.delete(1L);
 
-        verify(customerRepository).delete(customer);
+        assertTrue(customer.getIsDeleted());
+        verify(customerRepository).save(customer);
     }
 }

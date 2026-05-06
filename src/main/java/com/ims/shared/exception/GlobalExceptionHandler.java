@@ -37,6 +37,20 @@ public class GlobalExceptionHandler {
         .body(errorBody(STATUS_UNAUTHORIZED, "UNAUTHORIZED", ex.getMessage(), request.getRequestURI()));
   }
 
+  @ExceptionHandler(org.springframework.security.authentication.BadCredentialsException.class)
+  public ResponseEntity<Map<String, Object>> handleBadCredentials(
+      org.springframework.security.authentication.BadCredentialsException ex, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+        .body(errorBody(STATUS_UNAUTHORIZED, "UNAUTHORIZED", "Invalid email or password", request.getRequestURI()));
+  }
+
+  @ExceptionHandler(org.springframework.security.authentication.DisabledException.class)
+  public ResponseEntity<Map<String, Object>> handleDisabled(
+      org.springframework.security.authentication.DisabledException ex, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+        .body(errorBody(STATUS_UNAUTHORIZED, "DISABLED", ex.getMessage(), request.getRequestURI()));
+  }
+
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<Map<String, Object>> handleValidation(
       MethodArgumentNotValidException ex, HttpServletRequest request) {

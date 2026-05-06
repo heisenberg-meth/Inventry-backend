@@ -12,7 +12,6 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,12 +24,12 @@ public class CustomerService {
   private final InvoiceRepository invoiceRepository;
   private final PaymentRepository paymentRepository;
 
-  public Page<Customer> getCustomers(@NonNull Pageable pageable) {
+  public Page<Customer> getCustomers(Pageable pageable) {
     Long tenantId = TenantContext.getTenantId();
     return customerRepository.findAllByTenantId(tenantId, pageable);
   }
 
-  public Customer getById(@NonNull Long id) {
+  public Customer getById(Long id) {
     Long tenantId = TenantContext.getTenantId();
     return customerRepository
         .findByIdAndTenantId(id, tenantId)
@@ -42,7 +41,8 @@ public class CustomerService {
     Long tenantId = TenantContext.getTenantId();
     customer.setTenantId(tenantId);
 
-    if (customer.getEmail() != null && customerRepository.existsByTenantIdAndEmailAndIsDeletedFalse(tenantId, customer.getEmail())) {
+    if (customer.getEmail() != null
+        && customerRepository.existsByTenantIdAndEmailAndIsDeletedFalse(tenantId, customer.getEmail())) {
       throw new IllegalArgumentException("Customer with this email already exists");
     }
 
@@ -82,11 +82,12 @@ public class CustomerService {
     customerRepository.save(customer);
   }
 
-  public Map<String, Object> getCustomerLedger(@NonNull Long id) {
+  public Map<String, Object> getCustomerLedger(Long id) {
     Customer customer = getById(id);
     Long tenantId = TenantContext.getTenantId();
 
-    List<com.ims.model.Order> orders = orderRepository.findByTenantIdAndCustomerId(tenantId, id, Pageable.unpaged()).getContent();
+    List<com.ims.model.Order> orders = orderRepository.findByTenantIdAndCustomerId(tenantId, id, Pageable.unpaged())
+        .getContent();
     List<com.ims.model.Invoice> invoices = invoiceRepository.findByTenantIdAndCustomerId(tenantId, id);
     List<com.ims.model.Payment> payments = paymentRepository.findByTenantIdAndCustomerId(tenantId, id);
 

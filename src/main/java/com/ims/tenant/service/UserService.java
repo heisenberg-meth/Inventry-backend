@@ -25,7 +25,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.lang.NonNull;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -125,7 +124,7 @@ public class UserService {
   }
 
   @Transactional
-  public UserResponse assignPermissions(@NonNull Long id, AssignPermissionsRequest request) {
+  public UserResponse assignPermissions(Long id, AssignPermissionsRequest request) {
     User user = userRepository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException("User not found"));
 

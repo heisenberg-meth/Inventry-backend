@@ -182,7 +182,8 @@ public class InvoiceService {
                                 .findByIdWithLock(Objects.requireNonNull(TenantContext.getTenantId()))
                                 .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
-                tenant.setInvoiceSequence(tenant.getInvoiceSequence() + 1);
+                Integer currentSeq = tenant.getInvoiceSequence() != null ? tenant.getInvoiceSequence() : 0;
+                tenant.setInvoiceSequence(currentSeq + 1);
                 tenantRepository.save(tenant);
 
                 String dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
@@ -213,7 +214,7 @@ public class InvoiceService {
                 List<Map<String, Object>> items = orderItems.stream()
                                 .map(item -> {
                                         Product product = productRepository
-                                                        .findById(Objects.requireNonNull(item.getProductId()))
+                                                        .findByIdAndTenantId(Objects.requireNonNull(item.getProductId()), tenantId)
                                                         .orElseThrow(() -> new EntityNotFoundException(
                                                                         "Product not found"));
                                         Map<String, Object> map = new HashMap<>();

@@ -25,6 +25,9 @@ jobs:
       
       - name: Run tests
         run: mvn clean test
+        env:
+          JWT_SECRET: "ci-test-secret-at-least-32-characters-long!!"
+          REDIS_PASSWORD: ""
 
       - name: Upload test results on failure
         if: failure()

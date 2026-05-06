@@ -12,19 +12,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import java.util.Map;
 
-@SpringBootTest(properties = {
-    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
-    "spring.cache.type=none"
-})
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
 
 public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
 
@@ -73,10 +66,10 @@ public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
 
   @Test
   void testNoStackTraceOnInternalError() throws Exception {
-    String rootToken = login("root@ims.com", "root123", null);
+    String token = login("root@test.com", "root123", null);
 
     mockMvc.perform(get("/api/platform/users/test-error")
-        .header("Authorization", "Bearer " + rootToken))
+        .header("Authorization", "Bearer " + token))
         .andExpect(status().isInternalServerError())
         .andExpect(jsonPath("$.error").value("INTERNAL_ERROR"))
         .andExpect(jsonPath("$.message").value("An unexpected error occurred"))

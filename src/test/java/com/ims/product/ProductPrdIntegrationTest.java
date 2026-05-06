@@ -18,12 +18,6 @@ public class ProductPrdIntegrationTest extends BaseIntegrationTest {
         @BeforeEach
         void setUp() {
                 cleanupDatabase();
-
-                // Create test tenants
-                jdbcTemplate.execute(
-                                "INSERT INTO tenants (id, name, workspace_slug, company_code, is_active) VALUES (1, 'Tenant 1', 't1', 'C1', true)");
-                jdbcTemplate.execute(
-                                "INSERT INTO tenants (id, name, workspace_slug, company_code, is_active) VALUES (2, 'Tenant 2', 't2', 'C2', true)");
         }
 
         @Test

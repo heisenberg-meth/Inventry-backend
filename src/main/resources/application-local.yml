@@ -3,12 +3,24 @@ spring:
     url: jdbc:postgresql://localhost:5433/ims_db
     username: ims_user
     password: changeme
-    username: ims_user
-    password: changeme
   data:
     redis:
       host: localhost
-      password: ""
+      port: 6379
+      password: changeme
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: none
+
+app:
+  jwt:
+    secret: "ZGV2LW9ubHktc2VjcmV0LWNoYW5nZS1tZS1pbi1wcm9kLW1pbi0zMi1jaGFycyEh"
+    expiry-seconds: 86400
+    refresh-expiry-seconds: 604800
+  security:
+    allowed-origins: "http://localhost:3000,http://localhost:5173"
+  rate-limit:
+    auth-rpm: 20
+    public-rpm: 100
+    authenticated-rpm: 500
+    window-seconds: 60

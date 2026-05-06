@@ -30,7 +30,7 @@ data:
         stock-ttl-minutes: 5
         report-ttl-minutes: 30
         tenant-ttl-hours: 1
-      cors:
+      security:
         allowed-origins: "https://ims.yourdomain.com"
     management:
       endpoints:

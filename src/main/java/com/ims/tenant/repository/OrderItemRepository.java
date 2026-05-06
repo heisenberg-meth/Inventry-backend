@@ -15,4 +15,10 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
 
   @Query("SELECT oi FROM OrderItem oi WHERE oi.orderId = :orderId")
   List<OrderItem> findByOrderId(@Param("orderId") Long orderId);
+
+  @Query("SELECT COALESCE(SUM(oi.quantity), 0) FROM OrderItem oi " +
+      "JOIN Order o ON oi.orderId = o.id " +
+      "WHERE o.referenceOrderId = :originalOrderId AND oi.productId = :productId " +
+      "AND o.type = 'RETURN'")
+  int sumReturnedQty(@Param("originalOrderId") Long originalOrderId, @Param("productId") Long productId);
 }

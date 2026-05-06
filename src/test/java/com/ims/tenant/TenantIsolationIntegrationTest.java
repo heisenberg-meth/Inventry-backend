@@ -13,19 +13,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
-@SpringBootTest(properties = {
-                "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
-                "spring.cache.type=none"
-})
 @AutoConfigureMockMvc
-@ActiveProfiles("test")
 class TenantIsolationIntegrationTest extends BaseIntegrationTest {
 
         @Autowired
@@ -44,7 +37,7 @@ class TenantIsolationIntegrationTest extends BaseIntegrationTest {
                 cleanupDatabase();
                 mockRedisAndCache();
 
-                // Get tenant IDs from seeded data
+                // Get tenant IDs from seeded data (set in BaseIntegrationTest.seedTestData)
                 tenant1Id = testTenant1Id;
                 tenant2Id = testTenant2Id;
 
@@ -55,17 +48,15 @@ class TenantIsolationIntegrationTest extends BaseIntegrationTest {
 
                 // User for tenant 1
                 jdbcTemplate.update(
-                                "INSERT INTO users (name, email, password_hash, role, scope, tenant_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                                "Tenant1 User", t1Email, passwordHash, "ADMIN", "TENANT", tenant1Id, true);
+                                "INSERT INTO users (name, email, password_hash, role, scope, tenant_id, is_active, is_verified, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
+                                "Tenant1 User", t1Email, passwordHash, "ADMIN", "TENANT", tenant1Id, true, true);
 
                 // User for tenant 2
                 jdbcTemplate.update(
-                                "INSERT INTO users (name, email, password_hash, role, scope, tenant_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                                "Tenant2 User", t2Email, passwordHash, "ADMIN", "TENANT", tenant2Id, true);
+                                "INSERT INTO users (name, email, password_hash, role, scope, tenant_id, is_active, is_verified, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
+                                "Tenant2 User", t2Email, passwordHash, "ADMIN", "TENANT", tenant2Id, true, true);
 
-                // Verify users
-                verifyUser(t1Email);
-                verifyUser(t2Email);
+                // Verify users (already done via INSERT above by setting is_verified=true)
 
                 // Login tenant 1
                 tenant1Token = loginAndGetToken(t1Email, "password123", "T1001");

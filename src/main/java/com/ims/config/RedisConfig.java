@@ -12,7 +12,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
-import org.springframework.lang.NonNull;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -42,7 +41,7 @@ public class RedisConfig {
     }
 
     @Bean
-    public RedisCacheManager cacheManager(@NonNull RedisConnectionFactory factory) {
+    public RedisCacheManager cacheManager(RedisConnectionFactory factory) {
         Map<String, RedisCacheConfiguration> configs = new HashMap<>();
         configs.put("products", ttl(Duration.ofMinutes(TTL_PRODUCTS_MINUTES)));
         configs.put("categories", ttl(Duration.ofMinutes(TTL_PRODUCTS_MINUTES)));
@@ -57,7 +56,7 @@ public class RedisConfig {
     }
 
     @Bean
-    public RedisTemplate<String, Object> redisTemplate(@NonNull RedisConnectionFactory factory) {
+    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(factory);
         template.setKeySerializer(new StringRedisSerializer());
@@ -67,7 +66,7 @@ public class RedisConfig {
         return template;
     }
 
-    private RedisCacheConfiguration ttl(@NonNull Duration duration) {
+    private RedisCacheConfiguration ttl(Duration duration) {
         return RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(duration)
                 .serializeValuesWith(

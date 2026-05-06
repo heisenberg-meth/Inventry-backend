@@ -15,7 +15,6 @@ import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpHeaders;
-import org.springframework.lang.NonNull;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -37,7 +36,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
   @Override
   protected void doFilterInternal(
-      @NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain chain)
+      HttpServletRequest request, HttpServletResponse response, FilterChain chain)
       throws ServletException, IOException {
     String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
 
@@ -54,24 +53,25 @@ public class JwtFilter extends OncePerRequestFilter {
         return;
       }
 
-      // Check JWT blacklist
+      // Check JWT blacklist (Fail-closed for security)
       String tokenHash = hashToken(token);
+      boolean redisCheckFailed = false;
       Boolean isBlacklisted = false;
       try {
         if (redisTemplate != null) {
           isBlacklisted = redisTemplate.hasKey("jwt:blacklist:" + tokenHash);
         }
       } catch (Exception e) {
-        logger.warn("Redis unavailable for JWT blacklist check: " + e.getMessage());
+        logger.error("Security Risk: Redis unavailable for JWT blacklist check. Rejecting request for safety. Error: "
+            + e.getMessage());
+        redisCheckFailed = true;
       }
 
-      if (Boolean.TRUE.equals(isBlacklisted)) {
+      if (redisCheckFailed || Boolean.TRUE.equals(isBlacklisted)) {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json");
-        response
-            .getWriter()
-            .write(
-                "{\"status\":401,\"error\":\"UNAUTHORIZED\",\"message\":\"Token has been revoked\"}");
+        response.getWriter()
+            .write("{\"error\":\"Unauthorized\", \"message\":\"Security service unavailable or token revoked\"}");
         return;
       }
 
@@ -123,7 +123,7 @@ public class JwtFilter extends OncePerRequestFilter {
   }
 
   @Override
-  protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
+  protected boolean shouldNotFilter(HttpServletRequest request) {
     String path = request.getRequestURI();
     return path.equals("/api/auth/login")
         || path.equals("/api/auth/signup")

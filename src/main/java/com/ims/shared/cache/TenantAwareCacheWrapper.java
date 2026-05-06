@@ -5,7 +5,6 @@ import org.springframework.data.redis.cache.RedisCache;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
-
 import java.util.Objects;
 import java.util.concurrent.Callable;
 
@@ -21,7 +20,7 @@ public class TenantAwareCacheWrapper implements Cache {
     private final Cache delegate;
     private final Long tenantId;
 
-    public TenantAwareCacheWrapper(@NonNull Cache delegate, Long tenantId) {
+    public TenantAwareCacheWrapper(Cache delegate, Long tenantId) {
         Assert.notNull(delegate, "Delegate cache must not be null");
         this.delegate = delegate;
         this.tenantId = tenantId;
@@ -42,12 +41,14 @@ public class TenantAwareCacheWrapper implements Cache {
     }
 
     @Override
-    public @NonNull String getName() {
+    @NonNull
+    public String getName() {
         return delegate.getName();
     }
 
     @Override
-    public @NonNull Object getNativeCache() {
+    @NonNull
+    public Object getNativeCache() {
         return delegate.getNativeCache();
     }
 

@@ -5,6 +5,7 @@ spring:
     password: changeme
     driver-class-name: org.postgresql.Driver
   jpa:
+    open-in-view: false
     hibernate:
       ddl-auto: none
     show-sql: false
@@ -17,6 +18,10 @@ spring:
       - org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration
       - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
       - org.springframework.boot.autoconfigure.cache.RedisCacheAutoConfiguration
+  data:
+    redis:
+      repositories:
+        enabled: false
   main:
     allow-bean-definition-overriding: true
 

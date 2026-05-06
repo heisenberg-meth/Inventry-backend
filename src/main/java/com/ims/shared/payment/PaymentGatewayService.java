@@ -60,44 +60,52 @@ public class PaymentGatewayService {
     // Extract tenantId from payload if possible, otherwise use 0 for global log
     Long tenantId = payload.containsKey("tenant_id") ? Long.valueOf(payload.get("tenant_id").toString()) : 0L;
 
-    PaymentGatewayLog pgLog = PaymentGatewayLog.builder()
-        .tenantId(tenantId)
-        .eventType(event)
-        .rawPayload(payload.toString())
-        .build();
-    logRepository.save(pgLog);
+    try {
+      if (tenantId != 0L) {
+        TenantContext.setTenantId(tenantId);
+      }
 
-    if ("payment.captured".equals(event)) {
-      Object payloadObj = payload.get("payload");
-      if (payloadObj instanceof Map) {
-        @SuppressWarnings("unchecked")
-        Map<String, Object> data = (Map<String, Object>) payloadObj;
-        Object paymentObj = data.get("payment");
-        if (paymentObj instanceof Map) {
+      PaymentGatewayLog pgLog = PaymentGatewayLog.builder()
+          .tenantId(tenantId)
+          .eventType(event)
+          .rawPayload(payload.toString())
+          .build();
+      logRepository.save(pgLog);
+
+      if ("payment.captured".equals(event)) {
+        Object payloadObj = payload.get("payload");
+        if (payloadObj instanceof Map) {
           @SuppressWarnings("unchecked")
-          Map<String, Object> paymentData = (Map<String, Object>) paymentObj;
-          String gatewayOrderId = (String) paymentData.get("order_id");
-          String reference = (String) paymentData.get("id");
-          if (gatewayOrderId != null) {
-            paymentService.updatePaymentStatus(gatewayOrderId, "COMPLETED", reference);
+          Map<String, Object> data = (Map<String, Object>) payloadObj;
+          Object paymentObj = data.get("payment");
+          if (paymentObj instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> paymentData = (Map<String, Object>) paymentObj;
+            String gatewayOrderId = (String) paymentData.get("order_id");
+            String reference = (String) paymentData.get("id");
+            if (gatewayOrderId != null) {
+              paymentService.updatePaymentStatus(gatewayOrderId, "COMPLETED", reference);
+            }
+          }
+        }
+      } else if ("payment.failed".equals(event)) {
+        Object payloadObj = payload.get("payload");
+        if (payloadObj instanceof Map) {
+          @SuppressWarnings("unchecked")
+          Map<String, Object> data = (Map<String, Object>) payloadObj;
+          Object paymentObj = data.get("payment");
+          if (paymentObj instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> paymentData = (Map<String, Object>) paymentObj;
+            String gatewayOrderId = (String) paymentData.get("order_id");
+            if (gatewayOrderId != null) {
+              paymentService.updatePaymentStatus(gatewayOrderId, "FAILED", null);
+            }
           }
         }
       }
-    } else if ("payment.failed".equals(event)) {
-      Object payloadObj = payload.get("payload");
-      if (payloadObj instanceof Map) {
-        @SuppressWarnings("unchecked")
-        Map<String, Object> data = (Map<String, Object>) payloadObj;
-        Object paymentObj = data.get("payment");
-        if (paymentObj instanceof Map) {
-          @SuppressWarnings("unchecked")
-          Map<String, Object> paymentData = (Map<String, Object>) paymentObj;
-          String gatewayOrderId = (String) paymentData.get("order_id");
-          if (gatewayOrderId != null) {
-            paymentService.updatePaymentStatus(gatewayOrderId, "FAILED", null);
-          }
-        }
-      }
+    } finally {
+      TenantContext.clear();
     }
   }
 }

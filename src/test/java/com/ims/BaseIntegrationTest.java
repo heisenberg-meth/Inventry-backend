@@ -25,23 +25,36 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import static org.mockito.Mockito.when;
-import static org.mockito.ArgumentMatchers.any;
-
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import com.ims.config.TestRedisConfig;
 import org.springframework.context.annotation.Import;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
-@SpringBootTest(classes = com.ims.ImsApplication.class, webEnvironment = SpringBootTest.WebEnvironment.MOCK)
+@SpringBootTest(classes = com.ims.ImsApplication.class, webEnvironment = SpringBootTest.WebEnvironment.MOCK, properties = {
+    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
+    "spring.cache.type=none"
+})
 @ActiveProfiles("test")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @Import(TestRedisConfig.class)
+@Testcontainers
 public abstract class BaseIntegrationTest {
+
+  @Container
+  static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17.4-alpine")
+      .withDatabaseName("ims_db")
+      .withUsername("ims_user")
+      .withPassword("changeme");
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("spring.datasource.url", () -> "jdbc:postgresql://localhost:5433/ims_db");
-    registry.add("spring.datasource.username", () -> "ims_user");
-    registry.add("spring.datasource.password", () -> "changeme");
+    registry.add("spring.datasource.url", postgres::getJdbcUrl);
+    registry.add("spring.datasource.username", postgres::getUsername);
+    registry.add("spring.datasource.password", postgres::getPassword);
     registry.add("spring.jpa.hibernate.ddl-auto", () -> "none");
+    registry.add("spring.flyway.enabled", () -> "true");
   }
 
   @AfterEach
@@ -114,27 +127,47 @@ public abstract class BaseIntegrationTest {
   protected Long testTenant1Id;
   protected Long testTenant2Id;
 
-  @Autowired
+  @MockitoBean
   protected RedisTemplate<String, Object> redisTemplate;
   @Mock
   protected ZSetOperations<String, Object> zSetOperations;
+  @Mock
+  protected org.springframework.data.redis.core.ValueOperations<String, Object> valueOperations;
 
   private AutoCloseable mocks;
 
   @BeforeEach
   void baseSetUp() {
-    clearTestData();
+    cleanupDatabase();
+    mockRedisAndCache();
   }
 
   protected void cleanupDatabase() {
-    clearTestData();
+    if (jdbcTemplate == null)
+      return;
+
+    String[] tables = {
+        "order_items", "orders", "customers", "suppliers", "products",
+        "categories", "users", "tenants", "roles", "permissions",
+        "notifications", "alerts", "webhooks", "audit_logs", "subscriptions",
+        "subscription_plans", "support_tickets", "support_messages", "support_attachments",
+        "role_permissions", "stock_movements", "invoices", "payments"
+    };
+
+    for (String table : tables) {
+      try {
+        jdbcTemplate.execute("TRUNCATE TABLE " + table + " RESTART IDENTITY CASCADE");
+      } catch (Exception e) {
+      }
+    }
+    seedTestData();
   }
 
   protected void mockRedisAndCache() {
     mocks = MockitoAnnotations.openMocks(this);
     if (redisTemplate != null) {
-      redisTemplate.delete((String) any());
       when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+      when(redisTemplate.opsForValue()).thenReturn(valueOperations);
     }
   }
 
@@ -144,92 +177,34 @@ public abstract class BaseIntegrationTest {
     }
   }
 
-  protected void clearTestData() {
-    if (jdbcTemplate == null)
-      return;
-
-    try {
-      jdbcTemplate.execute("TRUNCATE TABLE order_items CASCADE");
-    } catch (Exception e) {
-    }
-    try {
-      jdbcTemplate.execute("TRUNCATE TABLE orders CASCADE");
-    } catch (Exception e) {
-    }
-    try {
-      jdbcTemplate.execute("TRUNCATE TABLE customers CASCADE");
-    } catch (Exception e) {
-    }
-    try {
-      jdbcTemplate.execute("TRUNCATE TABLE suppliers CASCADE");
-    } catch (Exception e) {
-    }
-    try {
-      jdbcTemplate.execute("TRUNCATE TABLE products CASCADE");
-    } catch (Exception e) {
-    }
-    try {
-      jdbcTemplate.execute("TRUNCATE TABLE categories CASCADE");
-    } catch (Exception e) {
-    }
-    try {
-      jdbcTemplate.execute("TRUNCATE TABLE users CASCADE");
-    } catch (Exception e) {
-    }
-    try {
-      jdbcTemplate.execute("TRUNCATE TABLE tenants CASCADE");
-    } catch (Exception e) {
-    }
-    try {
-      jdbcTemplate.execute("TRUNCATE TABLE roles CASCADE");
-    } catch (Exception e) {
-    }
-    try {
-      jdbcTemplate.execute("TRUNCATE TABLE permissions CASCADE");
-    } catch (Exception e) {
-    }
-    try {
-      jdbcTemplate.execute("TRUNCATE TABLE role_permissions CASCADE");
-    } catch (Exception e) {
-    }
-    try {
-      jdbcTemplate.execute("TRUNCATE TABLE stock_movements CASCADE");
-    } catch (Exception e) {
-    }
-    try {
-      jdbcTemplate.execute("TRUNCATE TABLE invoices CASCADE");
-    } catch (Exception e) {
-    }
-    try {
-      jdbcTemplate.execute("TRUNCATE TABLE payments CASCADE");
-    } catch (Exception e) {
-    }
-    try {
-      jdbcTemplate.execute("TRUNCATE TABLE subscriptions CASCADE");
-    } catch (Exception e) {
-    }
-    try {
-      jdbcTemplate.execute("TRUNCATE TABLE subscription_plans RESTART IDENTITY CASCADE");
-    } catch (Exception e) {
-    }
-    try {
-      jdbcTemplate.execute("TRUNCATE TABLE audit_logs CASCADE");
-    } catch (Exception e) {
-    }
-
-    seedTestData();
-  }
-
   protected void seedTestData() {
     if (jdbcTemplate == null)
       return;
     try {
       jdbcTemplate.execute(
-          "INSERT INTO subscription_plans (name, price, max_users, max_products, billing_cycle) VALUES ('FREE', 0.00, 3, 100, 'MONTHLY')");
+          "INSERT INTO subscription_plans (name, price, max_users, max_products, billing_cycle, created_at, updated_at, version) VALUES ('FREE', 0.00, 3, 100, 'MONTHLY', NOW(), NOW(), 0)");
     } catch (Exception e) {
     }
     try {
-      jdbcTemplate.execute("INSERT INTO roles (name) VALUES ('ADMIN'), ('MANAGER'), ('STAFF')");
+      jdbcTemplate.execute(
+          "INSERT INTO tenants (name, workspace_slug, company_code, business_type, status, is_active, created_at, updated_at, version) VALUES ('Tenant 1', 't1', 'T1001', 'RETAIL', 'ACTIVE', true, NOW(), NOW(), 0)");
+      jdbcTemplate.execute(
+          "INSERT INTO tenants (name, workspace_slug, company_code, business_type, status, is_active, created_at, updated_at, version) VALUES ('Tenant 2', 't2', 'T2001', 'RETAIL', 'ACTIVE', true, NOW(), NOW(), 0)");
+
+      testTenant1Id = jdbcTemplate.queryForObject("SELECT id FROM tenants WHERE workspace_slug = 't1'", Long.class);
+      testTenant2Id = jdbcTemplate.queryForObject("SELECT id FROM tenants WHERE workspace_slug = 't2'", Long.class);
+    } catch (Exception e) {
+    }
+    try {
+      jdbcTemplate
+          .execute("INSERT INTO roles (name) VALUES ('ADMIN'), ('MANAGER'), ('STAFF'), ('ROOT'), ('PLATFORM_ADMIN')");
+    } catch (Exception e) {
+    }
+    try {
+      String passwordHash = passwordEncoder.encode("root123");
+      jdbcTemplate.execute(
+          "INSERT INTO users (name, email, password_hash, role, scope, is_active, is_verified, is_platform_user, tenant_id, created_at, updated_at, version) VALUES ('Root Admin', 'root@test.com', '"
+              + passwordHash + "', 'ROOT', 'PLATFORM', true, true, true, " + testTenant1Id + ", NOW(), NOW(), 0)");
     } catch (Exception e) {
     }
     try {
