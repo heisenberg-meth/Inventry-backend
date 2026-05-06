@@ -46,10 +46,8 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
   @Test
   void testProductCaching() throws Exception {
     String uniqueEmail = TestDataFactory.email();
-    String uniqueSlug = TestDataFactory.slug();
     SignupRequest signup = new SignupRequest();
     signup.setBusinessName(TestDataFactory.business());
-    signup.setWorkspaceSlug(uniqueSlug);
     signup.setBusinessType("RETAIL");
     signup.setOwnerName("Admin");
     signup.setOwnerEmail(uniqueEmail);
@@ -64,8 +62,7 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
         .andExpect(status().isOk());
 
     // 2. Verify cache contains data
-    org.springframework.cache.Cache cache = Objects.requireNonNull(cacheManager.getCache("products"),
-        "Products cache should exist");
+    Objects.requireNonNull(cacheManager.getCache("products"), "Products cache should exist");
 
     // We expect at least one entry in the cache now
     // Since it's ConcurrentMapCache, we can check native cache if needed,

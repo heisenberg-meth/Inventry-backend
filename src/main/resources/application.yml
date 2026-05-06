@@ -1,4 +1,7 @@
 spring:
+  threads:
+    virtual:
+      enabled: true
   application:
     name: ims-backend
   autoconfigure:
@@ -9,10 +12,7 @@ spring:
   web:
     resources:
       add-mappings: false
-  security:
-    user:
-      name: ""
-      password: ""
+
   datasource:
     url: jdbc:postgresql://postgres:5432/inventry
     username: ${DB_USERNAME:ims_user}

@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -100,7 +101,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
   }
 
   @Override
-  protected boolean shouldNotFilter(HttpServletRequest request) {
+  protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
     String path = normalizedPath(request);
     for (String prefix : EXCLUDED_PREFIXES) {
       if (matchesPrefix(path, prefix)) {
@@ -112,7 +113,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
   @Override
   protected void doFilterInternal(
-      HttpServletRequest req, HttpServletResponse res, FilterChain chain)
+      @NonNull HttpServletRequest req, @NonNull HttpServletResponse res, @NonNull FilterChain chain)
       throws ServletException, IOException {
 
     if (!redisAvailable) {

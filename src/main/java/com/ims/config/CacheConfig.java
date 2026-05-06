@@ -9,9 +9,12 @@ import org.springframework.cache.interceptor.CacheOperationInvocationContext;
 import org.springframework.cache.interceptor.CacheResolver;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import java.util.Collection;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -23,24 +26,38 @@ import java.util.stream.Collectors;
 @EnableCaching
 public class CacheConfig {
 
+    private static final Set<String> PLATFORM_CACHE_NAMES = Set.of("platform-subscriptions", "system-config");
+
     /**
      * Tenant-aware cache resolver that wraps caches with tenant key prefixing.
      * Works with any CacheManager implementation (Redis, Caffeine, etc.).
      */
     @Bean
-    public CacheResolver tenantAwareCacheResolver(CacheManager cacheManager) {
+    public CacheResolver tenantAwareCacheResolver(CacheManager cacheManager,
+            @Nullable StringRedisTemplate stringRedisTemplate) {
         return new CacheResolver() {
             @Override
-            @NonNull
-            public Collection<? extends Cache> resolveCaches(
+            public @NonNull Collection<? extends Cache> resolveCaches(
                     @NonNull CacheOperationInvocationContext<?> context) {
 
                 Long tenantId = TenantContext.getTenantId();
 
                 return context.getOperation().getCacheNames().stream()
-                        .map(cacheManager::getCache)
+                        .map(cacheName -> {
+                            Cache cache = cacheManager.getCache(cacheName);
+                            if (cache == null)
+                                return null;
+
+                            boolean isPlatformCache = PLATFORM_CACHE_NAMES.contains(cacheName);
+                            Long cacheTenantId = isPlatformCache ? null : tenantId;
+
+                            return new TenantAwareCacheWrapper(
+                                    cache,
+                                    cacheTenantId,
+                                    isPlatformCache,
+                                    stringRedisTemplate);
+                        })
                         .filter(Objects::nonNull)
-                        .map(cache -> new TenantAwareCacheWrapper(cache, tenantId))
                         .collect(Collectors.toList());
             }
         };

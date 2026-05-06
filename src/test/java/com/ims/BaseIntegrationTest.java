@@ -42,8 +42,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 public abstract class BaseIntegrationTest {
 
+  @SuppressWarnings("resource")
   @Container
-  static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17.4-alpine")
+  static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17.4-alpine")
       .withDatabaseName("ims_db")
       .withUsername("ims_user")
       .withPassword("changeme");
@@ -138,7 +139,9 @@ public abstract class BaseIntegrationTest {
 
   @BeforeEach
   void baseSetUp() {
+    TenantContext.setTenantId(1L);
     cleanupDatabase();
+    TenantContext.clear();
     mockRedisAndCache();
   }
 

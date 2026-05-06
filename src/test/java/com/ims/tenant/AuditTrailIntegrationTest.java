@@ -43,11 +43,8 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
         @Test
         void testProductAuditLogging() throws Exception {
                 String uniqueEmail = TestDataFactory.email();
-                String uniqueSlug = TestDataFactory.slug();
-
                 SignupRequest signup = new SignupRequest();
                 signup.setBusinessName(TestDataFactory.business());
-                signup.setWorkspaceSlug(uniqueSlug);
                 signup.setBusinessType("RETAIL");
                 signup.setOwnerName("Admin");
                 signup.setOwnerEmail(uniqueEmail);
@@ -140,7 +137,6 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
         private SignupRequest createSignupRequest(String name, String slug, String email) {
                 SignupRequest signup = new SignupRequest();
                 signup.setBusinessName(name);
-                signup.setWorkspaceSlug(slug);
                 signup.setBusinessType("RETAIL");
                 signup.setOwnerName("Admin");
                 signup.setOwnerEmail(email);

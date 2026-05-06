@@ -41,10 +41,8 @@ class AuthControllerTest extends BaseIntegrationTest {
         void shouldLoginSuccessfully() throws Exception {
                 // 1. Signup
                 String uniqueEmail = com.ims.TestDataFactory.email();
-                String uniqueSlug = com.ims.TestDataFactory.slug();
                 SignupRequest signupRequest = new SignupRequest();
                 signupRequest.setBusinessName("Test Business");
-                signupRequest.setWorkspaceSlug(uniqueSlug);
                 signupRequest.setBusinessType("RETAIL");
                 signupRequest.setOwnerName("Test Owner");
                 signupRequest.setOwnerEmail(uniqueEmail);
@@ -89,10 +87,8 @@ class AuthControllerTest extends BaseIntegrationTest {
         void shouldRejectLoginWithWrongPassword() throws Exception {
                 // Use a valid signup first to get a real company code
                 String uniqueEmail = com.ims.TestDataFactory.email();
-                String uniqueSlug = com.ims.TestDataFactory.slug();
                 SignupRequest signupRequest = new SignupRequest();
                 signupRequest.setBusinessName("Test Biz");
-                signupRequest.setWorkspaceSlug(uniqueSlug);
                 signupRequest.setBusinessType("RETAIL");
                 signupRequest.setOwnerName("Owner");
                 signupRequest.setOwnerEmail(uniqueEmail);

@@ -438,10 +438,14 @@ public class OrderService {
     }
 
     List<OrderItem> orderItems = orderItemRepository.findByOrderIdAndTenantId(order.getId(), tenantId);
+
+    List<Long> productIds = orderItems.stream().map(OrderItem::getProductId).distinct().toList();
+    Map<Long, String> productNameMap = productRepository.findAllById(productIds).stream()
+        .collect(java.util.stream.Collectors.toMap(Product::getId, Product::getName));
+
     List<Map<String, Object>> items = orderItems.stream().map(item -> {
-      var product = productRepository.findById(item.getProductId()).orElse(null);
       Map<String, Object> map = new java.util.HashMap<>();
-      map.put("productName", product != null ? product.getName() : "Unknown");
+      map.put("productName", productNameMap.getOrDefault(item.getProductId(), "Unknown"));
       map.put("quantity", item.getQuantity());
       map.put("unitPrice", item.getUnitPrice());
       map.put("discount", item.getDiscount());

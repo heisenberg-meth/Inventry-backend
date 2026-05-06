@@ -15,6 +15,7 @@ import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpHeaders;
+import org.springframework.lang.NonNull;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -22,6 +23,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
 @RequiredArgsConstructor
+@lombok.extern.slf4j.Slf4j
 public class JwtFilter extends OncePerRequestFilter {
 
   private final JwtUtil jwtUtil;
@@ -36,7 +38,9 @@ public class JwtFilter extends OncePerRequestFilter {
 
   @Override
   protected void doFilterInternal(
-      HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+      @org.springframework.lang.NonNull HttpServletRequest request,
+      @org.springframework.lang.NonNull HttpServletResponse response,
+      @org.springframework.lang.NonNull FilterChain chain)
       throws ServletException, IOException {
     String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
 
@@ -62,8 +66,8 @@ public class JwtFilter extends OncePerRequestFilter {
           isBlacklisted = redisTemplate.hasKey("jwt:blacklist:" + tokenHash);
         }
       } catch (Exception e) {
-        logger.error("Security Risk: Redis unavailable for JWT blacklist check. Rejecting request for safety. Error: "
-            + e.getMessage());
+        log.error("Security Risk: Redis unavailable for JWT blacklist check. Rejecting request for safety. Error: {}",
+            e.getMessage());
         redisCheckFailed = true;
       }
 
@@ -123,7 +127,7 @@ public class JwtFilter extends OncePerRequestFilter {
   }
 
   @Override
-  protected boolean shouldNotFilter(HttpServletRequest request) {
+  protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
     String path = request.getRequestURI();
     return path.equals("/api/auth/login")
         || path.equals("/api/auth/signup")

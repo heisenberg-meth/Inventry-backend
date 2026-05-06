@@ -18,6 +18,7 @@ spring:
       - org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration
       - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
       - org.springframework.boot.autoconfigure.cache.RedisCacheAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
   data:
     redis:
       repositories:

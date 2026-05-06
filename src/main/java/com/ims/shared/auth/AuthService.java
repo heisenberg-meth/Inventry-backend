@@ -121,6 +121,10 @@ public class AuthService {
     Tenant tenant = tenantRepository.findById(tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
+    if (!"ACTIVE".equals(tenant.getStatus())) {
+      throw new IllegalStateException("Cannot impersonate a " + tenant.getStatus() + " tenant");
+    }
+
     User targetUser = userRepository.findFirstByTenantIdAndRole(tenantId, "ADMIN")
         .orElseThrow(() -> new EntityNotFoundException("No admin user found for this tenant"));
 

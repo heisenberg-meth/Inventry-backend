@@ -5,7 +5,6 @@ import com.ims.model.StockMovement;
 import com.ims.model.TransferOrder;
 import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.domain.warehouse.WarehouseProduct;
-import com.ims.product.ProductService;
 import com.ims.platform.service.TenantService;
 import com.ims.tenant.repository.StockMovementRepository;
 import com.ims.tenant.repository.TransferOrderRepository;
@@ -26,13 +25,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 public class StockService {
 
-  private final ProductService productService;
   private final StockMovementRepository stockMovementRepository;
   private final TenantService tenantService;
   private final WarehouseProductRepository warehouseProductRepository;
   private final TransferOrderRepository transferOrderRepository;
-  private final com.ims.shared.notification.AlertService alertService;
-  private final com.ims.product.ProductRepository productRepository;
   private final StockTransactionService stockTransactionService;
 
   private void checkWarehouseType() {

@@ -51,11 +51,9 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
   void testProductAndCustomerCreation() throws Exception {
     // 1. Setup Tenant and Data
     String uniqueEmail = TestDataFactory.email();
-    String uniqueSlug = TestDataFactory.slug();
 
     SignupRequest signup = new SignupRequest();
     signup.setBusinessName(TestDataFactory.business());
-    signup.setWorkspaceSlug(uniqueSlug);
     signup.setBusinessType("RETAIL");
     signup.setOwnerName("Admin");
     signup.setOwnerEmail(uniqueEmail);
@@ -63,7 +61,11 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
     SignupResponse response = signupService.signup(signup);
     verifyUser(uniqueEmail);
 
-    Long tenantId = tenantRepository.findByWorkspaceSlug(uniqueSlug).orElseThrow().getId();
+    // Need to fetch tenant outside of tenant-scoped context since tenantRepository is tenant-scoped
+    TenantContext.setTenantId(response.getTenantId());
+    Long tenantId = tenantRepository.findById(response.getTenantId()).orElseThrow().getId();
+    TenantContext.clear();
+
     String token = login(uniqueEmail, "password123", response.getCompanyCode());
 
     // Create customer
@@ -94,10 +96,8 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
   void testOrderConfirmationFlow() throws Exception {
     // 1. Setup Tenant and Product
     String uniqueEmail = TestDataFactory.email();
-    String uniqueSlug = TestDataFactory.slug();
     SignupRequest signup = new SignupRequest();
     signup.setBusinessName(TestDataFactory.business());
-    signup.setWorkspaceSlug(uniqueSlug);
     signup.setBusinessType("RETAIL");
     signup.setOwnerName("Admin");
     signup.setOwnerEmail(uniqueEmail);

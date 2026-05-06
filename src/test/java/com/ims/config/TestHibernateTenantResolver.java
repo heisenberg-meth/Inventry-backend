@@ -9,19 +9,14 @@ import org.springframework.stereotype.Component;
 @Profile("test")
 public class TestHibernateTenantResolver implements CurrentTenantIdentifierResolver<Long> {
 
-  private static final Long DEFAULT_TENANT_ID = 1L;
-
   @Override
   public Long resolveCurrentTenantIdentifier() {
     Long tenantId = TenantContext.getTenantId();
-    // In tests, we prefer an explicit tenant, but fall back to default if needed.
-    // However, to match the main resolver's design, we could also throw here.
-    // Given Fix 1 added setupTenant() to BaseIntegrationTest, tenantId should
-    // usually be present.
     if (tenantId == null) {
-      return DEFAULT_TENANT_ID;
+      throw new IllegalStateException(
+          "TenantContext is not set. Ensure TenantContext.setTenantId() is called before accessing tenant-scoped data in tests.");
     }
-    return tenantId != null ? tenantId : 1L;
+    return tenantId;
   }
 
   @Override

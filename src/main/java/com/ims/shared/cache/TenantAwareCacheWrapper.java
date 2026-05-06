@@ -2,53 +2,80 @@ package com.ims.shared.cache;
 
 import org.springframework.cache.Cache;
 import org.springframework.data.redis.cache.RedisCache;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
-import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.Callable;
 
-/**
- * Wraps a Cache instance to provide tenant-aware key isolation.
- * Instead of creating separate caches per tenant, we prefix keys with tenantId.
- * This is scalable: cache names stay constant, only keys are isolated.
- * 
- * For RedisCache, clear() only clears keys for the current tenant prefix.
- */
 public class TenantAwareCacheWrapper implements Cache {
 
-    private final Cache delegate;
-    private final Long tenantId;
+    private static final String TENANT_KEY_PREFIX = "tenant:";
+    private static final String PLATFORM_KEY_PREFIX = "platform:";
+    private static final String CACHE_KEY_SEPARATOR = ":";
+    private static final String CACHE_KEY_MIDDLE = "cache" + CACHE_KEY_SEPARATOR;
 
-    public TenantAwareCacheWrapper(Cache delegate, Long tenantId) {
+    private final Cache delegate;
+    @Nullable
+    private final Long tenantId;
+    private final boolean platformCache;
+    @Nullable
+    private final StringRedisTemplate redisTemplate;
+
+    public TenantAwareCacheWrapper(Cache delegate, @Nullable Long tenantId, boolean platformCache,
+            @Nullable StringRedisTemplate redisTemplate) {
         Assert.notNull(delegate, "Delegate cache must not be null");
         this.delegate = delegate;
         this.tenantId = tenantId;
+        this.platformCache = platformCache;
+        this.redisTemplate = redisTemplate;
     }
 
-    private Object wrapKey(Object key) {
-        if (tenantId == null) {
-            return key;
-        }
-        return tenantId + "::" + Objects.toString(key);
+    // Backward compatibility constructor
+    public TenantAwareCacheWrapper(Cache delegate, @Nullable Long tenantId) {
+        this(delegate, tenantId, false, null);
     }
 
-    private String getTenantPrefix() {
-        if (tenantId == null) {
-            return "";
+    private String wrapKey(Object key) {
+        Assert.notNull(key, "Cache key must not be null");
+
+        if (platformCache) {
+            if (!(key instanceof String)) {
+                throw new IllegalArgumentException(
+                        "Cache key must be a String for platform-scoped caches, but was: " + key.getClass().getName());
+            }
+            return PLATFORM_KEY_PREFIX + CACHE_KEY_MIDDLE + key;
+        } else {
+            if (tenantId == null) {
+                throw new IllegalStateException("Tenant ID is required for tenant-scoped cache access");
+            }
+            if (!(key instanceof String)) {
+                throw new IllegalArgumentException(
+                        "Cache key must be a String for tenant-scoped caches, but was: " + key.getClass().getName());
+            }
+            return TENANT_KEY_PREFIX + tenantId + CACHE_KEY_SEPARATOR + CACHE_KEY_MIDDLE + key;
         }
-        return tenantId + "::*";
+    }
+
+    private String getTenantKeyPattern() {
+        if (platformCache) {
+            return PLATFORM_KEY_PREFIX + CACHE_KEY_MIDDLE + "*";
+        } else {
+            if (tenantId == null) {
+                throw new IllegalStateException("Tenant ID is required for tenant-scoped cache clear");
+            }
+            return TENANT_KEY_PREFIX + tenantId + CACHE_KEY_SEPARATOR + CACHE_KEY_MIDDLE + "*";
+        }
     }
 
     @Override
-    @NonNull
-    public String getName() {
+    public @NonNull String getName() {
         return delegate.getName();
     }
 
     @Override
-    @NonNull
-    public Object getNativeCache() {
+    public @NonNull Object getNativeCache() {
         return delegate.getNativeCache();
     }
 
@@ -89,11 +116,28 @@ public class TenantAwareCacheWrapper implements Cache {
 
     @Override
     public void clear() {
-        // Only clear keys for the current tenant, not the entire cache
-        if (delegate instanceof RedisCache redisCache && tenantId != null) {
-            redisCache.clear(getTenantPrefix());
+        if (redisTemplate != null) {
+            String keyPattern = getTenantKeyPattern();
+            String fullPattern = delegate.getName() + "::" + keyPattern;
+            final StringRedisTemplate redisTemplate2 = redisTemplate;
+            if (redisTemplate2 != null) {
+                Set<String> keys = redisTemplate2.keys(fullPattern);
+                if (keys != null && !keys.isEmpty()) {
+                    final StringRedisTemplate redisTemplate3 = redisTemplate;
+                    if (redisTemplate3 != null) {
+                        redisTemplate3.delete(keys);
+                    } else {
+                    }
+                }
+            } else {
+            }
+        } else if (delegate instanceof RedisCache redisCache) {
+            if (platformCache || tenantId != null) {
+                redisCache.clear(getTenantKeyPattern());
+            } else {
+                delegate.clear();
+            }
         } else {
-            // Fallback: clear entire cache (non-Redis or null tenantId)
             delegate.clear();
         }
     }

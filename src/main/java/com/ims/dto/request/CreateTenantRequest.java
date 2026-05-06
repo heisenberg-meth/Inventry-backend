@@ -10,10 +10,7 @@ public class CreateTenantRequest {
   @Size(max = 255)
   private String name;
 
-  @Size(max = 255)
-  private String workspaceSlug;
-
-  @NotBlank(message = "Business type is required")
+   @NotBlank(message = "Business type is required")
   private String businessType;
 
   private String plan;

@@ -34,9 +34,7 @@ public class SignupService {
   public SignupResponse signup(SignupRequest request) {
     String normalizedEmail = request.getOwnerEmail().trim().toLowerCase();
 
-    String workspaceSlug = (request.getWorkspaceSlug() != null && !request.getWorkspaceSlug().isBlank())
-        ? request.getWorkspaceSlug()
-        : generateWorkspaceSlug(request.getBusinessName());
+    String workspaceSlug = generateWorkspaceSlug(request.getBusinessName());
     workspaceSlug = ensureUniqueWorkspaceSlug(workspaceSlug);
 
     if (userRepository.findByEmail(normalizedEmail).isPresent()) {
@@ -102,7 +100,7 @@ public class SignupService {
     }
 
     log.info("Signup: Created owner user for tenant={}", tenant.getId());
-    return new SignupResponse("Signup successful", tenant.getCompanyCode(), tenant.getWorkspaceSlug());
+    return new SignupResponse("Signup successful", tenant.getCompanyCode(), tenant.getWorkspaceSlug(), tenant.getId());
   }
 
   private String generateUniqueCompanyCode(String businessName) {
@@ -114,9 +112,16 @@ public class SignupService {
   }
 
   private String generateWorkspaceSlug(String businessName) {
-    return businessName.toLowerCase()
-        .replaceAll("[^a-z0-9]+", "-")
-        .replaceAll("(^-|-$)", "");
+    // Generate base slug from business name
+    String baseSlug = businessName.toLowerCase()
+        .replaceAll("[^a-z0-9\\s-]", "")
+        .replaceAll("\\s+", "-")
+        .replaceAll("-+", "-")
+        .replaceAll("^-|-$", "");
+    
+    // Add short UUID suffix to avoid collisions
+    String suffix = java.util.UUID.randomUUID().toString().substring(0, 4);
+    return baseSlug + "-" + suffix;
   }
 
   private String ensureUniqueWorkspaceSlug(String baseSlug) {

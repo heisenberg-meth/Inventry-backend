@@ -66,18 +66,18 @@ public class TenantService {
 
   @Transactional
   public TenantResponse createTenant(CreateTenantRequest request) {
-    if (request.getWorkspaceSlug() != null && tenantRepository.existsByWorkspaceSlug(request.getWorkspaceSlug())) {
-      throw new IllegalArgumentException("Workspace slug already taken");
-    }
-
     String companyCode;
     do {
       companyCode = companyCodeGenerator.generateCode(request.getName());
     } while (tenantRepository.existsByCompanyCode(companyCode));
 
+    // Generate unique workspace slug from tenant name
+    String baseSlug = generateWorkspaceSlug(request.getName());
+    String workspaceSlug = ensureUniqueWorkspaceSlug(baseSlug);
+
     Tenant tenant = Tenant.builder()
         .name(request.getName())
-        .workspaceSlug(request.getWorkspaceSlug())
+        .workspaceSlug(workspaceSlug)
         .companyCode(companyCode)
         .businessType(request.getBusinessType())
         .plan(request.getPlan() != null ? request.getPlan() : "FREE")
@@ -414,5 +414,24 @@ public class TenantService {
       sb.append(chars.charAt(random.nextInt(chars.length())));
     }
     return sb.toString();
+  }
+
+  private String generateWorkspaceSlug(String name) {
+    String baseSlug = name.toLowerCase()
+        .replaceAll("[^a-z0-9\\s-]", "")
+        .replaceAll("\\s+", "-")
+        .replaceAll("-+", "-")
+        .replaceAll("^-|-$", "");
+    String suffix = java.util.UUID.randomUUID().toString().substring(0, 4);
+    return baseSlug + "-" + suffix;
+  }
+
+  private String ensureUniqueWorkspaceSlug(String baseSlug) {
+    String slug = baseSlug;
+    int counter = 1;
+    while (tenantRepository.existsByWorkspaceSlug(slug)) {
+      slug = baseSlug + "-" + counter++;
+    }
+    return slug;
   }
 }

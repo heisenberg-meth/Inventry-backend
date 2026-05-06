@@ -42,11 +42,9 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
   @Test
   void testPharmacyProductCreation() throws Exception {
     String uniqueEmail = TestDataFactory.email();
-    String uniqueSlug = TestDataFactory.slug();
 
     SignupRequest signup = new SignupRequest();
     signup.setBusinessName(TestDataFactory.business());
-    signup.setWorkspaceSlug(uniqueSlug);
     signup.setBusinessType("PHARMACY");
     signup.setOwnerName("Admin");
     signup.setOwnerEmail(uniqueEmail);

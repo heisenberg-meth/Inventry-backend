@@ -11,4 +11,5 @@ public class SignupResponse {
     private String message;
     private String companyCode;
     private String workspaceSlug;
+    private Long tenantId;
 }

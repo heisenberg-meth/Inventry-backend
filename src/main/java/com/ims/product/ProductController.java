@@ -31,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ProductController {
 
   private final ProductService productService;
+  private final com.ims.tenant.domain.pharmacy.PharmacyProductService pharmacyProductService;
   private final ProductImportService importService;
   private final com.ims.shared.utils.CsvExportService csvExportService;
   private final ProductRepository productRepository;
@@ -102,7 +103,7 @@ public class ProductController {
   @Operation(summary = "Pharmacy: products expiring within N days")
   public ResponseEntity<List<ProductResponse>> getExpiring(
       @RequestParam(required = false) Integer days) {
-    return ResponseEntity.ok(productService.getExpiringProducts(days));
+    return ResponseEntity.ok(pharmacyProductService.getExpiringProducts(days));
   }
 
   @GetMapping("/search")

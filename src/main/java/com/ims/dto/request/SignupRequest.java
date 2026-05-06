@@ -31,6 +31,8 @@ public class SignupRequest {
   private String ownerPhone;
 
   private String address;
+
   private String gstin;
+
   private String workspaceSlug;
 }

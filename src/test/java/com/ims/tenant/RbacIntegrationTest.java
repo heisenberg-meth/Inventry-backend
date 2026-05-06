@@ -69,7 +69,6 @@ public class RbacIntegrationTest extends BaseIntegrationTest {
   private SignupRequest createSignupRequest(String name, String slug, String email) {
     SignupRequest signup = new SignupRequest();
     signup.setBusinessName(name);
-    signup.setWorkspaceSlug(slug);
     signup.setBusinessType("RETAIL");
     signup.setOwnerName("Admin");
     signup.setOwnerEmail(email);

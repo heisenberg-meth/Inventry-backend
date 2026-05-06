@@ -108,7 +108,6 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
                 SignupRequest req = new SignupRequest();
                 req.setBusinessName(name);
                 req.setBusinessType("Retail");
-                req.setWorkspaceSlug(workspaceSlug);
                 req.setOwnerName("Owner " + name);
                 req.setOwnerEmail(email);
                 req.setPassword("password123");
