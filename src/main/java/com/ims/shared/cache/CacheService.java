@@ -2,13 +2,11 @@ package com.ims.shared.cache;
 
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
-import lombok.NoArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-@NoArgsConstructor(force = true)
 public class CacheService {
 
   private final RedisTemplate<String, Object> redisTemplate;

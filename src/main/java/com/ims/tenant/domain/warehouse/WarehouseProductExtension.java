@@ -6,12 +6,10 @@ import com.ims.product.Product;
 import com.ims.product.extension.ProductExtensionStrategy;
 import com.ims.tenant.service.WarehouseProductRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.NoArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-@NoArgsConstructor(force = true)
 public class WarehouseProductExtension implements ProductExtensionStrategy {
 
   private final WarehouseProductRepository warehouseProductRepository;

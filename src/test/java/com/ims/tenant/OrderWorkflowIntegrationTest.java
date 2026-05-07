@@ -60,7 +60,8 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
     SignupResponse response = signupService.signup(signup);
     verifyUser(uniqueEmail);
 
-    // Need to fetch tenant outside of tenant-scoped context since tenantRepository is tenant-scoped
+    // Need to fetch tenant outside of tenant-scoped context since tenantRepository
+    // is tenant-scoped
     TenantContext.setTenantId(response.getTenantId());
     Long tenantId = tenantRepository.findById(response.getTenantId()).orElseThrow().getId();
     TenantContext.clear();
@@ -149,8 +150,9 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
         .content(customerReq))
         .andExpect(status().isCreated())
         .andReturn();
-    @SuppressWarnings("unchecked")
-    Map<String, Object> customer = objectMapper.readValue(custResult.getResponse().getContentAsString(), Map.class);
+    Map<String, Object> customer = objectMapper.readValue(custResult.getResponse().getContentAsString(),
+        new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {
+        });
     Number customerId = (Number) customer.get("id");
 
     // 2. Create Order

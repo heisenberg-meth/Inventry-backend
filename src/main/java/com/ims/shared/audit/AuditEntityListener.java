@@ -1,5 +1,6 @@
 package com.ims.shared.audit;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.model.AuditLog;
 import com.ims.shared.auth.TenantContext;
@@ -81,10 +82,10 @@ public class AuditEntityListener {
     }
   }
 
-  @SuppressWarnings("unchecked")
   private Map<String, Object> toMap(Object entity) {
     try {
-      return MAPPER.convertValue(entity, Map.class);
+      return MAPPER.convertValue(entity, new TypeReference<Map<String, Object>>() {
+      });
     } catch (Exception e) {
       log.warn("Failed to serialize entity to map: {}", entity.getClass().getSimpleName(), e);
       return Map.of();

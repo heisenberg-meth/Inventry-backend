@@ -5,7 +5,6 @@ import com.ims.model.Inventory;
 import com.ims.model.Notification;
 import com.ims.product.Product;
 import lombok.RequiredArgsConstructor;
-import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,7 +13,6 @@ import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
-@NoArgsConstructor(force = true)
 @Slf4j
 public class AlertService {
 

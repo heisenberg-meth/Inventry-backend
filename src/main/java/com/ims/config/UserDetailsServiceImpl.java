@@ -2,7 +2,6 @@ package com.ims.config;
 
 import com.ims.tenant.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.NoArgsConstructor;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -11,7 +10,6 @@ import org.springframework.stereotype.Service;
 
 @Service("userDetailsService")
 @RequiredArgsConstructor
-@NoArgsConstructor(force = true)
 public class UserDetailsServiceImpl implements UserDetailsService {
 
     private final UserRepository userRepository;

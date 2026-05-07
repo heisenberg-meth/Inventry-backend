@@ -6,13 +6,11 @@ import com.ims.product.Product;
 import com.ims.product.extension.ProductExtensionStrategy;
 import com.ims.platform.service.SystemConfigService;
 import lombok.RequiredArgsConstructor;
-import lombok.NoArgsConstructor;
 import org.springframework.stereotype.Component;
 import java.time.LocalDate;
 
 @Component
 @RequiredArgsConstructor
-@NoArgsConstructor(force = true)
 public class PharmacyProductExtension implements ProductExtensionStrategy {
 
   private final PharmacyProductRepository pharmacyProductRepository;

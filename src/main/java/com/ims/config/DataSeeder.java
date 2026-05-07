@@ -3,7 +3,6 @@ package com.ims.config;
 import com.ims.model.User;
 import com.ims.tenant.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -12,7 +11,6 @@ import org.springframework.stereotype.Component;
 @Component
 @org.springframework.context.annotation.Profile("dev")
 @RequiredArgsConstructor
-@NoArgsConstructor(force = true)
 @Slf4j
 public class DataSeeder implements CommandLineRunner {
 

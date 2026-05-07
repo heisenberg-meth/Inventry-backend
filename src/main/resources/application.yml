@@ -29,8 +29,7 @@ spring:
       ddl-auto: validate
       properties:
         hibernate:
-          multiTenancy: DISCRIMINATOR
-          tenant_identifier_resolver: com.ims.config.HibernateTenantResolver
+          multiTenancy: NONE
           format_sql: true
           use_sql_comments: true
     show-sql: false
@@ -172,7 +171,6 @@ resilience4j:
         exponentialBackoffMultiplier: 2
         retryExceptions:
           - org.springframework.data.redis.RedisConnectionFailureException
-          - org.springframework.data.redis.RedisTimeoutException
       databaseDeadlock:
         maxAttempts: 3
         waitDuration: 200ms

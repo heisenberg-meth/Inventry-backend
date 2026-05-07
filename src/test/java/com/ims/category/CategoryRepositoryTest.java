@@ -52,8 +52,8 @@ class CategoryRepositoryTest extends BaseIntegrationTest {
 
     @Test
     void findByTenantId_ShouldReturnOnlyTenantCategories() {
-        Category c1 = categoryRepository.save(Category.builder().name("C1").tenantId(testTenant1Id).build());
-        Category c2 = categoryRepository.save(Category.builder().name("C2").tenantId(testTenant2Id).build());
+        categoryRepository.save(Category.builder().name("C1").tenantId(testTenant1Id).build());
+        categoryRepository.save(Category.builder().name("C2").tenantId(testTenant2Id).build());
 
         Page<Category> t1Categories = categoryRepository.findByTenantId(testTenant1Id, PageRequest.of(0, 10));
 

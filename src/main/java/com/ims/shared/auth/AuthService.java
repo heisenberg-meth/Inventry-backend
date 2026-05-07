@@ -26,7 +26,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
-import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -35,7 +34,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@NoArgsConstructor(force = true)
 @Slf4j
 
 public class AuthService {
@@ -165,7 +163,8 @@ public class AuthService {
   public LoginResponse platformLogin(LoginRequest request) {
     User user = userRepository
         .findByEmailUnfiltered(request.getEmail())
-        .orElseThrow(() -> new org.springframework.security.authentication.BadCredentialsException("Invalid email or password"));
+        .orElseThrow(
+            () -> new org.springframework.security.authentication.BadCredentialsException("Invalid email or password"));
 
     if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
       throw new org.springframework.security.authentication.BadCredentialsException("Invalid email or password");
@@ -176,7 +175,8 @@ public class AuthService {
     }
 
     if (!"PLATFORM".equals(user.getScope())) {
-      throw new org.springframework.security.authentication.BadCredentialsException("Only platform administrators can log in here");
+      throw new org.springframework.security.authentication.BadCredentialsException(
+          "Only platform administrators can log in here");
     }
 
     String scope = user.getScope();

@@ -42,4 +42,7 @@ public class OrderItem extends BaseEntity {
 
   @Column(name = "subtotal", nullable = false, precision = 10, scale = 2)
   private BigDecimal subtotal;
+
+  @Column(name = "total", nullable = false, precision = 10, scale = 2)
+  private BigDecimal total;
 }

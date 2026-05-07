@@ -11,7 +11,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import lombok.NoArgsConstructor;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -24,7 +23,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
 @RequiredArgsConstructor
-@NoArgsConstructor(force = true)
 @lombok.extern.slf4j.Slf4j
 public class JwtFilter extends OncePerRequestFilter {
 
@@ -40,9 +38,9 @@ public class JwtFilter extends OncePerRequestFilter {
 
   @Override
   protected void doFilterInternal(
-      @org.springframework.lang.NonNull HttpServletRequest request,
-      @org.springframework.lang.NonNull HttpServletResponse response,
-      @org.springframework.lang.NonNull FilterChain chain)
+      @NonNull HttpServletRequest request,
+      @NonNull HttpServletResponse response,
+      @NonNull FilterChain chain)
       throws ServletException, IOException {
     String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
 

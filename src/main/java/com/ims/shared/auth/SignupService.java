@@ -9,7 +9,6 @@ import com.ims.model.EmailVerification;
 import com.ims.platform.repository.TenantRepository;
 import com.ims.tenant.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -17,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@NoArgsConstructor(force = true)
 @Slf4j
 @Transactional(rollbackFor = Exception.class)
 
@@ -120,7 +118,7 @@ public class SignupService {
         .replaceAll("\\s+", "-")
         .replaceAll("-+", "-")
         .replaceAll("^-|-$", "");
-    
+
     // Add short UUID suffix to avoid collisions
     String suffix = java.util.UUID.randomUUID().toString().substring(0, 4);
     return baseSlug + "-" + suffix;

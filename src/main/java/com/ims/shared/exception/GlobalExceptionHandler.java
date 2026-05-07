@@ -17,10 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @RestControllerAdvice
 @Slf4j
-@lombok.RequiredArgsConstructor
 public class GlobalExceptionHandler {
-
-  private final com.ims.shared.auth.NaasService naasService;
 
   private static final int STATUS_BAD_REQUEST = 400;
   private static final int STATUS_NOT_FOUND = 404;
@@ -124,10 +121,32 @@ public class GlobalExceptionHandler {
       org.springframework.web.servlet.resource.NoResourceFoundException.class,
       org.springframework.web.servlet.NoHandlerFoundException.class
   })
-  public ResponseEntity<String> handleNoResourceFound(Exception ex, HttpServletRequest request) {
+  public ResponseEntity<Map<String, Object>> handleNoResourceFound(Exception ex, HttpServletRequest request) {
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .contentType(org.springframework.http.MediaType.TEXT_PLAIN)
-        .body(naasService.getNoMessage());
+        .body(errorBody(STATUS_NOT_FOUND, "NOT_FOUND", "Resource not found", request.getRequestURI()));
+  }
+
+  @ExceptionHandler(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class)
+  public ResponseEntity<Map<String, Object>> handleTypeMismatch(
+      org.springframework.web.method.annotation.MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+    Class<?> requiredType = ex.getRequiredType();
+    String typeName = requiredType != null ? requiredType.getSimpleName() : "unknown";
+    String message = String.format("Parameter '%s' should be of type '%s'", ex.getName(), typeName);
+    return ResponseEntity.badRequest()
+        .body(errorBody(STATUS_BAD_REQUEST, "TYPE_MISMATCH", message, request.getRequestURI()));
+  }
+
+  @ExceptionHandler(jakarta.validation.ConstraintViolationException.class)
+  public ResponseEntity<Map<String, Object>> handleConstraintViolation(
+      jakarta.validation.ConstraintViolationException ex, HttpServletRequest request) {
+    Map<String, String> errors = new HashMap<>();
+    ex.getConstraintViolations().forEach(violation -> {
+      errors.put(violation.getPropertyPath().toString(), violation.getMessage());
+    });
+    Map<String, Object> body = errorBody(STATUS_BAD_REQUEST, "CONSTRAINT_VIOLATION", "Constraint violation",
+        request.getRequestURI());
+    body.put("errors", errors);
+    return ResponseEntity.badRequest().body(body);
   }
 
   @ExceptionHandler(Exception.class)

@@ -22,7 +22,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.env.Environment;
 
 @Configuration
 @EnableWebSecurity
@@ -34,7 +33,6 @@ public class SecurityConfig {
   private final RateLimitFilter rateLimitFilter;
   private final TraceFilter traceFilter;
   private final TenantFilter tenantFilter;
-  private final Environment environment;
   private final NaasAuthenticationEntryPoint naasAuthenticationEntryPoint;
   private final NaasAccessDeniedHandler naasAccessDeniedHandler;
 

@@ -21,7 +21,6 @@ import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
-import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -30,7 +29,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@NoArgsConstructor(force = true)
 @Slf4j
 public class OrderService {
 
@@ -121,7 +119,7 @@ public class OrderService {
           .unitPrice(unitPrice)
           .discount(discount)
           .taxRate(taxRate)
-          .subtotal(itemTotal)
+          .total(itemTotal)
           .build();
       orderItemRepository.save(orderItem);
     }
@@ -212,7 +210,7 @@ public class OrderService {
           .unitPrice(unitPrice)
           .discount(discount)
           .taxRate(taxRate)
-          .subtotal(itemTotal)
+          .total(itemTotal)
           .build();
       orderItemRepository.save(orderItem);
     }
@@ -263,6 +261,7 @@ public class OrderService {
     List<OrderItem> originalItems = orderItemRepository.findByOrderIdAndTenantId(originalOrderId, tenantId);
 
     for (Object itemObj : list) {
+      @SuppressWarnings("unchecked")
       Map<String, Object> item = (Map<String, Object>) itemObj;
       Long productId = Long.valueOf(item.get("product_id").toString());
       int qty = Integer.parseInt(item.get("quantity").toString());
@@ -292,7 +291,7 @@ public class OrderService {
           .quantity(qty)
           .unitPrice(unitPrice)
           .taxRate(taxRate)
-          .subtotal(itemTotal)
+          .total(itemTotal)
           .build();
       orderItemRepository.save(returnOrderItem);
 
@@ -357,7 +356,7 @@ public class OrderService {
         .unitPrice(item.getUnitPrice())
         .discount(item.getDiscount())
         .taxRate(item.getTaxRate())
-        .subtotal(item.getSubtotal())
+        .subtotal(item.getTotal())
         .build();
   }
 
@@ -398,7 +397,7 @@ public class OrderService {
       map.put("quantity", item.getQuantity());
       map.put("unitPrice", item.getUnitPrice());
       map.put("discount", item.getDiscount());
-      map.put("total", item.getSubtotal());
+      map.put("total", item.getTotal());
       return map;
     }).toList();
 
@@ -433,7 +432,7 @@ public class OrderService {
     if (OrderType.SALE == order.getType()) {
       List<OrderItem> items = orderItemRepository.findByOrderIdAndTenantId(order.getId(), order.getTenantId());
       for (OrderItem item : items) {
-        Product product = productService.findByIdWithLock(item.getProductId())
+        productService.findByIdWithLock(item.getProductId())
             .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
         int availableStock = inventoryService.getAvailableStock(item.getProductId());

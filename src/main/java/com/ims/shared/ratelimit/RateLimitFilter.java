@@ -143,17 +143,29 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     // 1. Check Primary Limit (User or IP) - auth endpoints fail closed
     boolean failClosed = isAuthEndpoint;
-    if (!rateLimiterService.isAllowed(key, limit, windowSeconds, failClosed)) {
-      handleRateLimitExceeded(res, tier, key, limit);
-      return;
+    try {
+      if (!rateLimiterService.isAllowed(key, limit, windowSeconds, failClosed)) {
+        handleRateLimitExceeded(res, tier, key, limit);
+        return;
+      }
+    } catch (Exception e) {
+      log.error("Rate limiter primary check failed for key {}. Failing {}.", key, failClosed ? "CLOSED" : "OPEN", e);
+      if (failClosed) {
+        handleRateLimitExceeded(res, tier, key, limit);
+        return;
+      }
     }
 
-    // 2. Optional: Check Tenant-wide Limit (fail open)
+    // 2. Optional: Check Tenant-wide Limit (always fail open)
     if (tenantId != null) {
       String tenantKey = "rate_limit:tenant:" + tenantId;
-      if (!rateLimiterService.isAllowed(tenantKey, tenantRpm, windowSeconds, false)) {
-        handleRateLimitExceeded(res, "tenant", tenantKey, tenantRpm);
-        return;
+      try {
+        if (!rateLimiterService.isAllowed(tenantKey, tenantRpm, windowSeconds, false)) {
+          handleRateLimitExceeded(res, "tenant", tenantKey, tenantRpm);
+          return;
+        }
+      } catch (Exception e) {
+        log.warn("Rate limiter tenant check failed for key {}. Failing OPEN.", tenantKey);
       }
     }
 

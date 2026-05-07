@@ -34,15 +34,15 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 public abstract class BaseIntegrationTest {
 
-  @SuppressWarnings("resource")
   @Container
+  @SuppressWarnings("resource")
   static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17.4-alpine")
       .withDatabaseName("ims_db")
       .withUsername("ims_user")
       .withPassword("changeme");
 
-  @SuppressWarnings("resource")
   @Container
+  @SuppressWarnings("resource")
   static final GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:7.2-alpine"))
       .withExposedPorts(6379);
 

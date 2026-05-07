@@ -12,7 +12,6 @@ import com.ims.tenant.repository.PaymentRepository;
 import java.util.Map;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import lombok.NoArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@NoArgsConstructor(force = true)
 public class SupplierService {
 
   private final SupplierRepository supplierRepository;

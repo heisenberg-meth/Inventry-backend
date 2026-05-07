@@ -1,7 +1,6 @@
 package com.ims.shared.metrics;
 
 import lombok.RequiredArgsConstructor;
-import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
@@ -13,7 +12,6 @@ import java.sql.Connection;
 
 @Component
 @RequiredArgsConstructor
-@NoArgsConstructor(force = true)
 @Slf4j
 public class PlatformHealthIndicator implements HealthIndicator {
 

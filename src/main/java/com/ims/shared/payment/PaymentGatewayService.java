@@ -10,14 +10,12 @@ import java.math.BigDecimal;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@NoArgsConstructor(force = true)
 @Slf4j
 
 public class PaymentGatewayService {
@@ -67,31 +65,25 @@ public class PaymentGatewayService {
 
     // Simplified: in real scenario, validate signature here
     // Extract tenantId from payload if possible, otherwise use 0 for global log
-    Long tenantId =
-        payload.containsKey("tenant_id") ? Long.valueOf(payload.get("tenant_id").toString()) : 0L;
+    Long tenantId = payload.containsKey("tenant_id") ? Long.valueOf(payload.get("tenant_id").toString()) : 0L;
 
     try {
       if (tenantId != 0L) {
         TenantContext.setTenantId(tenantId);
       }
 
-      PaymentGatewayLog pgLog =
-          PaymentGatewayLog.builder()
-              .tenantId(tenantId)
-              .eventType(event)
-              .rawPayload(payload.toString())
-              .build();
+      PaymentGatewayLog pgLog = PaymentGatewayLog.builder()
+          .tenantId(tenantId)
+          .eventType(event)
+          .rawPayload(payload.toString())
+          .build();
       logRepository.save(pgLog);
 
       if ("payment.captured".equals(event)) {
         Object payloadObj = payload.get("payload");
-        if (payloadObj instanceof Map) {
-          @SuppressWarnings("unchecked")
-          Map<String, Object> data = (Map<String, Object>) payloadObj;
+        if (payloadObj instanceof Map<?, ?> data) {
           Object paymentObj = data.get("payment");
-          if (paymentObj instanceof Map) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> paymentData = (Map<String, Object>) paymentObj;
+          if (paymentObj instanceof Map<?, ?> paymentData) {
             String gatewayOrderId = (String) paymentData.get("order_id");
             String reference = (String) paymentData.get("id");
             if (gatewayOrderId != null) {
@@ -111,13 +103,9 @@ public class PaymentGatewayService {
         }
       } else if ("payment.failed".equals(event)) {
         Object payloadObj = payload.get("payload");
-        if (payloadObj instanceof Map) {
-          @SuppressWarnings("unchecked")
-          Map<String, Object> data = (Map<String, Object>) payloadObj;
+        if (payloadObj instanceof Map<?, ?> data) {
           Object paymentObj = data.get("payment");
-          if (paymentObj instanceof Map) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> paymentData = (Map<String, Object>) paymentObj;
+          if (paymentObj instanceof Map<?, ?> paymentData) {
             String gatewayOrderId = (String) paymentData.get("order_id");
             if (gatewayOrderId != null) {
               paymentService.updatePaymentStatus(gatewayOrderId, "FAILED", null);

@@ -17,7 +17,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,7 +26,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@NoArgsConstructor(force = true)
 @Slf4j
 @CacheConfig(cacheNames = "products", cacheResolver = "tenantAwareCacheResolver")
 public class ProductService {
