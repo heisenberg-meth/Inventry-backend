@@ -34,19 +34,14 @@ public class CategoryService {
 
   @Cacheable(cacheResolver = "tenantAwareCacheResolver", value = "categories", key = "'list:' + #pageable.pageNumber + ':' + #pageable.pageSize")
   public Page<Category> getCategories(Pageable pageable) {
-    Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) {
-      log.error("Tenant ID is missing in CategoryService.getCategories");
-      throw new IllegalStateException("Missing tenant context");
-    }
+    Long tenantId = TenantContext.requireTenantId();
+
     return categoryRepository.findByTenantId(tenantId, pageable);
   }
 
   public Category getById(Long id) {
-    Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) {
-      throw new IllegalStateException("Tenant context is missing");
-    }
+    Long tenantId = TenantContext.requireTenantId();
+
     return categoryRepository
         .findByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Category not found"));
@@ -90,10 +85,7 @@ public class CategoryService {
   @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "categories", allEntries = true)
   public Category update(Long id, CategoryRequest request) {
     Category category = getById(id);
-    Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) {
-      throw new IllegalStateException("Tenant context is missing");
-    }
+    Long tenantId = TenantContext.requireTenantId();
 
     if (!category.getName().equalsIgnoreCase(request.getName())
         && categoryRepository.existsByNameIgnoreCaseAndTenantId(request.getName(), tenantId)) {
@@ -122,7 +114,7 @@ public class CategoryService {
   @PreAuthorize("hasAuthority('delete_category')")
   public void delete(Long id) {
     Category category = getById(id);
-    long productCount = productRepository.countByCategoryId(id);
+    long productCount = productRepository.countByCategoryIdAndTenantId(id, TenantContext.requireTenantId());
 
     if (productCount > 0) {
       throw new DataIntegrityViolationException(

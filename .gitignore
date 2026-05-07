@@ -54,3 +54,5 @@ secrets/
 skills
 docs
 .m2
+TASKS.md
+fix_tests.py

@@ -24,9 +24,9 @@ class CategoryRepositoryTest extends BaseIntegrationTest {
 
     @Test
     void findByIdAndTenantId_ShouldReturnCategory() {
+        com.ims.shared.auth.TenantContext.setTenantId(testTenant1Id);
         Category category = Category.builder()
                 .name("Electronics")
-                .tenantId(testTenant1Id)
                 .taxRate(BigDecimal.valueOf(18))
                 .build();
         category = categoryRepository.save(category);
@@ -39,9 +39,9 @@ class CategoryRepositoryTest extends BaseIntegrationTest {
 
     @Test
     void findByIdAndTenantId_ShouldNotReturnCategory_ForDifferentTenant() {
+        com.ims.shared.auth.TenantContext.setTenantId(testTenant1Id);
         Category category = Category.builder()
                 .name("Electronics")
-                .tenantId(testTenant1Id)
                 .build();
         category = categoryRepository.save(category);
 
@@ -52,8 +52,11 @@ class CategoryRepositoryTest extends BaseIntegrationTest {
 
     @Test
     void findByTenantId_ShouldReturnOnlyTenantCategories() {
-        categoryRepository.save(Category.builder().name("C1").tenantId(testTenant1Id).build());
-        categoryRepository.save(Category.builder().name("C2").tenantId(testTenant2Id).build());
+        com.ims.shared.auth.TenantContext.setTenantId(testTenant1Id);
+        categoryRepository.save(Category.builder().name("C1").build());
+
+        com.ims.shared.auth.TenantContext.setTenantId(testTenant2Id);
+        categoryRepository.save(Category.builder().name("C2").build());
 
         Page<Category> t1Categories = categoryRepository.findByTenantId(testTenant1Id, PageRequest.of(0, 10));
 
@@ -63,7 +66,8 @@ class CategoryRepositoryTest extends BaseIntegrationTest {
 
     @Test
     void existsByNameIgnoreCaseAndTenantId_ShouldWork() {
-        categoryRepository.save(Category.builder().name("Electronics").tenantId(testTenant1Id).build());
+        com.ims.shared.auth.TenantContext.setTenantId(testTenant1Id);
+        categoryRepository.save(Category.builder().name("Electronics").build());
 
         assertThat(categoryRepository.existsByNameIgnoreCaseAndTenantId("electronics", testTenant1Id)).isTrue();
         assertThat(categoryRepository.existsByNameIgnoreCaseAndTenantId("ELECTRONICS", testTenant1Id)).isTrue();

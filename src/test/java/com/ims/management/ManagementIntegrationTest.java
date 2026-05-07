@@ -38,7 +38,7 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
 
         @Test
         void testPlatformAdminFlow() throws Exception {
-            String token = login("root@test.com", "root123", null);
+                String token = login("root@test.com", "root123", null);
 
                 // ROOT can list tenants
                 mockMvc
@@ -81,7 +81,7 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
                 login("admin-iso2@t2.com", "password123", r2.getCompanyCode());
 
                 // Verify isolation
-                mockMvc.perform(get("/api/tenant/users")
+                mockMvc.perform(get("/api/v1/tenant/users")
                                 .header("Authorization", "Bearer " + t1Token))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.content.length()").value(1))
@@ -110,6 +110,7 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
                 req.setOwnerName("Owner " + name);
                 req.setOwnerEmail(email);
                 req.setPassword("password123");
+                req.setWorkspaceSlug(workspaceSlug);
                 return req;
         }
 

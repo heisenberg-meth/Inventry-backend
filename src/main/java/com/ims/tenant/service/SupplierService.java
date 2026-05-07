@@ -30,12 +30,12 @@ public class SupplierService {
   private final com.ims.shared.audit.AuditLogService auditLogService;
 
   public Page<Supplier> getSuppliers(Pageable pageable) {
-    Long tenantId = TenantContext.getTenantId();
+    Long tenantId = TenantContext.requireTenantId();
     return Objects.requireNonNull(supplierRepository.findAllActiveByTenantId(tenantId, pageable));
   }
 
   public Supplier getById(Long id) {
-    Long tenantId = TenantContext.getTenantId();
+    Long tenantId = TenantContext.requireTenantId();
     return Objects.requireNonNull(supplierRepository
         .findActiveByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new ResourceNotFoundException("Supplier not found or has been deleted")));
@@ -43,13 +43,15 @@ public class SupplierService {
 
   @Transactional
   public Supplier create(Supplier supplier) {
-    Long tenantId = TenantContext.getTenantId();
+    Long tenantId = TenantContext.requireTenantId();
     supplier.setTenantId(tenantId);
 
-    if (supplier.getEmail() != null && supplierRepository.existsByTenantIdAndEmailAndIsDeletedFalse(tenantId, supplier.getEmail())) {
+    if (supplier.getEmail() != null
+        && supplierRepository.existsByTenantIdAndEmailAndIsDeletedFalse(tenantId, supplier.getEmail())) {
       throw new IllegalArgumentException("Supplier with this email already exists for this tenant");
     }
-    if (supplier.getPhone() != null && supplierRepository.existsByTenantIdAndPhoneAndIsDeletedFalse(tenantId, supplier.getPhone())) {
+    if (supplier.getPhone() != null
+        && supplierRepository.existsByTenantIdAndPhoneAndIsDeletedFalse(tenantId, supplier.getPhone())) {
       throw new IllegalArgumentException("Supplier with this phone already exists for this tenant");
     }
 
@@ -67,7 +69,7 @@ public class SupplierService {
   @Transactional
   public Supplier update(Long id, Supplier updates) {
     Supplier supplier = getById(id);
-    Long tenantId = TenantContext.getTenantId();
+    Long tenantId = TenantContext.requireTenantId();
 
     if (updates.getEmail() != null && !updates.getEmail().equals(supplier.getEmail())) {
       if (supplierRepository.existsByTenantIdAndEmailAndIsDeletedFalse(tenantId, updates.getEmail())) {
@@ -119,9 +121,10 @@ public class SupplierService {
 
   public Map<String, Object> getSupplierLedger(Long id) {
     Supplier supplier = getById(id);
-    Long tenantId = TenantContext.getTenantId();
+    Long tenantId = TenantContext.requireTenantId();
 
-    List<com.ims.model.Order> orders = orderRepository.findByTenantIdAndSupplierId(tenantId, id, Pageable.unpaged()).getContent();
+    List<com.ims.model.Order> orders = orderRepository.findByTenantIdAndSupplierId(tenantId, id, Pageable.unpaged())
+        .getContent();
     List<com.ims.model.Invoice> invoices = invoiceRepository.findByTenantIdAndSupplierId(tenantId, id);
     List<com.ims.model.Payment> payments = paymentRepository.findByTenantIdAndSupplierId(tenantId, id);
 

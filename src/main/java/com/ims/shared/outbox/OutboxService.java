@@ -20,11 +20,16 @@ public class OutboxService {
 
     @Transactional(propagation = Propagation.MANDATORY)
     public void saveEvent(String aggregateType, String aggregateId, String type, Object payload) {
+        saveEvent(aggregateType, aggregateId, type, payload, TenantContext.getTenantId());
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void saveEvent(String aggregateType, String aggregateId, String type, Object payload, Long tenantId) {
         try {
             String jsonPayload = objectMapper.writeValueAsString(payload);
             OutboxEvent event = OutboxEvent.builder()
                     .id(UUID.randomUUID())
-                    .tenantId(TenantContext.getTenantId())
+                    .tenantId(tenantId != null ? tenantId : TenantContext.getTenantId())
                     .aggregateType(aggregateType)
                     .aggregateId(aggregateId)
                     .type(type)

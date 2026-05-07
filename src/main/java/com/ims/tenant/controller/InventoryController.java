@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import com.ims.shared.auth.TenantContext;
 import com.ims.shared.auth.JwtAuthenticationToken;
 
 @RestController
@@ -31,35 +32,35 @@ public class InventoryController {
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "Get inventory for a specific product")
   public ResponseEntity<InventoryResponse> getByProductId(@PathVariable Long productId) {
-    return ResponseEntity.ok(inventoryService.getInventoryByProductId(productId));
+    return ResponseEntity.ok(inventoryService.getInventoryByProductId(TenantContext.getTenantId(), productId));
   }
 
   @GetMapping
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "List all inventories")
   public ResponseEntity<Page<InventoryResponse>> getAll(Pageable pageable) {
-    return ResponseEntity.ok(inventoryService.getAllInventories(pageable));
+    return ResponseEntity.ok(inventoryService.getAllInventories(TenantContext.getTenantId(), pageable));
   }
 
   @GetMapping("/low-stock")
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "List products below low stock threshold")
   public ResponseEntity<Page<InventoryResponse>> getLowStock(Pageable pageable) {
-    return ResponseEntity.ok(inventoryService.getLowStockInventories(pageable));
+    return ResponseEntity.ok(inventoryService.getLowStockInventories(TenantContext.getTenantId(), pageable));
   }
 
   @GetMapping("/reorder")
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "List products below reorder level")
   public ResponseEntity<Page<InventoryResponse>> getReorderLevel(Pageable pageable) {
-    return ResponseEntity.ok(inventoryService.getReorderLevelInventories(pageable));
+    return ResponseEntity.ok(inventoryService.getReorderLevelInventories(TenantContext.getTenantId(), pageable));
   }
 
   @GetMapping("/available/{productId}")
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "Get available stock for a product")
   public ResponseEntity<Integer> getAvailableStock(@PathVariable Long productId) {
-    return ResponseEntity.ok(inventoryService.getAvailableStock(productId));
+    return ResponseEntity.ok(inventoryService.getAvailableStock(TenantContext.getTenantId(), productId));
   }
 
   @PostMapping("/increase")
@@ -69,7 +70,7 @@ public class InventoryController {
       @Valid @RequestBody InventoryAdjustRequest request) {
     Long userId = extractUserId();
     return ResponseEntity.ok(inventoryService.increaseStock(
-        request.getProductId(), request.getQuantity(), request.getNotes(), userId));
+        TenantContext.getTenantId(), request.getProductId(), request.getQuantity(), request.getNotes(), userId));
   }
 
   @PostMapping("/decrease")
@@ -79,7 +80,7 @@ public class InventoryController {
       @Valid @RequestBody InventoryAdjustRequest request) {
     Long userId = extractUserId();
     return ResponseEntity.ok(inventoryService.decreaseStock(
-        request.getProductId(), request.getQuantity(), request.getNotes(), userId));
+        TenantContext.getTenantId(), request.getProductId(), request.getQuantity(), request.getNotes(), userId));
   }
 
   @PostMapping("/adjust")
@@ -89,7 +90,7 @@ public class InventoryController {
       @Valid @RequestBody InventoryAdjustRequest request) {
     Long userId = extractUserId();
     return ResponseEntity.ok(inventoryService.adjustStock(
-        request.getProductId(), request.getQuantity(), request.getNotes(), userId));
+        TenantContext.getTenantId(), request.getProductId(), request.getQuantity(), request.getNotes(), userId));
   }
 
   @PostMapping("/reserve")
@@ -99,7 +100,7 @@ public class InventoryController {
       @Valid @RequestBody StockReservationRequest request) {
     Long userId = extractUserId();
     request.setUserId(userId);
-    return ResponseEntity.ok(inventoryService.reserveStock(request));
+    return ResponseEntity.ok(inventoryService.reserveStock(TenantContext.getTenantId(), request));
   }
 
   @PostMapping("/release")
@@ -109,7 +110,7 @@ public class InventoryController {
       @RequestParam Long productId, @RequestParam Integer quantity,
       @RequestParam(required = false) String notes) {
     Long userId = extractUserId();
-    return ResponseEntity.ok(inventoryService.releaseReservation(productId, quantity, notes, userId));
+    return ResponseEntity.ok(inventoryService.releaseReservation(TenantContext.getTenantId(), productId, quantity, notes, userId));
   }
 
   @PostMapping("/fulfill")
@@ -119,7 +120,7 @@ public class InventoryController {
       @RequestParam Long productId, @RequestParam Integer quantity,
       @RequestParam(required = false) String notes) {
     Long userId = extractUserId();
-    return ResponseEntity.ok(inventoryService.fulfillReservation(productId, quantity, notes, userId));
+    return ResponseEntity.ok(inventoryService.fulfillReservation(TenantContext.getTenantId(), productId, quantity, notes, userId));
   }
 
   @PutMapping("/thresholds/{productId}")
@@ -129,7 +130,7 @@ public class InventoryController {
       @PathVariable Long productId,
       @RequestParam(required = false) Integer lowStockThreshold,
       @RequestParam(required = false) Integer reorderLevel) {
-    return ResponseEntity.ok(inventoryService.updateThresholds(productId, lowStockThreshold, reorderLevel));
+    return ResponseEntity.ok(inventoryService.updateThresholds(TenantContext.getTenantId(), productId, lowStockThreshold, reorderLevel));
   }
 
   private Long extractUserId() {

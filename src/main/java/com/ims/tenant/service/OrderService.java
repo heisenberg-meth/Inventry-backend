@@ -9,7 +9,6 @@ import com.ims.product.ProductRepository;
 import com.ims.product.ProductService;
 import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditResource;
-import com.ims.shared.auth.TenantContext;
 import com.ims.shared.exception.InsufficientStockException;
 import com.ims.tenant.repository.CustomerRepository;
 import com.ims.tenant.repository.OrderItemRepository;
@@ -52,8 +51,9 @@ public class OrderService {
    * Phase 5.2.6: PURCHASE ORDER FLOW
    */
   @Transactional
-  public com.ims.order.dto.OrderResponse createPurchaseOrder(com.ims.order.dto.CreateOrderRequest request, Long userId) {
-    Long tenantId = TenantContext.getTenantId();
+  public com.ims.order.dto.OrderResponse createPurchaseOrder(Long tenantId,
+      com.ims.order.dto.CreateOrderRequest request,
+      Long userId) {
     Long supplierId = request.getSupplierId();
 
     var supplierOpt = supplierRepository.findActiveByIdAndTenantId(supplierId, tenantId);
@@ -71,10 +71,8 @@ public class OrderService {
       Product product = productService.findByIdWithLock(productId)
           .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
 
-      inventoryService.increaseStock(productId, qty, "Purchase Order creation", userId);
-
-      BigDecimal unitPrice = itemReq.getUnitPrice() != null ? itemReq.getUnitPrice() : 
-                            (product.getPurchasePrice() != null ? product.getPurchasePrice() : BigDecimal.ZERO);
+      BigDecimal unitPrice = itemReq.getUnitPrice() != null ? itemReq.getUnitPrice()
+          : (product.getPurchasePrice() != null ? product.getPurchasePrice() : BigDecimal.ZERO);
 
       BigDecimal discount = itemReq.getDiscount() != null ? itemReq.getDiscount() : BigDecimal.ZERO;
       BigDecimal taxRate = itemReq.getTaxRate() != null ? itemReq.getTaxRate() : BigDecimal.ZERO;
@@ -89,7 +87,7 @@ public class OrderService {
 
     Order order = Order.builder()
         .type(OrderType.PURCHASE)
-        .status(OrderStatus.RECEIVED)
+        .status(OrderStatus.PENDING)
         .tenantId(tenantId)
         .supplierId(supplierId)
         .totalAmount(totalAmount)
@@ -105,8 +103,8 @@ public class OrderService {
       int qty = itemReq.getQuantity();
       Product product = productRepository.findById(productId).orElseThrow();
 
-      BigDecimal unitPrice = itemReq.getUnitPrice() != null ? itemReq.getUnitPrice() : 
-                            (product.getPurchasePrice() != null ? product.getPurchasePrice() : BigDecimal.ZERO);
+      BigDecimal unitPrice = itemReq.getUnitPrice() != null ? itemReq.getUnitPrice()
+          : (product.getPurchasePrice() != null ? product.getPurchasePrice() : BigDecimal.ZERO);
       BigDecimal discount = itemReq.getDiscount() != null ? itemReq.getDiscount() : BigDecimal.ZERO;
       BigDecimal taxRate = itemReq.getTaxRate() != null ? itemReq.getTaxRate() : BigDecimal.ZERO;
       BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(qty)).subtract(discount);
@@ -119,6 +117,7 @@ public class OrderService {
           .unitPrice(unitPrice)
           .discount(discount)
           .taxRate(taxRate)
+          .subtotal(itemTotal)
           .total(itemTotal)
           .build();
       orderItemRepository.save(orderItem);
@@ -129,7 +128,7 @@ public class OrderService {
         "Created purchase order #" + order.getId());
 
     businessMetricsService.incrementOrdersCreated();
-    outboxService.saveEvent("ORDER", order.getId().toString(), "CREATED", order);
+    outboxService.saveEvent("ORDER", order.getId().toString(), "CREATED", order, tenantId);
 
     return toOrderResponse(order);
   }
@@ -138,8 +137,8 @@ public class OrderService {
    * Phase 5.2.1: SALE ORDER FLOW
    */
   @Transactional
-  public com.ims.order.dto.OrderResponse createSalesOrder(com.ims.order.dto.CreateOrderRequest request, Long userId) {
-    Long tenantId = TenantContext.getTenantId();
+  public com.ims.order.dto.OrderResponse createSalesOrder(Long tenantId, com.ims.order.dto.CreateOrderRequest request,
+      Long userId) {
     Long customerId = request.getCustomerId();
 
     if (customerId != null) {
@@ -157,12 +156,10 @@ public class OrderService {
       Product product = productService.findByIdWithLock(productId)
           .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
 
-      int availableStock = inventoryService.getAvailableStock(productId);
+      int availableStock = inventoryService.getAvailableStock(tenantId, productId);
       if (availableStock < qty) {
         throw new InsufficientStockException("Insufficient stock for " + product.getName(), availableStock, qty);
       }
-
-      inventoryService.decreaseStock(productId, qty, "Sale Order creation", userId);
 
       BigDecimal unitPrice = itemReq.getUnitPrice() != null ? itemReq.getUnitPrice() : product.getSalePrice();
       BigDecimal discount = itemReq.getDiscount() != null ? itemReq.getDiscount() : BigDecimal.ZERO;
@@ -180,7 +177,7 @@ public class OrderService {
 
     Order order = Order.builder()
         .type(OrderType.SALE)
-        .status(OrderStatus.CONFIRMED)
+        .status(OrderStatus.PENDING)
         .tenantId(tenantId)
         .customerId(customerId)
         .totalAmount(totalAmount)
@@ -210,32 +207,31 @@ public class OrderService {
           .unitPrice(unitPrice)
           .discount(discount)
           .taxRate(taxRate)
+          .subtotal(itemTotal)
           .total(itemTotal)
           .build();
       orderItemRepository.save(orderItem);
     }
-
-    invoiceService.createFromOrder(order);
 
     log.info("Sales order created: id={} total={}", order.getId(), totalAmount);
     auditLogService.logAudit(AuditAction.CREATE_SALE_ORDER, AuditResource.ORDER, order.getId(),
         "Created sales order #" + order.getId());
 
     businessMetricsService.incrementOrdersCreated();
-    outboxService.saveEvent("ORDER", order.getId().toString(), "CREATED", order);
+    outboxService.saveEvent("ORDER", order.getId().toString(), "CREATED", order, tenantId);
 
     return toOrderResponse(order);
   }
 
   @Transactional
-  public Order createReturnOrder(Map<String, Object> request, Long userId) {
+  public Order createReturnOrder(Long tenantId, Map<String, Object> request, Long userId) {
     Long originalOrderId = Long.valueOf(request.get("original_order_id").toString());
     Object rawItems = request.get("items");
     if (!(rawItems instanceof List<?> list)) {
       throw new IllegalArgumentException("Invalid items format");
     }
 
-    Order originalOrder = orderRepository.findById(originalOrderId)
+    Order originalOrder = orderRepository.findByIdAndTenantId(originalOrderId, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Original order not found"));
 
     if (OrderType.SALE != originalOrder.getType()) {
@@ -248,7 +244,7 @@ public class OrderService {
     Order returnOrder = Order.builder()
         .type(OrderType.RETURN)
         .status(OrderStatus.COMPLETED)
-        .tenantId(TenantContext.getTenantId())
+        .tenantId(tenantId)
         .customerId(originalOrder.getCustomerId())
         .referenceOrderId(originalOrderId)
         .notes(request.getOrDefault("notes", "Customer return").toString())
@@ -257,7 +253,6 @@ public class OrderService {
 
     returnOrder = orderRepository.save(returnOrder);
 
-    Long tenantId = TenantContext.getTenantId();
     List<OrderItem> originalItems = orderItemRepository.findByOrderIdAndTenantId(originalOrderId, tenantId);
 
     for (Object itemObj : list) {
@@ -279,23 +274,26 @@ public class OrderService {
       BigDecimal unitPrice = originalItem.getUnitPrice();
       BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(qty));
       BigDecimal taxRate = originalItem.getTaxRate();
-      BigDecimal itemTax = itemTotal.multiply(taxRate).divide(BigDecimal.valueOf(PERCENTAGE_BASE), 2, RoundingMode.HALF_UP);
+      BigDecimal itemTax = itemTotal.multiply(taxRate).divide(BigDecimal.valueOf(PERCENTAGE_BASE), 2,
+          RoundingMode.HALF_UP);
 
       returnTotal = returnTotal.add(itemTotal);
       returnTax = returnTax.add(itemTax);
 
       OrderItem returnOrderItem = OrderItem.builder()
-          .tenantId(TenantContext.getTenantId())
+          .tenantId(tenantId)
           .orderId(returnOrder.getId())
           .productId(productId)
           .quantity(qty)
           .unitPrice(unitPrice)
           .taxRate(taxRate)
+          .subtotal(itemTotal)
           .total(itemTotal)
           .build();
       orderItemRepository.save(returnOrderItem);
 
-      inventoryService.increaseStock(productId, qty, "Return Order #" + originalOrderId, userId);
+      inventoryService.increaseStock(tenantId, productId, qty, "Return Order #" + originalOrderId,
+          userId);
     }
 
     returnOrder.setTotalAmount(returnTotal);
@@ -303,24 +301,9 @@ public class OrderService {
     orderRepository.save(returnOrder);
 
     invoiceService.createCreditNote(returnOrder, null);
-    outboxService.saveEvent("ORDER", returnOrder.getId().toString(), "RETURNED", returnOrder);
+    outboxService.saveEvent("ORDER", returnOrder.getId().toString(), "RETURNED", returnOrder, tenantId);
 
     return returnOrder;
-  }
-
-  public Page<Order> getOrders(Pageable pageable) {
-    return orderRepository.findAllByTenantId(TenantContext.getTenantId(), pageable);
-  }
-
-  public Page<Order> getOrdersByType(OrderType type, Pageable pageable) {
-    return orderRepository.findByTenantIdAndType(TenantContext.getTenantId(), type, pageable);
-  }
-
-  public com.ims.order.dto.OrderResponse getOrderWithItems(Long id) {
-    Long tenantId = TenantContext.getTenantId();
-    Order order = orderRepository.findByIdAndTenantId(id, tenantId)
-        .orElseThrow(() -> new EntityNotFoundException("Order not found"));
-    return toOrderResponse(order);
   }
 
   private com.ims.order.dto.OrderResponse toOrderResponse(Order order) {
@@ -360,9 +343,22 @@ public class OrderService {
         .build();
   }
 
+  public Page<Order> getOrders(Long tenantId, Pageable pageable) {
+    return orderRepository.findAllByTenantId(tenantId, pageable);
+  }
+
+  public Page<Order> getOrdersByType(Long tenantId, OrderType type, Pageable pageable) {
+    return orderRepository.findByTenantIdAndType(tenantId, type, pageable);
+  }
+
+  public com.ims.order.dto.OrderResponse getOrderWithItems(Long id, Long tenantId) {
+    Order order = orderRepository.findByIdAndTenantId(id, tenantId)
+        .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+    return toOrderResponse(order);
+  }
+
   @Transactional(readOnly = true)
-  public byte[] generateOrderPdf(Long id) {
-    Long tenantId = TenantContext.getTenantId();
+  public byte[] generateOrderPdf(Long id, Long tenantId) {
     Order order = orderRepository.findByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
@@ -421,8 +417,8 @@ public class OrderService {
   }
 
   @Transactional
-  public Order confirmOrder(Long id, Long userId) {
-    Order order = orderRepository.findByIdAndTenantId(id, TenantContext.getTenantId())
+  public Order confirmOrder(Long id, Long tenantId, Long userId) {
+    Order order = orderRepository.findByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
     if (OrderStatus.PENDING != order.getStatus()) {
@@ -435,11 +431,12 @@ public class OrderService {
         productService.findByIdWithLock(item.getProductId())
             .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
-        int availableStock = inventoryService.getAvailableStock(item.getProductId());
+        int availableStock = inventoryService.getAvailableStock(order.getTenantId(), item.getProductId());
         if (availableStock < item.getQuantity()) {
           throw new InsufficientStockException("Insufficient stock", availableStock, item.getQuantity());
         }
-        inventoryService.decreaseStock(item.getProductId(), item.getQuantity(), "Confirmed Sale Order #" + order.getId(), userId);
+        inventoryService.decreaseStock(order.getTenantId(), item.getProductId(), item.getQuantity(),
+            "Confirmed Sale Order #" + order.getId(), userId);
       }
       order.setStatus(OrderStatus.CONFIRMED);
       invoiceService.createFromOrder(order);
@@ -448,29 +445,30 @@ public class OrderService {
     }
 
     order = orderRepository.save(order);
-    outboxService.saveEvent("ORDER", order.getId().toString(), "CONFIRMED", order);
+    outboxService.saveEvent("ORDER", order.getId().toString(), "CONFIRMED", order, tenantId);
     return order;
   }
 
   @Transactional
-  public Order shipOrder(Long id, Long userId) {
-    Order order = orderRepository.findByIdAndTenantId(id, TenantContext.getTenantId())
+  public Order shipOrder(Long id, Long tenantId, Long userId) {
+    Order order = orderRepository.findByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
     order.setStatus(OrderStatus.SHIPPED);
     order = orderRepository.save(order);
-    outboxService.saveEvent("ORDER", order.getId().toString(), "SHIPPED", order);
+    outboxService.saveEvent("ORDER", order.getId().toString(), "SHIPPED", order, tenantId);
     return order;
   }
 
   @Transactional
-  public Order completeOrder(Long id, Long userId) {
-    Order order = orderRepository.findByIdAndTenantId(id, TenantContext.getTenantId())
+  public Order completeOrder(Long id, Long tenantId, Long userId) {
+    Order order = orderRepository.findByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
     if (OrderType.PURCHASE == order.getType() && OrderStatus.RECEIVED != order.getStatus()) {
       List<OrderItem> items = orderItemRepository.findByOrderIdAndTenantId(order.getId(), order.getTenantId());
       for (OrderItem item : items) {
-        inventoryService.increaseStock(item.getProductId(), item.getQuantity(), "Received Purchase Order #" + order.getId(), userId);
+        inventoryService.increaseStock(order.getTenantId(), item.getProductId(), item.getQuantity(),
+            "Received Purchase Order #" + order.getId(), userId);
       }
       order.setStatus(OrderStatus.RECEIVED);
     } else {
@@ -478,39 +476,41 @@ public class OrderService {
     }
 
     order = orderRepository.save(order);
-    outboxService.saveEvent("ORDER", order.getId().toString(), "COMPLETED", order);
+    outboxService.saveEvent("ORDER", order.getId().toString(), "COMPLETED", order, tenantId);
     return order;
   }
 
   @Transactional
-  public Order cancelOrder(Long id, Long userId) {
-    Order order = orderRepository.findByIdAndTenantId(id, TenantContext.getTenantId())
+  public Order cancelOrder(Long id, Long tenantId, Long userId) {
+    Order order = orderRepository.findByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
-    if (OrderType.SALE == order.getType() && (OrderStatus.CONFIRMED == order.getStatus() || OrderStatus.SHIPPED == order.getStatus())) {
+    if (OrderType.SALE == order.getType()
+        && (OrderStatus.CONFIRMED == order.getStatus() || OrderStatus.SHIPPED == order.getStatus())) {
       List<OrderItem> items = orderItemRepository.findByOrderIdAndTenantId(order.getId(), order.getTenantId());
       for (OrderItem item : items) {
-        inventoryService.increaseStock(item.getProductId(), item.getQuantity(), "Cancelled Sale Order #" + order.getId(), userId);
+        inventoryService.increaseStock(order.getTenantId(), item.getProductId(), item.getQuantity(),
+            "Cancelled Sale Order #" + order.getId(), userId);
       }
     }
 
     order.setStatus(OrderStatus.CANCELLED);
     order = orderRepository.save(order);
-    outboxService.saveEvent("ORDER", order.getId().toString(), "CANCELLED", order);
+    outboxService.saveEvent("ORDER", order.getId().toString(), "CANCELLED", order, tenantId);
     return order;
   }
 
-  public Page<Order> getOrdersBySupplier(Long supplierId, Pageable pageable) {
-    return orderRepository.findByTenantIdAndSupplierId(TenantContext.getTenantId(), supplierId, pageable);
+  public Page<Order> getOrdersBySupplier(Long tenantId, Long supplierId, Pageable pageable) {
+    return orderRepository.findByTenantIdAndSupplierId(tenantId, supplierId, pageable);
   }
 
-  public Page<Order> getOrdersByCustomer(Long customerId, Pageable pageable) {
-    return orderRepository.findByTenantIdAndCustomerId(TenantContext.getTenantId(), customerId, pageable);
+  public Page<Order> getOrdersByCustomer(Long tenantId, Long customerId, Pageable pageable) {
+    return orderRepository.findByTenantIdAndCustomerId(tenantId, customerId, pageable);
   }
 
   @Transactional
-  public Order updateOrderStatus(Long id, OrderStatus status) {
-    Order order = orderRepository.findByIdAndTenantId(id, TenantContext.getTenantId())
+  public Order updateOrderStatus(Long id, Long tenantId, OrderStatus status) {
+    Order order = orderRepository.findByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
     order.setStatus(status);
     return orderRepository.save(order);

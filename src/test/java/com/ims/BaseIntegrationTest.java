@@ -24,6 +24,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.DockerImageName;
@@ -32,7 +36,19 @@ import org.testcontainers.utility.DockerImageName;
 @ActiveProfiles("test")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @Testcontainers
+@Import(BaseIntegrationTest.FlywayTestConfig.class)
 public abstract class BaseIntegrationTest {
+
+  @TestConfiguration
+  static class FlywayTestConfig {
+    @Bean
+    public FlywayMigrationStrategy cleanMigrateStrategy() {
+      return flyway -> {
+        flyway.repair();
+        flyway.migrate();
+      };
+    }
+  }
 
   @Container
   @SuppressWarnings("resource")
@@ -60,6 +76,29 @@ public abstract class BaseIntegrationTest {
   @AfterEach
   void clearTenantContext() {
     TenantContext.clear();
+    org.slf4j.MDC.remove("tenantId");
+  }
+
+  protected void withTenant(Long tenantId, Runnable action) {
+    try {
+      TenantContext.setTenantId(tenantId);
+      org.slf4j.MDC.put("tenantId", String.valueOf(tenantId));
+      action.run();
+    } finally {
+      TenantContext.clear();
+      org.slf4j.MDC.remove("tenantId");
+    }
+  }
+
+  protected <T> T withTenant(Long tenantId, java.util.function.Supplier<T> action) {
+    try {
+      TenantContext.setTenantId(tenantId);
+      org.slf4j.MDC.put("tenantId", String.valueOf(tenantId));
+      return action.get();
+    } finally {
+      TenantContext.clear();
+      org.slf4j.MDC.remove("tenantId");
+    }
   }
 
   @Autowired
@@ -130,7 +169,8 @@ public abstract class BaseIntegrationTest {
   void baseSetUp() {
     TenantContext.setTenantId(1L);
     cleanupDatabase();
-    TenantContext.clear();
+    // Leave the tenant context set for the tests to use by default.
+    TenantContext.setTenantId(testTenant1Id);
   }
 
   protected void cleanupDatabase() {

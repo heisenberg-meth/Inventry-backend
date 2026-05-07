@@ -25,14 +25,15 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                         FROM Product p
                         LEFT JOIN PharmacyProduct pp ON pp.product.id = p.id
                         LEFT JOIN WarehouseProduct wp ON wp.product.id = p.id
-                        WHERE p.isDeleted = false
-                        """)
-        Page<ProductListView> findAllWithDetails(Pageable pageable);
+                        WHERE p.tenantId = :tenantId AND p.isDeleted = false""")
+
+        Page<ProductListView> findAllWithDetails(@Param("tenantId") Long tenantId, Pageable pageable);
 
         @Query("SELECT p.id as id, p.name as name, p.sku as sku, p.stock as stock, " +
                         "p.reorderLevel as reorderLevel, p.salePrice as salePrice, p.unit as unit " +
-                        "FROM Product p WHERE p.isDeleted = false AND p.id > :lastId ORDER BY p.id")
-        List<ProductListView> findNextProducts(@Param("lastId") Long lastId, Pageable pageable);
+                        "FROM Product p WHERE p.tenantId = :tenantId AND p.isDeleted = false AND p.id > :lastId ORDER BY p.id")
+        List<ProductListView> findNextProducts(@Param("tenantId") Long tenantId, @Param("lastId") Long lastId,
+                        Pageable pageable);
 
         @Query(value = """
                         SELECT * FROM products
@@ -47,30 +48,29 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                         """, nativeQuery = true)
         Page<Product> searchFast(@Param("tenantId") Long tenantId, @Param("query") String query, Pageable pageable);
 
-        @Query("SELECT COUNT(p) FROM Product p WHERE p.isDeleted = false")
-        long countActive();
+        @Query("SELECT COUNT(p) FROM Product p WHERE p.tenantId = :tenantId AND p.isDeleted = false")
+        long countActive(@Param("tenantId") Long tenantId);
 
-        @Query("SELECT COUNT(p) FROM Product p WHERE p.stock <= p.reorderLevel AND p.isDeleted = false")
-        long countLowStock();
+        @Query("SELECT COUNT(p) FROM Product p WHERE p.tenantId = :tenantId AND p.stock <= p.reorderLevel AND p.isDeleted = false")
+        long countLowStock(@Param("tenantId") Long tenantId);
 
-        @Query("SELECT COUNT(p) FROM Product p WHERE p.stock = 0 AND p.isDeleted = false")
-        long countOutOfStock();
+        @Query("SELECT COUNT(p) FROM Product p WHERE p.tenantId = :tenantId AND p.stock = 0 AND p.isDeleted = false")
+        long countOutOfStock(@Param("tenantId") Long tenantId);
 
-        boolean existsByCategoryId(Long categoryId);
+        boolean existsByCategoryIdAndTenantId(Long categoryId, Long tenantId);
 
-        boolean existsBySku(String sku);
+        boolean existsBySkuAndTenantId(String sku, Long tenantId);
 
-        long countByCategoryId(Long categoryId);
+        long countByCategoryIdAndTenantId(Long categoryId, Long tenantId);
 
-        @Query("SELECT p FROM Product p WHERE p.stock < p.reorderLevel AND p.isDeleted = false")
-        List<Product> findLowStock();
+        @Query("SELECT p FROM Product p WHERE p.tenantId = :tenantId AND p.stock < p.reorderLevel AND p.isDeleted = false")
+        List<Product> findLowStock(@Param("tenantId") Long tenantId);
 
-        Page<Product> findByIsDeletedFalse(Pageable pageable);
+        Page<Product> findByTenantIdAndIsDeletedFalse(Long tenantId, Pageable pageable);
 
         @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
         @Query("SELECT p FROM Product p WHERE p.id = :productId AND p.tenantId = :tenantId AND p.isDeleted = false")
         Optional<Product> findByIdWithLock(@Param("productId") Long productId, @Param("tenantId") Long tenantId);
 
-        @Query("SELECT p FROM Product p WHERE p.id = :id AND p.isDeleted = false")
-        Optional<Product> findByIdAndIsDeletedFalse(@Param("id") Long id);
+        Optional<Product> findByIdAndTenantIdAndIsDeletedFalse(Long id, Long tenantId);
 }

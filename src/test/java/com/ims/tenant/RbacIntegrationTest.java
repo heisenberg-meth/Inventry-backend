@@ -55,7 +55,8 @@ public class RbacIntegrationTest extends BaseIntegrationTest {
     String managerEmail = "manager_" + TestDataFactory.email();
     jdbcTemplate.update(
         "INSERT INTO users (name, email, password_hash, role, scope, tenant_id, is_active, is_verified, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
-        "Manager User", managerEmail, passwordEncoder.encode("password123"), "MANAGER", "TENANT", testTenant1Id, true, true);
+        "Manager User", managerEmail, passwordEncoder.encode("password123"), "MANAGER", "TENANT", testTenant1Id, true,
+        true);
     managerToken = login(managerEmail, "password123", companyCode);
 
     // 3. Create a STAFF user in the same tenant
@@ -129,6 +130,7 @@ public class RbacIntegrationTest extends BaseIntegrationTest {
     signup.setOwnerName("Admin");
     signup.setOwnerEmail(email);
     signup.setPassword("password123");
+    signup.setWorkspaceSlug(slug);
     return signup;
   }
 

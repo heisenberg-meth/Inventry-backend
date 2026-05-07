@@ -25,127 +25,146 @@ import org.springframework.test.web.servlet.MockMvc;
 @AutoConfigureMockMvc
 public class OrderIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired
-  private MockMvc mockMvc;
+        @Autowired
+        private MockMvc mockMvc;
 
-  @Autowired
-  private ProductRepository productRepository;
+        @Autowired
+        private ProductRepository productRepository;
 
-  @Autowired
-  private InventoryService inventoryService;
+        @Autowired
+        private InventoryService inventoryService;
 
-  @Autowired
-  private ObjectMapper objectMapper;
+        @Autowired
+        private ObjectMapper objectMapper;
 
-  @org.junit.jupiter.api.BeforeEach
-  void setUpTenant() {
-    com.ims.shared.auth.TenantContext.setTenantId(1L);
-  }
+        @org.junit.jupiter.api.BeforeEach
+        void setUpTenant() {
+                com.ims.shared.auth.TenantContext.setTenantId(1L);
+        }
 
-  @Test
-  @WithMockUser(authorities = {"ROLE_ADMIN", "create_order", "view_product"})
-  public void testCreateSaleOrder() throws Exception {
-    // 1. Create a product
-    Product product = Product.builder()
-        .tenantId(1L)
-        .name("Test Product")
-        .sku("TEST-SKU-1")
-        .salePrice(new BigDecimal("100.00"))
-        .build();
-    product = productRepository.save(product);
+        @Test
+        @WithMockUser(authorities = { "ROLE_ADMIN", "create_order", "view_product" })
+        public void testCreateSaleOrder() throws Exception {
+                // 1. Create a product
+                Product product = Product.builder()
+                                .tenantId(1L)
+                                .name("Test Product")
+                                .sku("TEST-SKU-1")
+                                .salePrice(new BigDecimal("100.00"))
+                                .build();
+                product = productRepository.save(product);
 
-    // 2. Add stock
-    inventoryService.increaseStock(product.getId(), 10, "Initial stock", 1L);
+                // 2. Add stock
+                inventoryService.increaseStock(1L, product.getId(), 10, "Initial stock", 1L);
 
-    // 3. Create a sale order
-    CreateOrderRequest request = CreateOrderRequest.builder()
-        .type(OrderType.SALE)
-        .items(List.of(OrderItemRequest.builder()
-            .productId(product.getId())
-            .quantity(2)
-            .build()))
-        .build();
+                // 3. Create a sale order
+                CreateOrderRequest request = CreateOrderRequest.builder()
+                                .type(OrderType.SALE)
+                                .items(List.of(OrderItemRequest.builder()
+                                                .productId(product.getId())
+                                                .quantity(2)
+                                                .build()))
+                                .build();
 
-    String responseJson = mockMvc.perform(post("/api/v1/tenant/orders")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request))
-            .header("X-Tenant-Id", "1"))
-        .andExpect(status().isCreated())
-        .andReturn().getResponse().getContentAsString();
+                String responseJson = mockMvc.perform(post("/api/v1/tenant/orders")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                                .header("X-Tenant-Id", "1"))
+                                .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
+                                .andExpect(status().isCreated())                                .andReturn().getResponse().getContentAsString();
 
-    OrderResponse response = objectMapper.readValue(responseJson, OrderResponse.class);
+                OrderResponse response = objectMapper.readValue(responseJson, OrderResponse.class);
 
-    // 4. Verify response
-    assertThat(response.getId()).isNotNull();
-    assertThat(response.getType()).isEqualTo(OrderType.SALE);
-    assertThat(response.getTotalAmount().compareTo(new BigDecimal("200.00"))).isEqualTo(0);
-    assertThat(response.getItems()).hasSize(1);
-    assertThat(response.getItems().get(0).getQuantity()).isEqualTo(2);
+                // Stock should NOT be deducted yet (PENDING state)
+                assertThat(inventoryService.getAvailableStock(1L, product.getId())).isEqualTo(10);
 
-    // 5. Verify stock deduction
-    Integer availableStock = inventoryService.getAvailableStock(product.getId());
-    assertThat(availableStock).isEqualTo(8);
-  }
+                // Confirm the order to trigger stock deduction
+                mockMvc.perform(post("/api/v1/tenant/orders/" + response.getId() + "/confirm")
+                                .header("X-Tenant-Id", "1"))
+                                .andExpect(status().isOk());
 
-  @Test
-  @WithMockUser(authorities = {"ROLE_ADMIN", "create_order", "view_product"})
-  public void testCreatePurchaseOrder() throws Exception {
-    // 1. Create a product
-    Product product = Product.builder()
-        .tenantId(1L)
-        .name("Test Product 2")
-        .sku("TEST-SKU-2")
-        .purchasePrice(new BigDecimal("50.00"))
-        .salePrice(new BigDecimal("100.00"))
-        .build();
-    product = productRepository.save(product);
+                // 4. Verify response
+                assertThat(response.getId()).isNotNull();
+                assertThat(response.getType()).isEqualTo(OrderType.SALE);
+                assertThat(response.getTotalAmount().compareTo(new BigDecimal("200.00"))).isEqualTo(0);
+                assertThat(response.getItems()).hasSize(1);
+                assertThat(response.getItems().get(0).getQuantity()).isEqualTo(2);
 
-    // 2. Create a purchase order
-    CreateOrderRequest request = CreateOrderRequest.builder()
-        .type(OrderType.PURCHASE)
-        .items(List.of(OrderItemRequest.builder()
-            .productId(product.getId())
-            .quantity(5)
-            .build()))
-        .build();
+                // 5. Verify stock deduction
+                Integer availableStock = inventoryService.getAvailableStock(1L, product.getId());
+                assertThat(availableStock).isEqualTo(8);
+        }
 
-    mockMvc.perform(post("/api/v1/tenant/orders")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request))
-            .header("X-Tenant-Id", "1"))
-        .andExpect(status().isCreated());
+        @Test
+        @WithMockUser(authorities = { "ROLE_ADMIN", "create_order", "view_product" })
+        public void testCreatePurchaseOrder() throws Exception {
+                // 1. Create a product
+                Product product = Product.builder()
+                                .tenantId(1L)
+                                .name("Test Product 2")
+                                .sku("TEST-SKU-2")
+                                .purchasePrice(new BigDecimal("50.00"))
+                                .salePrice(new BigDecimal("100.00"))
+                                .build();
+                product = productRepository.save(product);
 
-    // 3. Verify stock increase
-    Integer availableStock = inventoryService.getAvailableStock(product.getId());
-    assertThat(availableStock).isEqualTo(5);
-  }
+                // 2. Create a purchase order
+                CreateOrderRequest request = CreateOrderRequest.builder()
+                                .type(OrderType.PURCHASE)
+                                .items(List.of(OrderItemRequest.builder()
+                                                .productId(product.getId())
+                                                .quantity(5)
+                                                .build()))
+                                .build();
 
-  @Test
-  @WithMockUser(authorities = {"ROLE_ADMIN", "create_order", "view_product"})
-  public void testCreateSaleOrderInsufficientStock() throws Exception {
-    // 1. Create a product with 1 stock
-    Product product = Product.builder()
-        .tenantId(1L)
-        .name("Test Product 3")
-        .sku("TEST-SKU-3")
-        .salePrice(new BigDecimal("100.00"))
-        .build();
-    product = productRepository.save(product);
-    inventoryService.increaseStock(product.getId(), 1, "Initial stock", 1L);
+                String responseJson = mockMvc.perform(post("/api/v1/tenant/orders")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                                .header("X-Tenant-Id", "1"))
+                                .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
+                                .andExpect(status().isCreated())                                .andReturn().getResponse().getContentAsString();
 
-    // 2. Attempt to buy 2
-    CreateOrderRequest request = CreateOrderRequest.builder()
-        .type(OrderType.SALE)
-        .items(List.of(OrderItemRequest.builder()
-            .productId(product.getId())
-            .quantity(2)
-            .build()))
-        .build();
+                OrderResponse response = objectMapper.readValue(responseJson, OrderResponse.class);
 
-    mockMvc.perform(post("/api/v1/tenant/orders")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request))
-            .header("X-Tenant-Id", "1"))
-        .andExpect(status().isUnprocessableEntity());
-  }
+                // Stock should NOT be increased yet
+                assertThat(inventoryService.getAvailableStock(1L, product.getId())).isEqualTo(0);
+
+                // Complete the order to trigger stock increase
+                mockMvc.perform(post("/api/v1/tenant/orders/" + response.getId() + "/complete")
+                                .header("X-Tenant-Id", "1"))
+                                .andExpect(status().isOk());
+
+                // 3. Verify stock increase
+                Integer availableStock = inventoryService.getAvailableStock(1L, product.getId());
+                assertThat(availableStock).isEqualTo(5);
+        }
+
+        @Test
+        @WithMockUser(authorities = { "ROLE_ADMIN", "create_order", "view_product" })
+        public void testCreateSaleOrderInsufficientStock() throws Exception {
+                // 1. Create a product with 1 stock
+                Product product = Product.builder()
+                                .tenantId(1L)
+                                .name("Test Product 3")
+                                .sku("TEST-SKU-3")
+                                .salePrice(new BigDecimal("100.00"))
+                                .build();
+                product = productRepository.save(product);
+                inventoryService.increaseStock(1L, product.getId(), 1, "Initial stock", 1L);
+
+                // 2. Attempt to buy 2
+                CreateOrderRequest request = CreateOrderRequest.builder()
+                                .type(OrderType.SALE)
+                                .items(List.of(OrderItemRequest.builder()
+                                                .productId(product.getId())
+                                                .quantity(2)
+                                                .build()))
+                                .build();
+
+                mockMvc.perform(post("/api/v1/tenant/orders")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                                .header("X-Tenant-Id", "1"))
+                                .andExpect(status().isUnprocessableEntity());
+        }
 }

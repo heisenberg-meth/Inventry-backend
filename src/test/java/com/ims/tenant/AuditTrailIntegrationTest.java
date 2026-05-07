@@ -25,6 +25,9 @@ import org.springframework.test.web.servlet.MvcResult;
 
 @AutoConfigureMockMvc
 
+@org.springframework.security.test.context.support.WithMockUser(username = "admin", authorities = { "ADMIN",
+                "ROLE_ADMIN", "create_product", "view_product", "update_product", "delete_product", "create_order",
+                "view_order", "create_supplier", "view_supplier", "delete_supplier", "manage_stock", "view_stock" })
 public class AuditTrailIntegrationTest extends BaseIntegrationTest {
 
         @Autowired
@@ -60,7 +63,7 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
                 createReq.setSalePrice(new BigDecimal("10.00"));
 
                 String requestJson = objectMapper.writeValueAsString(createReq);
-                MvcResult result = mockMvc.perform(post("/api/tenant/products")
+                MvcResult result = mockMvc.perform(post("/api/v1/tenant/products")
                                 .header("Authorization", "Bearer " + token)
                                 .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
                                 .content(Objects.requireNonNull(requestJson)))
@@ -79,7 +82,7 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
                 // 3. Update Product
                 createReq.setName("Updated Audit Product");
                 String updateJson = objectMapper.writeValueAsString(createReq);
-                mockMvc.perform(put("/api/tenant/products/" + product.getId())
+                mockMvc.perform(put("/api/v1/tenant/products/" + product.getId())
                                 .header("Authorization", "Bearer " + token)
                                 .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
                                 .content(Objects.requireNonNull(updateJson)))
@@ -116,7 +119,7 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
                 createReq.setSku("T1-001");
                 createReq.setSalePrice(new BigDecimal("10.00"));
                 String t1ReqJson = objectMapper.writeValueAsString(createReq);
-                mockMvc.perform(post("/api/tenant/products")
+                mockMvc.perform(post("/api/v1/tenant/products")
                                 .header("Authorization", "Bearer " + t1Token)
                                 .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
                                 .content(Objects.requireNonNull(t1ReqJson)))

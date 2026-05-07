@@ -10,6 +10,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -51,6 +52,7 @@ class AuthControllerTest extends BaseIntegrationTest {
                 MvcResult signupResult = mockMvc.perform(post("/api/auth/signup")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(signupRequest)))
+                                .andDo(print())
                                 .andExpect(status().isCreated())
                                 .andReturn();
 
@@ -69,6 +71,7 @@ class AuthControllerTest extends BaseIntegrationTest {
                 mockMvc.perform(post("/api/auth/login")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(loginRequest)))
+                                .andDo(print())
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.accessToken").exists())
                                 .andExpect(jsonPath("$.refreshToken").exists())
@@ -97,6 +100,7 @@ class AuthControllerTest extends BaseIntegrationTest {
                 MvcResult signupResult = mockMvc.perform(post("/api/auth/signup")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(signupRequest)))
+                                .andDo(print())
                                 .andExpect(status().isCreated())
                                 .andReturn();
 

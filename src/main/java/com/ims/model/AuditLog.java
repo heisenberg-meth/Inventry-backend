@@ -39,11 +39,11 @@ public class AuditLog {
   @Column(nullable = false)
   private String action;
 
-  @Column(name = "old_value", columnDefinition = "jsonb")
+  @Column(name = "before_value", columnDefinition = "jsonb")
   @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
   private String oldValue;
 
-  @Column(name = "new_value", columnDefinition = "jsonb")
+  @Column(name = "after_value", columnDefinition = "jsonb")
   @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
   private String newValue;
 

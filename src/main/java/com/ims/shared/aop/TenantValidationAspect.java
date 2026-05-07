@@ -19,8 +19,17 @@ public class TenantValidationAspect {
   public void validateTenantContext(JoinPoint joinPoint, Transactional transactional) {
     Long tenantId = TenantContext.getTenantId();
 
+    // If TenantContext is empty, check if the first argument is a Long (convention for tenantId)
     if (tenantId == null) {
-      log.error("TENANT ISOLATION VIOLATION: TenantContext not set for service method: {}.{}(), transaction will fail",
+      Object[] args = joinPoint.getArgs();
+      if (args != null && args.length > 0 && args[0] instanceof Long) {
+        tenantId = (Long) args[0];
+        log.debug("TenantId resolved from method argument: {}", tenantId);
+      }
+    }
+
+    if (tenantId == null) {
+      log.error("TENANT ISOLATION VIOLATION: TenantContext not set and no tenantId argument for service method: {}.{}(), transaction will fail",
           joinPoint.getSignature().getDeclaringTypeName(),
           joinPoint.getSignature().getName());
       throw new IllegalStateException(

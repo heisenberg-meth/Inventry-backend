@@ -338,11 +338,13 @@ public class InvoiceService {
                                 List<Map<String, Object>> items = orderItems.stream()
                                                 .map(item -> {
                                                         Product product = productRepository
-                                                                        .findByIdAndIsDeletedFalse(
+                                                                        .findByIdAndTenantIdAndIsDeletedFalse(
                                                                                         Objects.requireNonNull(item
-                                                                                                        .getProductId()))
+                                                                                                        .getProductId()),
+                                                                                        tenantId)
                                                                         .orElseThrow(() -> new EntityNotFoundException(
                                                                                         "Product not found"));
+
                                                         Map<String, Object> map = new HashMap<>();
                                                         map.put("productName", product.getName());
                                                         map.put("quantity", item.getQuantity());

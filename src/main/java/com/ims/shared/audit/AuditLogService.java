@@ -66,15 +66,15 @@ public class AuditLogService {
         auditWriteCounter.increment();
 
         try {
-          outboxService.saveEvent("AUDIT", auditEntry.getId().toString(), action.name(), auditEntry);
+          outboxService.saveEvent("AUDIT", auditEntry.getId().toString(), action.name(), auditEntry, tenantId);
         } catch (Exception e) {
           log.warn("Failed to save audit event to outbox, proceeding anyway: {}", e.getMessage());
         }
       } catch (Exception e) {
         auditFailureCounter.increment();
-        log.error("Failed to write audit log: {}", e.getMessage(), e);
-        throw e;
+        log.error("Failed to write audit log (suppressing to prevent business outage): {}", e.getMessage(), e);
       }
+
     });
   }
 

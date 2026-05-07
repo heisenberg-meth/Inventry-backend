@@ -26,7 +26,6 @@ public abstract class BaseEntity {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @org.hibernate.annotations.TenantId
   @Column(name = "tenant_id", nullable = false)
   private Long tenantId;
 
@@ -49,8 +48,9 @@ public abstract class BaseEntity {
       this.updatedAt = now;
     }
     if (this.tenantId == null) {
-      this.tenantId = TenantContext.getTenantId();
+      this.tenantId = TenantContext.requireTenantId();
     }
+
   }
 
   @PreUpdate

@@ -38,9 +38,7 @@ public class SupportService {
   @Transactional
   public SupportTicket createTicket(
       Long userId, CreateTicketRequest request) {
-    Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null)
-      throw new IllegalStateException("Missing tenant context");
+    Long tenantId = TenantContext.requireTenantId();
 
     SupportTicket ticket = SupportTicket.builder()
         .tenantId(tenantId)
@@ -63,17 +61,14 @@ public class SupportService {
 
   @Transactional(readOnly = true)
   public Page<SupportTicket> listTenantTickets(Pageable pageable) {
-    Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null)
-      throw new IllegalStateException("Missing tenant context");
+    Long tenantId = TenantContext.requireTenantId();
+
     return ticketRepository.findByTenantId(tenantId, pageable);
   }
 
   @Transactional(readOnly = true)
   public Map<String, Object> getTenantTicketDetails(Long ticketId) {
-    Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null)
-      throw new IllegalStateException("Missing tenant context");
+    Long tenantId = TenantContext.requireTenantId();
 
     SupportTicket ticket = ticketRepository
         .findByIdAndTenantId(ticketId, tenantId)
@@ -89,9 +84,7 @@ public class SupportService {
 
   @Transactional
   public SupportTicket closeTicketByTenant(Long ticketId) {
-    Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null)
-      throw new IllegalStateException("Missing tenant context");
+    Long tenantId = TenantContext.requireTenantId();
 
     SupportTicket ticket = ticketRepository
         .findByIdAndTenantId(ticketId, tenantId)

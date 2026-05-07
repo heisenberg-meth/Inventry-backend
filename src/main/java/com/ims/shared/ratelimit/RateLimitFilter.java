@@ -36,6 +36,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * cache outage does not take down the API.
  */
 @Component
+@org.springframework.core.annotation.Order(org.springframework.core.Ordered.HIGHEST_PRECEDENCE)
 @Slf4j
 public class RateLimitFilter extends OncePerRequestFilter {
 
@@ -181,6 +182,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
     log.warn("Rate limit exceeded (tier={}, key={}, limit={})", tier, key, limit);
     res.setStatus(STATUS_TOO_MANY_REQUESTS);
     res.setHeader("Retry-After", String.valueOf(windowSeconds));
+    res.setHeader("X-RateLimit-Limit", String.valueOf(limit));
+    res.setHeader("X-RateLimit-Remaining", "0");
+    res.setHeader("X-RateLimit-Window-Seconds", String.valueOf(windowSeconds));
     res.setContentType("application/json");
     res.getWriter()
         .write(

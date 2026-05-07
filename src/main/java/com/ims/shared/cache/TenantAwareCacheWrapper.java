@@ -39,22 +39,15 @@ public class TenantAwareCacheWrapper implements Cache {
 
     private String wrapKey(Object key) {
         Assert.notNull(key, "Cache key must not be null");
+        String stringKey = String.valueOf(key);
 
         if (platformCache) {
-            if (!(key instanceof String)) {
-                throw new IllegalArgumentException(
-                        "Cache key must be a String for platform-scoped caches, but was: " + key.getClass().getName());
-            }
-            return PLATFORM_KEY_PREFIX + CACHE_KEY_MIDDLE + key;
+            return PLATFORM_KEY_PREFIX + CACHE_KEY_MIDDLE + stringKey;
         } else {
             if (tenantId == null) {
                 throw new IllegalStateException("Tenant ID is required for tenant-scoped cache access");
             }
-            if (!(key instanceof String)) {
-                throw new IllegalArgumentException(
-                        "Cache key must be a String for tenant-scoped caches, but was: " + key.getClass().getName());
-            }
-            return TENANT_KEY_PREFIX + tenantId + CACHE_KEY_SEPARATOR + CACHE_KEY_MIDDLE + key;
+            return TENANT_KEY_PREFIX + tenantId + CACHE_KEY_SEPARATOR + CACHE_KEY_MIDDLE + stringKey;
         }
     }
 

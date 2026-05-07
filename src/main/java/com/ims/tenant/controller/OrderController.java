@@ -3,6 +3,7 @@ package com.ims.tenant.controller;
 import com.ims.order.dto.CreateOrderRequest;
 import com.ims.order.entity.OrderStatus;
 import com.ims.order.entity.OrderType;
+import com.ims.shared.auth.TenantContext;
 import com.ims.model.Order;
 import com.ims.tenant.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -41,10 +42,11 @@ public class OrderController {
   @Operation(summary = "List all orders")
   public ResponseEntity<Page<Order>> getOrders(
       @RequestParam(required = false) OrderType type, Pageable pageable) {
+    Long tenantId = TenantContext.getTenantId();
     if (type != null) {
-      return ResponseEntity.ok(orderService.getOrdersByType(type, pageable));
+      return ResponseEntity.ok(orderService.getOrdersByType(tenantId, type, pageable));
     }
-    return ResponseEntity.ok(orderService.getOrders(pageable));
+    return ResponseEntity.ok(orderService.getOrders(tenantId, pageable));
   }
 
   @PostMapping
@@ -53,13 +55,14 @@ public class OrderController {
   public ResponseEntity<com.ims.order.dto.OrderResponse> createOrder(
       @RequestBody CreateOrderRequest request) {
     Long userId = extractUserId();
+    Long tenantId = TenantContext.getTenantId();
 
     if (request.getType() == OrderType.SALE) {
       return ResponseEntity.status(HttpStatus.CREATED)
-          .body(orderService.createSalesOrder(request, userId));
+          .body(orderService.createSalesOrder(tenantId, request, userId));
     } else {
       return ResponseEntity.status(HttpStatus.CREATED)
-          .body(orderService.createPurchaseOrder(request, userId));
+          .body(orderService.createPurchaseOrder(tenantId, request, userId));
     }
   }
 
@@ -67,7 +70,9 @@ public class OrderController {
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "Create return order")
   public ResponseEntity<com.ims.model.Order> createReturnOrder(@RequestBody Map<String, Object> request) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(orderService.createReturnOrder(request, extractUserId()));
+    Long tenantId = TenantContext.getTenantId();
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(orderService.createReturnOrder(tenantId, request, extractUserId()));
   }
 
   @PostMapping("/{id}/confirm")
@@ -75,7 +80,8 @@ public class OrderController {
   @Operation(summary = "Confirm order and deduct stock (for sales)")
   public ResponseEntity<com.ims.model.Order> confirmOrder(@PathVariable Long id) {
     Long userId = extractUserId();
-    return ResponseEntity.ok(orderService.confirmOrder(id, userId));
+    Long tenantId = TenantContext.getTenantId();
+    return ResponseEntity.ok(orderService.confirmOrder(id, tenantId, userId));
   }
 
   @PostMapping("/{id}/ship")
@@ -83,7 +89,8 @@ public class OrderController {
   @Operation(summary = "Mark order as shipped")
   public ResponseEntity<com.ims.model.Order> shipOrder(@PathVariable Long id) {
     Long userId = extractUserId();
-    return ResponseEntity.ok(orderService.shipOrder(id, userId));
+    Long tenantId = TenantContext.getTenantId();
+    return ResponseEntity.ok(orderService.shipOrder(id, tenantId, userId));
   }
 
   @PostMapping("/{id}/complete")
@@ -91,7 +98,8 @@ public class OrderController {
   @Operation(summary = "Complete order and add stock (for purchases)")
   public ResponseEntity<com.ims.model.Order> completeOrder(@PathVariable Long id) {
     Long userId = extractUserId();
-    return ResponseEntity.ok(orderService.completeOrder(id, userId));
+    Long tenantId = TenantContext.getTenantId();
+    return ResponseEntity.ok(orderService.completeOrder(id, tenantId, userId));
   }
 
   @PostMapping("/{id}/cancel")
@@ -99,7 +107,8 @@ public class OrderController {
   @Operation(summary = "Cancel order and revert stock if confirmed")
   public ResponseEntity<com.ims.model.Order> cancelOrder(@PathVariable Long id) {
     Long userId = extractUserId();
-    return ResponseEntity.ok(orderService.cancelOrder(id, userId));
+    Long tenantId = TenantContext.getTenantId();
+    return ResponseEntity.ok(orderService.cancelOrder(id, tenantId, userId));
   }
 
   private Long extractUserId() {
@@ -114,14 +123,16 @@ public class OrderController {
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "Get order detail with items")
   public ResponseEntity<com.ims.order.dto.OrderResponse> getOrder(@PathVariable Long id) {
-    return ResponseEntity.ok(orderService.getOrderWithItems(id));
+    Long tenantId = TenantContext.getTenantId();
+    return ResponseEntity.ok(orderService.getOrderWithItems(id, tenantId));
   }
 
   @GetMapping("/{id}/pdf")
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "Download order summary as PDF")
   public ResponseEntity<byte[]> downloadPdf(@PathVariable Long id) {
-    byte[] pdf = orderService.generateOrderPdf(id);
+    Long tenantId = TenantContext.getTenantId();
+    byte[] pdf = orderService.generateOrderPdf(id, tenantId);
     return ResponseEntity.ok()
         .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=order-" + id + ".pdf")
         .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "application/pdf")
@@ -133,7 +144,8 @@ public class OrderController {
   @Operation(summary = "Update order status")
   public ResponseEntity<Order> updateStatus(
       @PathVariable Long id, @RequestBody Map<String, String> body) {
+    Long tenantId = TenantContext.getTenantId();
     String statusStr = Objects.requireNonNull(body.get("status"));
-    return ResponseEntity.ok(orderService.updateOrderStatus(id, OrderStatus.valueOf(statusStr)));
+    return ResponseEntity.ok(orderService.updateOrderStatus(id, tenantId, OrderStatus.valueOf(statusStr)));
   }
 }

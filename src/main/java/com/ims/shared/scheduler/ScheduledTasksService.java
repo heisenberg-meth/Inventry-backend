@@ -44,7 +44,7 @@ public class ScheduledTasksService {
     for (Tenant tenant : tenants) {
       try {
         TenantContext.setTenantId(tenant.getId());
-        List<Product> lowStock = productRepository.findLowStock();
+        List<Product> lowStock = productRepository.findLowStock(tenant.getId());
 
         for (Product p : lowStock) {
           // Create or update alert

@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 
+@org.springframework.security.test.context.support.WithMockUser(username = "admin", authorities = {"ADMIN", "ROLE_ADMIN", "create_product", "view_product", "update_product", "delete_product", "create_order", "view_order", "create_supplier", "view_supplier", "delete_supplier", "manage_stock", "view_stock"})
 public class ProductPrdIntegrationTest extends BaseIntegrationTest {
 
         @Autowired
@@ -109,7 +110,8 @@ public class ProductPrdIntegrationTest extends BaseIntegrationTest {
                                 .build();
                 productRepository.save(p2);
 
-                var activeProducts = productRepository.findAllWithDetails(PageRequest.of(0, 10));
+                var activeProducts = productRepository.findAllWithDetails(tenantId, PageRequest.of(0, 10));
+
                 assertEquals(1, activeProducts.getContent().size());
                 assertEquals("Active Product", activeProducts.getContent().get(0).getName());
         }
@@ -201,12 +203,14 @@ public class ProductPrdIntegrationTest extends BaseIntegrationTest {
                 productRepository.save(productB);
 
                 TenantContext.setTenantId(tenantA);
-                var tenantAProducts = productRepository.findByIsDeletedFalse(PageRequest.of(0, 10));
+                var tenantAProducts = productRepository.findByTenantIdAndIsDeletedFalse(tenantA, PageRequest.of(0, 10));
+
                 assertEquals(1, tenantAProducts.getContent().size());
                 assertEquals("Tenant A Product", tenantAProducts.getContent().get(0).getName());
 
                 TenantContext.setTenantId(tenantB);
-                var tenantBProducts = productRepository.findByIsDeletedFalse(PageRequest.of(0, 10));
+                var tenantBProducts = productRepository.findByTenantIdAndIsDeletedFalse(tenantB, PageRequest.of(0, 10));
+
                 assertEquals(1, tenantBProducts.getContent().size());
                 assertEquals("Tenant B Product", tenantBProducts.getContent().get(0).getName());
         }

@@ -11,6 +11,15 @@ public class TenantContext {
     return TENANT.get();
   }
 
+  public static Long requireTenantId() {
+    Long tenantId = TENANT.get();
+    if (tenantId == null) {
+      throw new IllegalStateException(
+          "TenantContext is not set. Ensure TenantContext.setTenantId() is called before accessing tenant-scoped data.");
+    }
+    return tenantId;
+  }
+
   public static void clear() {
     TENANT.remove();
   }

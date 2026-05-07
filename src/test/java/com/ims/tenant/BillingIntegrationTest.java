@@ -5,6 +5,7 @@ import java.util.UUID;
 import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.BaseIntegrationTest;
@@ -64,10 +65,11 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
     productRequest.setSalePrice(BigDecimal.valueOf(100));
     productRequest.setPurchasePrice(BigDecimal.valueOf(80));
 
-    mockMvc.perform(post("/api/tenant/products")
+    mockMvc.perform(post("/api/v1/tenant/products")
         .header("Authorization", "Bearer " + token)
         .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
         .content(Objects.requireNonNull(objectMapper.writeValueAsString(productRequest))))
+        .andDo(print())
         .andExpect(status().isCreated());
   }
 
@@ -93,10 +95,11 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
           "salePrice": 100.0
         }
         """;
-    MvcResult prodResult = mockMvc.perform(post("/api/tenant/products")
+    MvcResult prodResult = mockMvc.perform(post("/api/v1/tenant/products")
         .header("Authorization", "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(productReq))
+        .andDo(print())
         .andExpect(status().isCreated())
         .andReturn();
     Map<String, Object> product = objectMapper.readValue(prodResult.getResponse().getContentAsString(),
@@ -104,11 +107,12 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
         });
     Number productId = (Number) product.get("id");
 
-    mockMvc.perform(post("/api/tenant/stock/in")
+    mockMvc.perform(post("/api/v1/tenant/stock/in")
         .header("Authorization", "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(String.format("{\"productId\": %d, \"quantity\": 10, \"notes\": \"Stock for billing test\"}",
             productId.longValue())))
+        .andDo(print())
         .andExpect(status().isOk());
 
     String customerReq = """
@@ -117,10 +121,11 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
           "email": "cust@test.com"
         }
         """;
-    MvcResult custResult = mockMvc.perform(post("/api/tenant/customers")
+    MvcResult custResult = mockMvc.perform(post("/api/v1/tenant/customers")
         .header("Authorization", "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(customerReq))
+        .andDo(print())
         .andExpect(status().isCreated())
         .andReturn();
     Map<String, Object> customer = objectMapper.readValue(custResult.getResponse().getContentAsString(),
@@ -131,28 +136,36 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
     // 2. Create Order (Sale)
     String orderPayload = String.format("""
         {
-          "customer_id": %d,
+          "type": "SALE",
+          "customerId": %d,
           "items": [
             {
-              "product_id": %d,
+              "productId": %d,
               "quantity": 2,
-              "unit_price": 100.0
+              "unitPrice": 100.0
             }
           ]
         }
         """, customerId.longValue(), productId.longValue());
 
-    MvcResult orderResult = mockMvc.perform(post("/api/tenant/orders/sale")
+    MvcResult orderResult = mockMvc.perform(post("/api/v1/tenant/orders")
         .header("Authorization", "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(orderPayload))
+        .andDo(print())
         .andExpect(status().isCreated())
         .andReturn();
 
     Map<String, Object> orderResponse = objectMapper.readValue(orderResult.getResponse().getContentAsString(),
         new com.fasterxml.jackson.core.type.TypeReference<>() {
         });
-    Number orderId = (Number) orderResponse.get("order_id");
+    Number orderId = (Number) orderResponse.get("id"); // Usually 'id', not 'order_id'
+
+    // Confirm the order to trigger invoice generation or allow manual invoice
+    mockMvc.perform(post("/api/v1/tenant/orders/" + orderId.longValue() + "/confirm")
+        .header("Authorization", "Bearer " + token))
+        .andDo(print())
+        .andExpect(status().isOk());
 
     // 3. Create Invoice
     String invoicePayload = String.format("""
@@ -161,10 +174,11 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
         }
         """, orderId.longValue());
 
-    mockMvc.perform(post("/api/tenant/invoices")
+    mockMvc.perform(post("/api/v1/tenant/invoices")
         .header("Authorization", "Bearer " + token)
         .contentType(MediaType.APPLICATION_JSON)
         .content(invoicePayload))
+        .andDo(print())
         .andExpect(status().isCreated());
   }
 
@@ -177,6 +191,7 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
     MvcResult result = mockMvc.perform(post("/api/auth/login")
         .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(loginRequest)))
+        .andDo(print())
         .andExpect(status().isOk())
         .andReturn();
 

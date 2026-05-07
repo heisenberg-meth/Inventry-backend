@@ -14,7 +14,7 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
   List<OrderItem> findByOrderIdAndTenantId(@Param("orderId") Long orderId, @Param("tenantId") Long tenantId);
 
   @Query("SELECT COALESCE(SUM(oi.quantity), 0) FROM OrderItem oi " +
-      "WHERE oi.tenantId = :tenantId AND EXISTS (" +
+      "WHERE oi.tenantId = :tenantId AND oi.productId = :productId AND EXISTS (" +
       "    SELECT 1 FROM Order o WHERE o.id = oi.orderId AND o.referenceOrderId = :originalOrderId " +
       "    AND o.type = 'RETURN'" +
       ")")

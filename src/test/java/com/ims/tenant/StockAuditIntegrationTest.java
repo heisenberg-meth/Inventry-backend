@@ -17,6 +17,7 @@ import org.springframework.data.domain.PageRequest;
 import java.util.Objects;
 import java.util.List;
 
+@org.springframework.security.test.context.support.WithMockUser(username = "admin", authorities = {"ADMIN", "ROLE_ADMIN", "create_product", "view_product", "update_product", "delete_product", "create_order", "view_order", "create_supplier", "view_supplier", "delete_supplier", "manage_stock", "view_stock"})
 public class StockAuditIntegrationTest extends BaseIntegrationTest {
 
   @Autowired
@@ -142,13 +143,15 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
     // Stock out 46 -> stock is 4 (Low Stock!)
     stockService.stockOut(product1Id, 46, "Big sale", user1Id);
 
-    var lowStock = productRepository.findLowStock();
+    var lowStock = productRepository.findLowStock(testTenant1Id);
+
     assertThat(lowStock).hasSize(1);
     assertThat(lowStock.get(0).getId()).isEqualTo(product1Id);
 
     // Stock in 10 -> stock is 14 (Not low stock anymore)
     stockService.stockIn(product1Id, 10, "Restock", user1Id);
-    lowStock = productRepository.findLowStock();
+    lowStock = productRepository.findLowStock(testTenant1Id);
+
     assertThat(lowStock).isEmpty();
   }
 }

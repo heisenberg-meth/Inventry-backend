@@ -63,15 +63,4 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
         Page<Order> findByType(OrderType type, Pageable pageable);
 
-        @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.type = :type AND o.createdAt BETWEEN :start AND :end")
-        BigDecimal sumAmountByTypeAndDateRange(@Param("type") OrderType type, @Param("start") LocalDateTime start,
-                        @Param("end") LocalDateTime end);
-
-        @Query("SELECT COUNT(o) FROM Order o WHERE o.type = :type AND o.createdAt BETWEEN :start AND :end")
-        long countByTypeAndDateRange(@Param("type") OrderType type, @Param("start") LocalDateTime start,
-                        @Param("end") LocalDateTime end);
-
-        @Query("SELECT SUM(o.taxAmount) FROM Order o WHERE o.type = :type AND o.createdAt BETWEEN :start AND :end")
-        BigDecimal sumTaxAmountByTypeAndDateRange(@Param("type") OrderType type, @Param("start") LocalDateTime start,
-                        @Param("end") LocalDateTime end);
 }

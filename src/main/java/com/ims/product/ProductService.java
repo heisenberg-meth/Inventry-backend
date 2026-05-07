@@ -40,11 +40,7 @@ public class ProductService {
 
   @PreAuthorize("hasAuthority('view_product')")
   public Page<ProductResponse> getProducts(Pageable pageable) {
-    Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) {
-      log.error("Tenant ID is missing in ProductService.getProducts");
-      throw new IllegalStateException("Missing tenant context");
-    }
+    Long tenantId = TenantContext.requireTenantId();
 
     if (pageable.getPageSize() > MAX_PAGE_SIZE) {
       log.warn("Requested page size {} exceeds limit, capping to {}", pageable.getPageSize(), MAX_PAGE_SIZE);
@@ -52,17 +48,17 @@ public class ProductService {
           pageable.getSort());
     }
 
-    return productRepository.findAllWithDetails(pageable).map(this::toResponse);
+    return productRepository.findAllWithDetails(tenantId, pageable).map(this::toResponse);
+
   }
 
   @PreAuthorize("hasAuthority('view_product')")
   public List<ProductResponse> getNextProducts(Long lastId, int limit) {
-    Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) {
-      throw new IllegalStateException("Missing tenant context");
-    }
+    Long tenantId = TenantContext.requireTenantId();
+
     Pageable pageable = org.springframework.data.domain.PageRequest.of(0, Math.min(limit, MAX_PAGE_SIZE));
-    return productRepository.findNextProducts(lastId, pageable).stream()
+    return productRepository.findNextProducts(tenantId, lastId, pageable).stream()
+
         .map(this::toResponse)
         .collect(Collectors.toList());
   }
@@ -70,9 +66,9 @@ public class ProductService {
   @Cacheable(key = "#id")
   @PreAuthorize("hasAuthority('view_product')")
   public ProductResponse getProductById(Long id) {
+    Long tenantId = TenantContext.requireTenantId();
     Product product = productRepository
-        .findById(id)
-        .filter(p -> !p.getIsDeleted())
+        .findByIdAndTenantIdAndIsDeletedFalse(id, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
     return toResponse(product);
   }
@@ -86,17 +82,15 @@ public class ProductService {
   @PreAuthorize("hasAuthority('create_product')")
   @CacheEvict(allEntries = true)
   public ProductResponse createProduct(CreateProductRequest request) {
-    Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) {
-      throw new IllegalStateException("TenantContext not set - cannot create product");
-    }
+    Long tenantId = TenantContext.requireTenantId();
 
     // PRD 4.1.1 - SKU Normalization (Trim + Uppercase)
     String normalizedSku = request.getSku() != null ? request.getSku().trim().toUpperCase() : null;
 
     // PRD 4.4 - Check for duplicate SKU using dedicated method
     if (normalizedSku != null && !normalizedSku.isBlank()) {
-      if (productRepository.existsBySku(normalizedSku)) {
+      if (productRepository.existsBySkuAndTenantId(normalizedSku, tenantId)) {
+
         throw new IllegalStateException("SKU already exists");
       }
     }
@@ -106,7 +100,8 @@ public class ProductService {
         .findById(tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
     if (tenant.getMaxProducts() != null) {
-      long currentCount = productRepository.countActive();
+      long currentCount = productRepository.countActive(tenantId);
+
       if (currentCount >= tenant.getMaxProducts()) {
         throw new IllegalArgumentException(
             "Product limit reached for your plan (" + tenant.getMaxProducts() + ")");
@@ -155,8 +150,7 @@ public class ProductService {
   @CacheEvict(key = "#id")
   public ProductResponse updateProduct(Long id, CreateProductRequest request) {
     Product product = productRepository
-        .findById(id)
-        .filter(p -> !p.getIsDeleted())
+        .findByIdAndTenantIdAndIsDeletedFalse(id, TenantContext.requireTenantId())
         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
     if (request.getName() != null) {
@@ -166,7 +160,8 @@ public class ProductService {
       // PRD 4.1.2 - SKU Normalization and Uniqueness Revalidation
       String normalizedSku = request.getSku().trim().toUpperCase();
       if (!normalizedSku.equals(product.getSku())) {
-        if (productRepository.existsBySku(normalizedSku)) {
+        if (productRepository.existsBySkuAndTenantId(normalizedSku, product.getTenantId())) {
+
           throw new IllegalStateException("SKU already exists");
         }
       }
@@ -219,7 +214,7 @@ public class ProductService {
   @CacheEvict(key = "#id")
   public void deleteProduct(Long id) {
     Product product = productRepository
-        .findById(id)
+        .findByIdAndTenantIdAndIsDeletedFalse(id, TenantContext.requireTenantId())
         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
     // PRD 4.1.3 Soft Delete
@@ -238,14 +233,14 @@ public class ProductService {
   @Transactional
   @PreAuthorize("hasAuthority('create_product')")
   public ProductResponse duplicateProduct(Long id) {
-    Product original = productRepository.findById(id)
-        .filter(p -> !p.getIsDeleted())
+    Product original = productRepository.findByIdAndTenantIdAndIsDeletedFalse(id, TenantContext.requireTenantId())
         .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
     Product clone = Product.builder()
         .tenantId(original.getTenantId())
         .name(original.getName() + " (Copy)")
         .sku(generateUniqueSku(original.getSku(), original.getTenantId()))
+
         .description(original.getDescription())
         .barcode(null)
         .categoryId(original.getCategoryId())
@@ -272,7 +267,7 @@ public class ProductService {
     String baseSku = originalSku.replaceAll("-COPY(-\\d+)?$", "");
     String newSku = baseSku + "-COPY";
     int counter = 1;
-    while (productRepository.existsBySku(newSku)) {
+    while (productRepository.existsBySkuAndTenantId(newSku, tenantId)) {
       newSku = baseSku + "-COPY-" + counter++;
     }
     return newSku;
@@ -284,7 +279,8 @@ public class ProductService {
     if (tenantId == null)
       return java.util.Collections.emptyList();
 
-    return productRepository.findLowStock().stream()
+    return productRepository.findLowStock(tenantId).stream()
+
         .map(this::toResponse)
         .collect(Collectors.toList());
   }

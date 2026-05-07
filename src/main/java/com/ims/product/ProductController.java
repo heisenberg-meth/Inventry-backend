@@ -2,10 +2,14 @@ package com.ims.product;
 
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.response.ProductResponse;
+import com.ims.shared.auth.TenantContext;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+
+import java.util.LinkedHashMap;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -125,11 +129,12 @@ public class ProductController {
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Export all products as CSV")
   public ResponseEntity<String> exportProducts() {
-    var products = productRepository.findByIsDeletedFalse(org.springframework.data.domain.Pageable.unpaged())
+    var products = productRepository
+        .findByTenantIdAndIsDeletedFalse(TenantContext.requireTenantId(), Pageable.unpaged())
         .getContent();
 
     var data = products.stream().map(p -> {
-      java.util.Map<String, Object> map = new java.util.LinkedHashMap<>();
+      java.util.Map<String, Object> map = new LinkedHashMap<>();
       map.put("ID", p.getId());
       map.put("Name", p.getName());
       map.put("SKU", p.getSku());

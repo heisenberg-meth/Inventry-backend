@@ -53,9 +53,8 @@ public class CategoryController {
     public ResponseEntity<CategoryResponse> create(@Valid @RequestBody CategoryRequest request) {
         Timer.Sample sample = Timer.start(meterRegistry);
         try {
-            if (TenantContext.getTenantId() == null) {
-                throw new IllegalStateException("Tenant context is required to create a category");
-            }
+            TenantContext.requireTenantId();
+
             CategoryResponse result = categoryService.toResponse(categoryService.create(request));
             meterRegistry.counter("ims.category.create.success").increment();
             return ResponseEntity.status(HttpStatus.CREATED).body(result);

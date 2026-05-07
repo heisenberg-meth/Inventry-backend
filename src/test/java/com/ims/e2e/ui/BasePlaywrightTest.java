@@ -9,6 +9,9 @@ import com.microsoft.playwright.Tracing;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.nio.file.Paths;
 
@@ -16,7 +19,16 @@ import java.nio.file.Paths;
  * Thread-safe base class for all Playwright UI tests using ThreadLocal context.
  * Follows the playwright-java guidelines.
  */
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@ActiveProfiles("test")
 public abstract class BasePlaywrightTest {
+    @LocalServerPort
+    protected int port;
+
+    protected String baseUrl() {
+        return "http://localhost:" + port;
+    }
+
     protected static ThreadLocal<Playwright> playwrightTL = new ThreadLocal<>();
     protected static ThreadLocal<Browser> browserTL = new ThreadLocal<>();
     protected static ThreadLocal<BrowserContext> contextTL = new ThreadLocal<>();
@@ -28,6 +40,7 @@ public abstract class BasePlaywrightTest {
 
     @BeforeEach
     protected void setUp() {
+        System.setProperty("baseUrl", baseUrl());
         Playwright playwright = Playwright.create();
         playwrightTL.set(playwright);
 

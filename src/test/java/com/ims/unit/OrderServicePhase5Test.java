@@ -78,7 +78,7 @@ public class OrderServicePhase5Test {
         }
 
         @Test
-        void createSalesOrder_ShouldFollowMandatoryFlow() {
+        void createSalesOrder_ShouldBePendingInitially() {
                 // Arrange
                 Long userId = 100L;
                 Long productId = 1L;
@@ -107,27 +107,27 @@ public class OrderServicePhase5Test {
                         o.setId(1L);
                         return o;
                 });
-                when(inventoryService.getAvailableStock(productId)).thenReturn(10);
+                when(inventoryService.getAvailableStock(anyLong(), eq(productId))).thenReturn(10);
 
                 // Act
-                OrderResponse result = orderService.createSalesOrder(request, userId);
+                OrderResponse result = orderService.createSalesOrder(1L, request, userId);
 
                 // Assert
                 assertNotNull(result.getId());
+                assertEquals(OrderStatus.PENDING, result.getStatus());
 
-                // 1. Validate stock & 2. Deduct stock happened
-                verify(productService).findByIdWithLock(productId);
-                verify(inventoryService).decreaseStock(eq(productId), eq(2), anyString(), eq(userId));
+                // Stock should NOT be deducted yet
+                verify(inventoryService, never()).decreaseStock(anyLong(), anyLong(), anyInt(), anyString(), anyLong());
 
-                // 3. Create order happened
+                // 3. Create order happened as PENDING
                 verify(orderRepository).save(
-                                argThat(o -> o.getType() == OrderType.SALE && o.getStatus() == OrderStatus.CONFIRMED));
+                                argThat(o -> o.getType() == OrderType.SALE && o.getStatus() == OrderStatus.PENDING));
 
                 // 4. Create order items happened
                 verify(orderItemRepository).save(any(OrderItem.class));
 
-                // 5. Generate invoice happened
-                verify(invoiceService).createFromOrder(any(Order.class));
+                // 5. Invoice should NOT be generated yet
+                verify(invoiceService, never()).createFromOrder(any(Order.class));
         }
 
         @Test
@@ -150,16 +150,17 @@ public class OrderServicePhase5Test {
                                 .build();
 
                 lenient().when(productService.findByIdWithLock(productId)).thenReturn(Optional.of(product));
-                lenient().when(inventoryService.getAvailableStock(productId)).thenReturn(10);
+                lenient().when(inventoryService.getAvailableStock(anyLong(), eq(productId))).thenReturn(10);
 
                 // Act & Assert
-                assertThrows(InsufficientStockException.class, () -> orderService.createSalesOrder(request, userId));
-                verify(inventoryService, never()).decreaseStock(anyLong(), anyInt(), anyString(), anyLong());
+                assertThrows(InsufficientStockException.class,
+                                () -> orderService.createSalesOrder(1L, request, userId));
+                verify(inventoryService, never()).decreaseStock(anyLong(), anyLong(), anyInt(), anyString(), anyLong());
                 verify(orderRepository, never()).save(any(Order.class));
         }
 
         @Test
-        void createPurchaseOrder_ShouldIncreaseStock() {
+        void createPurchaseOrder_ShouldBePendingInitially() {
                 // Arrange
                 Long userId = 100L;
                 Long productId = 1L;
@@ -189,13 +190,14 @@ public class OrderServicePhase5Test {
                 });
 
                 // Act
-                OrderResponse result = orderService.createPurchaseOrder(request, userId);
+                OrderResponse result = orderService.createPurchaseOrder(1L, request, userId);
 
                 // Assert
                 assertNotNull(result.getId());
-                verify(inventoryService).increaseStock(eq(productId), eq(5), anyString(), eq(userId));
+                assertEquals(OrderStatus.PENDING, result.getStatus());
+                verify(inventoryService, never()).increaseStock(anyLong(), anyLong(), anyInt(), anyString(), anyLong());
                 verify(orderRepository)
                                 .save(argThat(o -> o.getType() == OrderType.PURCHASE
-                                                && o.getStatus() == OrderStatus.RECEIVED));
+                                                && o.getStatus() == OrderStatus.PENDING));
         }
 }

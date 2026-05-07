@@ -18,6 +18,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
+@org.springframework.security.test.context.support.WithMockUser(username = "admin", authorities = {"ADMIN", "ROLE_ADMIN", "create_product", "view_product", "update_product", "delete_product", "create_order", "view_order", "create_supplier", "view_supplier", "delete_supplier", "manage_stock", "view_stock"})
 class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
 
   @Autowired

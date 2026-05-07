@@ -24,6 +24,9 @@ import org.springframework.test.web.servlet.MvcResult;
 
 @AutoConfigureMockMvc
 
+@org.springframework.security.test.context.support.WithMockUser(username = "admin", authorities = { "ADMIN",
+    "ROLE_ADMIN", "create_product", "view_product", "update_product", "delete_product", "create_order", "view_order",
+    "create_supplier", "view_supplier", "delete_supplier", "manage_stock", "view_stock" })
 public class PharmacyIntegrationTest extends BaseIntegrationTest {
 
   @Autowired
@@ -64,7 +67,7 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
     pharm.setManufacturer("Pharma Co");
     createReq.setPharmacyDetails(pharm);
 
-    mockMvc.perform(post("/api/tenant/products")
+    mockMvc.perform(post("/api/v1/tenant/products")
         .header("Authorization", "Bearer " + token)
         .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
         .content(Objects.requireNonNull(objectMapper.writeValueAsString(createReq))))

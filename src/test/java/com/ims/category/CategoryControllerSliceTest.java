@@ -6,11 +6,14 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.dto.CategoryRequest;
 import com.ims.dto.response.CategoryResponse;
+import com.ims.shared.auth.JwtFilter;
+import com.ims.shared.auth.JwtUtil;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,6 +23,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 import java.util.List;
@@ -34,12 +38,24 @@ class CategoryControllerSliceTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @MockitoBean
     private CategoryService categoryService;
 
+    @MockitoBean
     private MeterRegistry meterRegistry;
+
+    @MockitoBean
+    private JwtUtil jwtUtil;
+
+    @MockitoBean
+    private JwtFilter jwtFilter;
+
+    @MockitoBean
+    private com.ims.shared.ratelimit.RateLimiterService rateLimiterService;
 
     @BeforeEach
     void setUp() {
+        com.ims.shared.auth.TenantContext.setTenantId(1L);
         Counter counter = mock(Counter.class);
         when(meterRegistry.counter(anyString())).thenReturn(counter);
     }
@@ -49,6 +65,7 @@ class CategoryControllerSliceTest {
         when(categoryService.getCategories(any())).thenReturn(new PageImpl<>(List.of()));
 
         mockMvc.perform(get("/api/v1/tenant/categories"))
+                .andDo(print())
                 .andExpect(status().isOk());
     }
 
@@ -70,6 +87,7 @@ class CategoryControllerSliceTest {
         mockMvc.perform(post("/api/v1/tenant/categories")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
+                .andDo(print())
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.name").value("New Category"));
     }
@@ -82,6 +100,7 @@ class CategoryControllerSliceTest {
         mockMvc.perform(post("/api/v1/tenant/categories")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
+                .andDo(print())
                 .andExpect(status().isBadRequest());
     }
 }

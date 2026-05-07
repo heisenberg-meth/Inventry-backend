@@ -2,6 +2,8 @@ package com.ims.tenant.controller;
 
 import com.ims.order.dto.CreateOrderRequest;
 import com.ims.order.dto.OrderResponse;
+import com.ims.shared.auth.JwtAuthenticationToken;
+import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -32,10 +34,11 @@ public class SaleController {
   public ResponseEntity<OrderResponse> createSale(@RequestBody CreateOrderRequest request) {
     var auth = SecurityContextHolder.getContext().getAuthentication();
     Long userId = null;
-    if (auth instanceof com.ims.shared.auth.JwtAuthenticationToken jwtAuth) {
+    if (auth instanceof JwtAuthenticationToken jwtAuth) {
       userId = jwtAuth.getUserId();
     }
+    Long tenantId = TenantContext.getTenantId();
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(orderService.createSalesOrder(request, Objects.requireNonNull(userId)));
+        .body(orderService.createSalesOrder(tenantId, request, Objects.requireNonNull(userId)));
   }
 }

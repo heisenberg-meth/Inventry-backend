@@ -125,7 +125,7 @@ class RateLimitFilterTest {
 
   @Test
   void fallsBackToPublicTierWhenTokenIsInvalid() throws Exception {
-    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt())).thenReturn(true);
+    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt(), anyBoolean())).thenReturn(true);
     when(jwtUtil.extractUserId("bad-token")).thenThrow(new RuntimeException("bad token"));
 
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/tenant/products");
@@ -138,13 +138,13 @@ class RateLimitFilterTest {
 
     assertEquals(200, res.getStatus());
     assertEquals(String.valueOf(PUBLIC_RPM), res.getHeader("X-RateLimit-Limit"));
-    verify(rateLimiterService).isAllowed(eq("rate_limit:ip:10.0.0.5"), eq(PUBLIC_RPM), eq(WINDOW_SECONDS));
+    verify(rateLimiterService).isAllowed(eq("rate_limit:ip:10.0.0.5"), eq(PUBLIC_RPM), eq(WINDOW_SECONDS), eq(false));
     verify(chain).doFilter(req, res);
   }
 
   @Test
   void honorsXForwardedForWhenBuildingKey() throws Exception {
-    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt())).thenReturn(true);
+    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt(), anyBoolean())).thenReturn(true);
 
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/public/ping");
     req.setRemoteAddr("10.0.0.99"); // proxy
@@ -154,12 +154,12 @@ class RateLimitFilterTest {
 
     filter.doFilter(req, res, chain);
 
-    verify(rateLimiterService).isAllowed(eq("rate_limit:ip:203.0.113.7"), anyInt(), anyInt());
+    verify(rateLimiterService).isAllowed(eq("rate_limit:ip:203.0.113.7"), anyInt(), anyInt(), anyBoolean());
   }
 
   @Test
   void usesSingleXForwardedForIpWhenPresent() throws Exception {
-    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt())).thenReturn(true);
+    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt(), anyBoolean())).thenReturn(true);
 
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/public/ping");
     req.setRemoteAddr("10.0.0.99");
@@ -169,12 +169,12 @@ class RateLimitFilterTest {
 
     filter.doFilter(req, res, chain);
 
-    verify(rateLimiterService).isAllowed(eq("rate_limit:ip:198.51.100.23"), anyInt(), anyInt());
+    verify(rateLimiterService).isAllowed(eq("rate_limit:ip:198.51.100.23"), anyInt(), anyInt(), anyBoolean());
   }
 
   @Test
   void fallsBackToXRealIpWhenForwardedForBlank() throws Exception {
-    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt())).thenReturn(true);
+    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt(), anyBoolean())).thenReturn(true);
 
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/public/ping");
     req.setRemoteAddr("10.0.0.99");
@@ -185,12 +185,12 @@ class RateLimitFilterTest {
 
     filter.doFilter(req, res, chain);
 
-    verify(rateLimiterService).isAllowed(eq("rate_limit:ip:198.51.100.42"), anyInt(), anyInt());
+    verify(rateLimiterService).isAllowed(eq("rate_limit:ip:198.51.100.42"), anyInt(), anyInt(), anyBoolean());
   }
 
   @Test
   void fallsBackToRemoteAddrWhenNoProxyHeaders() throws Exception {
-    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt())).thenReturn(true);
+    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt(), anyBoolean())).thenReturn(true);
 
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/public/ping");
     req.setRemoteAddr("192.0.2.55");

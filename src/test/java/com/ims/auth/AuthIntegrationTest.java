@@ -2,6 +2,7 @@ package com.ims.auth;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -36,31 +37,24 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
   @Test
   void testSecurityAndIsolationFlow() throws Exception {
     // 1. Signup Tenant 1
-    SignupRequest t1Signup = createSignupRequest("Tenant 1", "t1-auth", "admin1@t1.com");
+    SignupRequest t1Signup = createSignupRequest("Unique Business 1", "unique-t1-auth", "admin1@t1.com");
     com.ims.dto.response.SignupResponse t1Response = signupService.signup(t1Signup);
 
     // 2. Signup Tenant 2
-    SignupRequest t2Signup = createSignupRequest("Tenant 2", "t2-auth", "admin2@t2.com");
+    SignupRequest t2Signup = createSignupRequest("Unique Business 2", "unique-t2-auth", "admin2@t2.com");
     com.ims.dto.response.SignupResponse t2Response = signupService.signup(t2Signup);
 
     // 3. Verify users (simulating email verification)
     verifyUser("admin1@t1.com");
     verifyUser("admin2@t2.com");
-    // 3. Verify users (simulating email verification) - use @Query to avoid version
-    // conflicts
-    userRepository.findByEmailUnfiltered("admin1@t1.com").ifPresent(u -> {
-      userRepository.updateVerificationStatus(u.getId(), true);
-    });
-    userRepository.findByEmailUnfiltered("admin2@t2.com").ifPresent(u -> {
-      userRepository.updateVerificationStatus(u.getId(), true);
-    });
 
     // 4. Login Tenant 1
     String t1Token = login("admin1@t1.com", "password123", t1Response.getCompanyCode());
 
     // 5. Verify Tenant 1 Isolation (Should only see 1 user: admin1)
     mockMvc
-        .perform(get("/api/tenant/users").header("Authorization", "Bearer " + t1Token))
+        .perform(get("/api/v1/tenant/users").header("Authorization", "Bearer " + t1Token))
+        .andDo(print())
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content.length()").value(1))
         .andExpect(jsonPath("$.content[0].email").value("admin1@t1.com"));
@@ -70,7 +64,8 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
 
     // 7. Verify Tenant 2 Isolation (Should only see 1 user: admin2)
     mockMvc
-        .perform(get("/api/tenant/users").header("Authorization", "Bearer " + t2Token))
+        .perform(get("/api/v1/tenant/users").header("Authorization", "Bearer " + t2Token))
+        .andDo(print())
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content.length()").value(1))
         .andExpect(jsonPath("$.content[0].email").value("admin2@t2.com"));
@@ -78,6 +73,7 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
     // 8. Verify Logout and Blacklisting
     mockMvc
         .perform(post("/api/auth/logout").header("Authorization", "Bearer " + t1Token))
+        .andDo(print())
         .andExpect(status().isOk());
 
     // Manually blacklist the token in real Redis if needed,
@@ -85,13 +81,16 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
     // We just try to access a protected endpoint with the blacklisted token.
 
     mockMvc
-        .perform(get("/api/tenant/users").header("Authorization", "Bearer " + t1Token))
+        .perform(get("/api/v1/tenant/users").header("Authorization", "Bearer " + t1Token))
+        .andDo(print())
         .andExpect(status().isUnauthorized());
   }
 
   @Test
   void testUnauthorizedAccess() throws Exception {
-    mockMvc.perform(get("/api/tenant/users")).andExpect(status().isUnauthorized());
+    mockMvc.perform(get("/api/v1/tenant/users"))
+        .andDo(print())
+        .andExpect(status().isUnauthorized());
   }
 
   private SignupRequest createSignupRequest(String name, String workspaceSlug, String email) {
@@ -101,6 +100,7 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
     req.setOwnerName("Owner " + name);
     req.setOwnerEmail(email);
     req.setPassword("password123");
+    req.setWorkspaceSlug(workspaceSlug);
     return req;
   }
 
@@ -116,6 +116,7 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
             post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(loginJson))
+        .andDo(print())
         .andExpect(status().isOk())
         .andReturn();
 
