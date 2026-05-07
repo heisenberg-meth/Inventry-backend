@@ -1,12 +1,12 @@
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: ims-backend-pdb
+  name: inventry-backend-pdb
 spec:
   minAvailable: 1
   selector:
     matchLabels:
-      app: ims-backend
+      app: inventry-backend
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget

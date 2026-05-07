@@ -21,9 +21,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/tenant/roles")
+@RequestMapping("/api/v1/tenant/roles")
 @RequiredArgsConstructor
-@Tag(name = "Tenant - Roles", description = "Tenant-scoped role management")
+@Tag(name = "Tenant - Roles")
 @SecurityRequirement(name = "bearerAuth")
 public class RoleController {
 

@@ -1,5 +1,6 @@
 package com.ims.tenant.controller;
 
+import com.ims.order.entity.OrderType;
 import com.ims.model.StockMovement;
 import com.ims.tenant.repository.StockMovementRepository;
 import com.ims.tenant.service.ReportService;
@@ -43,7 +44,7 @@ public class ReportController {
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Export orders as CSV")
   public ResponseEntity<String> exportOrders(
-      @RequestParam(required = false) String type,
+      @RequestParam(required = false) OrderType type,
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
 
@@ -79,7 +80,7 @@ public class ReportController {
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
 
-    var orders = orderRepository.findByType("SALE", Pageable.unpaged()).getContent();
+    var orders = orderRepository.findByType(OrderType.SALE, Pageable.unpaged()).getContent();
     var filtered = orders.stream()
         .filter(o -> !o.getCreatedAt().toLocalDate().isBefore(from) && !o.getCreatedAt().toLocalDate().isAfter(to))
         .map(o -> {
@@ -110,7 +111,7 @@ public class ReportController {
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
 
-    var orders = orderRepository.findByType("PURCHASE", Pageable.unpaged()).getContent();
+    var orders = orderRepository.findByType(OrderType.PURCHASE, Pageable.unpaged()).getContent();
     var filtered = orders.stream()
         .filter(o -> !o.getCreatedAt().toLocalDate().isBefore(from) && !o.getCreatedAt().toLocalDate().isAfter(to))
         .map(o -> {

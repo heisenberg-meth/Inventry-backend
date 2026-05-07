@@ -1,7 +1,11 @@
 package com.ims.model;
 
+import com.ims.order.entity.OrderStatus;
+import com.ims.order.entity.OrderType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import lombok.AllArgsConstructor;
@@ -20,12 +24,14 @@ import lombok.experimental.SuperBuilder;
 @EqualsAndHashCode(callSuper = true)
 public class Order extends BaseEntity {
 
+  @Enumerated(EnumType.STRING)
   @Column(nullable = false)
-  private String type;
+  private OrderType type;
 
-  @Column
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false)
   @Builder.Default
-  private String status = "PENDING";
+  private OrderStatus status = OrderStatus.PENDING;
 
   @Column(name = "customer_id")
   private Long customerId;

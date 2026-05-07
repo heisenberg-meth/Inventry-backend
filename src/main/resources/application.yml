@@ -12,11 +12,10 @@ spring:
   web:
     resources:
       add-mappings: false
-
   datasource:
     url: jdbc:postgresql://postgres:5432/inventry
     username: ${DB_USERNAME:ims_user}
-    password: ${DB_PASSWORD:changeme}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 20
@@ -54,20 +53,32 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
       acks: all
+      retries: 3
+      properties:
+        delivery.timeout.ms: 30000
+        request.timeout.ms: 10000
+        max.block.ms: 10000
     consumer:
       group-id: ims-group
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      properties:
+        session.timeout.ms: 10000
+        heartbeat.interval.ms: 3000
+        max.poll.interval.ms: 300000
+
+server:
+  shutdown: graceful
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,metrics,prometheus
+        include: health,metrics,prometheus,info
   endpoint:
     health:
-      show-details: always
+      show-details: when_authorized
       probes:
         enabled: true
   metrics:
@@ -77,14 +88,27 @@ management:
           server:
             requests: true
         ims: true
+      percentiles:
+        http:
+          server:
+            requests: "0.95,0.99"
+    tags:
+      application: ${spring.application.name}
   prometheus:
     metrics:
       export:
         enabled: true
+    endpoints:
+      web:
+        server:
+          requests:
+            max-uri-tags: 100
 
 app:
+  security:
+    allowed-origins: "*"
   jwt:
-    secret: ${JWT_SECRET:ZGV2LW9ubHktc2VjcmV0LWNoYW5nZS1tZS1pbi1wcm9kLW1pbi0zMi1jaGFycyEh}
+    secret: ${JWT_SECRET}
     expiry-seconds: 86400
     refresh-expiry-seconds: 604800
   rate-limit:
@@ -97,7 +121,76 @@ app:
 
 logging:
   pattern:
-    level: "%5p [${spring.application.name},%X{traceId},%X{spanId}]"
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %highlight(%-5level) %cyan(%logger{36}) - %msg %n"
+    level: "%5p [${spring.application.name},%X{traceId},%X{requestId}]"
+  level:
+    com.ims: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
+  logback:
+    encoder:
+      pattern: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
   zipkin:
     base-url: http://zipkin:9411
     enabled: false
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      redisService:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10000
+        permittedNumberOfCallsInHalfOpenState: 3
+        slowCallDurationThreshold: 3000
+        slowCallRateThreshold: 80
+        recordExceptions:
+          - org.springframework.data.redis.RedisConnectionFailureException
+          - java.net.ConnectException
+          - java.net.SocketTimeoutException
+      externalApiService:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30000
+        permittedNumberOfCallsInHalfOpenState: 3
+        slowCallDurationThreshold: 5000
+        slowCallRateThreshold: 80
+      kafkaService:
+        slidingWindowSize: 10
+        failureRateThreshold: 60
+        waitDurationInOpenState: 15000
+        permittedNumberOfCallsInHalfOpenState: 5
+        recordExceptions:
+          - org.apache.kafka.common.errors.TimeoutException
+          - org.apache.kafka.common.errors.NetworkException
+          - org.springframework.kafka.KafkaException
+  retry:
+    instances:
+      redisOperation:
+        maxAttempts: 3
+        waitDuration: 200ms
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - org.springframework.data.redis.RedisConnectionFailureException
+          - org.springframework.data.redis.RedisTimeoutException
+      databaseDeadlock:
+        maxAttempts: 3
+        waitDuration: 200ms
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - org.postgresql.util.PSQLException
+      kafkaSend:
+        maxAttempts: 3
+        waitDuration: 500ms
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - org.apache.kafka.common.errors.TimeoutException
+          - org.springframework.kafka.KafkaException
+  timelimiter:
+    instances:
+      redisService:
+        timeoutDuration: 3s
+        cancelRunningFuture: true
+      externalApiService:
+        timeoutDuration: 5s
+        cancelRunningFuture: true

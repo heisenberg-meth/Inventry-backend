@@ -5,6 +5,8 @@ metadata:
   namespace: inventry
   labels:
     app: inventry-backend
+    version: v1.0.0
+    environment: production
 spec:
   replicas: 2
   selector:
@@ -14,6 +16,7 @@ spec:
     metadata:
       labels:
         app: inventry-backend
+        version: v1.0.0
     spec:
       containers:
       - name: inventry
@@ -45,6 +48,26 @@ spec:
             secretKeyRef:
               name: inventry-secrets
               key: jwt-secret
+        - name: JAVA_OPTS
+          value: "-XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: JVM_OPTS
+          value: "-Xlog:gc*:file=/tmp/gc.log:time,uptime,level,tags:filecount=5,filesize=10M"
+        startupProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 30
         readinessProbe:
           httpGet:
             path: /actuator/health/readiness
@@ -57,7 +80,7 @@ spec:
           httpGet:
             path: /actuator/health/liveness
             port: 8080
-          initialDelaySeconds: 30
+          initialDelaySeconds: 60
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 3
@@ -71,8 +94,17 @@ spec:
         volumeMounts:
         - name: config-volume
           mountPath: /config
+        - name: tmp
+          mountPath: /tmp
+        - name: logs
+          mountPath: /logs
       volumes:
       - name: config-volume
         configMap:
           name: ims-app-config
+      - name: tmp
+        emptyDir: {}
+      - name: logs
+        emptyDir: {}
+      terminationGracePeriodSeconds: 30
       restartPolicy: Always

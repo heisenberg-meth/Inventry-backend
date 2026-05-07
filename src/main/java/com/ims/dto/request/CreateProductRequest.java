@@ -20,6 +20,7 @@ public class CreateProductRequest {
   @Size(max = 255)
   private String name;
 
+  @NotBlank(message = "SKU is required")
   @Size(max = 100)
   private String sku;
 

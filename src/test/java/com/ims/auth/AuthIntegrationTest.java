@@ -1,7 +1,5 @@
 package com.ims.auth;
 
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doReturn;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -33,7 +31,6 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
   @BeforeEach
   void setup() {
     cleanupDatabase();
-    mockRedisAndCache();
   }
 
   @Test
@@ -83,8 +80,9 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
         .perform(post("/api/auth/logout").header("Authorization", "Bearer " + t1Token))
         .andExpect(status().isOk());
 
-    // Mock Redis blacklist check for next request
-    doReturn(true).when(this.redisTemplate).hasKey(anyString());
+    // Manually blacklist the token in real Redis if needed,
+    // but the logout endpoint should have already done it.
+    // We just try to access a protected endpoint with the blacklisted token.
 
     mockMvc
         .perform(get("/api/tenant/users").header("Authorization", "Bearer " + t1Token))

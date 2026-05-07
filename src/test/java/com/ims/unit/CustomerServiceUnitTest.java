@@ -2,6 +2,7 @@ package com.ims.unit;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,7 +20,8 @@ import com.ims.tenant.repository.InvoiceRepository;
 import com.ims.tenant.repository.OrderRepository;
 import com.ims.tenant.repository.PaymentRepository;
 import com.ims.tenant.service.CustomerService;
-
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import com.ims.shared.exception.ResourceNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,6 +35,7 @@ class CustomerServiceUnitTest {
     private InvoiceRepository invoiceRepository;
     @Mock
     private PaymentRepository paymentRepository;
+    private MeterRegistry meterRegistry = new SimpleMeterRegistry();
 
     private CustomerService customerService;
 
@@ -42,7 +45,8 @@ class CustomerServiceUnitTest {
                 customerRepository,
                 orderRepository,
                 invoiceRepository,
-                paymentRepository);
+                paymentRepository,
+                meterRegistry);
         TenantContext.setTenantId(1L);
     }
 

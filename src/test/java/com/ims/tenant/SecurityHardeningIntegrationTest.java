@@ -2,8 +2,6 @@ package com.ims.tenant;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doReturn;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.LoginRequest;
@@ -29,7 +27,6 @@ public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
   @BeforeEach
   void setup() {
     cleanupDatabase();
-    mockRedisAndCache();
   }
 
   @Test
@@ -42,19 +39,26 @@ public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
 
   @Test
   void testRateLimitEnforcement() throws Exception {
-    // Mock Redis to return 100 requests already made (Public limit is 50)
-    doReturn(100L).when(zSetOperations).zCard(anyString());
+    // Populate Redis to exceed Public limit (50)
+    String key = "rate_limit:ip:127.0.0.1";
+    for (int i = 0; i < 51; i++) {
+      redisTemplate.opsForZSet().add(key, "req-" + i, System.currentTimeMillis());
+    }
 
     mockMvc.perform(get("/api/any-public-endpoint"))
         .andExpect(status().isTooManyRequests())
         .andExpect(header().string("X-RateLimit-Limit", "50"))
-        .andExpect(jsonPath("$.error").value("Too Many Requests"));
+        .andExpect(jsonPath("$.message").value("Rate limit exceeded"));
   }
 
   @Test
   void testAuthRateLimitEnforcement() throws Exception {
-    // Mock Redis for auth endpoint (Limit is 20)
-    doReturn(25L).when(zSetOperations).zCard(anyString());
+    // Populate Redis to exceed Auth limit (20)
+    String key = "rate_limit:ip:127.0.0.1";
+    redisTemplate.delete(key);
+    for (int i = 0; i < 21; i++) {
+      redisTemplate.opsForZSet().add(key, "auth-req-" + i, System.currentTimeMillis());
+    }
 
     String authLoginJson = objectMapper.writeValueAsString(Map.of("email", "root@ims.com", "password", "root123"));
     mockMvc.perform(post("/api/auth/login")

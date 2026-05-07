@@ -22,7 +22,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -32,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@NoArgsConstructor(force = true)
 @Slf4j
 public class UserService {
 
@@ -162,6 +166,35 @@ public class UserService {
       log.trace("Caught expected exception in tenant id retrieval: {}", e.getMessage());
     }
     return null;
+  }
+
+  @Cacheable(value = "userPermissions", key = "#userId")
+  @Transactional(readOnly = true)
+  public Set<String> getCachedPermissions(Long userId) {
+    Long tenantId = getTenantId();
+    User user = userRepository.findByIdAndTenantId(userId, tenantId)
+        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+    Set<String> allPermissions = new HashSet<>();
+
+    if (user.getRole() != null) {
+      Optional<Role> roleOpt = roleRepository.findByNameAndTenantId(user.getRole(), tenantId);
+      roleOpt.ifPresent(role -> allPermissions.addAll(role.getPermissions().stream()
+          .map(Permission::getKey)
+          .collect(Collectors.toSet())));
+    }
+
+    allPermissions.addAll(user.getCustomPermissions().stream()
+        .map(Permission::getKey)
+        .collect(Collectors.toSet()));
+
+    log.debug("Cached permissions loaded for user {}: {} permissions", userId, allPermissions.size());
+    return allPermissions;
+  }
+
+  @CacheEvict(value = "userPermissions", key = "#userId")
+  public void evictUserPermissions(Long userId) {
+    log.debug("Evicted permissions cache for user {}", userId);
   }
 
   private UserResponse toResponse(User user) {

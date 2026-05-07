@@ -64,7 +64,7 @@ public class TenantController {
   @PreAuthorize("hasRole('ROOT')")
   @Operation(summary = "Update tenant plan/status")
   public ResponseEntity<TenantResponse> updateTenant(
-      @PathVariable Long id, @RequestBody CreateTenantRequest request) {
+      @PathVariable Long id, @Valid @RequestBody CreateTenantRequest request) {
     return ResponseEntity.ok(tenantService.updateTenant(id, request));
   }
 

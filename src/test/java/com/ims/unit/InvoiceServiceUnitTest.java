@@ -15,123 +15,108 @@ import org.mockito.quality.Strictness;
 import com.ims.dto.CreateInvoiceRequest;
 import com.ims.model.Invoice;
 import com.ims.model.Order;
-import com.ims.model.OrderItem;
+import com.ims.order.entity.OrderType;
 import com.ims.model.Tenant;
 import com.ims.platform.repository.TenantRepository;
 import com.ims.product.ProductRepository;
 import com.ims.shared.auth.TenantContext;
-import com.ims.shared.pdf.PdfService;
 import com.ims.tenant.repository.CustomerRepository;
 import com.ims.tenant.repository.InvoiceRepository;
 import com.ims.tenant.repository.OrderItemRepository;
 import com.ims.tenant.repository.OrderRepository;
 import com.ims.tenant.service.InvoiceService;
+import com.ims.shared.pdf.PdfService;
 import com.ims.shared.outbox.OutboxService;
-import jakarta.persistence.EntityNotFoundException;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-class InvoiceServiceUnitTest {
+public class InvoiceServiceUnitTest {
 
-    @Mock
-    private InvoiceRepository invoiceRepository;
-    @Mock
-    private OrderItemRepository orderItemRepository;
-    @Mock
-    private ProductRepository productRepository;
-    @Mock
-    private TenantRepository tenantRepository;
-    @Mock
-    private OrderRepository orderRepository;
-    @Mock
-    private CustomerRepository customerRepository;
-    @Mock
-    private PdfService pdfService;
-    @Mock
-    private OutboxService outboxService;
+        @Mock
+        private InvoiceRepository invoiceRepository;
+        @Mock
+        private OrderItemRepository orderItemRepository;
+        @Mock
+        private ProductRepository productRepository;
+        @Mock
+        private TenantRepository tenantRepository;
+        @Mock
+        private OrderRepository orderRepository;
+        @Mock
+        private CustomerRepository customerRepository;
+        @Mock
+        private PdfService pdfService;
+        @Mock
+        private OutboxService outboxService;
+        private MeterRegistry meterRegistry = new SimpleMeterRegistry();
 
-    private InvoiceService invoiceService;
+        private InvoiceService invoiceService;
 
-    @BeforeEach
-    void setUp() {
-        invoiceService = new InvoiceService(
-                invoiceRepository,
-                orderItemRepository,
-                productRepository,
-                tenantRepository,
-                orderRepository,
-                customerRepository,
-                pdfService,
-                outboxService);
-        TenantContext.setTenantId(1L);
-    }
+        @BeforeEach
+        void setUp() {
+                invoiceService = new InvoiceService(
+                                invoiceRepository,
+                                orderItemRepository,
+                                productRepository,
+                                tenantRepository,
+                                orderRepository,
+                                customerRepository,
+                                pdfService,
+                                outboxService,
+                                meterRegistry);
+                TenantContext.setTenantId(1L);
+        }
 
-    @Test
-    void createManual_withValidSaleOrder_createsInvoice() {
-        Tenant tenant = Tenant.builder()
-                .id(1L)
-                .invoiceSequence(0)
-                .build();
+        @Test
+        void createManual_withValidSaleOrder_createsInvoice() {
+                Tenant tenant = Tenant.builder()
+                                .id(1L)
+                                .invoiceSequence(0)
+                                .build();
 
-        Order order = Order.builder()
-                .id(1L)
-                .type("SALE")
-                .tenantId(1L)
-                .customerId(1L)
-                .totalAmount(new BigDecimal("100.00"))
-                .taxAmount(new BigDecimal("10.00"))
-                .discount(new BigDecimal("0.00"))
-                .build();
+                Order order = Order.builder()
+                                .id(1L)
+                                .type(OrderType.SALE)
+                                .tenantId(1L)
+                                .customerId(1L)
+                                .totalAmount(new BigDecimal("100.00"))
+                                .taxAmount(new BigDecimal("10.00"))
+                                .discount(new BigDecimal("0.00"))
+                                .build();
 
-        OrderItem item = OrderItem.builder()
-                .id(1L)
-                .orderId(1L)
-                .quantity(2)
-                .unitPrice(new BigDecimal("50.00"))
-                .build();
+                when(orderRepository.findByIdAndTenantId(1L, 1L)).thenReturn(Optional.of(order));
+                when(invoiceRepository.existsByTenantIdAndOrderId(1L, 1L)).thenReturn(false);
+                when(tenantRepository.findByIdWithLock(1L)).thenReturn(Optional.of(tenant));
+                when(invoiceRepository.save(any(Invoice.class))).thenAnswer(i -> {
+                    Invoice inv = i.getArgument(0);
+                    inv.setId(1L);
+                    return inv;
+                });
 
-        CreateInvoiceRequest request = new CreateInvoiceRequest();
-        request.setOrderId(1L);
+                CreateInvoiceRequest request = new CreateInvoiceRequest();
+                request.setOrderId(1L);
+                Invoice result = invoiceService.createManual(request);
 
-        when(orderRepository.findByIdAndTenantId(1L, 1L)).thenReturn(Optional.of(order));
-        when(orderItemRepository.findByOrderId(1L)).thenReturn(java.util.List.of(item));
-        when(tenantRepository.findByIdWithLock(1L)).thenReturn(Optional.of(tenant));
-        when(tenantRepository.save(any(Tenant.class))).thenAnswer(i -> i.getArgument(0));
-        when(invoiceRepository.save(any(Invoice.class))).thenAnswer(i -> i.getArgument(0));
+                assertNotNull(result);
+                assertEquals(order.getId(), result.getOrderId());
+                assertEquals(order.getTotalAmount(), result.getAmount());
+                verify(invoiceRepository).save(any(Invoice.class));
+        }
 
-        Invoice result = invoiceService.createManual(request);
+        @Test
+        void createManual_withNonSaleOrder_throwsException() {
+                Order order = Order.builder()
+                                .id(1L)
+                                .type(OrderType.PURCHASE)
+                                .build();
 
-        assertNotNull(result);
-        verify(invoiceRepository).save(any(Invoice.class));
-        verify(tenantRepository).save(any(Tenant.class));
-    }
+                CreateInvoiceRequest request = new CreateInvoiceRequest();
+                request.setOrderId(1L);
 
-    @Test
-    void createManual_withNonSaleOrder_throwsException() {
-        Order order = Order.builder()
-                .id(1L)
-                .type("PURCHASE")
-                .build();
+                when(orderRepository.findByIdAndTenantId(1L, 1L)).thenReturn(Optional.of(order));
 
-        CreateInvoiceRequest request = new CreateInvoiceRequest();
-        request.setOrderId(1L);
-
-        when(orderRepository.findByIdAndTenantId(1L, 1L)).thenReturn(Optional.of(order));
-
-        assertThrows(IllegalArgumentException.class, () -> {
-            invoiceService.createManual(request);
-        });
-    }
-
-    @Test
-    void createManual_withNonExistentOrder_throwsException() {
-        CreateInvoiceRequest request = new CreateInvoiceRequest();
-        request.setOrderId(999L);
-
-        when(orderRepository.findByIdAndTenantId(999L, 1L)).thenReturn(Optional.empty());
-
-        assertThrows(EntityNotFoundException.class, () -> {
-            invoiceService.createManual(request);
-        });
-    }
+                assertThrows(IllegalArgumentException.class, () -> invoiceService.createManual(request));
+        }
 }

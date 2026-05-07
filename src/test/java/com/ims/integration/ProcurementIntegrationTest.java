@@ -76,12 +76,18 @@ public class ProcurementIntegrationTest extends BaseIntegrationTest {
                 Long productId = productResp.getId();
 
                 // 4. Create Purchase Order
-                Map<String, Object> orderReq = Map.of(
-                                "supplier_id", supplier.getId(),
-                                "items", java.util.List.of(
-                                                Map.of("product_id", productId, "quantity", 10, "unit_price", 50.00)));
-                Map<String, Object> orderResult = orderService.createPurchaseOrder(orderReq, userId);
-                Long orderId = (Long) orderResult.get("order_id");
+                com.ims.order.dto.CreateOrderRequest orderReq = com.ims.order.dto.CreateOrderRequest.builder()
+                                .supplierId(supplier.getId())
+                                .type(com.ims.order.entity.OrderType.PURCHASE)
+                                .items(java.util.List.of(
+                                                com.ims.order.dto.OrderItemRequest.builder()
+                                                                .productId(productId)
+                                                                .quantity(10)
+                                                                .unitPrice(new BigDecimal("50.00"))
+                                                                .build()))
+                                .build();
+                com.ims.order.dto.OrderResponse orderResult = orderService.createPurchaseOrder(orderReq, userId);
+                Long orderId = orderResult.getId();
                 assertNotNull(orderId);
 
                 // 5. Confirm and Complete Order (Stock In)

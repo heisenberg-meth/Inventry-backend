@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/tenant/invoices")
+@RequestMapping("/api/v1/tenant/invoices")
 @RequiredArgsConstructor
 @Tag(name = "Tenant - Invoices", description = "Invoice management")
 @SecurityRequirement(name = "bearerAuth")
@@ -54,6 +54,20 @@ public class InvoiceController {
   public ResponseEntity<Invoice> createInvoice(
       @Valid @RequestBody CreateInvoiceRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED).body(invoiceService.createManual(request));
+  }
+
+  @PostMapping("/generate/{orderId}")
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+  @Operation(summary = "Generate invoice from order (SALE orders only)")
+  public ResponseEntity<Invoice> generateFromOrder(@PathVariable Long orderId) {
+    return ResponseEntity.status(HttpStatus.CREATED).body(invoiceService.generateFromOrder(orderId));
+  }
+
+  @PostMapping("/{id}/void")
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(summary = "Void an invoice")
+  public ResponseEntity<Invoice> voidInvoice(@PathVariable Long id) {
+    return ResponseEntity.ok(invoiceService.voidInvoice(id));
   }
 
   @PatchMapping("/{id}/status")

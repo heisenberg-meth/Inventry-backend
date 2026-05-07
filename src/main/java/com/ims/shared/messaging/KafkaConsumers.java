@@ -8,12 +8,14 @@ import com.ims.shared.auth.TenantContext;
 import com.ims.shared.notification.NotificationService;
 import com.ims.tenant.service.InvoiceService;
 import lombok.RequiredArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
+@NoArgsConstructor(force = true)
 @Slf4j
 public class KafkaConsumers {
 

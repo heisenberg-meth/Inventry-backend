@@ -44,7 +44,6 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
   @BeforeEach
   void setup() {
     cleanupDatabase();
-    mockRedisAndCache();
   }
 
   @Test

@@ -4,6 +4,7 @@ import com.ims.product.Product;
 import com.ims.product.ProductRepository;
 import com.ims.tenant.repository.StockMovementRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -13,6 +14,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@NoArgsConstructor(force = true)
 @Slf4j
 public class StockReconciliationService {
 

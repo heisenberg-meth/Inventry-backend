@@ -61,7 +61,7 @@ public class SubscriptionPlanController {
   @Operation(summary = "Update subscription plan")
   public ResponseEntity<SubscriptionPlan> update(
       @PathVariable Long id,
-      @RequestBody UpdateSubscriptionPlanRequest request) {
+      @RequestBody @Valid UpdateSubscriptionPlanRequest request) {
     return ResponseEntity.ok(planService.updatePlan(id, request));
   }
 

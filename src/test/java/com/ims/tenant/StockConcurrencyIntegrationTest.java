@@ -1,115 +1,122 @@
 package com.ims.tenant;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.ims.BaseIntegrationTest;
-import com.ims.dto.request.SignupRequest;
-import com.ims.dto.response.SignupResponse;
 import com.ims.product.Product;
-import com.ims.shared.auth.SignupService;
+import com.ims.product.ProductRepository;
 import com.ims.shared.auth.TenantContext;
 import com.ims.shared.exception.InsufficientStockException;
 import com.ims.tenant.service.StockService;
-import java.math.BigDecimal;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import java.util.Objects;
 
-@AutoConfigureMockMvc
-public class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
+class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired
-  private SignupService signupService;
   @Autowired
   private StockService stockService;
 
-  private long productId;
-  private long userId;
-  private long tenantId;
+  @Autowired
+  private ProductRepository productRepository;
+
+  private Product testProduct;
 
   @BeforeEach
-  void setup() throws Exception {
+  void setup() {
     cleanupDatabase();
 
-    SignupRequest signup = new SignupRequest();
-    signup.setBusinessName("Conc Corp");
-    signup.setBusinessType("RETAIL");
-    signup.setOwnerName("Admin");
-    signup.setOwnerEmail("admin@conc.com");
-    signup.setPassword("password123");
-    SignupResponse response = signupService.signup(signup);
+    TenantContext.setTenantId(1L);
 
-    // Query directly via JDBC to avoid transaction lag or cache issues in setup
-    tenantId = Objects.requireNonNull(
-        jdbcTemplate.queryForObject("SELECT id FROM tenants WHERE workspace_slug = ?", Long.class,
-            response.getWorkspaceSlug()));
-    userId = Objects
-        .requireNonNull(jdbcTemplate.queryForObject("SELECT id FROM users WHERE email = 'admin@conc.com'", Long.class));
-    verifyUser("admin@conc.com");
-
-    TenantContext.setTenantId(tenantId);
-    Product product = Product.builder()
-        .tenantId(tenantId)
+    testProduct = Product.builder()
         .name("Concurrency Test Product")
         .sku("CONC-001")
-        .salePrice(BigDecimal.valueOf(10.0))
-        .stock(100)
-        .reorderLevel(10)
-        .isDeleted(false)
+        .stock(5)
+        .reorderLevel(2)
+        .salePrice(java.math.BigDecimal.TEN)
+        .purchasePrice(java.math.BigDecimal.ONE)
         .build();
-    product = productRepository.save(Objects.requireNonNull(product));
-    productId = product.getId();
-    TenantContext.clear();
-  }
-
-  @AfterEach
-  void tearDown() {
-    TenantContext.clear();
+    testProduct.setTenantId(1L);
+    testProduct = productRepository.save(testProduct);
   }
 
   @Test
-  void testConcurrentStockOut() throws InterruptedException {
-    int numberOfThreads = 20;
-    int stockOutPerThread = 5; // Total 100 stock
-    ExecutorService executor = Executors.newFixedThreadPool(numberOfThreads);
-    CountDownLatch latch = new CountDownLatch(1);
-    CountDownLatch doneLatch = new CountDownLatch(numberOfThreads);
-    AtomicInteger successfulCalls = new AtomicInteger(0);
-    AtomicInteger failedCalls = new AtomicInteger(0);
+  @DisplayName("Concurrent stockOut with limited stock: only one succeeds, never negative")
+  void concurrentStockOutNeverGoesNegative() throws Exception {
+    int initialStock = 5;
+    int requestQty = 5;
+    int threadCount = 4;
 
-    for (int i = 0; i < numberOfThreads; i++) {
-      executor.execute(() -> {
+    ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+    CountDownLatch startLatch = new CountDownLatch(1);
+    CountDownLatch doneLatch = new CountDownLatch(threadCount);
+    AtomicInteger successCount = new AtomicInteger();
+    AtomicInteger failCount = new AtomicInteger();
+
+    for (int i = 0; i < threadCount; i++) {
+      executor.submit(() -> {
         try {
-          TenantContext.setTenantId(tenantId);
-          latch.await();
-          stockService.stockOut(productId, stockOutPerThread, "Concurrent test", userId);
-          successfulCalls.incrementAndGet();
-        } catch (InsufficientStockException e) {
-          failedCalls.incrementAndGet();
-        } catch (Exception e) {
-          e.printStackTrace();
+          startLatch.await();
+          TenantContext.setTenantId(1L);
+          try {
+            stockService.stockOut(testProduct.getId(), requestQty, "Concurrent test", 1L);
+            successCount.incrementAndGet();
+          } catch (InsufficientStockException e) {
+            failCount.incrementAndGet();
+          } catch (Exception e) {
+            failCount.incrementAndGet();
+          }
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
         } finally {
-          TenantContext.clear();
           doneLatch.countDown();
         }
       });
     }
 
-    latch.countDown(); // Start all threads simultaneously
-    doneLatch.await(10, TimeUnit.SECONDS);
+    startLatch.countDown();
+    doneLatch.await(30, TimeUnit.SECONDS);
     executor.shutdown();
+    executor.awaitTermination(10, TimeUnit.SECONDS);
 
-    TenantContext.setTenantId(tenantId);
-    Product finalProduct = productRepository.findById(productId).orElseThrow();
-    assertThat(finalProduct.getStock()).isEqualTo(0);
-    assertThat(successfulCalls.get()).isEqualTo(20);
-    TenantContext.clear();
+    Product after = productRepository.findById(testProduct.getId()).orElseThrow();
+
+    assertThat(after.getStock()).isGreaterThanOrEqualTo(0)
+        .as("Stock must never be negative under concurrent access");
+    assertThat(successCount.get()).isEqualTo(1)
+        .as("Exactly one stockOut should succeed when stock=%d and each requests %d", initialStock, requestQty);
+    assertThat(failCount.get()).isEqualTo(threadCount - 1)
+        .as("Remaining %d concurrent requests should fail", threadCount - 1);
+  }
+
+  @Test
+  @DisplayName("Sequential stockOut reduces stock correctly")
+  void sequentialStockOutReducesCorrectly() {
+    int initialStock = 10;
+    int requestQty = 3;
+
+    for (int i = 0; i < 3; i++) {
+      stockService.stockOut(testProduct.getId(), requestQty, "Sequential test", 1L);
+    }
+
+    Product after = productRepository.findById(testProduct.getId()).orElseThrow();
+    assertThat(after.getStock()).isEqualTo(initialStock - (requestQty * 3));
+  }
+
+  @Test
+  @DisplayName("StockOut exceeds available stock throws InsufficientStockException")
+  void stockOutExceedsStockThrowsException() {
+    assertThatThrownBy(() -> stockService.stockOut(testProduct.getId(), 999, "Over-stock test", 1L))
+        .isInstanceOf(InsufficientStockException.class)
+        .hasMessageContaining("Insufficient stock");
+
+    Product after = productRepository.findById(testProduct.getId()).orElseThrow();
+    assertThat(after.getStock()).isEqualTo(5);
   }
 }

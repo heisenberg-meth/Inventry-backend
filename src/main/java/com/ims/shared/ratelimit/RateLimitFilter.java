@@ -141,16 +141,17 @@ public class RateLimitFilter extends OncePerRequestFilter {
       key = "rate_limit:ip:" + clientIp;
     }
 
-    // 1. Check Primary Limit (User or IP)
-    if (!rateLimiterService.isAllowed(key, limit, windowSeconds)) {
+    // 1. Check Primary Limit (User or IP) - auth endpoints fail closed
+    boolean failClosed = isAuthEndpoint;
+    if (!rateLimiterService.isAllowed(key, limit, windowSeconds, failClosed)) {
       handleRateLimitExceeded(res, tier, key, limit);
       return;
     }
 
-    // 2. Optional: Check Tenant-wide Limit
+    // 2. Optional: Check Tenant-wide Limit (fail open)
     if (tenantId != null) {
       String tenantKey = "rate_limit:tenant:" + tenantId;
-      if (!rateLimiterService.isAllowed(tenantKey, tenantRpm, windowSeconds)) {
+      if (!rateLimiterService.isAllowed(tenantKey, tenantRpm, windowSeconds, false)) {
         handleRateLimitExceeded(res, "tenant", tenantKey, tenantRpm);
         return;
       }

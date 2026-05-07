@@ -1,25 +1,27 @@
 package com.ims.tenant.service;
 
+import com.ims.model.Order;
+import com.ims.model.OrderItem;
+import com.ims.order.entity.OrderStatus;
+import com.ims.order.entity.OrderType;
+import com.ims.product.Product;
+import com.ims.product.ProductRepository;
+import com.ims.product.ProductService;
 import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditResource;
 import com.ims.shared.auth.TenantContext;
-import com.ims.model.Order;
-import com.ims.model.OrderItem;
-import com.ims.product.Product;
 import com.ims.shared.exception.InsufficientStockException;
-import com.ims.product.ProductService;
 import com.ims.tenant.repository.CustomerRepository;
 import com.ims.tenant.repository.OrderItemRepository;
 import com.ims.tenant.repository.OrderRepository;
-import com.ims.product.ProductRepository;
 import com.ims.tenant.repository.SupplierRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import lombok.RequiredArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -28,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@NoArgsConstructor(force = true)
 @Slf4j
 public class OrderService {
 
@@ -37,7 +40,7 @@ public class OrderService {
   private final ProductService productService;
   private final SupplierRepository supplierRepository;
   private final CustomerRepository customerRepository;
-  private final StockService stockService;
+  private final InventoryService inventoryService;
   private final InvoiceService invoiceService;
   private final com.ims.shared.audit.AuditLogService auditLogService;
   private final com.ims.shared.pdf.PdfService pdfService;
@@ -47,255 +50,183 @@ public class OrderService {
 
   private static final int PERCENTAGE_BASE = 100;
 
+  /**
+   * Phase 5.2.6: PURCHASE ORDER FLOW
+   */
   @Transactional
-  public Map<String, Object> createPurchaseOrder(Map<String, Object> request, Long userId) {
+  public com.ims.order.dto.OrderResponse createPurchaseOrder(com.ims.order.dto.CreateOrderRequest request, Long userId) {
     Long tenantId = TenantContext.getTenantId();
-    Long supplierId = Long.valueOf(request.get("supplier_id").toString());
+    Long supplierId = request.getSupplierId();
 
     var supplierOpt = supplierRepository.findActiveByIdAndTenantId(supplierId, tenantId);
     if (supplierOpt.isEmpty()) {
       throw new EntityNotFoundException("Supplier not found or does not belong to your tenant");
     }
 
-    Object rawItems = request.get("items");
-    if (!(rawItems instanceof List<?> list)) {
-      throw new IllegalArgumentException("Invalid items format: expected list");
-    }
-    List<Map<String, Object>> items = new java.util.ArrayList<>();
-    for (Object item : list) {
-      if (!(item instanceof Map<?, ?> map)) {
-        throw new IllegalArgumentException("Invalid item structure: expected object");
-      }
-      Map<String, Object> typedMap = new java.util.HashMap<>();
-      for (Map.Entry<?, ?> entry : map.entrySet()) {
-        if (!(entry.getKey() instanceof String key)) {
-          throw new IllegalArgumentException("Invalid key type in item: expected String");
-        }
-        typedMap.put(key, entry.getValue());
-      }
-      items.add(typedMap);
-    }
-
     BigDecimal totalAmount = BigDecimal.ZERO;
     BigDecimal taxAmount = BigDecimal.ZERO;
 
-    // Save order
-    Order order = Order.builder()
-        .type("PURCHASE")
-        .status("RECEIVED")
-        .tenantId(com.ims.shared.auth.TenantContext.getTenantId())
-        .supplierId(supplierId)
-        .notes(request.getOrDefault("notes", "").toString())
-        .createdBy(userId)
-        .build();
+    for (com.ims.order.dto.OrderItemRequest itemReq : request.getItems()) {
+      Long productId = itemReq.getProductId();
+      int qty = itemReq.getQuantity();
 
-    if (order.getTenantId() == null) {
-      throw new IllegalStateException("TenantContext missing - cannot create purchase order");
-    }
+      Product product = productService.findByIdWithLock(productId)
+          .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
 
-    // Calculate totals and validate items
-    for (Map<String, Object> item : items) {
-      // Validate product exists
-      Long.valueOf(item.get("product_id").toString());
-      int qty = Integer.parseInt(item.get("quantity").toString());
-      BigDecimal unitPrice = new BigDecimal(item.get("unit_price").toString());
-      BigDecimal discount = item.containsKey("discount")
-          ? new BigDecimal(item.get("discount").toString())
-          : BigDecimal.ZERO;
-      BigDecimal taxRate = item.containsKey("tax_rate")
-          ? new BigDecimal(item.get("tax_rate").toString())
-          : BigDecimal.ZERO;
+      inventoryService.increaseStock(productId, qty, "Purchase Order creation", userId);
+
+      BigDecimal unitPrice = itemReq.getUnitPrice() != null ? itemReq.getUnitPrice() : 
+                            (product.getPurchasePrice() != null ? product.getPurchasePrice() : BigDecimal.ZERO);
+
+      BigDecimal discount = itemReq.getDiscount() != null ? itemReq.getDiscount() : BigDecimal.ZERO;
+      BigDecimal taxRate = itemReq.getTaxRate() != null ? itemReq.getTaxRate() : BigDecimal.ZERO;
 
       BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(qty)).subtract(discount);
-      BigDecimal itemTax = itemTotal
-          .multiply(taxRate)
-          .divide(BigDecimal.valueOf(PERCENTAGE_BASE), 2, RoundingMode.HALF_UP);
+      BigDecimal itemTax = itemTotal.multiply(taxRate).divide(BigDecimal.valueOf(PERCENTAGE_BASE), 2,
+          RoundingMode.HALF_UP);
 
       totalAmount = totalAmount.add(itemTotal);
       taxAmount = taxAmount.add(itemTax);
     }
 
-    order.setTotalAmount(totalAmount);
-    order.setTaxAmount(taxAmount);
-    order.setStatus("PENDING");
-    order = Objects.requireNonNull(orderRepository.save(order));
+    Order order = Order.builder()
+        .type(OrderType.PURCHASE)
+        .status(OrderStatus.RECEIVED)
+        .tenantId(tenantId)
+        .supplierId(supplierId)
+        .totalAmount(totalAmount)
+        .taxAmount(taxAmount)
+        .notes(request.getNotes())
+        .createdBy(userId)
+        .build();
 
-    // Save items
-    for (Map<String, Object> item : items) {
-      Long productId = Long.valueOf(item.get("product_id").toString());
-      int qty = Integer.parseInt(item.get("quantity").toString());
-      BigDecimal unitPrice = new BigDecimal(item.get("unit_price").toString());
-      BigDecimal discount = item.containsKey("discount")
-          ? new BigDecimal(item.get("discount").toString())
-          : BigDecimal.ZERO;
-      BigDecimal taxRate = item.containsKey("tax_rate")
-          ? new BigDecimal(item.get("tax_rate").toString())
-          : BigDecimal.ZERO;
+    order = orderRepository.save(order);
 
+    for (com.ims.order.dto.OrderItemRequest itemReq : request.getItems()) {
+      Long productId = itemReq.getProductId();
+      int qty = itemReq.getQuantity();
+      Product product = productRepository.findById(productId).orElseThrow();
+
+      BigDecimal unitPrice = itemReq.getUnitPrice() != null ? itemReq.getUnitPrice() : 
+                            (product.getPurchasePrice() != null ? product.getPurchasePrice() : BigDecimal.ZERO);
+      BigDecimal discount = itemReq.getDiscount() != null ? itemReq.getDiscount() : BigDecimal.ZERO;
+      BigDecimal taxRate = itemReq.getTaxRate() != null ? itemReq.getTaxRate() : BigDecimal.ZERO;
       BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(qty)).subtract(discount);
 
       OrderItem orderItem = OrderItem.builder()
+          .tenantId(tenantId)
           .orderId(order.getId())
           .productId(productId)
           .quantity(qty)
           .unitPrice(unitPrice)
           .discount(discount)
           .taxRate(taxRate)
-          .total(itemTotal)
+          .subtotal(itemTotal)
           .build();
-      orderItemRepository.save(Objects.requireNonNull(orderItem));
+      orderItemRepository.save(orderItem);
     }
 
-    log.info(
-        "Purchase order created: id={} total={}", order.getId(), totalAmount);
-
-    auditLogService.logAudit(
-        AuditAction.CREATE_PURCHASE_ORDER,
-        AuditResource.ORDER,
-        order.getId(),
-        String.format("Created purchase order #%d, Supplier: %d, Total: %s", order.getId(), order.getSupplierId(),
-            totalAmount));
+    log.info("Purchase order created: id={} total={}", order.getId(), totalAmount);
+    auditLogService.logAudit(AuditAction.CREATE_PURCHASE_ORDER, AuditResource.ORDER, order.getId(),
+        "Created purchase order #" + order.getId());
 
     businessMetricsService.incrementOrdersCreated();
-
     outboxService.saveEvent("ORDER", order.getId().toString(), "CREATED", order);
 
-    return Objects.requireNonNull(Map.of("order_id", order.getId(), "total", totalAmount));
+    return toOrderResponse(order);
   }
 
+  /**
+   * Phase 5.2.1: SALE ORDER FLOW
+   */
   @Transactional
-  public Map<String, Object> createSalesOrder(Map<String, Object> request, Long userId) {
+  public com.ims.order.dto.OrderResponse createSalesOrder(com.ims.order.dto.CreateOrderRequest request, Long userId) {
     Long tenantId = TenantContext.getTenantId();
-    Long customerId = request.containsKey("customer_id")
-        ? Long.valueOf(request.get("customer_id").toString())
-        : null;
-    Object rawItems = request.get("items");
-    if (!(rawItems instanceof List<?> list)) {
-      throw new IllegalArgumentException("Invalid items format: expected list");
-    }
-    List<Map<String, Object>> items = new java.util.ArrayList<>();
-    for (Object item : list) {
-      if (!(item instanceof Map<?, ?> map)) {
-        throw new IllegalArgumentException("Invalid item structure: expected object");
-      }
-      Map<String, Object> typedMap = new java.util.HashMap<>();
-      for (Map.Entry<?, ?> entry : map.entrySet()) {
-        if (!(entry.getKey() instanceof String key)) {
-          throw new IllegalArgumentException("Invalid key type in item: expected String");
-        }
-        typedMap.put(key, entry.getValue());
-      }
-      items.add(typedMap);
-    }
-    // Validate customer belongs to tenant if provided
+    Long customerId = request.getCustomerId();
+
     if (customerId != null) {
-      customerRepository
-          .findByIdAndTenantId(customerId, tenantId)
-          .orElseThrow(() -> new EntityNotFoundException("Customer not found or does not belong to your tenant"));
+      customerRepository.findByIdAndTenantId(customerId, tenantId)
+          .orElseThrow(() -> new EntityNotFoundException("Customer not found"));
     }
 
     BigDecimal totalAmount = BigDecimal.ZERO;
     BigDecimal taxAmount = BigDecimal.ZERO;
 
-    // Calculate totals
-    for (Map<String, Object> item : items) {
-      int qty = Integer.parseInt(item.get("quantity").toString());
-      BigDecimal unitPrice = new BigDecimal(item.get("unit_price").toString());
-      BigDecimal discount = item.containsKey("discount")
-          ? new BigDecimal(item.get("discount").toString())
-          : BigDecimal.ZERO;
-      BigDecimal taxRate = item.containsKey("tax_rate")
-          ? new BigDecimal(item.get("tax_rate").toString())
-          : BigDecimal.ZERO;
+    for (com.ims.order.dto.OrderItemRequest itemReq : request.getItems()) {
+      Long productId = itemReq.getProductId();
+      int qty = itemReq.getQuantity();
+
+      Product product = productService.findByIdWithLock(productId)
+          .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
+
+      int availableStock = inventoryService.getAvailableStock(productId);
+      if (availableStock < qty) {
+        throw new InsufficientStockException("Insufficient stock for " + product.getName(), availableStock, qty);
+      }
+
+      inventoryService.decreaseStock(productId, qty, "Sale Order creation", userId);
+
+      BigDecimal unitPrice = itemReq.getUnitPrice() != null ? itemReq.getUnitPrice() : product.getSalePrice();
+      BigDecimal discount = itemReq.getDiscount() != null ? itemReq.getDiscount() : BigDecimal.ZERO;
+      BigDecimal taxRate = itemReq.getTaxRate() != null ? itemReq.getTaxRate() : BigDecimal.ZERO;
 
       BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(qty)).subtract(discount);
-      BigDecimal itemTax = itemTotal
-          .multiply(taxRate)
-          .divide(BigDecimal.valueOf(PERCENTAGE_BASE), 2, RoundingMode.HALF_UP);
+      BigDecimal itemTax = itemTotal.multiply(taxRate).divide(BigDecimal.valueOf(PERCENTAGE_BASE), 2,
+          RoundingMode.HALF_UP);
 
       totalAmount = totalAmount.add(itemTotal);
       taxAmount = taxAmount.add(itemTax);
     }
 
-    // Apply root-level discount if any
-    BigDecimal rootDiscount = request.containsKey("discount_total")
-        ? new BigDecimal(request.get("discount_total").toString())
-        : BigDecimal.ZERO;
-
-    BigDecimal grandTotalCalculated = totalAmount.add(taxAmount).subtract(rootDiscount);
-
-    // Validate grand_total if provided
-    if (request.containsKey("grand_total")) {
-      BigDecimal grandTotalProvided = new BigDecimal(request.get("grand_total").toString());
-      if (grandTotalCalculated.compareTo(grandTotalProvided) != 0) {
-        throw new IllegalArgumentException(
-            "Grand total mismatch. Calculated: "
-                + grandTotalCalculated
-                + ", Provided: "
-                + grandTotalProvided);
-      }
-    }
+    BigDecimal rootDiscount = request.getDiscount() != null ? request.getDiscount() : BigDecimal.ZERO;
 
     Order order = Order.builder()
-        .type("SALE")
-        .status("PENDING")
-        .tenantId(com.ims.shared.auth.TenantContext.getTenantId())
+        .type(OrderType.SALE)
+        .status(OrderStatus.CONFIRMED)
+        .tenantId(tenantId)
         .customerId(customerId)
         .totalAmount(totalAmount)
         .taxAmount(taxAmount)
         .discount(rootDiscount)
-        .notes(request.getOrDefault("notes", "").toString())
+        .notes(request.getNotes())
         .createdBy(userId)
         .build();
 
-    if (order.getTenantId() == null) {
-      throw new IllegalStateException("TenantContext missing - cannot create sales order");
-    }
-    order = Objects.requireNonNull(orderRepository.save(Objects.requireNonNull(order)));
+    order = orderRepository.save(order);
 
-    // Save items
-    for (Map<String, Object> item : items) {
-      Long productId = Long.valueOf(item.get("product_id").toString());
-      int qty = Integer.parseInt(item.get("quantity").toString());
-      BigDecimal unitPrice = new BigDecimal(item.get("unit_price").toString());
-      BigDecimal discount = item.containsKey("discount")
-          ? new BigDecimal(item.get("discount").toString())
-          : BigDecimal.ZERO;
-      BigDecimal taxRate = item.containsKey("tax_rate")
-          ? new BigDecimal(item.get("tax_rate").toString())
-          : BigDecimal.ZERO;
+    for (com.ims.order.dto.OrderItemRequest itemReq : request.getItems()) {
+      Long productId = itemReq.getProductId();
+      int qty = itemReq.getQuantity();
+      Product product = productRepository.findById(productId).orElseThrow();
 
+      BigDecimal unitPrice = itemReq.getUnitPrice() != null ? itemReq.getUnitPrice() : product.getSalePrice();
+      BigDecimal discount = itemReq.getDiscount() != null ? itemReq.getDiscount() : BigDecimal.ZERO;
+      BigDecimal taxRate = itemReq.getTaxRate() != null ? itemReq.getTaxRate() : BigDecimal.ZERO;
       BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(qty)).subtract(discount);
 
       OrderItem orderItem = OrderItem.builder()
+          .tenantId(tenantId)
           .orderId(order.getId())
           .productId(productId)
           .quantity(qty)
           .unitPrice(unitPrice)
           .discount(discount)
           .taxRate(taxRate)
-          .total(itemTotal)
+          .subtotal(itemTotal)
           .build();
-      orderItemRepository.save(Objects.requireNonNull(orderItem));
+      orderItemRepository.save(orderItem);
     }
 
-    log.info("Sales order created: id={} total={}", order.getId(), totalAmount);
+    invoiceService.createFromOrder(order);
 
-    auditLogService.logAudit(
-        AuditAction.CREATE_SALE_ORDER,
-        AuditResource.ORDER,
-        order.getId(),
-        String.format("Created sales order #%d, Customer: %d, Total: %s", order.getId(), order.getCustomerId(),
-            totalAmount));
+    log.info("Sales order created: id={} total={}", order.getId(), totalAmount);
+    auditLogService.logAudit(AuditAction.CREATE_SALE_ORDER, AuditResource.ORDER, order.getId(),
+        "Created sales order #" + order.getId());
 
     businessMetricsService.incrementOrdersCreated();
-
     outboxService.saveEvent("ORDER", order.getId().toString(), "CREATED", order);
 
-    return Objects.requireNonNull(Map.of(
-        "order_id", order.getId(),
-        "total", totalAmount,
-        "grand_total", grandTotalCalculated));
+    return toOrderResponse(order);
   }
 
   @Transactional
@@ -303,27 +234,13 @@ public class OrderService {
     Long originalOrderId = Long.valueOf(request.get("original_order_id").toString());
     Object rawItems = request.get("items");
     if (!(rawItems instanceof List<?> list)) {
-      throw new IllegalArgumentException("Invalid items format: expected list");
-    }
-    List<Map<String, Object>> returnItems = new java.util.ArrayList<>();
-    for (Object item : list) {
-      if (!(item instanceof Map<?, ?> map)) {
-        throw new IllegalArgumentException("Invalid item structure: expected object");
-      }
-      Map<String, Object> typedMap = new java.util.HashMap<>();
-      for (Map.Entry<?, ?> entry : map.entrySet()) {
-        if (!(entry.getKey() instanceof String key)) {
-          throw new IllegalArgumentException("Invalid key type in item: expected String");
-        }
-        typedMap.put(key, entry.getValue());
-      }
-      returnItems.add(typedMap);
+      throw new IllegalArgumentException("Invalid items format");
     }
 
     Order originalOrder = orderRepository.findById(originalOrderId)
         .orElseThrow(() -> new EntityNotFoundException("Original order not found"));
 
-    if (!"SALE".equals(originalOrder.getType())) {
+    if (OrderType.SALE != originalOrder.getType()) {
       throw new IllegalArgumentException("Returns can only be created for SALE orders");
     }
 
@@ -331,95 +248,117 @@ public class OrderService {
     BigDecimal returnTax = BigDecimal.ZERO;
 
     Order returnOrder = Order.builder()
-        .type("RETURN")
-        .status("COMPLETED")
-        .tenantId(com.ims.shared.auth.TenantContext.getTenantId())
+        .type(OrderType.RETURN)
+        .status(OrderStatus.COMPLETED)
+        .tenantId(TenantContext.getTenantId())
         .customerId(originalOrder.getCustomerId())
         .referenceOrderId(originalOrderId)
         .notes(request.getOrDefault("notes", "Customer return").toString())
         .createdBy(userId)
         .build();
 
-    if (returnOrder.getTenantId() == null) {
-      throw new IllegalStateException("TenantContext missing - cannot create return order");
-    }
-
     returnOrder = orderRepository.save(returnOrder);
 
-    List<OrderItem> originalItems = orderItemRepository.findByOrderId(originalOrderId);
+    Long tenantId = TenantContext.getTenantId();
+    List<OrderItem> originalItems = orderItemRepository.findByOrderIdAndTenantId(originalOrderId, tenantId);
 
-    for (Map<String, Object> item : returnItems) {
+    for (Object itemObj : list) {
+      Map<String, Object> item = (Map<String, Object>) itemObj;
       Long productId = Long.valueOf(item.get("product_id").toString());
       int qty = Integer.parseInt(item.get("quantity").toString());
 
       OrderItem originalItem = originalItems.stream()
           .filter(oi -> oi.getProductId().equals(productId))
           .findFirst()
-          .orElseThrow(
-              () -> new IllegalArgumentException("Product " + productId + " was not part of the original order"));
+          .orElseThrow(() -> new IllegalArgumentException("Product not in original order"));
 
-      int alreadyReturned = orderItemRepository.sumReturnedQty(originalOrderId, productId);
+      int alreadyReturned = orderItemRepository.sumReturnedQtyByTenantId(originalOrderId, tenantId, productId);
       if (alreadyReturned + qty > originalItem.getQuantity()) {
-        throw new IllegalArgumentException(
-            "Total returns (" + (alreadyReturned + qty) + ") exceed original quantity (" + originalItem.getQuantity()
-                + ") for product " + productId);
+        throw new IllegalArgumentException("Return quantity too high");
       }
 
       BigDecimal unitPrice = originalItem.getUnitPrice();
       BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(qty));
       BigDecimal taxRate = originalItem.getTaxRate();
-      BigDecimal itemTax = itemTotal.multiply(taxRate).divide(BigDecimal.valueOf(PERCENTAGE_BASE), 2,
-          RoundingMode.HALF_UP);
+      BigDecimal itemTax = itemTotal.multiply(taxRate).divide(BigDecimal.valueOf(PERCENTAGE_BASE), 2, RoundingMode.HALF_UP);
 
       returnTotal = returnTotal.add(itemTotal);
       returnTax = returnTax.add(itemTax);
 
       OrderItem returnOrderItem = OrderItem.builder()
+          .tenantId(TenantContext.getTenantId())
           .orderId(returnOrder.getId())
           .productId(productId)
           .quantity(qty)
           .unitPrice(unitPrice)
           .taxRate(taxRate)
-          .total(itemTotal)
+          .subtotal(itemTotal)
           .build();
       orderItemRepository.save(returnOrderItem);
 
-      // Restore stock
-      stockService.stockIn(productId, qty, "Return for Order #" + originalOrderId, userId);
+      inventoryService.increaseStock(productId, qty, "Return Order #" + originalOrderId, userId);
     }
 
     returnOrder.setTotalAmount(returnTotal);
     returnOrder.setTaxAmount(returnTax);
-    returnOrder = orderRepository.save(returnOrder);
+    orderRepository.save(returnOrder);
 
-    // Create Credit Note
     invoiceService.createCreditNote(returnOrder, null);
-
-    auditLogService.logAudit(AuditAction.CREATE_RETURN_ORDER, AuditResource.ORDER, returnOrder.getId(),
-        String.format("Processed return for order #%d, Total Credit: %s", originalOrderId, returnTotal));
-
     outboxService.saveEvent("ORDER", returnOrder.getId().toString(), "RETURNED", returnOrder);
 
     return returnOrder;
   }
 
   public Page<Order> getOrders(Pageable pageable) {
-    Long tenantId = TenantContext.getTenantId();
-    return Objects.requireNonNull(orderRepository.findAllByTenantId(tenantId, pageable));
+    return orderRepository.findAllByTenantId(TenantContext.getTenantId(), pageable);
   }
 
-  public Page<Order> getOrdersByType(String type, Pageable pageable) {
-    Long tenantId = TenantContext.getTenantId();
-    return Objects.requireNonNull(orderRepository.findByTenantIdAndType(tenantId, type, pageable));
+  public Page<Order> getOrdersByType(OrderType type, Pageable pageable) {
+    return orderRepository.findByTenantIdAndType(TenantContext.getTenantId(), type, pageable);
   }
 
-  public Map<String, Object> getOrderWithItems(Long id) {
+  public com.ims.order.dto.OrderResponse getOrderWithItems(Long id) {
     Long tenantId = TenantContext.getTenantId();
-    Order order = orderRepository
-        .findByIdAndTenantId(id, tenantId)
+    Order order = orderRepository.findByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
-    List<OrderItem> items = orderItemRepository.findByOrderIdAndTenantId(order.getId(), tenantId);
-    return Objects.requireNonNull(Map.of("order", order, "items", items));
+    return toOrderResponse(order);
+  }
+
+  private com.ims.order.dto.OrderResponse toOrderResponse(Order order) {
+    List<OrderItem> items = orderItemRepository.findByOrderIdAndTenantId(order.getId(), order.getTenantId());
+    List<com.ims.order.dto.OrderItemResponse> itemResponses = items.stream()
+        .map(this::toOrderItemResponse)
+        .toList();
+
+    return com.ims.order.dto.OrderResponse.builder()
+        .id(order.getId())
+        .type(order.getType())
+        .status(order.getStatus())
+        .customerId(order.getCustomerId())
+        .supplierId(order.getSupplierId())
+        .totalAmount(order.getTotalAmount())
+        .taxAmount(order.getTaxAmount())
+        .discount(order.getDiscount())
+        .notes(order.getNotes())
+        .createdBy(order.getCreatedBy())
+        .createdAt(order.getCreatedAt())
+        .items(itemResponses)
+        .build();
+  }
+
+  private com.ims.order.dto.OrderItemResponse toOrderItemResponse(OrderItem item) {
+    Product product = productRepository.findById(item.getProductId()).orElse(null);
+    return com.ims.order.dto.OrderItemResponse.builder()
+        .id(item.getId())
+        .productId(item.getProductId())
+        .productName(product != null ? product.getName() : "Unknown")
+        .sku(product != null ? product.getSku() : null)
+        .quantity(item.getQuantity())
+        .unitPrice(item.getUnitPrice())
+        .discount(item.getDiscount())
+        .taxRate(item.getTaxRate())
+        .subtotal(item.getSubtotal())
+        .build();
   }
 
   @Transactional(readOnly = true)
@@ -428,20 +367,19 @@ public class OrderService {
     Order order = orderRepository.findByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
-    com.ims.model.Tenant tenant = tenantRepository
-        .findById(tenantId)
+    com.ims.model.Tenant tenant = tenantRepository.findById(tenantId)
         .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
     String partnerName = "N/A";
     String partnerAddress = "N/A";
 
-    if ("SALE".equals(order.getType()) && order.getCustomerId() != null) {
+    if (OrderType.SALE == order.getType() && order.getCustomerId() != null) {
       var customer = customerRepository.findById(order.getCustomerId()).orElse(null);
       if (customer != null) {
         partnerName = customer.getName();
         partnerAddress = customer.getAddress();
       }
-    } else if ("PURCHASE".equals(order.getType()) && order.getSupplierId() != null) {
+    } else if (OrderType.PURCHASE == order.getType() && order.getSupplierId() != null) {
       var supplier = supplierRepository.findById(order.getSupplierId()).orElse(null);
       if (supplier != null) {
         partnerName = supplier.getName();
@@ -450,7 +388,6 @@ public class OrderService {
     }
 
     List<OrderItem> orderItems = orderItemRepository.findByOrderIdAndTenantId(order.getId(), tenantId);
-
     List<Long> productIds = orderItems.stream().map(OrderItem::getProductId).distinct().toList();
     Map<Long, String> productNameMap = productRepository.findAllById(productIds).stream()
         .collect(java.util.stream.Collectors.toMap(Product::getId, Product::getName));
@@ -461,9 +398,9 @@ public class OrderService {
       map.put("quantity", item.getQuantity());
       map.put("unitPrice", item.getUnitPrice());
       map.put("discount", item.getDiscount());
-      map.put("total", item.getTotal());
+      map.put("total", item.getSubtotal());
       return map;
-    }).collect(java.util.stream.Collectors.toList());
+    }).toList();
 
     org.thymeleaf.context.Context context = new org.thymeleaf.context.Context();
     context.setVariable("tenantName", tenant.getName());
@@ -486,141 +423,97 @@ public class OrderService {
 
   @Transactional
   public Order confirmOrder(Long id, Long userId) {
-    Long tenantId = TenantContext.getTenantId();
-    Order order = orderRepository.findByIdAndTenantId(id, tenantId)
+    Order order = orderRepository.findByIdAndTenantId(id, TenantContext.getTenantId())
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
-    if (!"PENDING".equals(order.getStatus())) {
+    if (OrderStatus.PENDING != order.getStatus()) {
       throw new IllegalStateException("Only PENDING orders can be confirmed");
     }
 
-    List<OrderItem> items = orderItemRepository.findByOrderIdAndTenantId(order.getId(), tenantId);
-
-    if ("SALE".equals(order.getType())) {
-      // Validate and reduce stock
+    if (OrderType.SALE == order.getType()) {
+      List<OrderItem> items = orderItemRepository.findByOrderIdAndTenantId(order.getId(), order.getTenantId());
       for (OrderItem item : items) {
-        Product product = productService.findByIdWithLock(Objects.requireNonNull(item.getProductId()))
-            .orElseThrow(() -> new EntityNotFoundException("Product not found: " + item.getProductId()));
-        if (product.getStock() < item.getQuantity()) {
-          throw new InsufficientStockException("Insufficient stock for " + product.getName(), product.getStock(),
-              item.getQuantity());
+        Product product = productService.findByIdWithLock(item.getProductId())
+            .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+
+        int availableStock = inventoryService.getAvailableStock(item.getProductId());
+        if (availableStock < item.getQuantity()) {
+          throw new InsufficientStockException("Insufficient stock", availableStock, item.getQuantity());
         }
-        stockService.stockOut(Objects.requireNonNull(item.getProductId()), item.getQuantity(),
-            "Confirmed Sale Order #" + order.getId(), userId);
+        inventoryService.decreaseStock(item.getProductId(), item.getQuantity(), "Confirmed Sale Order #" + order.getId(), userId);
       }
-      order.setStatus("CONFIRMED");
-      // Auto-generate invoice for sales upon confirmation
+      order.setStatus(OrderStatus.CONFIRMED);
       invoiceService.createFromOrder(order);
-    } else if ("PURCHASE".equals(order.getType())) {
-      order.setStatus("CONFIRMED");
+    } else {
+      order.setStatus(OrderStatus.CONFIRMED);
     }
 
     order = orderRepository.save(order);
-    auditLogService.logAudit(AuditAction.CONFIRM_ORDER, AuditResource.ORDER, id,
-        "Confirmed " + order.getType() + " order #" + id);
-
     outboxService.saveEvent("ORDER", order.getId().toString(), "CONFIRMED", order);
-
     return order;
   }
 
   @Transactional
   public Order shipOrder(Long id, Long userId) {
-    Long tenantId = TenantContext.getTenantId();
-    Order order = orderRepository.findByIdAndTenantId(id, tenantId)
+    Order order = orderRepository.findByIdAndTenantId(id, TenantContext.getTenantId())
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
-
-    if (!"CONFIRMED".equals(order.getStatus())) {
-      throw new IllegalStateException("Only CONFIRMED orders can be shipped");
-    }
-
-    order.setStatus("SHIPPED");
+    order.setStatus(OrderStatus.SHIPPED);
     order = orderRepository.save(order);
-    auditLogService.logAudit(AuditAction.SHIP_ORDER, AuditResource.ORDER, id,
-        "Shipped " + order.getType() + " order #" + id);
-
     outboxService.saveEvent("ORDER", order.getId().toString(), "SHIPPED", order);
-
     return order;
   }
 
   @Transactional
   public Order completeOrder(Long id, Long userId) {
-    Long tenantId = TenantContext.getTenantId();
-    Order order = orderRepository.findByIdAndTenantId(id, tenantId)
+    Order order = orderRepository.findByIdAndTenantId(id, TenantContext.getTenantId())
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
-    if (!"SHIPPED".equals(order.getStatus()) && !"CONFIRMED".equals(order.getStatus())) {
-      throw new IllegalStateException("Order must be SHIPPED or CONFIRMED to be completed");
-    }
-
-    if ("PURCHASE".equals(order.getType()) && !"RECEIVED".equals(order.getStatus())) {
-      List<OrderItem> items = orderItemRepository.findByOrderIdAndTenantId(order.getId(), tenantId);
+    if (OrderType.PURCHASE == order.getType() && OrderStatus.RECEIVED != order.getStatus()) {
+      List<OrderItem> items = orderItemRepository.findByOrderIdAndTenantId(order.getId(), order.getTenantId());
       for (OrderItem item : items) {
-        stockService.stockIn(Objects.requireNonNull(item.getProductId()), item.getQuantity(),
-            "Received Purchase Order #" + order.getId(), userId);
+        inventoryService.increaseStock(item.getProductId(), item.getQuantity(), "Received Purchase Order #" + order.getId(), userId);
       }
-      order.setStatus("RECEIVED");
+      order.setStatus(OrderStatus.RECEIVED);
     } else {
-      order.setStatus("COMPLETED");
+      order.setStatus(OrderStatus.COMPLETED);
     }
 
     order = orderRepository.save(order);
-    auditLogService.logAudit(AuditAction.COMPLETE_ORDER, AuditResource.ORDER, id,
-        "Completed " + order.getType() + " order #" + id);
-
     outboxService.saveEvent("ORDER", order.getId().toString(), "COMPLETED", order);
-
     return order;
   }
 
   @Transactional
   public Order cancelOrder(Long id, Long userId) {
-    Long tenantId = TenantContext.getTenantId();
-    Order order = orderRepository.findByIdAndTenantId(id, tenantId)
+    Order order = orderRepository.findByIdAndTenantId(id, TenantContext.getTenantId())
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
-    if ("COMPLETED".equals(order.getStatus()) || "RECEIVED".equals(order.getStatus())
-        || "CANCELLED".equals(order.getStatus())) {
-      throw new IllegalStateException("Cannot cancel an order that is already " + order.getStatus());
-    }
-
-    if ("SALE".equals(order.getType())
-        && ("CONFIRMED".equals(order.getStatus()) || "SHIPPED".equals(order.getStatus()))) {
-      List<OrderItem> items = orderItemRepository.findByOrderIdAndTenantId(order.getId(), tenantId);
+    if (OrderType.SALE == order.getType() && (OrderStatus.CONFIRMED == order.getStatus() || OrderStatus.SHIPPED == order.getStatus())) {
+      List<OrderItem> items = orderItemRepository.findByOrderIdAndTenantId(order.getId(), order.getTenantId());
       for (OrderItem item : items) {
-        stockService.stockIn(Objects.requireNonNull(item.getProductId()), item.getQuantity(),
-            "Cancelled Sale Order #" + order.getId(), userId);
+        inventoryService.increaseStock(item.getProductId(), item.getQuantity(), "Cancelled Sale Order #" + order.getId(), userId);
       }
     }
 
-    order.setStatus("CANCELLED");
+    order.setStatus(OrderStatus.CANCELLED);
     order = orderRepository.save(order);
-    auditLogService.logAudit(AuditAction.CANCEL_ORDER, AuditResource.ORDER, id,
-        "Cancelled " + order.getType() + " order #" + id);
-
     outboxService.saveEvent("ORDER", order.getId().toString(), "CANCELLED", order);
-
     return order;
   }
 
   public Page<Order> getOrdersBySupplier(Long supplierId, Pageable pageable) {
-    Long tenantId = TenantContext.getTenantId();
-    return Objects.requireNonNull(orderRepository.findByTenantIdAndSupplierId(tenantId, supplierId, pageable));
+    return orderRepository.findByTenantIdAndSupplierId(TenantContext.getTenantId(), supplierId, pageable);
   }
 
   public Page<Order> getOrdersByCustomer(Long customerId, Pageable pageable) {
-    Long tenantId = TenantContext.getTenantId();
-    return Objects.requireNonNull(orderRepository.findByTenantIdAndCustomerId(tenantId, customerId, pageable));
+    return orderRepository.findByTenantIdAndCustomerId(TenantContext.getTenantId(), customerId, pageable);
   }
 
   @Transactional
-  public Order updateOrderStatus(Long id, String status) {
-    Long tenantId = TenantContext.getTenantId();
-    Order order = orderRepository
-        .findByIdAndTenantId(id, tenantId)
+  public Order updateOrderStatus(Long id, OrderStatus status) {
+    Order order = orderRepository.findByIdAndTenantId(id, TenantContext.getTenantId())
         .orElseThrow(() -> new EntityNotFoundException("Order not found"));
     order.setStatus(status);
-    return Objects.requireNonNull(orderRepository.save(order));
+    return orderRepository.save(order);
   }
 }

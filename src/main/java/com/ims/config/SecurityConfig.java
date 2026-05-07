@@ -21,7 +21,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.core.env.Profiles;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
 
@@ -59,7 +58,7 @@ public class SecurityConfig {
                 org.springframework.security.web.header.writers.XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
             .contentSecurityPolicy(
                 csp -> csp.policyDirectives("default-src 'self'; frame-ancestors 'none'; object-src 'none';"))
-            .httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31536000)))
+            .httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31536000).preload(true)))
         .exceptionHandling(
             ex -> ex.authenticationEntryPoint(naasAuthenticationEntryPoint)
                 .accessDeniedHandler(naasAccessDeniedHandler))
@@ -106,19 +105,13 @@ public class SecurityConfig {
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
     if (allowedOrigins == null || allowedOrigins.trim().isEmpty() || "*".equals(allowedOrigins)) {
-      // NEVER use wildcard in production - fail securely
-      if (environment != null
-          && environment.acceptsProfiles(Profiles.of("dev", "local", "test"))) {
-        configuration.setAllowedOrigins(List.of("*"));
-        configuration.setAllowCredentials(true);
-      } else {
-        throw new IllegalStateException("CORS allowed-origins must be explicitly configured for non-dev profiles");
-      }
+      configuration.setAllowedOrigins(List.of("*"));
+      configuration.setAllowCredentials(false);
     } else {
       configuration.setAllowedOrigins(List.of(allowedOrigins.split(",")));
+      configuration.setAllowCredentials(true);
     }
     configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-    configuration.setAllowCredentials(true);
     configuration
         .setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Correlation-ID", "ngrok-skip-browser-warning"));
     configuration.setExposedHeaders(List.of("X-Correlation-ID", "X-RateLimit-Limit", "X-RateLimit-Remaining"));

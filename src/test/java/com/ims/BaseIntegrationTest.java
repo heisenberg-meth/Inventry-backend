@@ -10,12 +10,9 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
@@ -24,21 +21,16 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import static org.mockito.Mockito.when;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import com.ims.config.TestRedisConfig;
-import org.springframework.context.annotation.Import;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-@SpringBootTest(classes = com.ims.ImsApplication.class, webEnvironment = SpringBootTest.WebEnvironment.MOCK, properties = {
-    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
-    "spring.cache.type=none"
-})
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.utility.DockerImageName;
+
+@SpringBootTest(classes = com.ims.ImsApplication.class, webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @ActiveProfiles("test")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-@Import(TestRedisConfig.class)
 @Testcontainers
 public abstract class BaseIntegrationTest {
 
@@ -49,6 +41,11 @@ public abstract class BaseIntegrationTest {
       .withUsername("ims_user")
       .withPassword("changeme");
 
+  @SuppressWarnings("resource")
+  @Container
+  static final GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:7.2-alpine"))
+      .withExposedPorts(6379);
+
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
     registry.add("spring.datasource.url", postgres::getJdbcUrl);
@@ -56,17 +53,13 @@ public abstract class BaseIntegrationTest {
     registry.add("spring.datasource.password", postgres::getPassword);
     registry.add("spring.jpa.hibernate.ddl-auto", () -> "none");
     registry.add("spring.flyway.enabled", () -> "true");
+    registry.add("spring.data.redis.host", redis::getHost);
+    registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
   }
 
   @AfterEach
   void clearTenantContext() {
     TenantContext.clear();
-    try {
-      if (mocks != null) {
-        mocks.close();
-      }
-    } catch (Exception e) {
-    }
   }
 
   @Autowired
@@ -87,6 +80,8 @@ public abstract class BaseIntegrationTest {
   protected OrderRepository orderRepository;
   @Autowired
   protected OrderItemRepository orderItemRepository;
+  @Autowired
+  protected InventoryRepository inventoryRepository;
   @Autowired
   protected StockMovementRepository stockMovementRepository;
   @Autowired
@@ -128,21 +123,14 @@ public abstract class BaseIntegrationTest {
   protected Long testTenant1Id;
   protected Long testTenant2Id;
 
-  @MockitoBean
+  @Autowired
   protected RedisTemplate<String, Object> redisTemplate;
-  @Mock
-  protected ZSetOperations<String, Object> zSetOperations;
-  @Mock
-  protected org.springframework.data.redis.core.ValueOperations<String, Object> valueOperations;
-
-  private AutoCloseable mocks;
 
   @BeforeEach
   void baseSetUp() {
     TenantContext.setTenantId(1L);
     cleanupDatabase();
     TenantContext.clear();
-    mockRedisAndCache();
   }
 
   protected void cleanupDatabase() {
@@ -164,14 +152,6 @@ public abstract class BaseIntegrationTest {
       }
     }
     seedTestData();
-  }
-
-  protected void mockRedisAndCache() {
-    mocks = MockitoAnnotations.openMocks(this);
-    if (redisTemplate != null) {
-      when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
-      when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-    }
   }
 
   protected void verifyUser(String email) throws Exception {

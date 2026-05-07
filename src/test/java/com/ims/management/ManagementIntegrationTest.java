@@ -34,7 +34,6 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
         @BeforeEach
         void setup() {
                 cleanupDatabase();
-                mockRedisAndCache();
         }
 
         @Test

@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -12,24 +11,24 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
-
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
  * Redis-specific configuration.
- * Active only when Redis is available (not in test profile by default).
+ * Active in all profiles where Redis is available.
  * The tenant-aware cache resolver is in CacheConfig (active in all profiles).
  */
 @Configuration
-@Profile("!test")
 public class RedisConfig {
 
     private static final int TTL_PRODUCTS_MINUTES = 15;
     private static final int TTL_STOCK_MINUTES = 5;
     private static final int TTL_REPORTS_MINUTES = 30;
     private static final int TTL_TENANT_HOURS = 1;
+    private static final int TTL_PERMISSIONS_MINUTES = 10;
+    private static final int TTL_CUSTOMERS_MINUTES = 5;
 
     // Reuse serializer instance - don't recreate per call
     private final GenericJackson2JsonRedisSerializer serializer = createSerializer();
@@ -48,6 +47,8 @@ public class RedisConfig {
         configs.put("stock", ttl(Duration.ofMinutes(TTL_STOCK_MINUTES)));
         configs.put("reports", ttl(Duration.ofMinutes(TTL_REPORTS_MINUTES)));
         configs.put("tenant", ttl(Duration.ofHours(TTL_TENANT_HOURS)));
+        configs.put("userPermissions", ttl(Duration.ofMinutes(TTL_PERMISSIONS_MINUTES)));
+        configs.put("customers", ttl(Duration.ofMinutes(TTL_CUSTOMERS_MINUTES)));
 
         return RedisCacheManager.builder(factory)
                 .cacheDefaults(ttl(Duration.ofMinutes(10)))

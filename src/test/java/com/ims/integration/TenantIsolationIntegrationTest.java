@@ -15,9 +15,6 @@ public class TenantIsolationIntegrationTest extends BaseIntegrationTest {
     @Autowired
     private com.ims.product.ProductService productService;
 
-    @Autowired
-    private com.ims.product.ProductRepository productRepository;
-
     @Test
     void shouldPreventCrossTenantDataAccess() {
         // 1. Create product in Tenant 1

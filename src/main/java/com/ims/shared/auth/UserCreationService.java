@@ -4,12 +4,14 @@ import com.ims.model.User;
 import com.ims.tenant.repository.UserRepository;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
+import lombok.NoArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@NoArgsConstructor(force = true)
 public class UserCreationService {
 
   private final UserRepository userRepository;

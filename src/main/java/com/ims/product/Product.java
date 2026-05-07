@@ -40,17 +40,21 @@ public class Product extends BaseEntity {
   @Column
   private String unit;
 
+  @jakarta.validation.constraints.PositiveOrZero
   @Column(name = "purchase_price", precision = 10, scale = 2)
   private BigDecimal purchasePrice;
 
+  @jakarta.validation.constraints.PositiveOrZero
   @Column(name = "sale_price", nullable = false, precision = 10, scale = 2)
   private BigDecimal salePrice;
 
+  @jakarta.validation.constraints.PositiveOrZero
   @Column
   @Builder.Default
   private Integer stock = 0;
 
   @Column(name = "reorder_level")
+  @jakarta.validation.constraints.PositiveOrZero
   @Builder.Default
   private Integer reorderLevel = DEFAULT_REORDER_LEVEL;
 

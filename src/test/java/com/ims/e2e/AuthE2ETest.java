@@ -29,7 +29,6 @@ class AuthE2ETest extends BaseIntegrationTest {
         void fullAuthFlow_signupVerifyLogin_returnsAccessToken() throws Exception {
                 // Arrange
                 cleanupDatabase();
-                mockRedisAndCache();
 
                 SignupRequest signupRequest = createSignupRequest();
 

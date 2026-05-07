@@ -1,10 +1,11 @@
 package com.ims.tenant.controller;
 
+import com.ims.order.dto.CreateOrderRequest;
+import com.ims.order.dto.OrderResponse;
 import com.ims.tenant.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -28,7 +29,7 @@ public class SaleController {
   @PostMapping
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "Record a sale with billing", description = "Creates a sales order and automatically generates an invoice")
-  public ResponseEntity<Map<String, Object>> createSale(@RequestBody Map<String, Object> request) {
+  public ResponseEntity<OrderResponse> createSale(@RequestBody CreateOrderRequest request) {
     var auth = SecurityContextHolder.getContext().getAuthentication();
     Long userId = null;
     if (auth instanceof com.ims.shared.auth.JwtAuthenticationToken jwtAuth) {

@@ -2,7 +2,9 @@ package com.ims.shared.audit;
 
 import com.ims.platform.service.SystemConfigService;
 import com.ims.shared.auth.JwtAuthDetails;
-import lombok.RequiredArgsConstructor;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -11,12 +13,29 @@ import java.util.Objects;
 
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class AuditLogService {
 
   private final AuditLogRepository auditLogRepository;
   private final SystemConfigService systemConfigService;
   private final com.ims.shared.outbox.OutboxService outboxService;
+  private final Counter auditWriteCounter;
+  private final Counter auditFailureCounter;
+  private final Timer auditWriteTimer;
+
+  private static final String CURRENT_REQUEST_ID = "current-request-id";
+
+  public AuditLogService(
+      AuditLogRepository auditLogRepository,
+      SystemConfigService systemConfigService,
+      com.ims.shared.outbox.OutboxService outboxService,
+      MeterRegistry meterRegistry) {
+    this.auditLogRepository = auditLogRepository;
+    this.systemConfigService = systemConfigService;
+    this.outboxService = outboxService;
+    this.auditWriteCounter = Counter.builder("audit.write.total").register(meterRegistry);
+    this.auditFailureCounter = Counter.builder("audit.write.failures").register(meterRegistry);
+    this.auditWriteTimer = Timer.builder("audit.write.latency").register(meterRegistry);
+  }
 
   public void log(AuditAction action, Long tenantId, Long userId, String details) {
     log(action, tenantId, userId, null, null, null, null, details);
@@ -24,28 +43,39 @@ public class AuditLogService {
 
   public void log(AuditAction action, Long tenantId, Long userId, String entityType, Long entityId, String oldValue,
       String newValue, String details) {
-    log.info("AUDIT: tenant={} user={} action={} entity={}:{} details={}", tenantId, userId, action, entityType,
-        entityId, details);
+    auditWriteTimer.record(() -> {
+      try {
+        String requestId = getCurrentRequestId();
+        log.info("AUDIT: tenant={} user={} action={} entity={}:{} request={} details={}",
+            tenantId, userId, action, entityType, entityId, requestId, details);
 
-    com.ims.model.AuditLog auditEntry = com.ims.model.AuditLog.builder()
-        .tenantId(tenantId)
-        .userId(userId)
-        .action(action.name())
-        .entityType(entityType)
-        .entityId(entityId)
-        .oldValue(oldValue)
-        .newValue(newValue)
-        .details(details)
-        .build();
+        com.ims.model.AuditLog auditEntry = com.ims.model.AuditLog.builder()
+            .tenantId(tenantId)
+            .userId(userId)
+            .action(action.name())
+            .entityType(entityType)
+            .entityId(entityId)
+            .oldValue(oldValue)
+            .newValue(newValue)
+            .details(details)
+            .requestId(requestId)
+            .build();
 
-    auditEntry = Objects.requireNonNull(auditLogRepository.save(auditEntry), "Audit entry must not be null after save");
-    
-    // Save to Outbox for async processing (e.g. sending to Kafka for cold storage)
-    try {
-        outboxService.saveEvent("AUDIT", auditEntry.getId().toString(), action.name(), auditEntry);
-    } catch (Exception e) {
-        log.warn("Failed to save audit event to outbox, proceeding anyway: {}", e.getMessage());
-    }
+        auditEntry = Objects.requireNonNull(auditLogRepository.save(auditEntry),
+            "Audit entry must not be null after save");
+        auditWriteCounter.increment();
+
+        try {
+          outboxService.saveEvent("AUDIT", auditEntry.getId().toString(), action.name(), auditEntry);
+        } catch (Exception e) {
+          log.warn("Failed to save audit event to outbox, proceeding anyway: {}", e.getMessage());
+        }
+      } catch (Exception e) {
+        auditFailureCounter.increment();
+        log.error("Failed to write audit log: {}", e.getMessage(), e);
+        throw e;
+      }
+    });
   }
 
   public void logChange(AuditAction action, AuditResource resource, Long resourceId, Object oldState, Object newState,
@@ -74,6 +104,22 @@ public class AuditLogService {
       return null;
     }
   }
+
+  public static void setCurrentRequestId(String requestId) {
+    org.springframework.util.ConcurrentReferenceHashMap<String, String> context = getRequestIdContext();
+    context.put(CURRENT_REQUEST_ID, requestId);
+  }
+
+  private static String getCurrentRequestId() {
+    return getRequestIdContext().get(CURRENT_REQUEST_ID);
+  }
+
+  private static org.springframework.util.ConcurrentReferenceHashMap<String, String> getRequestIdContext() {
+    return REQUEST_ID_CONTEXT.get();
+  }
+
+  private static final ThreadLocal<org.springframework.util.ConcurrentReferenceHashMap<String, String>> REQUEST_ID_CONTEXT = ThreadLocal
+      .withInitial(() -> new org.springframework.util.ConcurrentReferenceHashMap<>(4));
 
   /**
    * @deprecated Use {@link #log(AuditAction, Long, Long, String)} instead.

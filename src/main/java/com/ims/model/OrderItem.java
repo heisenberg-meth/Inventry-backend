@@ -40,6 +40,6 @@ public class OrderItem extends BaseEntity {
   @Builder.Default
   private BigDecimal taxRate = BigDecimal.ZERO;
 
-  @Column(nullable = false, precision = 10, scale = 2)
-  private BigDecimal total;
+  @Column(name = "subtotal", nullable = false, precision = 10, scale = 2)
+  private BigDecimal subtotal;
 }

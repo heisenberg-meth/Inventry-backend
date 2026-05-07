@@ -1,5 +1,8 @@
 package com.ims.tenant.controller;
 
+import com.ims.order.dto.CreateOrderRequest;
+import com.ims.order.entity.OrderStatus;
+import com.ims.order.entity.OrderType;
 import com.ims.model.Order;
 import com.ims.tenant.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,7 +27,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/tenant/orders")
+@RequestMapping("/api/v1/tenant/orders")
 @RequiredArgsConstructor
 @Tag(name = "Tenant - Orders", description = "Order management")
 @SecurityRequirement(name = "bearerAuth")
@@ -37,44 +40,40 @@ public class OrderController {
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "List all orders")
   public ResponseEntity<Page<Order>> getOrders(
-      @RequestParam(required = false) String type, Pageable pageable) {
+      @RequestParam(required = false) OrderType type, Pageable pageable) {
     if (type != null) {
       return ResponseEntity.ok(orderService.getOrdersByType(type, pageable));
     }
     return ResponseEntity.ok(orderService.getOrders(pageable));
   }
 
-  @PostMapping("/purchase")
-  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
-  @Operation(summary = "Create purchase order")
-  public ResponseEntity<Map<String, Object>> createPurchaseOrder(
-      @RequestBody Map<String, Object> request) {
-    Long userId = extractUserId();
-    return ResponseEntity.status(HttpStatus.CREATED)
-        .body(orderService.createPurchaseOrder(request, userId));
-  }
-
-  @PostMapping("/sale")
+  @PostMapping
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
-  @Operation(summary = "Create sale order")
-  public ResponseEntity<Map<String, Object>> createSalesOrder(
-      @RequestBody Map<String, Object> request) {
+  @Operation(summary = "Create order (SALE or PURCHASE)")
+  public ResponseEntity<com.ims.order.dto.OrderResponse> createOrder(
+      @RequestBody CreateOrderRequest request) {
     Long userId = extractUserId();
-    return ResponseEntity.status(HttpStatus.CREATED)
-        .body(orderService.createSalesOrder(request, userId));
+
+    if (request.getType() == OrderType.SALE) {
+      return ResponseEntity.status(HttpStatus.CREATED)
+          .body(orderService.createSalesOrder(request, userId));
+    } else {
+      return ResponseEntity.status(HttpStatus.CREATED)
+          .body(orderService.createPurchaseOrder(request, userId));
+    }
   }
 
   @PostMapping("/return")
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "Create return order")
-  public ResponseEntity<Order> createReturnOrder(@RequestBody Map<String, Object> request) {
+  public ResponseEntity<com.ims.model.Order> createReturnOrder(@RequestBody Map<String, Object> request) {
     return ResponseEntity.status(HttpStatus.CREATED).body(orderService.createReturnOrder(request, extractUserId()));
   }
 
   @PostMapping("/{id}/confirm")
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Confirm order and deduct stock (for sales)")
-  public ResponseEntity<Order> confirmOrder(@PathVariable Long id) {
+  public ResponseEntity<com.ims.model.Order> confirmOrder(@PathVariable Long id) {
     Long userId = extractUserId();
     return ResponseEntity.ok(orderService.confirmOrder(id, userId));
   }
@@ -82,7 +81,7 @@ public class OrderController {
   @PostMapping("/{id}/ship")
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Mark order as shipped")
-  public ResponseEntity<Order> shipOrder(@PathVariable Long id) {
+  public ResponseEntity<com.ims.model.Order> shipOrder(@PathVariable Long id) {
     Long userId = extractUserId();
     return ResponseEntity.ok(orderService.shipOrder(id, userId));
   }
@@ -90,7 +89,7 @@ public class OrderController {
   @PostMapping("/{id}/complete")
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Complete order and add stock (for purchases)")
-  public ResponseEntity<Order> completeOrder(@PathVariable Long id) {
+  public ResponseEntity<com.ims.model.Order> completeOrder(@PathVariable Long id) {
     Long userId = extractUserId();
     return ResponseEntity.ok(orderService.completeOrder(id, userId));
   }
@@ -98,7 +97,7 @@ public class OrderController {
   @PostMapping("/{id}/cancel")
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Cancel order and revert stock if confirmed")
-  public ResponseEntity<Order> cancelOrder(@PathVariable Long id) {
+  public ResponseEntity<com.ims.model.Order> cancelOrder(@PathVariable Long id) {
     Long userId = extractUserId();
     return ResponseEntity.ok(orderService.cancelOrder(id, userId));
   }
@@ -114,7 +113,7 @@ public class OrderController {
   @GetMapping("/{id}")
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "Get order detail with items")
-  public ResponseEntity<Map<String, Object>> getOrder(@PathVariable Long id) {
+  public ResponseEntity<com.ims.order.dto.OrderResponse> getOrder(@PathVariable Long id) {
     return ResponseEntity.ok(orderService.getOrderWithItems(id));
   }
 
@@ -134,6 +133,7 @@ public class OrderController {
   @Operation(summary = "Update order status")
   public ResponseEntity<Order> updateStatus(
       @PathVariable Long id, @RequestBody Map<String, String> body) {
-    return ResponseEntity.ok(orderService.updateOrderStatus(id, Objects.requireNonNull(body.get("status"))));
+    String statusStr = Objects.requireNonNull(body.get("status"));
+    return ResponseEntity.ok(orderService.updateOrderStatus(id, OrderStatus.valueOf(statusStr)));
   }
 }

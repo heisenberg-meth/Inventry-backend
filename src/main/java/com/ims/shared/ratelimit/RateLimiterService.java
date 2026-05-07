@@ -1,7 +1,10 @@
 package com.ims.shared.ratelimit;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import java.util.Collections;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -9,11 +12,16 @@ import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class RateLimiterService {
 
     private final RedisTemplate<String, Object> redisTemplate;
+    private final Counter authRateLimitViolations;
+    private final Counter publicRateLimitViolations;
+    private final Counter authenticatedRateLimitViolations;
+    private final Counter tenantRateLimitViolations;
+    private final Counter redisFailures;
+    private final Timer redisLatencyTimer;
 
     private static final String LUA_SCRIPT = "local key = KEYS[1] " +
             "local now = tonumber(ARGV[1]) " +
@@ -32,6 +40,20 @@ public class RateLimiterService {
 
     private final RedisScript<Long> script = new DefaultRedisScript<>(LUA_SCRIPT, Long.class);
 
+    public RateLimiterService(RedisTemplate<String, Object> redisTemplate, MeterRegistry meterRegistry) {
+        this.redisTemplate = redisTemplate;
+        this.authRateLimitViolations = Counter.builder("ratelimit.violations").tag("tier", "auth")
+                .register(meterRegistry);
+        this.publicRateLimitViolations = Counter.builder("ratelimit.violations").tag("tier", "public")
+                .register(meterRegistry);
+        this.authenticatedRateLimitViolations = Counter.builder("ratelimit.violations").tag("tier", "authenticated")
+                .register(meterRegistry);
+        this.tenantRateLimitViolations = Counter.builder("ratelimit.violations").tag("tier", "tenant")
+                .register(meterRegistry);
+        this.redisFailures = Counter.builder("ratelimit.redis.failures").register(meterRegistry);
+        this.redisLatencyTimer = Timer.builder("ratelimit.redis.latency").register(meterRegistry);
+    }
+
     /**
      * Checks if a request is allowed under the rate limit.
      *
@@ -41,7 +63,12 @@ public class RateLimiterService {
      * @return true if allowed, false if rate limited
      */
     public boolean isAllowed(String key, int limit, int windowSeconds) {
-        try {
+        return isAllowed(key, limit, windowSeconds, false);
+    }
+
+    @CircuitBreaker(name = "redisService", fallbackMethod = "redisFallback")
+    public boolean isAllowed(String key, int limit, int windowSeconds, boolean failClosed) {
+        return redisLatencyTimer.record(() -> {
             long now = System.currentTimeMillis();
             long windowMillis = (long) windowSeconds * 1000;
 
@@ -52,11 +79,31 @@ public class RateLimiterService {
                     String.valueOf(windowMillis),
                     String.valueOf(limit));
 
-            return result != null && result == 1L;
-        } catch (Exception e) {
-            log.error("Rate limiter Redis failure for key {}: {}", key, e.getMessage());
-            // Fail open to avoid blocking legitimate traffic during Redis outage
-            return true;
+            boolean allowed = result != null && result == 1L;
+
+            if (!allowed) {
+                incrementViolationCounter(key);
+            }
+
+            return allowed;
+        });
+    }
+
+    public boolean redisFallback(String key, int limit, int windowSeconds, boolean failClosed, Throwable t) {
+        log.warn("Circuit breaker OPEN for redisService - rate limiter unavailable for key {}", key);
+        redisFailures.increment();
+        return !failClosed;
+    }
+
+    private void incrementViolationCounter(String key) {
+        if (key.contains("rate_limit:auth:")) {
+            authRateLimitViolations.increment();
+        } else if (key.contains("rate_limit:public:")) {
+            publicRateLimitViolations.increment();
+        } else if (key.contains("rate_limit:user:")) {
+            authenticatedRateLimitViolations.increment();
+        } else if (key.contains("rate_limit:tenant:")) {
+            tenantRateLimitViolations.increment();
         }
     }
 
@@ -64,6 +111,7 @@ public class RateLimiterService {
      * Gets the current request count in the window.
      * Note: This is not atomic with isAllowed and should only be used for headers.
      */
+    @CircuitBreaker(name = "redisService", fallbackMethod = "getCountFallback")
     public int getCount(String key) {
         try {
             Long count = redisTemplate.opsForZSet().zCard(key);
@@ -71,5 +119,9 @@ public class RateLimiterService {
         } catch (Exception e) {
             return 0;
         }
+    }
+
+    public int getCountFallback(String key, Throwable t) {
+        return 0;
     }
 }

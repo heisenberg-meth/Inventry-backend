@@ -1,6 +1,7 @@
 package com.ims.dto;
 
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import lombok.Data;
 
@@ -11,5 +12,6 @@ public class CreateInvoiceRequest {
 
   private LocalDate dueDate;
 
+  @Size(max = 500, message = "Notes must not exceed 500 characters")
   private String notes;
 }

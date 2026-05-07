@@ -30,7 +30,6 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
   @BeforeEach
   void setup() {
     cleanupDatabase();
-    mockRedisAndCache();
 
     // Tenant 1
     TenantContext.setTenantId(testTenant1Id);

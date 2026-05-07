@@ -37,7 +37,6 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
   @BeforeEach
   void setup() {
     cleanupDatabase();
-    mockRedisAndCache();
   }
 
   @Test

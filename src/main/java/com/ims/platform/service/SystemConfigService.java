@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@NoArgsConstructor(force = true)
 @Slf4j
 public class SystemConfigService {
 
@@ -40,8 +42,13 @@ public class SystemConfigService {
         .orElseThrow(() -> new EntityNotFoundException("Config not found: " + key));
     config.setValue(value);
     config.setUpdatedAt(LocalDateTime.now());
-    log.info("System config updated: {} = {}", key, value);
+    log.info("System config updated: {} = {}", key, maskSensitive(value));
     return systemConfigRepository.save(config);
+  }
+
+  private String maskSensitive(String value) {
+    if (value == null || value.isBlank()) return "****";
+    return value.length() > 4 ? value.substring(0, 2) + "****" + value.substring(value.length() - 2) : "****";
   }
 
   public boolean isPharmacyEnabled() {

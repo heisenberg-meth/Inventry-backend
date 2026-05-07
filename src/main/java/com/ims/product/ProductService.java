@@ -10,10 +10,14 @@ import com.ims.shared.auth.TenantContext;
 import com.ims.product.extension.ProductExtensionStrategy;
 import com.ims.platform.repository.TenantRepository;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.cache.annotation.CacheConfig;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,7 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@NoArgsConstructor(force = true)
 @Slf4j
+@CacheConfig(cacheNames = "products", cacheResolver = "tenantAwareCacheResolver")
 public class ProductService {
 
   private final ProductRepository productRepository;
@@ -34,6 +40,7 @@ public class ProductService {
   private static final int DEFAULT_REORDER_LEVEL = 10;
   private static final int MAX_PAGE_SIZE = 100;
 
+  @PreAuthorize("hasAuthority('view_product')")
   public Page<ProductResponse> getProducts(Pageable pageable) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
@@ -50,6 +57,7 @@ public class ProductService {
     return productRepository.findAllWithDetails(pageable).map(this::toResponse);
   }
 
+  @PreAuthorize("hasAuthority('view_product')")
   public List<ProductResponse> getNextProducts(Long lastId, int limit) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
@@ -61,6 +69,8 @@ public class ProductService {
         .collect(Collectors.toList());
   }
 
+  @Cacheable(key = "#id")
+  @PreAuthorize("hasAuthority('view_product')")
   public ProductResponse getProductById(Long id) {
     Product product = productRepository
         .findById(id)
@@ -70,19 +80,25 @@ public class ProductService {
   }
 
   public java.util.Optional<Product> findByIdWithLock(Long id) {
-    return productRepository.findByIdWithLock(id);
+    Long tenantId = TenantContext.getTenantId();
+    return productRepository.findByIdWithLock(id, tenantId);
   }
 
   @Transactional
+  @PreAuthorize("hasAuthority('create_product')")
+  @CacheEvict(allEntries = true)
   public ProductResponse createProduct(CreateProductRequest request) {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) {
       throw new IllegalStateException("TenantContext not set - cannot create product");
     }
 
+    // PRD 4.1.1 - SKU Normalization (Trim + Uppercase)
+    String normalizedSku = request.getSku() != null ? request.getSku().trim().toUpperCase() : null;
+
     // PRD 4.4 - Check for duplicate SKU using dedicated method
-    if (request.getSku() != null && !request.getSku().isBlank()) {
-      if (productRepository.existsBySku(request.getSku())) {
+    if (normalizedSku != null && !normalizedSku.isBlank()) {
+      if (productRepository.existsBySku(normalizedSku)) {
         throw new IllegalStateException("SKU already exists");
       }
     }
@@ -104,7 +120,7 @@ public class ProductService {
     Product product = Product.builder()
         .tenantId(tenantId)
         .name(request.getName())
-        .sku(request.getSku())
+        .sku(normalizedSku)
         .description(request.getDescription())
         .barcode(request.getBarcode())
         .categoryId(request.getCategoryId())
@@ -116,10 +132,6 @@ public class ProductService {
         .stock(0)
         .isDeleted(false)
         .build();
-
-    if (request.getSku() != null && productRepository.existsBySku(request.getSku())) {
-      throw new IllegalStateException("SKU already exists");
-    }
 
     product = productRepository.save(product);
 
@@ -141,6 +153,8 @@ public class ProductService {
   }
 
   @Transactional
+  @PreAuthorize("hasAuthority('update_product')")
+  @CacheEvict(key = "#id")
   public ProductResponse updateProduct(Long id, CreateProductRequest request) {
     Product product = productRepository
         .findById(id)
@@ -151,13 +165,14 @@ public class ProductService {
       product.setName(request.getName());
     }
     if (request.getSku() != null) {
-      // Check uniqueness if SKU is changing
-      if (!request.getSku().equals(product.getSku())) {
-        if (productRepository.existsBySku(request.getSku())) {
+      // PRD 4.1.2 - SKU Normalization and Uniqueness Revalidation
+      String normalizedSku = request.getSku().trim().toUpperCase();
+      if (!normalizedSku.equals(product.getSku())) {
+        if (productRepository.existsBySku(normalizedSku)) {
           throw new IllegalStateException("SKU already exists");
         }
       }
-      product.setSku(request.getSku());
+      product.setSku(normalizedSku);
     }
     if (request.getDescription() != null) {
       product.setDescription(request.getDescription());
@@ -203,6 +218,7 @@ public class ProductService {
 
   @Transactional
   @PreAuthorize("hasAuthority('delete_product')")
+  @CacheEvict(key = "#id")
   public void deleteProduct(Long id) {
     Product product = productRepository
         .findById(id)
@@ -222,6 +238,7 @@ public class ProductService {
   }
 
   @Transactional
+  @PreAuthorize("hasAuthority('create_product')")
   public ProductResponse duplicateProduct(Long id) {
     Product original = productRepository.findById(id)
         .filter(p -> !p.getIsDeleted())
@@ -263,6 +280,7 @@ public class ProductService {
     return newSku;
   }
 
+  @PreAuthorize("hasAuthority('view_product')")
   public List<ProductResponse> getLowStockProducts() {
     Long tenantId = getTenantId();
     if (tenantId == null)
@@ -273,11 +291,14 @@ public class ProductService {
         .collect(Collectors.toList());
   }
 
+  @PreAuthorize("hasAuthority('view_product')")
   public Page<ProductResponse> searchProducts(String query, Pageable pageable) {
-    Long tenantId = getTenantId();
-    if (tenantId == null)
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) {
+      log.error("Tenant ID missing for product search");
       return Page.empty();
-    return productRepository.searchFast(query, pageable).map(this::toResponse);
+    }
+    return productRepository.searchFast(tenantId, query, pageable).map(this::toResponse);
   }
 
   private java.util.Optional<JwtAuthDetails> getAuthDetails() {

@@ -50,6 +50,9 @@ public class AuditLog {
   @Column(columnDefinition = "TEXT")
   private String details;
 
+  @Column(name = "request_id", columnDefinition = "TEXT")
+  private String requestId;
+
   @Column(name = "created_at")
   @Builder.Default
   private LocalDateTime createdAt = LocalDateTime.now();

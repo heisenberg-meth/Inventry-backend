@@ -1,5 +1,6 @@
 package com.ims.tenant.controller;
 
+import com.ims.dto.CustomerHistoryResponse;
 import com.ims.model.Customer;
 import com.ims.tenant.service.CustomerService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,7 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/tenant/customers")
+@RequestMapping("/api/v1/tenant/customers")
 @RequiredArgsConstructor
 @Tag(name = "Tenant - Customers")
 @SecurityRequirement(name = "bearerAuth")
@@ -76,6 +77,13 @@ public class CustomerController {
   @Operation(summary = "Get full ledger for customer")
   public ResponseEntity<java.util.Map<String, Object>> getCustomerLedger(@PathVariable Long id) {
     return ResponseEntity.ok(customerService.getCustomerLedger(id));
+  }
+
+  @GetMapping("/{id}/history")
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+  @Operation(summary = "Get customer order history with summary stats")
+  public ResponseEntity<CustomerHistoryResponse> getCustomerHistory(@PathVariable Long id) {
+    return ResponseEntity.ok(customerService.getCustomerHistory(id));
   }
 
   @PostMapping("/bulk-import")

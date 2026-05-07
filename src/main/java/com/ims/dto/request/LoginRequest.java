@@ -15,5 +15,6 @@ public class LoginRequest {
   @Size(min = 4, max = 100, message = "Password must be between 4 and 100 characters")
   private String password;
 
+  @Size(max = 100, message = "Company code must not exceed 100 characters")
   private String companyCode;
 }

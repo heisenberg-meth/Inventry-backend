@@ -3,6 +3,7 @@ package com.ims.shared.pdf;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import lombok.RequiredArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
@@ -11,6 +12,7 @@ import org.xhtmlrenderer.pdf.ITextRenderer;
 
 @Service
 @RequiredArgsConstructor
+@NoArgsConstructor(force = true)
 @Slf4j
 public class PdfService {
 

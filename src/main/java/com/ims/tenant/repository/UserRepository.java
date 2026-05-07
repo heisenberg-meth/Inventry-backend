@@ -15,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
 
+    Optional<User> findByIdAndTenantId(Long id, Long tenantId);
+
     @Query("SELECT u FROM User u LEFT JOIN FETCH u.customPermissions WHERE u.id = :id")
     Optional<User> findByIdWithPermissions(@Param("id") Long id);
 

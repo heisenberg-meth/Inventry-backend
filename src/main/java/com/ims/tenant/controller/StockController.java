@@ -10,6 +10,7 @@ import com.ims.tenant.service.StockService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import java.util.Map;
 import java.util.Objects;
 
@@ -23,7 +24,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/tenant/stock")
+@RequestMapping("/api/v1/tenant/stock")
 @RequiredArgsConstructor
 @Tag(name = "Tenant - Stock", description = "Stock management")
 @SecurityRequirement(name = "bearerAuth")
@@ -67,7 +68,7 @@ public class StockController {
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Update transfer order status")
   public ResponseEntity<TransferOrder> updateTransferStatus(
-      @PathVariable Long id, @RequestBody TransferOrderStatusRequest request) {
+      @PathVariable Long id, @Valid @RequestBody TransferOrderStatusRequest request) {
     Long userId = extractUserId();
     return ResponseEntity.ok(Objects.requireNonNull(stockService.updateTransferStatus(id, request, userId)));
   }
@@ -75,7 +76,7 @@ public class StockController {
   @PostMapping("/in")
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "Record stock received")
-  public ResponseEntity<Map<String, String>> stockIn(@RequestBody StockInRequest request) {
+  public ResponseEntity<Map<String, String>> stockIn(@Valid @RequestBody StockInRequest request) {
     Long userId = extractUserId();
     Long productId = request.getProductId();
     int quantity = request.getQuantity();

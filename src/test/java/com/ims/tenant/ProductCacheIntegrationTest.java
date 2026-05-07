@@ -33,7 +33,6 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
   @BeforeEach
   void setup() throws Exception {
     cleanupDatabase();
-    mockRedisAndCache();
     // Clear cache before each test
     cacheManager.getCacheNames().forEach(name -> {
       org.springframework.cache.Cache cache = cacheManager.getCache(name);

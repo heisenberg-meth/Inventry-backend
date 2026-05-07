@@ -1,6 +1,7 @@
 package com.ims.tenant.service;
 
 import com.ims.model.Tenant;
+import com.ims.order.entity.OrderType;
 import com.ims.platform.repository.TenantRepository;
 import com.ims.shared.auth.JwtAuthDetails;
 import com.ims.shared.auth.TenantContext;
@@ -20,6 +21,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Pageable;
@@ -29,6 +31,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
+@NoArgsConstructor(force = true)
 @Slf4j
 
 public class ReportService {
@@ -60,9 +63,9 @@ public class ReportService {
     LocalDateTime fromDt = Objects.requireNonNull(from).atStartOfDay();
     LocalDateTime toDt = Objects.requireNonNull(to).atTime(LocalTime.MAX);
 
-    BigDecimal totalSpent = Objects.requireNonNull(orderRepository.sumAmountByTypeAndDateRange("PURCHASE",
+    BigDecimal totalSpent = Objects.requireNonNull(orderRepository.sumAmountByTypeAndDateRange(OrderType.PURCHASE,
         Objects.requireNonNull(fromDt), Objects.requireNonNull(toDt)));
-    long totalOrders = orderRepository.countByTypeAndDateRange("PURCHASE", Objects.requireNonNull(fromDt),
+    long totalOrders = orderRepository.countByTypeAndDateRange(OrderType.PURCHASE, Objects.requireNonNull(fromDt),
         Objects.requireNonNull(toDt));
     BigDecimal avgOrderValue = totalOrders > 0
         ? totalSpent.divide(BigDecimal.valueOf(totalOrders), 2, RoundingMode.HALF_UP)
@@ -88,11 +91,11 @@ public class ReportService {
     long outOfStockCount = productRepository.countOutOfStock();
 
     BigDecimal todaySalesAmount = Objects.requireNonNull(orderRepository.sumAmountByTypeAndDateRange(
-        "SALE", Objects.requireNonNull(todayStart), Objects.requireNonNull(todayEnd)));
-    long todaySalesCount = orderRepository.countByTypeAndDateRange("SALE", Objects.requireNonNull(todayStart),
+        OrderType.SALE, Objects.requireNonNull(todayStart), Objects.requireNonNull(todayEnd)));
+    long todaySalesCount = orderRepository.countByTypeAndDateRange(OrderType.SALE, Objects.requireNonNull(todayStart),
         Objects.requireNonNull(todayEnd));
     BigDecimal todayPurchasesAmount = Objects.requireNonNull(orderRepository.sumAmountByTypeAndDateRange(
-        "PURCHASE", Objects.requireNonNull(todayStart), Objects.requireNonNull(todayEnd)));
+        OrderType.PURCHASE, Objects.requireNonNull(todayStart), Objects.requireNonNull(todayEnd)));
 
     Map<String, Object> dashboard = new LinkedHashMap<>();
     dashboard.put("total_products", totalProducts);
@@ -213,9 +216,9 @@ public class ReportService {
     LocalDateTime fromDt = Objects.requireNonNull(from).atStartOfDay();
     LocalDateTime toDt = Objects.requireNonNull(to).atTime(LocalTime.MAX);
 
-    BigDecimal totalRevenue = Objects.requireNonNull(orderRepository.sumAmountByTypeAndDateRange("SALE",
+    BigDecimal totalRevenue = Objects.requireNonNull(orderRepository.sumAmountByTypeAndDateRange(OrderType.SALE,
         Objects.requireNonNull(fromDt), Objects.requireNonNull(toDt)));
-    long totalOrders = orderRepository.countByTypeAndDateRange("SALE", Objects.requireNonNull(fromDt),
+    long totalOrders = orderRepository.countByTypeAndDateRange(OrderType.SALE, Objects.requireNonNull(fromDt),
         Objects.requireNonNull(toDt));
     BigDecimal avgOrderValue = totalOrders > 0
         ? totalRevenue.divide(BigDecimal.valueOf(totalOrders), 2, RoundingMode.HALF_UP)
@@ -235,9 +238,9 @@ public class ReportService {
     LocalDateTime fromDt = Objects.requireNonNull(from).atStartOfDay();
     LocalDateTime toDt = Objects.requireNonNull(to).atTime(LocalTime.MAX);
 
-    BigDecimal salesRevenue = Objects.requireNonNull(orderRepository.sumAmountByTypeAndDateRange("SALE",
+    BigDecimal salesRevenue = Objects.requireNonNull(orderRepository.sumAmountByTypeAndDateRange(OrderType.SALE,
         Objects.requireNonNull(fromDt), Objects.requireNonNull(toDt)));
-    BigDecimal purchaseCost = Objects.requireNonNull(orderRepository.sumAmountByTypeAndDateRange("PURCHASE",
+    BigDecimal purchaseCost = Objects.requireNonNull(orderRepository.sumAmountByTypeAndDateRange(OrderType.PURCHASE,
         Objects.requireNonNull(fromDt), Objects.requireNonNull(toDt)));
     BigDecimal profit = salesRevenue.subtract(purchaseCost);
 
@@ -261,8 +264,8 @@ public class ReportService {
     LocalDateTime fromDt = from.atStartOfDay();
     LocalDateTime toDt = to.atTime(LocalTime.MAX);
 
-    BigDecimal totalSalesTax = orderRepository.sumTaxAmountByTypeAndDateRange("SALE", fromDt, toDt);
-    BigDecimal totalPurchaseTax = orderRepository.sumTaxAmountByTypeAndDateRange("PURCHASE", fromDt, toDt);
+    BigDecimal totalSalesTax = orderRepository.sumTaxAmountByTypeAndDateRange(OrderType.SALE, fromDt, toDt);
+    BigDecimal totalPurchaseTax = orderRepository.sumTaxAmountByTypeAndDateRange(OrderType.PURCHASE, fromDt, toDt);
 
     Map<String, Object> gst = new LinkedHashMap<>();
     gst.put("period", Map.of("from", from, "to", to));

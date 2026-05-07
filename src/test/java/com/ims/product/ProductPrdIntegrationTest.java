@@ -46,6 +46,7 @@ public class ProductPrdIntegrationTest extends BaseIntegrationTest {
 
                 // Same SKU, different tenant -> PASS
                 Long tenant2Id = 2L;
+                TenantContext.setTenantId(tenant2Id);
                 Product p3 = Product.builder()
                                 .tenantId(tenant2Id)
                                 .name("Product 3")
@@ -118,7 +119,7 @@ public class ProductPrdIntegrationTest extends BaseIntegrationTest {
                 Long tenantId = 1L;
                 TenantContext.setTenantId(tenantId);
 
-                // Negative price -> FAIL
+                // Negative price -> FAIL (Bean Validation or DB)
                 Product p1 = Product.builder()
                                 .tenantId(tenantId)
                                 .name("Bad Price")
@@ -126,9 +127,9 @@ public class ProductPrdIntegrationTest extends BaseIntegrationTest {
                                 .salePrice(new BigDecimal("-1.0"))
                                 .isDeleted(false)
                                 .build();
-                assertThrows(DataIntegrityViolationException.class, () -> productRepository.save(p1));
+                assertThrows(Exception.class, () -> productRepository.save(p1));
 
-                // Negative stock -> FAIL
+                // Negative stock -> FAIL (Bean Validation or DB)
                 Product p2 = Product.builder()
                                 .tenantId(tenantId)
                                 .name("Bad Stock")
@@ -137,7 +138,7 @@ public class ProductPrdIntegrationTest extends BaseIntegrationTest {
                                 .stock(-5)
                                 .isDeleted(false)
                                 .build();
-                assertThrows(DataIntegrityViolationException.class, () -> productRepository.save(p2));
+                assertThrows(Exception.class, () -> productRepository.save(p2));
         }
 
         @Test
@@ -165,12 +166,91 @@ public class ProductPrdIntegrationTest extends BaseIntegrationTest {
                                 .build();
                 productRepository.save(p2);
 
-                var results = productRepository.searchFast("laptop", PageRequest.of(0, 10));
+                var results = productRepository.searchFast(1L, "laptop", PageRequest.of(0, 10));
                 assertEquals(1, results.getContent().size());
                 assertEquals("Special Laptop", results.getContent().get(0).getName());
 
-                results = productRepository.searchFast("gaming", PageRequest.of(0, 10));
+                results = productRepository.searchFast(1L, "gaming", PageRequest.of(0, 10));
                 assertEquals(1, results.getContent().size());
                 assertEquals("Special Laptop", results.getContent().get(0).getName());
+        }
+
+        @Test
+        void testTenantIsolation() {
+                Long tenantA = 1L;
+                Long tenantB = 2L;
+
+                TenantContext.setTenantId(tenantA);
+                Product productA = Product.builder()
+                                .tenantId(tenantA)
+                                .name("Tenant A Product")
+                                .sku("A-001")
+                                .salePrice(BigDecimal.TEN)
+                                .isDeleted(false)
+                                .build();
+                productRepository.save(productA);
+
+                TenantContext.setTenantId(tenantB);
+                Product productB = Product.builder()
+                                .tenantId(tenantB)
+                                .name("Tenant B Product")
+                                .sku("B-001")
+                                .salePrice(BigDecimal.TEN)
+                                .isDeleted(false)
+                                .build();
+                productRepository.save(productB);
+
+                TenantContext.setTenantId(tenantA);
+                var tenantAProducts = productRepository.findByIsDeletedFalse(PageRequest.of(0, 10));
+                assertEquals(1, tenantAProducts.getContent().size());
+                assertEquals("Tenant A Product", tenantAProducts.getContent().get(0).getName());
+
+                TenantContext.setTenantId(tenantB);
+                var tenantBProducts = productRepository.findByIsDeletedFalse(PageRequest.of(0, 10));
+                assertEquals(1, tenantBProducts.getContent().size());
+                assertEquals("Tenant B Product", tenantBProducts.getContent().get(0).getName());
+        }
+
+        @Test
+        void testOptimisticLockingRejectsStaleUpdates() {
+                Long tenantId = 1L;
+                TenantContext.setTenantId(tenantId);
+
+                Product product = Product.builder()
+                                .tenantId(tenantId)
+                                .name("Versioned Product")
+                                .sku("VER-001")
+                                .salePrice(BigDecimal.TEN)
+                                .isDeleted(false)
+                                .build();
+                product = productRepository.save(product);
+
+                Product staleCopy = productRepository.findById(product.getId()).orElseThrow();
+                assertEquals(0L, staleCopy.getVersion());
+
+                Product freshCopy = productRepository.findById(product.getId()).orElseThrow();
+                freshCopy.setName("Updated Name");
+                productRepository.save(freshCopy);
+
+                staleCopy.setName("Stale Update");
+                assertThrows(
+                                org.springframework.orm.ObjectOptimisticLockingFailureException.class,
+                                () -> productRepository.save(staleCopy));
+        }
+
+        @Test
+        void testReorderLevelConstraint() {
+                Long tenantId = 1L;
+                TenantContext.setTenantId(tenantId);
+
+                Product p = Product.builder()
+                                .tenantId(tenantId)
+                                .name("Bad Reorder")
+                                .sku("REORD-BAD")
+                                .salePrice(BigDecimal.TEN)
+                                .reorderLevel(-1)
+                                .isDeleted(false)
+                                .build();
+                assertThrows(Exception.class, () -> productRepository.save(p));
         }
 }

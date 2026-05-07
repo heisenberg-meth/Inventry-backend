@@ -37,7 +37,6 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
         @BeforeEach
         void setup() {
                 cleanupDatabase();
-                mockRedisAndCache();
         }
 
         @Test

@@ -35,7 +35,6 @@ class TenantIsolationIntegrationTest extends BaseIntegrationTest {
         @BeforeEach
         void setup() throws Exception {
                 cleanupDatabase();
-                mockRedisAndCache();
 
                 // Get tenant IDs from seeded data (set in BaseIntegrationTest.seedTestData)
                 tenant1Id = testTenant1Id;

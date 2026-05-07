@@ -36,14 +36,16 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
         @Query(value = """
                         SELECT * FROM products
-                        WHERE is_deleted = false
+                        WHERE tenant_id = :tenantId
+                        AND is_deleted = false
                         AND search_vector @@ plainto_tsquery(:query)
                         """, countQuery = """
                         SELECT count(*) FROM products
-                        WHERE is_deleted = false
+                        WHERE tenant_id = :tenantId
+                        AND is_deleted = false
                         AND search_vector @@ plainto_tsquery(:query)
                         """, nativeQuery = true)
-        Page<Product> searchFast(@Param("query") String query, Pageable pageable);
+        Page<Product> searchFast(@Param("tenantId") Long tenantId, @Param("query") String query, Pageable pageable);
 
         @Query("SELECT COUNT(p) FROM Product p WHERE p.isDeleted = false")
         long countActive();
@@ -66,8 +68,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         Page<Product> findByIsDeletedFalse(Pageable pageable);
 
         @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
-        @Query("SELECT p FROM Product p WHERE p.id = :productId")
-        Optional<Product> findByIdWithLock(@Param("productId") Long productId);
+        @Query("SELECT p FROM Product p WHERE p.id = :productId AND p.tenantId = :tenantId AND p.isDeleted = false")
+        Optional<Product> findByIdWithLock(@Param("productId") Long productId, @Param("tenantId") Long tenantId);
 
         @Query("SELECT p FROM Product p WHERE p.id = :id AND p.isDeleted = false")
         Optional<Product> findByIdAndIsDeletedFalse(@Param("id") Long id);

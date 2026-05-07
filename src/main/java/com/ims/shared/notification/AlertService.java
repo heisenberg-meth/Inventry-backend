@@ -1,9 +1,11 @@
 package com.ims.shared.notification;
 
 import com.ims.model.Alert;
+import com.ims.model.Inventory;
 import com.ims.model.Notification;
 import com.ims.product.Product;
 import lombok.RequiredArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,6 +14,7 @@ import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
+@NoArgsConstructor(force = true)
 @Slf4j
 public class AlertService {
 
@@ -43,6 +46,33 @@ public class AlertService {
 
             // Fire outbox event for async processing (e.g. sending SMS/Email via Kafka)
             outboxService.saveEvent("INVENTORY", product.getId().toString(), "LOW_STOCK_ALERT", saved);
+        }
+    }
+
+    public void checkLowStock(Inventory inventory) {
+        if (inventory.isLowStock() || inventory.isBelowReorderLevel()) {
+            String severity = inventory.getQuantity() == 0 ? "CRITICAL" : "WARNING";
+            String message = String.format("Inventory for product ID %d is %s. Quantity: %d, Low threshold: %d, Reorder at: %d",
+                    inventory.getProductId(), severity, inventory.getQuantity(),
+                    inventory.getLowStockThreshold() != null ? inventory.getLowStockThreshold() : 0,
+                    inventory.getReorderLevel() != null ? inventory.getReorderLevel() : 0);
+
+            log.warn("Low stock alert triggered: {}", message);
+
+            Alert alert = Alert.builder()
+                    .tenantId(inventory.getTenantId())
+                    .type("LOW_STOCK")
+                    .severity(severity)
+                    .message(message)
+                    .resourceId(inventory.getProductId())
+                    .createdAt(LocalDateTime.now())
+                    .isDismissed(false)
+                    .build();
+            Alert saved = alertRepository.save(alert);
+
+            businessMetricsService.incrementLowStockAlerts();
+
+            outboxService.saveEvent("INVENTORY", inventory.getProductId().toString(), "LOW_STOCK_ALERT", saved);
         }
     }
 
