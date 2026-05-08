@@ -149,6 +149,21 @@ public class GlobalExceptionHandler {
     return ResponseEntity.badRequest().body(body);
   }
 
+  @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+  public ResponseEntity<Map<String, Object>> handleMethodNotSupported(
+      org.springframework.web.HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+        .body(errorBody(HttpStatus.METHOD_NOT_ALLOWED.value(), "METHOD_NOT_ALLOWED", ex.getMessage(),
+            request.getRequestURI()));
+  }
+
+  @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+  public ResponseEntity<Map<String, Object>> handleHttpMessageNotReadable(
+      org.springframework.http.converter.HttpMessageNotReadableException ex, HttpServletRequest request) {
+    return ResponseEntity.badRequest()
+        .body(errorBody(STATUS_BAD_REQUEST, "MALFORMED_JSON", "Malformed JSON request body", request.getRequestURI()));
+  }
+
   @ExceptionHandler(Exception.class)
   public ResponseEntity<Map<String, Object>> handleAll(Exception ex, HttpServletRequest request) {
     log.error("Unexpected error occurred at [{}]: {}", request.getRequestURI(), ex.getMessage(), ex);

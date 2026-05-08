@@ -37,9 +37,11 @@ class FailureHandlingIntegrationTest extends BaseIntegrationTest {
     @Test
     @DisplayName("Unauthorised origin should be blocked")
     void unauthorizedOriginBlocked() throws Exception {
-      mockMvc.perform(get("/api/auth/login")
-          .header("Origin", "https://malicious-site.com"))
-          .andExpect(status().isUnauthorized());
+      mockMvc.perform(post("/api/auth/login")
+          .header("Origin", "https://malicious-site.com")
+          .contentType(MediaType.APPLICATION_JSON)
+          .content("{}"))
+          .andExpect(status().isForbidden());
     }
 
     @Test

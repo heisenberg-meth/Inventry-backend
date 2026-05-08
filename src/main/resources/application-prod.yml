@@ -38,6 +38,6 @@ app:
 logging:
   level:
     root: INFO
-    com.ims: INFO
-    org.springframework.web: INFO
-    org.hibernate.SQL: ERROR
+    "[com.ims]": INFO
+    "[org.springframework.web]": INFO
+    "[org.hibernate.SQL]": ERROR

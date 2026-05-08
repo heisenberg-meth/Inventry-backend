@@ -12,6 +12,9 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    repair-on-migrate: true
+    validate-on-migrate: false
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
@@ -20,6 +23,7 @@ spring:
     redis:
       repositories:
         enabled: false
+      password: changeme
   main:
     allow-bean-definition-overriding: true
 

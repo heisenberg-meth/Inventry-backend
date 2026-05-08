@@ -54,18 +54,18 @@ spring:
       acks: all
       retries: 3
       properties:
-        delivery.timeout.ms: 30000
-        request.timeout.ms: 10000
-        max.block.ms: 10000
+        "[delivery.timeout.ms]": 30000
+        "[request.timeout.ms]": 10000
+        "[max.block.ms]": 10000
     consumer:
       group-id: ims-group
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       properties:
-        session.timeout.ms: 10000
-        heartbeat.interval.ms: 3000
-        max.poll.interval.ms: 300000
+        "[session.timeout.ms]": 10000
+        "[heartbeat.interval.ms]": 3000
+        "[max.poll.interval.ms]": 300000
 
 server:
   shutdown: graceful
@@ -83,25 +83,19 @@ management:
   metrics:
     distribution:
       percentiles-histogram:
-        http:
-          server:
-            requests: true
-        ims: true
+        "[http.server.requests]": true
+        "ims": true
       percentiles:
-        http:
-          server:
-            requests: "0.95,0.99"
+        "[http.server.requests]": 0.95, 0.99
     tags:
       application: ${spring.application.name}
+    web:
+      server:
+        max-uri-tags: 100
   prometheus:
     metrics:
       export:
         enabled: true
-    endpoints:
-      web:
-        server:
-          requests:
-            max-uri-tags: 100
 
 app:
   security:
@@ -123,12 +117,9 @@ logging:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %highlight(%-5level) %cyan(%logger{36}) - %msg %n"
     level: "%5p [${spring.application.name},%X{traceId},%X{requestId}]"
   level:
-    com.ims: DEBUG
-    org.springframework.web: INFO
-    org.hibernate.SQL: DEBUG
-  logback:
-    encoder:
-      pattern: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    "[com.ims]": DEBUG
+    "[org.springframework.web]": INFO
+    "[org.hibernate.SQL]": DEBUG
   zipkin:
     base-url: http://zipkin:9411
     enabled: false

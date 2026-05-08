@@ -29,7 +29,7 @@ public class StockService {
   private final TenantService tenantService;
   private final WarehouseProductRepository warehouseProductRepository;
   private final TransferOrderRepository transferOrderRepository;
-  private final StockTransactionService stockTransactionService;
+  private final InventoryService inventoryService;
 
   private void checkWarehouseType() {
     Long tenantId = TenantContext.getTenantId();
@@ -121,19 +121,19 @@ public class StockService {
   @Transactional
   @CacheEvict(value = { "stock", "products" }, allEntries = true)
   public void stockIn(Long productId, int qty, String notes, Long userId) {
-    stockTransactionService.stockInInternal(productId, qty, notes, userId);
+    inventoryService.increaseStock(TenantContext.getTenantId(), productId, qty, notes, userId);
   }
 
   @Transactional
   @CacheEvict(value = { "stock", "products" }, allEntries = true)
   public void stockOut(Long productId, int qty, String notes, Long userId) {
-    stockTransactionService.stockOutInternal(productId, qty, notes, userId);
+    inventoryService.decreaseStock(TenantContext.getTenantId(), productId, qty, notes, userId);
   }
 
   @Transactional
   @CacheEvict(value = { "stock", "products" }, allEntries = true)
   public void stockAdjust(Long productId, int qty, String notes, Long userId) {
-    stockTransactionService.stockAdjustInternal(productId, qty, notes, userId);
+    inventoryService.adjustStock(TenantContext.getTenantId(), productId, qty, notes, userId);
   }
 
   public Page<StockMovement> getMovements(Pageable pageable) {

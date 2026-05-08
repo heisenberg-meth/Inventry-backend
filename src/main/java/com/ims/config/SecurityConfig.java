@@ -86,9 +86,9 @@ public class SecurityConfig {
                 .authenticated() // Secure Swagger by default, require auth
                 .anyRequest()
                 .authenticated())
-        .addFilterBefore(traceFilter, UsernamePasswordAuthenticationFilter.class)
-        .addFilterBefore(rateLimitFilter, jwtFilter.getClass())
         .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+        .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+        .addFilterBefore(traceFilter, UsernamePasswordAuthenticationFilter.class)
         .addFilterAfter(tenantFilter, jwtFilter.getClass());
 
     return http.build();

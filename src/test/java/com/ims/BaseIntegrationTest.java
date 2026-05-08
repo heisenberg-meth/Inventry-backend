@@ -21,21 +21,14 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.utility.DockerImageName;
-
 @SpringBootTest(classes = com.ims.ImsApplication.class, webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @ActiveProfiles("test")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-@Testcontainers
 @Import(BaseIntegrationTest.FlywayTestConfig.class)
 public abstract class BaseIntegrationTest {
 
@@ -50,27 +43,56 @@ public abstract class BaseIntegrationTest {
     }
   }
 
-  @Container
-  @SuppressWarnings("resource")
-  static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17.4-alpine")
-      .withDatabaseName("ims_db")
-      .withUsername("ims_user")
-      .withPassword("changeme");
-
-  @Container
-  @SuppressWarnings("resource")
-  static final GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:7.2-alpine"))
-      .withExposedPorts(6379);
-
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("spring.datasource.url", postgres::getJdbcUrl);
-    registry.add("spring.datasource.username", postgres::getUsername);
-    registry.add("spring.datasource.password", postgres::getPassword);
+    // Default to external containers on ports 5433/6379
+    final String postgresHost = "localhost";
+    final int postgresPort = 5433;
+    final String redisHost = "localhost";
+    final int redisPort = 6379;
+
+    // Allow environment variables to override
+    String envPostgres = System.getenv("TESTCONTAINERS_POSTGRES_URL");
+    String envRedis = System.getenv("TESTCONTAINERS_REDIS_HOST");
+    if (envPostgres != null && !envPostgres.isBlank()) {
+      // Parse JDBC URL like jdbc:postgresql://host:port/db
+      String[] parts = envPostgres.split(":");
+      if (parts.length >= 3) {
+        String host = parts[1].replace("//", "");
+        int port = postgresPort;
+        try {
+          String portStr = parts[2].split("/")[0];
+          port = Integer.parseInt(portStr);
+        } catch (NumberFormatException e) {
+          // Use default
+        }
+        final String jdbcUrl = String.format("jdbc:postgresql://%s:%d/ims_db", host, port);
+        registry.add("spring.datasource.url", () -> jdbcUrl);
+        registry.add("spring.datasource.username", () -> "ims_user");
+        registry.add("spring.datasource.password", () -> "changeme");
+      } else {
+        registry.add("spring.datasource.url", () -> "jdbc:postgresql://localhost:5433/ims_db");
+        registry.add("spring.datasource.username", () -> "ims_user");
+        registry.add("spring.datasource.password", () -> "changeme");
+      }
+    } else {
+      final String jdbcUrl = String.format("jdbc:postgresql://%s:%d/ims_db", postgresHost, postgresPort);
+      registry.add("spring.datasource.url", () -> jdbcUrl);
+      registry.add("spring.datasource.username", () -> "ims_user");
+      registry.add("spring.datasource.password", () -> "changeme");
+    }
+
+    if (envRedis != null && !envRedis.isBlank()) {
+      final String host = envRedis;
+      registry.add("spring.data.redis.host", () -> host);
+      registry.add("spring.data.redis.port", () -> 6379);
+    } else {
+      registry.add("spring.data.redis.host", () -> redisHost);
+      registry.add("spring.data.redis.port", () -> redisPort);
+    }
+
     registry.add("spring.jpa.hibernate.ddl-auto", () -> "none");
     registry.add("spring.flyway.enabled", () -> "true");
-    registry.add("spring.data.redis.host", redis::getHost);
-    registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
   }
 
   @AfterEach
@@ -182,7 +204,7 @@ public abstract class BaseIntegrationTest {
         "categories", "users", "tenants", "roles", "permissions",
         "notifications", "alerts", "webhooks", "audit_logs", "subscriptions",
         "subscription_plans", "support_tickets", "support_messages", "support_attachments",
-        "role_permissions", "stock_movements", "invoices", "payments"
+        "role_permissions", "stock_movements", "invoices", "payments", "outbox_event"
     };
 
     for (String table : tables) {

@@ -32,6 +32,9 @@ public class OrderIntegrationTest extends BaseIntegrationTest {
         private ProductRepository productRepository;
 
         @Autowired
+        private com.ims.tenant.repository.SupplierRepository supplierRepository;
+
+        @Autowired
         private InventoryService inventoryService;
 
         @Autowired
@@ -98,7 +101,15 @@ public class OrderIntegrationTest extends BaseIntegrationTest {
         @Test
         @WithMockUser(authorities = { "ROLE_ADMIN", "create_order", "view_product" })
         public void testCreatePurchaseOrder() throws Exception {
-                // 1. Create a product
+                // 1. Create a supplier
+                com.ims.model.Supplier supplier = com.ims.model.Supplier.builder()
+                                .tenantId(1L)
+                                .name("Test Supplier")
+                                .email("supplier@test.com")
+                                .build();
+                supplier = supplierRepository.save(supplier);
+
+                // 2. Create a product
                 Product product = Product.builder()
                                 .tenantId(1L)
                                 .name("Test Product 2")
@@ -108,9 +119,10 @@ public class OrderIntegrationTest extends BaseIntegrationTest {
                                 .build();
                 product = productRepository.save(product);
 
-                // 2. Create a purchase order
+                // 3. Create a purchase order
                 CreateOrderRequest request = CreateOrderRequest.builder()
                                 .type(OrderType.PURCHASE)
+                                .supplierId(supplier.getId())
                                 .items(List.of(OrderItemRequest.builder()
                                                 .productId(product.getId())
                                                 .quantity(5)

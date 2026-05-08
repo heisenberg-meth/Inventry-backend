@@ -10,12 +10,14 @@ import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.request.LoginRequest;
 import com.ims.dto.request.SignupRequest;
 import com.ims.dto.response.LoginResponse;
+import com.ims.dto.response.SignupResponse;
 import com.ims.shared.auth.SignupService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.test.annotation.DirtiesContext;
 import java.math.BigDecimal;
 import java.util.Objects;
 import java.util.UUID;
@@ -24,6 +26,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 @AutoConfigureMockMvc
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class RbacIntegrationTest extends BaseIntegrationTest {
 
   @Autowired
@@ -45,25 +48,30 @@ public class RbacIntegrationTest extends BaseIntegrationTest {
     // 1. Signup a new tenant (owner is ADMIN)
     String uniqueEmail = TestDataFactory.email();
     String uniqueSlug = "rbac-" + UUID.randomUUID().toString().substring(0, 8);
-    com.ims.dto.response.SignupResponse response = signupService.signup(
+    SignupResponse response = signupService.signup(
         createSignupRequest(TestDataFactory.business(), uniqueSlug, uniqueEmail));
     verifyUser(uniqueEmail);
     companyCode = response.getCompanyCode();
     adminToken = login(uniqueEmail, "password123", companyCode);
 
-    // 2. Create a MANAGER user in the same tenant
+    // 2. Create a MANAGER user in the same tenant via signup (to ensure proper password handling)
     String managerEmail = "manager_" + TestDataFactory.email();
-    jdbcTemplate.update(
-        "INSERT INTO users (name, email, password_hash, role, scope, tenant_id, is_active, is_verified, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
-        "Manager User", managerEmail, passwordEncoder.encode("password123"), "MANAGER", "TENANT", testTenant1Id, true,
-        true);
+    SignupRequest managerSignup = createSignupRequest("Manager User", uniqueSlug + "-mgr", managerEmail);
+    managerSignup.setOwnerName("Manager User");
+    signupService.signup(managerSignup);
+    verifyUser(managerEmail);
+    // Update role to MANAGER
+    jdbcTemplate.update("UPDATE users SET role = 'MANAGER' WHERE email = ?", managerEmail);
     managerToken = login(managerEmail, "password123", companyCode);
 
-    // 3. Create a STAFF user in the same tenant
+    // 3. Create a STAFF user in the same tenant via signup
     String staffEmail = "staff_" + TestDataFactory.email();
-    jdbcTemplate.update(
-        "INSERT INTO users (name, email, password_hash, role, scope, tenant_id, is_active, is_verified, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
-        "Staff User", staffEmail, passwordEncoder.encode("password123"), "STAFF", "TENANT", testTenant1Id, true, true);
+    SignupRequest staffSignup = createSignupRequest("Staff User", uniqueSlug + "-staff", staffEmail);
+    staffSignup.setOwnerName("Staff User");
+    signupService.signup(staffSignup);
+    verifyUser(staffEmail);
+    // Update role to STAFF
+    jdbcTemplate.update("UPDATE users SET role = 'STAFF' WHERE email = ?", staffEmail);
     staffToken = login(staffEmail, "password123", companyCode);
   }
 

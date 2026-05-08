@@ -1,8 +1,6 @@
 package com.ims.category;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -14,13 +12,15 @@ import com.ims.dto.CategoryRequest;
 import com.ims.dto.response.CategoryResponse;
 import com.ims.shared.auth.JwtFilter;
 import com.ims.shared.auth.JwtUtil;
-import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -29,8 +29,16 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @WebMvcTest(CategoryController.class)
-@AutoConfigureMockMvc(addFilters = false) // Disable security filters for simple slice test
+@AutoConfigureMockMvc(addFilters = false)
 class CategoryControllerSliceTest {
+
+    @TestConfiguration
+    static class TestConfig {
+        @Bean
+        public MeterRegistry meterRegistry() {
+            return new SimpleMeterRegistry();
+        }
+    }
 
     @Autowired
     private MockMvc mockMvc;
@@ -40,9 +48,6 @@ class CategoryControllerSliceTest {
 
     @MockitoBean
     private CategoryService categoryService;
-
-    @MockitoBean
-    private MeterRegistry meterRegistry;
 
     @MockitoBean
     private JwtUtil jwtUtil;
@@ -56,15 +61,6 @@ class CategoryControllerSliceTest {
     @BeforeEach
     void setUp() {
         com.ims.shared.auth.TenantContext.setTenantId(1L);
-
-        // Mock MeterRegistry config and clock for Timer support
-        MeterRegistry.Config mockConfig = mock(MeterRegistry.Config.class);
-        io.micrometer.core.instrument.Clock mockClock = mock(io.micrometer.core.instrument.Clock.class);
-        when(meterRegistry.config()).thenReturn(mockConfig);
-        when(mockConfig.clock()).thenReturn(mockClock);
-
-        Counter counter = mock(Counter.class);
-        when(meterRegistry.counter(anyString())).thenReturn(counter);
     }
 
     @Test

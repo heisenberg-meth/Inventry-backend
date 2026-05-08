@@ -19,13 +19,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.test.annotation.DirtiesContext;
 import java.math.BigDecimal;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 @AutoConfigureMockMvc
-
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class BillingIntegrationTest extends BaseIntegrationTest {
 
   @Autowired
@@ -38,6 +39,7 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
   @BeforeEach
   void setup() {
     cleanupDatabase();
+    jdbcTemplate.execute("DELETE FROM invoices WHERE 1=1");
   }
 
   @Test
@@ -75,6 +77,8 @@ public class BillingIntegrationTest extends BaseIntegrationTest {
 
   @Test
   void testInvoiceCreation() throws Exception {
+    cleanupDatabase();
+
     // 1. Setup Tenant
     String uniqueEmail = TestDataFactory.email();
     SignupRequest signup = new SignupRequest();
