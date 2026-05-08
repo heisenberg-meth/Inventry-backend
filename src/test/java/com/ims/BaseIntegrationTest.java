@@ -8,9 +8,16 @@ import com.ims.product.ProductRepository;
 import com.ims.category.CategoryRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+
+import java.util.function.Supplier;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -27,6 +34,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 
 @SpringBootTest(classes = com.ims.ImsApplication.class, webEnvironment = SpringBootTest.WebEnvironment.MOCK)
+@AutoConfigureMockMvc
 @ActiveProfiles("test")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @Import(BaseIntegrationTest.FlywayTestConfig.class)
@@ -112,7 +120,7 @@ public abstract class BaseIntegrationTest {
     }
   }
 
-  protected <T> T withTenant(Long tenantId, java.util.function.Supplier<T> action) {
+  protected <T> T withTenant(Long tenantId, Supplier<T> action) {
     try {
       TenantContext.setTenantId(tenantId);
       org.slf4j.MDC.put("tenantId", String.valueOf(tenantId));
@@ -183,9 +191,46 @@ public abstract class BaseIntegrationTest {
 
   protected Long testTenant1Id;
   protected Long testTenant2Id;
+  protected Long testUserId;
 
   @Autowired
   protected RedisTemplate<String, Object> redisTemplate;
+  @Autowired
+  protected MockMvc mockMvc;
+  @Autowired
+  protected ObjectMapper objectMapper;
+
+  protected String login(String email, String password, String companyCode) throws Exception {
+    com.ims.dto.request.LoginRequest loginRequest = new com.ims.dto.request.LoginRequest();
+    loginRequest.setEmail(email);
+    loginRequest.setPassword(password);
+    loginRequest.setCompanyCode(companyCode);
+
+    String loginJson = objectMapper.writeValueAsString(loginRequest);
+    MvcResult result = mockMvc
+        .perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/auth/login")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(loginJson))
+        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+        .andReturn();
+
+    String responseJson = result.getResponse().getContentAsString();
+    com.ims.dto.response.LoginResponse response = objectMapper.readValue(responseJson,
+        com.ims.dto.response.LoginResponse.class);
+    return response.getAccessToken();
+  }
+
+  protected com.ims.dto.request.SignupRequest createSignupRequest(String name, String slug, String email) {
+    com.ims.dto.request.SignupRequest req = new com.ims.dto.request.SignupRequest();
+    req.setBusinessName(name);
+    req.setBusinessType("RETAIL");
+    req.setOwnerName("Owner " + name);
+    req.setOwnerEmail(email);
+    req.setPassword("password123");
+    req.setWorkspaceSlug(slug);
+    return req;
+  }
 
   @BeforeEach
   void baseSetUp() {
@@ -246,10 +291,12 @@ public abstract class BaseIntegrationTest {
     } catch (Exception e) {
     }
     try {
-      String passwordHash = passwordEncoder.encode("root123");
+      // Use known BCrypt hash for "root123" to ensure test users can login
+      String passwordHash = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
       jdbcTemplate.execute(
           "INSERT INTO users (name, email, password_hash, role, scope, is_active, is_verified, is_platform_user, tenant_id, created_at, updated_at, version) VALUES ('Root Admin', 'root@test.com', '"
               + passwordHash + "', 'ROOT', 'PLATFORM', true, true, true, " + testTenant1Id + ", NOW(), NOW(), 0)");
+      testUserId = jdbcTemplate.queryForObject("SELECT id FROM users WHERE email = 'root@test.com'", Long.class);
     } catch (Exception e) {
     }
     try {

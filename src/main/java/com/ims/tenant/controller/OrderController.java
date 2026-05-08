@@ -1,6 +1,7 @@
 package com.ims.tenant.controller;
 
 import com.ims.order.dto.CreateOrderRequest;
+import com.ims.order.dto.OrderResponse;
 import com.ims.order.entity.OrderStatus;
 import com.ims.order.entity.OrderType;
 import com.ims.shared.auth.TenantContext;
@@ -9,6 +10,8 @@ import com.ims.tenant.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+
 import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
@@ -52,8 +55,8 @@ public class OrderController {
   @PostMapping
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "Create order (SALE or PURCHASE)")
-  public ResponseEntity<com.ims.order.dto.OrderResponse> createOrder(
-      @RequestBody CreateOrderRequest request) {
+  public ResponseEntity<OrderResponse> createOrder(
+      @Valid @RequestBody CreateOrderRequest request) {
     Long userId = extractUserId();
     Long tenantId = TenantContext.getTenantId();
 
@@ -69,7 +72,7 @@ public class OrderController {
   @PostMapping("/return")
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "Create return order")
-  public ResponseEntity<com.ims.model.Order> createReturnOrder(@RequestBody Map<String, Object> request) {
+  public ResponseEntity<Order> createReturnOrder(@RequestBody Map<String, Object> request) {
     Long tenantId = TenantContext.getTenantId();
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(orderService.createReturnOrder(tenantId, request, extractUserId()));

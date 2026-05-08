@@ -1,33 +1,21 @@
 package com.ims.management;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import java.util.Objects;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.BaseIntegrationTest;
 import com.ims.TestDataFactory;
-import com.ims.dto.request.LoginRequest;
 import com.ims.dto.request.SignupRequest;
-import com.ims.dto.response.LoginResponse;
 import com.ims.dto.response.SignupResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 
 @AutoConfigureMockMvc
 
 public class ManagementIntegrationTest extends BaseIntegrationTest {
 
-        @Autowired
-        private MockMvc mockMvc;
-        @Autowired
-        private ObjectMapper objectMapper;
         @Autowired
         private com.ims.shared.auth.SignupService signupService;
 
@@ -103,35 +91,4 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
                                 .andExpect(status().isForbidden());
         }
 
-        private SignupRequest createSignupRequest(String name, String workspaceSlug, String email) {
-                SignupRequest req = new SignupRequest();
-                req.setBusinessName(name);
-                req.setBusinessType("Retail");
-                req.setOwnerName("Owner " + name);
-                req.setOwnerEmail(email);
-                req.setPassword("password123");
-                req.setWorkspaceSlug(workspaceSlug);
-                return req;
-        }
-
-        private String login(String email, String password, String workspace) throws Exception {
-                LoginRequest loginRequest = new LoginRequest();
-                loginRequest.setEmail(email);
-                loginRequest.setPassword(password);
-                loginRequest.setCompanyCode(workspace);
-
-                MvcResult result = mockMvc
-                                .perform(
-                                                post("/api/auth/login")
-                                                                .contentType(Objects.requireNonNull(
-                                                                                MediaType.APPLICATION_JSON))
-                                                                .content(Objects.requireNonNull(objectMapper
-                                                                                .writeValueAsString(loginRequest))))
-                                .andExpect(status().isOk())
-                                .andReturn();
-
-                String responseJson = result.getResponse().getContentAsString();
-                LoginResponse response = objectMapper.readValue(responseJson, LoginResponse.class);
-                return response.getAccessToken();
-        }
 }

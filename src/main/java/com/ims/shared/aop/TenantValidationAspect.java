@@ -15,11 +15,12 @@ public class TenantValidationAspect {
 
   private static final Logger log = LoggerFactory.getLogger(TenantValidationAspect.class);
 
-  @Before("execution(* com.ims..service..*(..)) && @annotation(transactional)")
+  @Before("execution(* com.ims..service..*(..)) && @annotation(transactional) && !execution(* com.ims.shared.auth..*(..))")
   public void validateTenantContext(JoinPoint joinPoint, Transactional transactional) {
     Long tenantId = TenantContext.getTenantId();
 
-    // If TenantContext is empty, check if the first argument is a Long (convention for tenantId)
+    // If TenantContext is empty, check if the first argument is a Long (convention
+    // for tenantId)
     if (tenantId == null) {
       Object[] args = joinPoint.getArgs();
       if (args != null && args.length > 0 && args[0] instanceof Long) {
@@ -29,7 +30,8 @@ public class TenantValidationAspect {
     }
 
     if (tenantId == null) {
-      log.error("TENANT ISOLATION VIOLATION: TenantContext not set and no tenantId argument for service method: {}.{}(), transaction will fail",
+      log.error(
+          "TENANT ISOLATION VIOLATION: TenantContext not set and no tenantId argument for service method: {}.{}(), transaction will fail",
           joinPoint.getSignature().getDeclaringTypeName(),
           joinPoint.getSignature().getName());
       throw new IllegalStateException(

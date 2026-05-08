@@ -71,12 +71,12 @@ class TransactionRollbackIntegrationTest extends BaseIntegrationTest {
                                                 .build()))
                                 .build();
 
-                OrderResponse response = orderService.createSalesOrder(testTenant1Id, orderRequest, 1L);
+                OrderResponse response = orderService.createSalesOrder(testTenant1Id, orderRequest, testUserId);
 
                 // Act & Assert: confirmOrder will deduct stock and call invoiceService (which
                 // fails)
                 assertThrows(RuntimeException.class, () -> {
-                        orderService.confirmOrder(response.getId(), testTenant1Id, 1L);
+                        orderService.confirmOrder(response.getId(), testTenant1Id, testUserId);
                 });
 
                 // 4. Verify stock was NOT deducted (it was rolled back)

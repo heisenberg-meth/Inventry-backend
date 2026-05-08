@@ -91,9 +91,11 @@ public class JwtFilter extends OncePerRequestFilter {
 
       // Normalize to ROLE_ prefix for Spring Security and add granular permissions
       java.util.List<org.springframework.security.core.GrantedAuthority> authorities = new java.util.ArrayList<>();
-      String authoritiesRole = (role != null && !role.startsWith("ROLE_")) ? "ROLE_" + role : role;
-      if (authoritiesRole != null) {
-        authorities.add(new SimpleGrantedAuthority(authoritiesRole));
+      if (role != null) {
+        String roleWithPrefix = role.startsWith("ROLE_") ? role : "ROLE_" + role;
+        String roleWithoutPrefix = role.startsWith("ROLE_") ? role.substring(5) : role;
+        authorities.add(new SimpleGrantedAuthority(roleWithPrefix));
+        authorities.add(new SimpleGrantedAuthority(roleWithoutPrefix));
       }
 
       @SuppressWarnings("unchecked")

@@ -14,7 +14,10 @@ import org.springframework.cache.annotation.CacheConfig;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.access.prepost.PreAuthorize;
+
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,7 +41,7 @@ public class ProductService {
   private static final int DEFAULT_REORDER_LEVEL = 10;
   private static final int MAX_PAGE_SIZE = 100;
 
-  //@PreAuthorize("hasAuthority('view_product')")
+  // @PreAuthorize("hasAuthority('view_product')")
   public Page<ProductResponse> getProducts(Pageable pageable) {
     Long tenantId = TenantContext.requireTenantId();
 
@@ -73,13 +76,13 @@ public class ProductService {
     return toResponse(product);
   }
 
-  public java.util.Optional<Product> findByIdWithLock(Long id) {
+  public Optional<Product> findByIdWithLock(Long id) {
     Long tenantId = TenantContext.getTenantId();
     return productRepository.findByIdWithLock(id, tenantId);
   }
 
   @Transactional
-  //@PreAuthorize("hasAuthority('create_product')")
+  // @PreAuthorize("hasAuthority('create_product')")
   @CacheEvict(allEntries = true)
   public ProductResponse createProduct(CreateProductRequest request) {
     Long tenantId = TenantContext.requireTenantId();
@@ -277,7 +280,7 @@ public class ProductService {
   public List<ProductResponse> getLowStockProducts() {
     Long tenantId = getTenantId();
     if (tenantId == null)
-      return java.util.Collections.emptyList();
+      return Collections.emptyList();
 
     return productRepository.findLowStock(tenantId).stream()
 
@@ -295,16 +298,16 @@ public class ProductService {
     return productRepository.searchFast(tenantId, query, pageable).map(this::toResponse);
   }
 
-  private java.util.Optional<JwtAuthDetails> getAuthDetails() {
+  private Optional<JwtAuthDetails> getAuthDetails() {
     try {
       var auth = SecurityContextHolder.getContext().getAuthentication();
       if (auth != null && auth.getDetails() instanceof JwtAuthDetails details) {
-        return java.util.Optional.of(details);
+        return Optional.of(details);
       }
     } catch (Exception e) {
       log.trace("Failed to retrieve auth details: {}", e.getMessage());
     }
-    return java.util.Optional.empty();
+    return Optional.empty();
   }
 
   private String getBusinessType() {

@@ -3,26 +3,17 @@ package com.ims.tenant;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.LoginRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 
 @AutoConfigureMockMvc
 class FailureHandlingIntegrationTest extends BaseIntegrationTest {
-
-  @Autowired
-  private MockMvc mockMvc;
-  @Autowired
-  private ObjectMapper objectMapper;
 
   @BeforeEach
   void setup() {
@@ -40,7 +31,7 @@ class FailureHandlingIntegrationTest extends BaseIntegrationTest {
       mockMvc.perform(post("/api/auth/login")
           .header("Origin", "https://malicious-site.com")
           .contentType(MediaType.APPLICATION_JSON)
-          .content("{}"))
+          .content("{\"email\":\"invalid\",\"password\":\"invalid\"}"))
           .andExpect(status().isForbidden());
     }
 
@@ -173,19 +164,4 @@ class FailureHandlingIntegrationTest extends BaseIntegrationTest {
     }
   }
 
-  private String login(String email, String password, String workspace) throws Exception {
-    LoginRequest loginRequest = new LoginRequest();
-    loginRequest.setEmail(email);
-    loginRequest.setPassword(password);
-    loginRequest.setCompanyCode(workspace);
-
-    MvcResult result = mockMvc.perform(post("/api/auth/login")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(loginRequest)))
-        .andExpect(status().isOk())
-        .andReturn();
-
-    String responseJson = result.getResponse().getContentAsString();
-    return objectMapper.readTree(responseJson).get("accessToken").asText();
-  }
 }

@@ -8,6 +8,8 @@ import com.ims.product.ProductRepository;
 import com.ims.shared.auth.TenantContext;
 import com.ims.shared.exception.InsufficientStockException;
 import com.ims.tenant.service.StockService;
+
+import java.math.BigDecimal;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -35,17 +37,17 @@ class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
   void setup() {
     cleanupDatabase();
 
-    TenantContext.setTenantId(1L);
+    TenantContext.setTenantId(testTenant1Id);
 
     testProduct = Product.builder()
         .name("Concurrency Test Product")
         .sku("CONC-001")
         .stock(5)
         .reorderLevel(2)
-        .salePrice(java.math.BigDecimal.TEN)
-        .purchasePrice(java.math.BigDecimal.ONE)
+        .salePrice(BigDecimal.TEN)
+        .purchasePrice(BigDecimal.ONE)
         .build();
-    testProduct.setTenantId(1L);
+    testProduct.setTenantId(testTenant1Id);
     testProduct = productRepository.save(testProduct);
   }
 
@@ -66,9 +68,9 @@ class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
       executor.submit(() -> {
         try {
           startLatch.await();
-          TenantContext.setTenantId(1L);
+          TenantContext.setTenantId(testTenant1Id);
           try {
-            stockService.stockOut(testProduct.getId(), requestQty, "Concurrent test", 1L);
+            stockService.stockOut(testProduct.getId(), requestQty, "Concurrent test", testTenant1Id);
             successCount.incrementAndGet();
           } catch (InsufficientStockException e) {
             failCount.incrementAndGet();
@@ -109,7 +111,7 @@ class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
     productRepository.save(testProduct);
 
     for (int i = 0; i < 3; i++) {
-      stockService.stockOut(testProduct.getId(), requestQty, "Sequential test", 1L);
+      stockService.stockOut(testProduct.getId(), requestQty, "Sequential test", testTenant1Id);
     }
 
     Product after = productRepository.findById(testProduct.getId()).orElseThrow();
@@ -119,7 +121,7 @@ class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
   @Test
   @DisplayName("StockOut exceeds available stock throws InsufficientStockException")
   void stockOutExceedsStockThrowsException() {
-    assertThatThrownBy(() -> stockService.stockOut(testProduct.getId(), 999, "Over-stock test", 1L))
+    assertThatThrownBy(() -> stockService.stockOut(testProduct.getId(), 999, "Over-stock test", testTenant1Id))
         .isInstanceOf(InsufficientStockException.class)
         .hasMessageContaining("Insufficient stock");
 

@@ -7,6 +7,7 @@ import com.ims.tenant.repository.UserRepository;
 import com.ims.shared.auth.JwtAuthDetails;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,7 +50,7 @@ public class PlatformInviteService {
         .build();
 
     log.info("Platform invite created for {} by {}", email, currentUserId);
-    return java.util.Objects.requireNonNull(inviteRepository.save(invite), "Saved invite must not be null");
+    return Objects.requireNonNull(inviteRepository.save(invite), "Saved invite must not be null");
   }
 
   public PlatformInvite validateToken(String token) {
@@ -82,10 +83,10 @@ public class PlatformInviteService {
         .isVerified(true)
         .build();
 
-    java.util.Objects.requireNonNull(userRepository.save(user), "Saved user must not be null");
+    Objects.requireNonNull(userRepository.save(user), "Saved user must not be null");
 
     invite.setUsedAt(LocalDateTime.now());
-    java.util.Objects.requireNonNull(inviteRepository.save(invite), "Updated invite must not be null");
+    Objects.requireNonNull(inviteRepository.save(invite), "Updated invite must not be null");
 
     log.info("Platform invite completed for {}. User created.", invite.getEmail());
   }

@@ -1,5 +1,7 @@
 package com.ims.dto;
 
+import java.math.BigDecimal;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
@@ -16,5 +18,5 @@ public class CategoryRequest {
   private String description;
 
   @PositiveOrZero(message = "Tax rate must be zero or positive")
-  private java.math.BigDecimal taxRate;
+  private BigDecimal taxRate;
 }

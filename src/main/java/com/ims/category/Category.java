@@ -1,5 +1,6 @@
 package com.ims.category;
 
+import java.math.BigDecimal;
 import com.ims.model.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -30,5 +31,5 @@ public class Category extends BaseEntity {
 
   @Column(name = "tax_rate")
   @Builder.Default
-  private java.math.BigDecimal taxRate = java.math.BigDecimal.ZERO;
+  private BigDecimal taxRate = BigDecimal.ZERO;
 }

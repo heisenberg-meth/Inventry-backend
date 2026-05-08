@@ -17,10 +17,14 @@ import com.ims.shared.audit.AuditLogService;
 import com.ims.shared.auth.UserCreationService;
 import com.ims.tenant.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
+
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -412,7 +416,7 @@ public class TenantService {
   private String generateRandomPassword() {
     String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$";
     StringBuilder sb = new StringBuilder();
-    java.security.SecureRandom random = new java.security.SecureRandom();
+    SecureRandom random = new SecureRandom();
     for (int i = 0; i < 12; i++) {
       sb.append(chars.charAt(random.nextInt(chars.length())));
     }
@@ -425,7 +429,7 @@ public class TenantService {
         .replaceAll("\\s+", "-")
         .replaceAll("-+", "-")
         .replaceAll("^-|-$", "");
-    String suffix = java.util.UUID.randomUUID().toString().substring(0, 4);
+    String suffix = UUID.randomUUID().toString().substring(0, 4);
     return baseSlug + "-" + suffix;
   }
 

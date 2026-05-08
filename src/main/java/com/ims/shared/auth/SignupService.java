@@ -75,6 +75,7 @@ public class SignupService {
       user = userCreationService.createUserForTenant(user, tenant.getId());
 
       // Seed default category
+      TenantContext.setTenantId(tenant.getId());
       com.ims.dto.CategoryRequest catReq = new com.ims.dto.CategoryRequest();
       catReq.setName("General");
       catReq.setDescription("Default category");

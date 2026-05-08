@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.File;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.sql.DataSource;
@@ -58,7 +59,7 @@ public class PlatformHealthController {
                 "free_gb", free / (1024 * 1024 * 1024),
                 "usage_percent", total > 0 ? (double) (total - free) / total * 100 : 0));
 
-        health.put("system_time", java.time.LocalDateTime.now().toString());
+        health.put("system_time", LocalDateTime.now().toString());
 
         return ResponseEntity.ok(health);
     }

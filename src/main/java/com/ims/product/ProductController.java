@@ -11,6 +11,9 @@ import jakarta.validation.Valid;
 
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,6 +29,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/tenant/products")
@@ -120,8 +124,8 @@ public class ProductController {
   @PostMapping("/bulk-import")
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Bulk import products via CSV")
-  public ResponseEntity<java.util.Map<String, Object>> bulkImport(
-      @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+  public ResponseEntity<Map<String, Object>> bulkImport(
+      @RequestParam("file") MultipartFile file) {
     return ResponseEntity.ok(importService.importProducts(file));
   }
 
@@ -134,7 +138,7 @@ public class ProductController {
         .getContent();
 
     var data = products.stream().map(p -> {
-      java.util.Map<String, Object> map = new LinkedHashMap<>();
+      Map<String, Object> map = new LinkedHashMap<>();
       map.put("ID", p.getId());
       map.put("Name", p.getName());
       map.put("SKU", p.getSku());
@@ -142,9 +146,9 @@ public class ProductController {
       map.put("Price", p.getSalePrice());
       map.put("CategoryID", p.getCategoryId());
       return map;
-    }).collect(java.util.stream.Collectors.toList());
+    }).collect(Collectors.toList());
 
-    String csv = csvExportService.exportToCsv(java.util.List.of("ID", "Name", "SKU", "Stock", "Price", "CategoryID"),
+    String csv = csvExportService.exportToCsv(List.of("ID", "Name", "SKU", "Stock", "Price", "CategoryID"),
         data);
 
     return ResponseEntity.ok()

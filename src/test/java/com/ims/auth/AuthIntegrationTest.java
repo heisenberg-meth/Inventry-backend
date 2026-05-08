@@ -5,27 +5,17 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.BaseIntegrationTest;
-import com.ims.dto.request.LoginRequest;
 import com.ims.dto.request.SignupRequest;
-import com.ims.dto.response.LoginResponse;
 import com.ims.shared.auth.SignupService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 
 @AutoConfigureMockMvc
 public class AuthIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired
-  private MockMvc mockMvc;
-  @Autowired
-  private ObjectMapper objectMapper;
   @Autowired
   private SignupService signupService;
 
@@ -93,35 +83,4 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
         .andExpect(status().isUnauthorized());
   }
 
-  private SignupRequest createSignupRequest(String name, String workspaceSlug, String email) {
-    SignupRequest req = new SignupRequest();
-    req.setBusinessName(name);
-    req.setBusinessType("Retail");
-    req.setOwnerName("Owner " + name);
-    req.setOwnerEmail(email);
-    req.setPassword("password123");
-    req.setWorkspaceSlug(workspaceSlug);
-    return req;
-  }
-
-  private String login(String email, String password, String workspace) throws Exception {
-    LoginRequest loginRequest = new LoginRequest();
-    loginRequest.setEmail(email);
-    loginRequest.setPassword(password);
-    loginRequest.setCompanyCode(workspace);
-
-    String loginJson = objectMapper.writeValueAsString(loginRequest);
-    MvcResult result = mockMvc
-        .perform(
-            post("/api/auth/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(loginJson))
-        .andDo(print())
-        .andExpect(status().isOk())
-        .andReturn();
-
-    String responseJson = result.getResponse().getContentAsString();
-    LoginResponse response = objectMapper.readValue(responseJson, LoginResponse.class);
-    return response.getAccessToken();
-  }
 }

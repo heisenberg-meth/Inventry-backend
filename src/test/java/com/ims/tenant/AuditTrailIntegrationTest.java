@@ -2,14 +2,10 @@ package com.ims.tenant;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.BaseIntegrationTest;
 import com.ims.TestDataFactory;
 import com.ims.dto.request.CreateProductRequest;
-import com.ims.dto.request.LoginRequest;
 import com.ims.dto.request.SignupRequest;
-import com.ims.dto.response.LoginResponse;
 import com.ims.dto.response.ProductResponse;
 import com.ims.shared.auth.SignupService;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,9 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import java.math.BigDecimal;
 import java.util.Objects;
-
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 @AutoConfigureMockMvc
@@ -30,10 +24,6 @@ import org.springframework.test.web.servlet.MvcResult;
                 "view_order", "create_supplier", "view_supplier", "delete_supplier", "manage_stock", "view_stock" })
 public class AuditTrailIntegrationTest extends BaseIntegrationTest {
 
-        @Autowired
-        private MockMvc mockMvc;
-        @Autowired
-        private ObjectMapper objectMapper;
         @Autowired
         private SignupService signupService;
 
@@ -73,7 +63,8 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
                 ProductResponse product = objectMapper.readValue(result.getResponse().getContentAsString(),
                                 ProductResponse.class);
 
-                // 2. Verify Audit Log for creation
+                // 2. Verify Audit Log for creation - endpoint requires ADMIN role
+                // For now, skip audit verification as signed-up users have USER role
                 mockMvc.perform(get("/api/tenant/audits")
                                 .header("Authorization", "Bearer " + token))
                                 .andExpect(status().isOk())
@@ -88,7 +79,8 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
                                 .content(Objects.requireNonNull(updateJson)))
                                 .andExpect(status().isOk());
 
-                // 4. Verify Audit Log for update
+                // 4. Verify Audit Log for update - endpoint requires ADMIN role
+                // For now, skip audit verification
                 mockMvc.perform(get("/api/tenant/audits")
                                 .header("Authorization", "Bearer " + token))
                                 .andExpect(status().isOk())
@@ -126,41 +118,18 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
                                 .andExpect(status().isCreated());
 
                 // T1 should see 4 logs (Category Create + Signup + Login + Product Create)
-                mockMvc.perform(get("/api/tenant/audits").header("Authorization", "Bearer " + t1Token))
+                mockMvc.perform(get("/api/tenant/audits")
+                                .header("Authorization", "Bearer " + t1Token)
+                                .header("X-Tenant-ID", r1.getTenantId().toString()))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.content.length()").value(4));
 
                 // T2 should see 3 logs (Category Create + Signup + Login)
-                mockMvc.perform(get("/api/tenant/audits").header("Authorization", "Bearer " + t2Token))
+                mockMvc.perform(get("/api/tenant/audits")
+                                .header("Authorization", "Bearer " + t2Token)
+                                .header("X-Tenant-ID", r2.getTenantId().toString()))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.content.length()").value(3));
         }
 
-        private SignupRequest createSignupRequest(String name, String slug, String email) {
-                SignupRequest signup = new SignupRequest();
-                signup.setBusinessName(name);
-                signup.setBusinessType("RETAIL");
-                signup.setOwnerName("Admin");
-                signup.setOwnerEmail(email);
-                signup.setPassword("password123");
-                return signup;
-        }
-
-        private String login(String email, String password, String workspace) throws Exception {
-                LoginRequest loginRequest = new LoginRequest();
-                loginRequest.setEmail(email);
-                loginRequest.setPassword(password);
-                loginRequest.setCompanyCode(workspace);
-
-                String loginJson = objectMapper.writeValueAsString(loginRequest);
-                MvcResult result = mockMvc.perform(post("/api/auth/login")
-                                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
-                                .content(Objects.requireNonNull(loginJson)))
-                                .andExpect(status().isOk())
-                                .andReturn();
-
-                LoginResponse response = objectMapper.readValue(result.getResponse().getContentAsString(),
-                                LoginResponse.class);
-                return response.getAccessToken();
-        }
 }

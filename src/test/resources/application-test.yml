@@ -38,8 +38,20 @@ app:
     allowed-origins: '*'
   rate-limit:
     enabled: false
-    auth-rpm: 10000
-    public-rpm: 10000
-    authenticated-rpm: 10000
-    tenant-rpm: 10000
+    auth-rpm: 20
+    public-rpm: 50
+    authenticated-rpm: 200
+    tenant-rpm: 1000
     window-seconds: 60
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      redisService:
+        registerHealthIndicator: false
+        slidingWindowSize: 100
+        failureRateThreshold: 100
+        waitDurationInOpenState: 360000000
+        permittedNumberOfCallsInHalfOpenState: 100
+        slowCallDurationThreshold: 10000
+        slowCallRateThreshold: 100

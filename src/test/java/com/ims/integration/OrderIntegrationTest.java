@@ -42,7 +42,7 @@ public class OrderIntegrationTest extends BaseIntegrationTest {
 
         @org.junit.jupiter.api.BeforeEach
         void setUpTenant() {
-                com.ims.shared.auth.TenantContext.setTenantId(1L);
+                com.ims.shared.auth.TenantContext.setTenantId(testTenant1Id);
         }
 
         @Test
@@ -50,7 +50,7 @@ public class OrderIntegrationTest extends BaseIntegrationTest {
         public void testCreateSaleOrder() throws Exception {
                 // 1. Create a product
                 Product product = Product.builder()
-                                .tenantId(1L)
+                                .tenantId(testTenant1Id)
                                 .name("Test Product")
                                 .sku("TEST-SKU-1")
                                 .salePrice(new BigDecimal("100.00"))
@@ -58,7 +58,7 @@ public class OrderIntegrationTest extends BaseIntegrationTest {
                 product = productRepository.save(product);
 
                 // 2. Add stock
-                inventoryService.increaseStock(1L, product.getId(), 10, "Initial stock", 1L);
+                inventoryService.increaseStock(testTenant1Id, product.getId(), 10, "Initial stock", testTenant1Id);
 
                 // 3. Create a sale order
                 CreateOrderRequest request = CreateOrderRequest.builder()
@@ -72,18 +72,18 @@ public class OrderIntegrationTest extends BaseIntegrationTest {
                 String responseJson = mockMvc.perform(post("/api/v1/tenant/orders")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request))
-                                .header("X-Tenant-Id", "1"))
+                                .header("X-Tenant-Id", testTenant1Id.toString()))
                                 .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
-                                .andExpect(status().isCreated())                                .andReturn().getResponse().getContentAsString();
+                                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
 
                 OrderResponse response = objectMapper.readValue(responseJson, OrderResponse.class);
 
                 // Stock should NOT be deducted yet (PENDING state)
-                assertThat(inventoryService.getAvailableStock(1L, product.getId())).isEqualTo(10);
+                assertThat(inventoryService.getAvailableStock(testTenant1Id, product.getId())).isEqualTo(10);
 
                 // Confirm the order to trigger stock deduction
                 mockMvc.perform(post("/api/v1/tenant/orders/" + response.getId() + "/confirm")
-                                .header("X-Tenant-Id", "1"))
+                                .header("X-Tenant-Id", testTenant1Id.toString()))
                                 .andExpect(status().isOk());
 
                 // 4. Verify response
@@ -94,7 +94,7 @@ public class OrderIntegrationTest extends BaseIntegrationTest {
                 assertThat(response.getItems().get(0).getQuantity()).isEqualTo(2);
 
                 // 5. Verify stock deduction
-                Integer availableStock = inventoryService.getAvailableStock(1L, product.getId());
+                Integer availableStock = inventoryService.getAvailableStock(testTenant1Id, product.getId());
                 assertThat(availableStock).isEqualTo(8);
         }
 
@@ -103,7 +103,7 @@ public class OrderIntegrationTest extends BaseIntegrationTest {
         public void testCreatePurchaseOrder() throws Exception {
                 // 1. Create a supplier
                 com.ims.model.Supplier supplier = com.ims.model.Supplier.builder()
-                                .tenantId(1L)
+                                .tenantId(testTenant1Id)
                                 .name("Test Supplier")
                                 .email("supplier@test.com")
                                 .build();
@@ -111,7 +111,7 @@ public class OrderIntegrationTest extends BaseIntegrationTest {
 
                 // 2. Create a product
                 Product product = Product.builder()
-                                .tenantId(1L)
+                                .tenantId(testTenant1Id)
                                 .name("Test Product 2")
                                 .sku("TEST-SKU-2")
                                 .purchasePrice(new BigDecimal("50.00"))
@@ -132,22 +132,22 @@ public class OrderIntegrationTest extends BaseIntegrationTest {
                 String responseJson = mockMvc.perform(post("/api/v1/tenant/orders")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request))
-                                .header("X-Tenant-Id", "1"))
+                                .header("X-Tenant-Id", testTenant1Id.toString()))
                                 .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
-                                .andExpect(status().isCreated())                                .andReturn().getResponse().getContentAsString();
+                                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
 
                 OrderResponse response = objectMapper.readValue(responseJson, OrderResponse.class);
 
                 // Stock should NOT be increased yet
-                assertThat(inventoryService.getAvailableStock(1L, product.getId())).isEqualTo(0);
+                assertThat(inventoryService.getAvailableStock(testTenant1Id, product.getId())).isEqualTo(0);
 
                 // Complete the order to trigger stock increase
                 mockMvc.perform(post("/api/v1/tenant/orders/" + response.getId() + "/complete")
-                                .header("X-Tenant-Id", "1"))
+                                .header("X-Tenant-Id", testTenant1Id.toString()))
                                 .andExpect(status().isOk());
 
                 // 3. Verify stock increase
-                Integer availableStock = inventoryService.getAvailableStock(1L, product.getId());
+                Integer availableStock = inventoryService.getAvailableStock(testTenant1Id, product.getId());
                 assertThat(availableStock).isEqualTo(5);
         }
 
@@ -156,13 +156,13 @@ public class OrderIntegrationTest extends BaseIntegrationTest {
         public void testCreateSaleOrderInsufficientStock() throws Exception {
                 // 1. Create a product with 1 stock
                 Product product = Product.builder()
-                                .tenantId(1L)
+                                .tenantId(testTenant1Id)
                                 .name("Test Product 3")
                                 .sku("TEST-SKU-3")
                                 .salePrice(new BigDecimal("100.00"))
                                 .build();
                 product = productRepository.save(product);
-                inventoryService.increaseStock(1L, product.getId(), 1, "Initial stock", 1L);
+                inventoryService.increaseStock(testTenant1Id, product.getId(), 1, "Initial stock", testTenant1Id);
 
                 // 2. Attempt to buy 2
                 CreateOrderRequest request = CreateOrderRequest.builder()
@@ -176,7 +176,7 @@ public class OrderIntegrationTest extends BaseIntegrationTest {
                 mockMvc.perform(post("/api/v1/tenant/orders")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(request))
-                                .header("X-Tenant-Id", "1"))
+                                .header("X-Tenant-Id", testTenant1Id.toString()))
                                 .andExpect(status().isUnprocessableEntity());
         }
 }

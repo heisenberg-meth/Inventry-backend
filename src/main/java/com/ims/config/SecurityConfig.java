@@ -71,8 +71,11 @@ public class SecurityConfig {
                 "/api/auth/check-email",
                 "/api/auth/check-slug",
                 "/api/auth/check-company-code",
-                "/api/platform/auth/login")
+                "/api/platform/auth/**")
                 .permitAll()
+                .requestMatchers("/api/auth/logout", "/api/auth/me", "/api/auth/change-password",
+                    "/api/auth/permissions", "/api/auth/validate")
+                .authenticated()
                 .requestMatchers("/api/platform/invites/accept", "/api/platform/invites/complete")
                 .permitAll()
                 .requestMatchers("/api/tenant/payments/gateway/webhook")
@@ -83,12 +86,12 @@ public class SecurityConfig {
                 .hasRole("ADMIN")
                 .requestMatchers(
                     "/swagger-ui/**", "/api-docs/**", "/swagger-ui.html", "/v3/api-docs/**")
-                .authenticated() // Secure Swagger by default, require auth
+                .authenticated()
                 .anyRequest()
                 .authenticated())
-        .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+        .addFilterBefore(traceFilter, org.springframework.security.web.context.SecurityContextHolderFilter.class)
         .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-        .addFilterBefore(traceFilter, UsernamePasswordAuthenticationFilter.class)
+        .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
         .addFilterAfter(tenantFilter, jwtFilter.getClass());
 
     return http.build();

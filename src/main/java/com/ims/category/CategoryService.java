@@ -2,11 +2,15 @@ package com.ims.category;
 
 import com.ims.dto.response.CategoryResponse;
 import com.ims.shared.audit.AuditAction;
+import com.ims.shared.audit.AuditLogService;
 import com.ims.shared.audit.AuditResource;
-
 import com.ims.dto.CategoryRequest;
 import com.ims.product.ProductRepository;
 import com.ims.shared.auth.TenantContext;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
+import java.math.BigDecimal;
 import java.util.Objects;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -28,9 +32,9 @@ public class CategoryService {
 
   private final CategoryRepository categoryRepository;
   private final ProductRepository productRepository;
-  private final com.ims.shared.audit.AuditLogService auditLogService;
-  private final io.micrometer.core.instrument.MeterRegistry meterRegistry;
-  private final io.micrometer.observation.ObservationRegistry observationRegistry;
+  private final AuditLogService auditLogService;
+  private final MeterRegistry meterRegistry;
+  private final ObservationRegistry observationRegistry;
 
   @Cacheable(cacheResolver = "tenantAwareCacheResolver", value = "categories", key = "'list:' + #pageable.pageNumber + ':' + #pageable.pageSize")
   public Page<Category> getCategories(Pageable pageable) {
@@ -50,7 +54,7 @@ public class CategoryService {
   @Transactional
   @CacheEvict(cacheResolver = "tenantAwareCacheResolver", value = "categories", allEntries = true)
   public Category create(CategoryRequest request) {
-    return io.micrometer.observation.Observation.createNotStarted("ims.category.create", observationRegistry)
+    return Observation.createNotStarted("ims.category.create", observationRegistry)
         .contextualName("create-category")
         .lowCardinalityKeyValue("tenantId", String.valueOf(TenantContext.getTenantId()))
         .observe(() -> {
@@ -62,7 +66,7 @@ public class CategoryService {
               .tenantId(TenantContext.getTenantId())
               .name(request.getName())
               .description(request.getDescription())
-              .taxRate(request.getTaxRate() != null ? request.getTaxRate() : java.math.BigDecimal.ZERO)
+              .taxRate(request.getTaxRate() != null ? request.getTaxRate() : BigDecimal.ZERO)
               .build();
 
           Category savedCategory = categoryRepository.save(category);

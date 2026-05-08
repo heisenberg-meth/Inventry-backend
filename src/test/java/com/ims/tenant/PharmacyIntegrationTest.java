@@ -4,12 +4,10 @@ import java.util.Objects;
 import java.util.UUID;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.BaseIntegrationTest;
 import com.ims.TestDataFactory;
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.request.SignupRequest;
-import com.ims.dto.request.LoginRequest;
 import com.ims.dto.response.SignupResponse;
 import com.ims.shared.auth.SignupService;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,8 +17,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 
 @AutoConfigureMockMvc
 
@@ -29,10 +25,6 @@ import org.springframework.test.web.servlet.MvcResult;
     "create_supplier", "view_supplier", "delete_supplier", "manage_stock", "view_stock" })
 public class PharmacyIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired
-  private MockMvc mockMvc;
-  @Autowired
-  private ObjectMapper objectMapper;
   @Autowired
   private SignupService signupService;
 
@@ -74,21 +66,4 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
         .andExpect(status().isCreated());
   }
 
-  private String login(String email, String password, String workspace) throws Exception {
-    LoginRequest loginRequest = new LoginRequest();
-    loginRequest.setEmail(email);
-    loginRequest.setPassword(password);
-    loginRequest.setCompanyCode(workspace);
-
-    MvcResult result = mockMvc.perform(post("/api/auth/login")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(loginRequest)))
-        .andExpect(status().isOk())
-        .andReturn();
-
-    String responseJson = result.getResponse().getContentAsString();
-    com.ims.dto.response.LoginResponse loginResponse = objectMapper.readValue(responseJson,
-        com.ims.dto.response.LoginResponse.class);
-    return loginResponse.getAccessToken();
-  }
 }

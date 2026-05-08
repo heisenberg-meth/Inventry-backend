@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
+
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -57,7 +59,7 @@ class CustomerServiceUnitTest {
                 .name("Test Customer")
                 .tenantId(1L)
                 .build();
-        Page<Customer> page = new PageImpl<>(java.util.List.of(customer));
+        Page<Customer> page = new PageImpl<>(List.of(customer));
 
         when(customerRepository.findAllByTenantId(eq(1L), any(PageRequest.class))).thenReturn(page);
 

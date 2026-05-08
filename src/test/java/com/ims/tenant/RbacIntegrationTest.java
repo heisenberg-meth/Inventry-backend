@@ -2,14 +2,9 @@ package com.ims.tenant;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.BaseIntegrationTest;
 import com.ims.TestDataFactory;
 import com.ims.dto.request.CreateProductRequest;
-import com.ims.dto.request.LoginRequest;
-import com.ims.dto.request.SignupRequest;
-import com.ims.dto.response.LoginResponse;
 import com.ims.dto.response.SignupResponse;
 import com.ims.shared.auth.SignupService;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,22 +14,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.test.annotation.DirtiesContext;
 import java.math.BigDecimal;
-import java.util.Objects;
 import java.util.UUID;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 
 @AutoConfigureMockMvc
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class RbacIntegrationTest extends BaseIntegrationTest {
 
   @Autowired
-  private MockMvc mockMvc;
-  @Autowired
-  private ObjectMapper objectMapper;
-  @Autowired
   private SignupService signupService;
+  @Autowired
+  private com.ims.shared.auth.UserCreationService userCreationService;
+  @Autowired
+  private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
   private String adminToken;
   private String managerToken;
@@ -53,25 +45,36 @@ public class RbacIntegrationTest extends BaseIntegrationTest {
     verifyUser(uniqueEmail);
     companyCode = response.getCompanyCode();
     adminToken = login(uniqueEmail, "password123", companyCode);
+    Long tenantId = response.getTenantId();
 
-    // 2. Create a MANAGER user in the same tenant via signup (to ensure proper password handling)
+    // 2. Create a MANAGER user in the same tenant
     String managerEmail = "manager_" + TestDataFactory.email();
-    SignupRequest managerSignup = createSignupRequest("Manager User", uniqueSlug + "-mgr", managerEmail);
-    managerSignup.setOwnerName("Manager User");
-    signupService.signup(managerSignup);
-    verifyUser(managerEmail);
-    // Update role to MANAGER
-    jdbcTemplate.update("UPDATE users SET role = 'MANAGER' WHERE email = ?", managerEmail);
+    com.ims.model.User manager = com.ims.model.User.builder()
+        .name("Manager User")
+        .email(managerEmail)
+        .passwordHash(passwordEncoder.encode("password123"))
+        .role("MANAGER")
+        .scope("TENANT")
+        .tenantId(tenantId)
+        .isActive(true)
+        .isVerified(true)
+        .build();
+    userCreationService.createUserForTenant(manager, tenantId);
     managerToken = login(managerEmail, "password123", companyCode);
 
-    // 3. Create a STAFF user in the same tenant via signup
+    // 3. Create a STAFF user in the same tenant
     String staffEmail = "staff_" + TestDataFactory.email();
-    SignupRequest staffSignup = createSignupRequest("Staff User", uniqueSlug + "-staff", staffEmail);
-    staffSignup.setOwnerName("Staff User");
-    signupService.signup(staffSignup);
-    verifyUser(staffEmail);
-    // Update role to STAFF
-    jdbcTemplate.update("UPDATE users SET role = 'STAFF' WHERE email = ?", staffEmail);
+    com.ims.model.User staff = com.ims.model.User.builder()
+        .name("Staff User")
+        .email(staffEmail)
+        .passwordHash(passwordEncoder.encode("password123"))
+        .role("STAFF")
+        .scope("TENANT")
+        .tenantId(tenantId)
+        .isActive(true)
+        .isVerified(true)
+        .build();
+    userCreationService.createUserForTenant(staff, tenantId);
     staffToken = login(staffEmail, "password123", companyCode);
   }
 
@@ -131,30 +134,4 @@ public class RbacIntegrationTest extends BaseIntegrationTest {
     return createReq;
   }
 
-  private SignupRequest createSignupRequest(String name, String slug, String email) {
-    SignupRequest signup = new SignupRequest();
-    signup.setBusinessName(name);
-    signup.setBusinessType("RETAIL");
-    signup.setOwnerName("Admin");
-    signup.setOwnerEmail(email);
-    signup.setPassword("password123");
-    signup.setWorkspaceSlug(slug);
-    return signup;
-  }
-
-  private String login(String email, String password, String workspace) throws Exception {
-    LoginRequest loginRequest = new LoginRequest();
-    loginRequest.setEmail(email);
-    loginRequest.setPassword(password);
-    loginRequest.setCompanyCode(workspace);
-
-    MvcResult result = mockMvc.perform(post("/api/auth/login")
-        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
-        .content(Objects.requireNonNull(objectMapper.writeValueAsString(loginRequest))))
-        .andExpect(status().isOk())
-        .andReturn();
-
-    LoginResponse response = objectMapper.readValue(result.getResponse().getContentAsString(), LoginResponse.class);
-    return response.getAccessToken();
-  }
 }
