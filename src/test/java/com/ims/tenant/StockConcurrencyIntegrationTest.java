@@ -18,7 +18,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-@org.springframework.security.test.context.support.WithMockUser(username = "admin", authorities = {"ADMIN", "ROLE_ADMIN", "create_product", "view_product", "update_product", "delete_product", "create_order", "view_order", "create_supplier", "view_supplier", "delete_supplier", "manage_stock", "view_stock"})
+@org.springframework.security.test.context.support.WithMockUser(username = "admin", authorities = { "ADMIN",
+    "ROLE_ADMIN", "create_product", "view_product", "update_product", "delete_product", "create_order", "view_order",
+    "create_supplier", "view_supplier", "delete_supplier", "manage_stock", "view_stock" })
 class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
 
   @Autowired
@@ -101,6 +103,10 @@ class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
   void sequentialStockOutReducesCorrectly() {
     int initialStock = 10;
     int requestQty = 3;
+
+    // Ensure product has enough stock for this test
+    testProduct.setStock(initialStock);
+    productRepository.save(testProduct);
 
     for (int i = 0; i < 3; i++) {
       stockService.stockOut(testProduct.getId(), requestQty, "Sequential test", 1L);

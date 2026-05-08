@@ -87,9 +87,9 @@ public class SecurityConfig {
                 .anyRequest()
                 .authenticated())
         .addFilterBefore(traceFilter, UsernamePasswordAuthenticationFilter.class)
-        .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+        .addFilterBefore(rateLimitFilter, jwtFilter.getClass())
         .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
-        .addFilterBefore(tenantFilter, UsernamePasswordAuthenticationFilter.class);
+        .addFilterAfter(tenantFilter, jwtFilter.getClass());
 
     return http.build();
   }

@@ -13,6 +13,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.annotation.Order;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.lang.NonNull;
@@ -24,6 +25,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 @RequiredArgsConstructor
 @lombok.extern.slf4j.Slf4j
+@Order(org.springframework.core.Ordered.LOWEST_PRECEDENCE - 100)
 public class JwtFilter extends OncePerRequestFilter {
 
   private final JwtUtil jwtUtil;
@@ -87,8 +89,18 @@ public class JwtFilter extends OncePerRequestFilter {
       String businessType = claims.get("business_type", String.class);
       boolean isPlatformUser = Boolean.TRUE.equals(claims.get("is_platform_user", Boolean.class));
 
-      // 🔑 Normalize to ROLE_ prefix for Spring Security
-      var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role));
+      // Normalize to ROLE_ prefix for Spring Security and add granular permissions
+      java.util.List<org.springframework.security.core.GrantedAuthority> authorities = new java.util.ArrayList<>();
+      String authoritiesRole = (role != null && !role.startsWith("ROLE_")) ? "ROLE_" + role : role;
+      if (authoritiesRole != null) {
+        authorities.add(new SimpleGrantedAuthority(authoritiesRole));
+      }
+
+      @SuppressWarnings("unchecked")
+      List<String> permissions = claims.get("permissions", List.class);
+      if (permissions != null) {
+        permissions.forEach(p -> authorities.add(new SimpleGrantedAuthority(p)));
+      }
 
       var auth = new JwtAuthenticationToken(
           String.valueOf(userId),

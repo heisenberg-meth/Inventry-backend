@@ -19,7 +19,9 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 @AutoConfigureMockMvc
-@org.springframework.security.test.context.support.WithMockUser(username = "admin", authorities = {"ADMIN", "ROLE_ADMIN", "create_product", "view_product", "update_product", "delete_product", "create_order", "view_order", "create_supplier", "view_supplier", "delete_supplier", "manage_stock", "view_stock"})
+@org.springframework.security.test.context.support.WithMockUser(username = "admin", authorities = { "ADMIN",
+                "ROLE_ADMIN", "create_product", "view_product", "update_product", "delete_product", "create_order",
+                "view_order", "create_supplier", "view_supplier", "delete_supplier", "manage_stock", "view_stock" })
 class TenantIsolationIntegrationTest extends BaseIntegrationTest {
 
         @Autowired
@@ -55,6 +57,13 @@ class TenantIsolationIntegrationTest extends BaseIntegrationTest {
                 jdbcTemplate.update(
                                 "INSERT INTO users (name, email, password_hash, role, scope, tenant_id, is_active, is_verified, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
                                 "Tenant2 User", t2Email, passwordHash, "ADMIN", "TENANT", tenant2Id, true, true);
+
+                // Add create_product and view_product permissions to users
+                jdbcTemplate.update(
+                                "INSERT INTO user_permissions (user_id, permission_id) " +
+                                                "SELECT u.id, p.id FROM users u, permissions p " +
+                                                "WHERE u.email IN (?, ?) AND p.key IN ('create_product', 'view_product')",
+                                t1Email, t2Email);
 
                 // Verify users (already done via INSERT above by setting is_verified=true)
 
@@ -94,7 +103,7 @@ class TenantIsolationIntegrationTest extends BaseIntegrationTest {
                                 "\"quantity\": 100\n" +
                                 "}";
 
-                MockHttpServletRequestBuilder createProductBuilder = post("/api/tenant/products")
+                MockHttpServletRequestBuilder createProductBuilder = post("/api/v1/tenant/products")
                                 .header("Authorization", "Bearer " + tenant1Token)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(productPayload);
@@ -102,7 +111,7 @@ class TenantIsolationIntegrationTest extends BaseIntegrationTest {
                                 .andExpect(status().isCreated());
 
                 // Try to access product from tenant2 context
-                MockHttpServletRequestBuilder getProductsBuilder = get("/api/tenant/products")
+                MockHttpServletRequestBuilder getProductsBuilder = get("/api/v1/tenant/products")
                                 .header("Authorization", "Bearer " + tenant2Token);
                 mockMvc.perform(getProductsBuilder)
                                 .andExpect(status().isOk())

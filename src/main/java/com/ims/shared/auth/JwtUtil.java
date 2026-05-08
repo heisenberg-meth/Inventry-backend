@@ -7,6 +7,7 @@ import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,10 +33,13 @@ public class JwtUtil {
   }
 
   public String generateToken(
-      Long userId, Long tenantId, String role, String scope, String businessType, boolean isPlatformUser) {
+      Long userId, Long tenantId, String role, List<String> permissions, String scope, String businessType,
+      boolean isPlatformUser) {
     Map<String, Object> claims = new HashMap<>();
     claims.put("user_id", userId);
-    claims.put("role", role);
+    String authoritiesRole = (role != null && !role.startsWith("ROLE_")) ? "ROLE_" + role : role;
+    claims.put("role", authoritiesRole);
+    claims.put("permissions", permissions);
     claims.put("scope", scope);
     claims.put("is_platform_user", isPlatformUser);
     if (tenantId != null) {
@@ -55,10 +59,13 @@ public class JwtUtil {
   }
 
   public String generateRefreshToken(
-      Long userId, Long tenantId, String role, String scope, String businessType, boolean isPlatformUser) {
+      Long userId, Long tenantId, String role, List<String> permissions, String scope, String businessType,
+      boolean isPlatformUser) {
     Map<String, Object> claims = new HashMap<>();
     claims.put("user_id", userId);
-    claims.put("role", role);
+    String authoritiesRole = (role != null && !role.startsWith("ROLE_")) ? "ROLE_" + role : role;
+    claims.put("role", authoritiesRole);
+    claims.put("permissions", permissions);
     claims.put("scope", scope);
     claims.put("is_platform_user", isPlatformUser);
     claims.put("token_type", "refresh");

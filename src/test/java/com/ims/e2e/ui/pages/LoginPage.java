@@ -3,7 +3,6 @@ package com.ims.e2e.ui.pages;
 import com.ims.e2e.ui.BasePage;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
-import com.microsoft.playwright.options.AriaRole;
 
 public class LoginPage extends BasePage {
 
@@ -14,10 +13,10 @@ public class LoginPage extends BasePage {
 
     public LoginPage(Page page) {
         super(page);
-        this.emailInput = page.getByLabel("Email address");
-        this.passwordInput = page.getByLabel("Password");
-        this.companyCodeInput = page.getByLabel("Company Code");
-        this.loginButton = page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Sign in"));
+        this.emailInput = page.locator("input[type='email']");
+        this.passwordInput = page.locator("input[type='password']");
+        this.companyCodeInput = page.locator("input[name='companyCode'], input[placeholder*='Company']");
+        this.loginButton = page.locator("button[type='submit'], button:has-text('Sign in')");
     }
 
     @Override
@@ -44,4 +43,5 @@ public class LoginPage extends BasePage {
 
     public Locator errorMessage() {
         return page.locator(".error-message");
-    }}
+    }
+}

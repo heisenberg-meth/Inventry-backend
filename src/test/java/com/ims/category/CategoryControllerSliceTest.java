@@ -56,6 +56,13 @@ class CategoryControllerSliceTest {
     @BeforeEach
     void setUp() {
         com.ims.shared.auth.TenantContext.setTenantId(1L);
+
+        // Mock MeterRegistry config and clock for Timer support
+        MeterRegistry.Config mockConfig = mock(MeterRegistry.Config.class);
+        io.micrometer.core.instrument.Clock mockClock = mock(io.micrometer.core.instrument.Clock.class);
+        when(meterRegistry.config()).thenReturn(mockConfig);
+        when(mockConfig.clock()).thenReturn(mockClock);
+
         Counter counter = mock(Counter.class);
         when(meterRegistry.counter(anyString())).thenReturn(counter);
     }

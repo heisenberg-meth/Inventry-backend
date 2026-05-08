@@ -10,7 +10,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5433/ims_db
     username: ims_user
-    password: D0JWxAxXR73r4qe5AQJVDP4R0lKCRqZf
+    password: changeme
     driver-class-name: org.postgresql.Driver
   data:
     redis:

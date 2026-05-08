@@ -35,7 +35,7 @@ public class PlatformUserController {
 
   @PostMapping
   @Operation(summary = "Create platform user (ROOT only)")
-  @PreAuthorize("hasAuthority('ROLE_ROOT')")
+  @PreAuthorize("hasRole('ROOT')")
   @ResponseStatus(HttpStatus.CREATED)
   public User createPlatformUser(
       @Valid @RequestBody CreatePlatformUserRequest request) {
@@ -44,21 +44,21 @@ public class PlatformUserController {
 
   @Operation(summary = "List platform users (ROOT, PLATFORM_ADMIN)")
   @GetMapping
-  @PreAuthorize("hasAnyAuthority('ROLE_ROOT', 'ROLE_PLATFORM_ADMIN')")
+  @PreAuthorize("hasAnyRole('ROOT', 'PLATFORM_ADMIN')")
   public Page<User> getPlatformUsers(Pageable pageable) {
     return Objects.requireNonNull(platformUserService.getPlatformUsers(pageable));
   }
 
   @GetMapping("/{id}")
   @Operation(summary = "Get platform user details")
-  @PreAuthorize("hasAnyAuthority('ROLE_ROOT', 'ROLE_PLATFORM_ADMIN')")
+  @PreAuthorize("hasAnyRole('ROOT', 'PLATFORM_ADMIN')")
   public Map<String, Object> getPlatformUser(@PathVariable Long id) {
     return platformUserService.getPlatformUser(id);
   }
 
   @Operation(summary = "Update platform user role (ROOT only)")
   @PatchMapping("/{id}/role")
-  @PreAuthorize("hasAuthority('ROLE_ROOT')")
+  @PreAuthorize("hasRole('ROOT')")
   public User updateRole(
       @PathVariable Long id, @RequestBody Map<String, String> body) {
     String role = body.get("role");
@@ -70,7 +70,7 @@ public class PlatformUserController {
 
   @PostMapping("/{id}/suspend")
   @Operation(summary = "Suspend platform user (ROOT only)")
-  @PreAuthorize("hasAuthority('ROLE_ROOT')")
+  @PreAuthorize("hasRole('ROOT')")
   public Map<String, String> suspendPlatformUser(@PathVariable Long id) {
     platformUserService.suspendPlatformUser(id);
     return Map.of("message", "Platform user suspended successfully", "status", "SUSPENDED");
@@ -78,7 +78,7 @@ public class PlatformUserController {
 
   @PostMapping("/{id}/activate")
   @Operation(summary = "Activate platform user (ROOT only)")
-  @PreAuthorize("hasAuthority('ROLE_ROOT')")
+  @PreAuthorize("hasRole('ROOT')")
   public Map<String, String> activatePlatformUser(@PathVariable Long id) {
     platformUserService.activatePlatformUser(id);
     return Map.of("message", "Platform user activated successfully", "status", "ACTIVE");
@@ -86,7 +86,7 @@ public class PlatformUserController {
 
   @PostMapping("/{id}/reset-password")
   @Operation(summary = "Reset platform user password (ROOT only)")
-  @PreAuthorize("hasAuthority('ROLE_ROOT')")
+  @PreAuthorize("hasRole('ROOT')")
   public Map<String, String> resetPassword(
       @PathVariable Long id, @RequestBody Map<String, String> body) {
     String newPassword = body.get("newPassword");
@@ -98,7 +98,7 @@ public class PlatformUserController {
 
   @DeleteMapping("/{id}")
   @Operation(summary = "Deactivate platform user (ROOT only)")
-  @PreAuthorize("hasAuthority('ROLE_ROOT')")
+  @PreAuthorize("hasRole('ROOT')")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void deactivatePlatformUser(@PathVariable Long id) {
     platformUserService.deactivatePlatformUser(id);

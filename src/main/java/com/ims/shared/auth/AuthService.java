@@ -22,6 +22,7 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -131,9 +132,13 @@ public class AuthService {
     String scope = targetUser.getScope();
     String businessType = tenant.getBusinessType();
 
+    List<String> permissions = targetUser.getCustomPermissions().stream()
+        .map(com.ims.model.Permission::getKey)
+        .toList();
+
     // Generate tokens with impersonation flag or just as the user
     String accessToken = jwtUtil.generateToken(
-        targetUser.getId(), tenantId, targetUser.getRole(), scope, businessType, false);
+        targetUser.getId(), tenantId, targetUser.getRole(), permissions, scope, businessType, false);
 
     log.info("ROOT user impersonating tenant admin: {} (tenant={})", targetUser.getEmail(), tenantId);
 
@@ -179,9 +184,14 @@ public class AuthService {
           "Only platform administrators can log in here");
     }
 
+    List<String> permissions = user.getCustomPermissions().stream()
+        .map(com.ims.model.Permission::getKey)
+        .toList();
+
     String scope = user.getScope();
-    String accessToken = jwtUtil.generateToken(user.getId(), null, user.getRole(), scope, null, true);
-    String refreshToken = jwtUtil.generateRefreshToken(user.getId(), null, user.getRole(), scope, null, true);
+    String accessToken = jwtUtil.generateToken(user.getId(), null, user.getRole(), permissions, scope, null, true);
+    String refreshToken = jwtUtil.generateRefreshToken(user.getId(), null, user.getRole(), permissions, scope, null,
+        true);
 
     // Update last login (atomic update, no version increment)
     userRepository.updateLastLogin(user.getId(), LocalDateTime.now());
@@ -254,9 +264,14 @@ public class AuthService {
       }
     }
 
-    String accessToken = jwtUtil.generateToken(user.getId(), tenantId, user.getRole(), scope, businessType,
+    List<String> permissions = user.getCustomPermissions().stream()
+        .map(com.ims.model.Permission::getKey)
+        .toList();
+
+    String accessToken = jwtUtil.generateToken(user.getId(), tenantId, user.getRole(), permissions, scope, businessType,
         Boolean.TRUE.equals(user.getIsPlatformUser()));
-    String refreshToken = jwtUtil.generateRefreshToken(user.getId(), tenantId, user.getRole(), scope, businessType,
+    String refreshToken = jwtUtil.generateRefreshToken(user.getId(), tenantId, user.getRole(), permissions, scope,
+        businessType,
         Boolean.TRUE.equals(user.getIsPlatformUser()));
 
     // Update last login (atomic update, no version increment)
@@ -342,9 +357,15 @@ public class AuthService {
       }
     }
 
-    String newAccessToken = jwtUtil.generateToken(user.getId(), tenantId, user.getRole(), scope, businessType,
+    List<String> permissions = user.getCustomPermissions().stream()
+        .map(com.ims.model.Permission::getKey)
+        .toList();
+
+    String newAccessToken = jwtUtil.generateToken(user.getId(), tenantId, user.getRole(), permissions, scope,
+        businessType,
         Boolean.TRUE.equals(user.getIsPlatformUser()));
-    String newRefreshToken = jwtUtil.generateRefreshToken(user.getId(), tenantId, user.getRole(), scope, businessType,
+    String newRefreshToken = jwtUtil.generateRefreshToken(user.getId(), tenantId, user.getRole(), permissions, scope,
+        businessType,
         Boolean.TRUE.equals(user.getIsPlatformUser()));
 
     // Blacklist old refresh token

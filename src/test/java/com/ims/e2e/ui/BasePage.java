@@ -22,6 +22,8 @@ public abstract class BasePage {
         // Assuming application runs on port 8080 locally
         String baseUrl = System.getProperty("baseUrl", "http://localhost:8080");
         page.navigate(baseUrl + getUrl());
+        page.waitForLoadState(LoadState.LOAD);
+        page.waitForLoadState(LoadState.NETWORKIDLE);
     }
 
     protected void fill(Locator locator, String text) {
