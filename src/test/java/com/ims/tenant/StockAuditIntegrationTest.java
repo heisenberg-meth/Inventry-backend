@@ -46,7 +46,6 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
 
   @BeforeEach
   void setup() {
-    cleanupDatabase();
 
     // Tenant 1
     TenantContext.setTenantId(testTenant1Id);
