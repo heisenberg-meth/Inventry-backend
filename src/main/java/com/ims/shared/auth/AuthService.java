@@ -1,7 +1,5 @@
 package com.ims.shared.auth;
 
-import com.ims.shared.audit.AuditAction;
-import com.ims.shared.audit.AuditResource;
 import com.ims.dto.request.ChangePasswordRequest;
 import com.ims.dto.request.ForgotPasswordRequest;
 import com.ims.dto.request.LoginRequest;
@@ -11,10 +9,10 @@ import com.ims.model.EmailVerification;
 import com.ims.model.Tenant;
 import com.ims.model.User;
 import com.ims.platform.repository.TenantRepository;
+import com.ims.shared.audit.AuditAction;
+import com.ims.shared.audit.AuditResource;
 import com.ims.tenant.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.DisabledException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -28,6 +26,8 @@ import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,7 +35,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-
 public class AuthService {
 
   private static final int LOGOUT_EXPIRY_HOURS = 24;
@@ -71,15 +70,19 @@ public class AuthService {
 
   @Transactional
   public Map<String, String> verifyEmail(String token) {
-    EmailVerification verification = emailVerificationRepository.findByToken(token)
-        .orElseThrow(() -> new IllegalArgumentException("Invalid verification token"));
+    EmailVerification verification =
+        emailVerificationRepository
+            .findByToken(token)
+            .orElseThrow(() -> new IllegalArgumentException("Invalid verification token"));
 
     if (verification.isExpired()) {
       throw new IllegalArgumentException("Verification token has expired");
     }
 
-    User user = userRepository.findByIdUnfiltered(verification.getUserId())
-        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User user =
+        userRepository
+            .findByIdUnfiltered(verification.getUserId())
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     user.setIsVerified(true);
     userRepository.save(user);
@@ -91,8 +94,10 @@ public class AuthService {
 
   @Transactional
   public Map<String, String> resendVerification(String email) {
-    User user = userRepository.findByEmailUnfiltered(email)
-        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User user =
+        userRepository
+            .findByEmailUnfiltered(email)
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     if (Boolean.TRUE.equals(user.getIsVerified())) {
       throw new IllegalArgumentException("Email is already verified");
@@ -103,11 +108,12 @@ public class AuthService {
 
     // Generate new token
     String token = java.util.UUID.randomUUID().toString();
-    EmailVerification verification = EmailVerification.builder()
-        .userId(user.getId())
-        .token(token)
-        .expiresAt(LocalDateTime.now().plusHours(24))
-        .build();
+    EmailVerification verification =
+        EmailVerification.builder()
+            .userId(user.getId())
+            .token(token)
+            .expiresAt(LocalDateTime.now().plusHours(24))
+            .build();
 
     emailVerificationRepository.save(verification);
 
@@ -118,64 +124,82 @@ public class AuthService {
 
   @Transactional(readOnly = true)
   public LoginResponse impersonateTenant(Long tenantId) {
-    Tenant tenant = tenantRepository.findById(tenantId)
-        .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+    Tenant tenant =
+        tenantRepository
+            .findById(tenantId)
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
     if (!"ACTIVE".equals(tenant.getStatus())) {
       throw new IllegalStateException("Cannot impersonate a " + tenant.getStatus() + " tenant");
     }
 
-    User targetUser = userRepository.findFirstByTenantIdAndRole(tenantId, "ADMIN")
-        .orElseThrow(() -> new EntityNotFoundException("No admin user found for this tenant"));
+    User targetUser =
+        userRepository
+            .findFirstByTenantIdAndRole(tenantId, "ADMIN")
+            .orElseThrow(() -> new EntityNotFoundException("No admin user found for this tenant"));
 
     String scope = targetUser.getScope();
     String businessType = tenant.getBusinessType();
 
-    List<String> permissions = targetUser.getCustomPermissions().stream()
-        .map(com.ims.model.Permission::getKey)
-        .toList();
+    List<String> permissions =
+        targetUser.getCustomPermissions().stream().map(com.ims.model.Permission::getKey).toList();
 
     // Generate tokens with impersonation flag or just as the user
-    String accessToken = jwtUtil.generateToken(
-        targetUser.getId(), tenantId, targetUser.getRole(), permissions, scope, businessType, false);
+    String accessToken =
+        jwtUtil.generateToken(
+            targetUser.getId(),
+            tenantId,
+            targetUser.getRole(),
+            permissions,
+            scope,
+            businessType,
+            false);
 
-    log.info("ROOT user impersonating tenant admin: {} (tenant={})", targetUser.getEmail(), tenantId);
+    log.info(
+        "ROOT user impersonating tenant admin: {} (tenant={})", targetUser.getEmail(), tenantId);
 
     return LoginResponse.builder()
         .accessToken(accessToken)
         .tokenType("Bearer")
         .expiresIn(jwtUtil.getExpirySeconds())
-        .user(LoginResponse.UserResponse.builder()
-            .id(targetUser.getId().toString())
-            .name(targetUser.getName())
-            .email(targetUser.getEmail())
-            .role(targetUser.getRole())
-            .scope(targetUser.getScope())
-            .isPlatformUser(false)
-            .build())
-        .tenant(LoginResponse.TenantResponse.builder()
-            .id(tenant.getId())
-            .name(tenant.getName())
-            .type(tenant.getBusinessType())
-            .companyCode(tenant.getCompanyCode())
-            .workspaceSlug(tenant.getWorkspaceSlug())
-            .build())
+        .user(
+            LoginResponse.UserResponse.builder()
+                .id(targetUser.getId().toString())
+                .name(targetUser.getName())
+                .email(targetUser.getEmail())
+                .role(targetUser.getRole())
+                .scope(targetUser.getScope())
+                .isPlatformUser(false)
+                .build())
+        .tenant(
+            LoginResponse.TenantResponse.builder()
+                .id(tenant.getId())
+                .name(tenant.getName())
+                .type(tenant.getBusinessType())
+                .companyCode(tenant.getCompanyCode())
+                .workspaceSlug(tenant.getWorkspaceSlug())
+                .build())
         .build();
   }
 
   @Transactional
   public LoginResponse platformLogin(LoginRequest request) {
-    User user = userRepository
-        .findByEmailUnfiltered(request.getEmail())
-        .orElseThrow(
-            () -> new org.springframework.security.authentication.BadCredentialsException("Invalid email or password"));
+    User user =
+        userRepository
+            .findByEmailUnfiltered(request.getEmail())
+            .orElseThrow(
+                () ->
+                    new org.springframework.security.authentication.BadCredentialsException(
+                        "Invalid email or password"));
 
     if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-      throw new org.springframework.security.authentication.BadCredentialsException("Invalid email or password");
+      throw new org.springframework.security.authentication.BadCredentialsException(
+          "Invalid email or password");
     }
 
     if (!Boolean.TRUE.equals(user.getIsActive())) {
-      throw new org.springframework.security.authentication.DisabledException("Account is deactivated");
+      throw new org.springframework.security.authentication.DisabledException(
+          "Account is deactivated");
     }
 
     if (!"PLATFORM".equals(user.getScope())) {
@@ -183,14 +207,15 @@ public class AuthService {
           "Only platform administrators can log in here");
     }
 
-    List<String> permissions = user.getCustomPermissions().stream()
-        .map(com.ims.model.Permission::getKey)
-        .toList();
+    List<String> permissions =
+        user.getCustomPermissions().stream().map(com.ims.model.Permission::getKey).toList();
 
     String scope = user.getScope();
-    String accessToken = jwtUtil.generateToken(user.getId(), null, user.getRole(), permissions, scope, null, true);
-    String refreshToken = jwtUtil.generateRefreshToken(user.getId(), null, user.getRole(), permissions, scope, null,
-        true);
+    String accessToken =
+        jwtUtil.generateToken(user.getId(), null, user.getRole(), permissions, scope, null, true);
+    String refreshToken =
+        jwtUtil.generateRefreshToken(
+            user.getId(), null, user.getRole(), permissions, scope, null, true);
 
     // Update last login (atomic update, no version increment)
     userRepository.updateLastLogin(user.getId(), LocalDateTime.now());
@@ -215,9 +240,10 @@ public class AuthService {
 
   @Transactional
   public LoginResponse login(LoginRequest request) {
-    User user = userRepository
-        .findByEmailUnfiltered(request.getEmail())
-        .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
+    User user =
+        userRepository
+            .findByEmailUnfiltered(request.getEmail())
+            .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
 
     if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
       throw new BadCredentialsException("Invalid email or password");
@@ -229,14 +255,16 @@ public class AuthService {
 
     // Check email verification for tenant users
     if ("TENANT".equals(user.getScope()) && !Boolean.TRUE.equals(user.getIsVerified())) {
-      throw new BadCredentialsException("Email not verified. Please verify your email before logging in.");
+      throw new BadCredentialsException(
+          "Email not verified. Please verify your email before logging in.");
     }
 
     // Validate companyCode
     if (request.getCompanyCode() != null && !request.getCompanyCode().isBlank()) {
-      Tenant tenant = tenantRepository
-          .findByCompanyCode(request.getCompanyCode())
-          .orElseThrow(() -> new BadCredentialsException("Invalid company code"));
+      Tenant tenant =
+          tenantRepository
+              .findByCompanyCode(request.getCompanyCode())
+              .orElseThrow(() -> new BadCredentialsException("Invalid company code"));
       if (!Objects.equals(user.getTenantId(), tenant.getId())) {
         throw new BadCredentialsException("User does not belong to this company");
       }
@@ -263,49 +291,65 @@ public class AuthService {
       }
     }
 
-    List<String> permissions = user.getCustomPermissions().stream()
-        .map(com.ims.model.Permission::getKey)
-        .toList();
+    List<String> permissions =
+        user.getCustomPermissions().stream().map(com.ims.model.Permission::getKey).toList();
 
-    String accessToken = jwtUtil.generateToken(user.getId(), tenantId, user.getRole(), permissions, scope, businessType,
-        Boolean.TRUE.equals(user.getIsPlatformUser()));
-    String refreshToken = jwtUtil.generateRefreshToken(user.getId(), tenantId, user.getRole(), permissions, scope,
-        businessType,
-        Boolean.TRUE.equals(user.getIsPlatformUser()));
+    String accessToken =
+        jwtUtil.generateToken(
+            user.getId(),
+            tenantId,
+            user.getRole(),
+            permissions,
+            scope,
+            businessType,
+            Boolean.TRUE.equals(user.getIsPlatformUser()));
+    String refreshToken =
+        jwtUtil.generateRefreshToken(
+            user.getId(),
+            tenantId,
+            user.getRole(),
+            permissions,
+            scope,
+            businessType,
+            Boolean.TRUE.equals(user.getIsPlatformUser()));
 
     // Update last login (atomic update, no version increment)
     userRepository.updateLastLogin(user.getId(), LocalDateTime.now());
 
-    LoginResponse.LoginResponseBuilder responseBuilder = LoginResponse.builder()
-        .accessToken(accessToken)
-        .refreshToken(refreshToken)
-        .tokenType("Bearer")
-        .expiresIn(jwtUtil.getExpirySeconds())
-        .user(
-            LoginResponse.UserResponse.builder()
-                .id(user.getId().toString())
-                .name(user.getName())
-                .email(user.getEmail())
-                .phone(user.getPhone())
-                .role(user.getRole())
-                .scope(user.getScope())
-                .isPlatformUser(Boolean.TRUE.equals(user.getIsPlatformUser()))
-                .build());
+    LoginResponse.LoginResponseBuilder responseBuilder =
+        LoginResponse.builder()
+            .accessToken(accessToken)
+            .refreshToken(refreshToken)
+            .tokenType("Bearer")
+            .expiresIn(jwtUtil.getExpirySeconds())
+            .user(
+                LoginResponse.UserResponse.builder()
+                    .id(user.getId().toString())
+                    .name(user.getName())
+                    .email(user.getEmail())
+                    .phone(user.getPhone())
+                    .role(user.getRole())
+                    .scope(user.getScope())
+                    .isPlatformUser(Boolean.TRUE.equals(user.getIsPlatformUser()))
+                    .build());
 
     if (tenantId != null) {
-      tenantRepository.findById(tenantId).ifPresent(tenant -> {
-        responseBuilder.tenant(
-            LoginResponse.TenantResponse.builder()
-                .id(tenant.getId())
-                .name(tenant.getName())
-                .type(tenant.getBusinessType())
-                .address(tenant.getAddress())
-                .gstin(tenant.getGstin())
-                .plan(tenant.getPlan())
-                .companyCode(tenant.getCompanyCode())
-                .workspaceSlug(tenant.getWorkspaceSlug())
-                .build());
-      });
+      tenantRepository
+          .findById(tenantId)
+          .ifPresent(
+              tenant -> {
+                responseBuilder.tenant(
+                    LoginResponse.TenantResponse.builder()
+                        .id(tenant.getId())
+                        .name(tenant.getName())
+                        .type(tenant.getBusinessType())
+                        .address(tenant.getAddress())
+                        .gstin(tenant.getGstin())
+                        .plan(tenant.getPlan())
+                        .companyCode(tenant.getCompanyCode())
+                        .workspaceSlug(tenant.getWorkspaceSlug())
+                        .build());
+              });
     }
 
     auditLogService.log(
@@ -339,9 +383,10 @@ public class AuthService {
     }
 
     Long userId = jwtUtil.extractUserId(refreshToken);
-    User user = userRepository
-        .findByIdUnfiltered(userId)
-        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User user =
+        userRepository
+            .findByIdUnfiltered(userId)
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     String scope = user.getScope();
     String businessType = null;
@@ -356,62 +401,76 @@ public class AuthService {
       }
     }
 
-    List<String> permissions = user.getCustomPermissions().stream()
-        .map(com.ims.model.Permission::getKey)
-        .toList();
+    List<String> permissions =
+        user.getCustomPermissions().stream().map(com.ims.model.Permission::getKey).toList();
 
-    String newAccessToken = jwtUtil.generateToken(user.getId(), tenantId, user.getRole(), permissions, scope,
-        businessType,
-        Boolean.TRUE.equals(user.getIsPlatformUser()));
-    String newRefreshToken = jwtUtil.generateRefreshToken(user.getId(), tenantId, user.getRole(), permissions, scope,
-        businessType,
-        Boolean.TRUE.equals(user.getIsPlatformUser()));
+    String newAccessToken =
+        jwtUtil.generateToken(
+            user.getId(),
+            tenantId,
+            user.getRole(),
+            permissions,
+            scope,
+            businessType,
+            Boolean.TRUE.equals(user.getIsPlatformUser()));
+    String newRefreshToken =
+        jwtUtil.generateRefreshToken(
+            user.getId(),
+            tenantId,
+            user.getRole(),
+            permissions,
+            scope,
+            businessType,
+            Boolean.TRUE.equals(user.getIsPlatformUser()));
 
     // Blacklist old refresh token
     logout(refreshToken);
 
-    LoginResponse.LoginResponseBuilder responseBuilder = LoginResponse.builder()
-        .accessToken(newAccessToken)
-        .refreshToken(newRefreshToken)
-        .tokenType("Bearer")
-        .expiresIn(jwtUtil.getExpirySeconds())
-        .user(
-            LoginResponse.UserResponse.builder()
-                .id(user.getId().toString())
-                .name(user.getName())
-                .email(user.getEmail())
-                .phone(user.getPhone())
-                .role(user.getRole())
-                .scope(user.getScope())
-                .isPlatformUser(Boolean.TRUE.equals(user.getIsPlatformUser()))
-                .build());
+    LoginResponse.LoginResponseBuilder responseBuilder =
+        LoginResponse.builder()
+            .accessToken(newAccessToken)
+            .refreshToken(newRefreshToken)
+            .tokenType("Bearer")
+            .expiresIn(jwtUtil.getExpirySeconds())
+            .user(
+                LoginResponse.UserResponse.builder()
+                    .id(user.getId().toString())
+                    .name(user.getName())
+                    .email(user.getEmail())
+                    .phone(user.getPhone())
+                    .role(user.getRole())
+                    .scope(user.getScope())
+                    .isPlatformUser(Boolean.TRUE.equals(user.getIsPlatformUser()))
+                    .build());
 
     if (tenantId != null) {
-      tenantRepository.findById(tenantId).ifPresent(tenant -> {
-        responseBuilder.tenant(
-            LoginResponse.TenantResponse.builder()
-                .id(tenant.getId())
-                .name(tenant.getName())
-                .type(tenant.getBusinessType())
-                .address(tenant.getAddress())
-                .gstin(tenant.getGstin())
-                .plan(tenant.getPlan())
-                .companyCode(tenant.getCompanyCode())
-                .workspaceSlug(tenant.getWorkspaceSlug())
-                .build());
-      });
+      tenantRepository
+          .findById(tenantId)
+          .ifPresent(
+              tenant -> {
+                responseBuilder.tenant(
+                    LoginResponse.TenantResponse.builder()
+                        .id(tenant.getId())
+                        .name(tenant.getName())
+                        .type(tenant.getBusinessType())
+                        .address(tenant.getAddress())
+                        .gstin(tenant.getGstin())
+                        .plan(tenant.getPlan())
+                        .companyCode(tenant.getCompanyCode())
+                        .workspaceSlug(tenant.getWorkspaceSlug())
+                        .build());
+              });
     }
 
     return responseBuilder.build();
   }
 
-  /**
-   * Get current user profile.
-   */
+  /** Get current user profile. */
   public Map<String, Object> getProfile(Long userId) {
-    User user = userRepository
-        .findByIdUnfiltered(userId)
-        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User user =
+        userRepository
+            .findByIdUnfiltered(userId)
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     Map<String, Object> result = new HashMap<>();
 
@@ -429,31 +488,33 @@ public class AuthService {
     result.put("user", userMap);
 
     if (user.getTenantId() != null) {
-      tenantRepository.findById(user.getTenantId()).ifPresent(tenant -> {
-        Map<String, Object> tenantMap = new HashMap<>();
-        tenantMap.put("id", tenant.getId());
-        tenantMap.put("name", tenant.getName());
-        tenantMap.put("type", tenant.getBusinessType());
-        tenantMap.put("address", tenant.getAddress());
-        tenantMap.put("gstin", tenant.getGstin());
-        tenantMap.put("plan", tenant.getPlan());
-        tenantMap.put("companyCode", tenant.getCompanyCode());
-        tenantMap.put("workspaceSlug", tenant.getWorkspaceSlug());
-        result.put("tenant", tenantMap);
-      });
+      tenantRepository
+          .findById(user.getTenantId())
+          .ifPresent(
+              tenant -> {
+                Map<String, Object> tenantMap = new HashMap<>();
+                tenantMap.put("id", tenant.getId());
+                tenantMap.put("name", tenant.getName());
+                tenantMap.put("type", tenant.getBusinessType());
+                tenantMap.put("address", tenant.getAddress());
+                tenantMap.put("gstin", tenant.getGstin());
+                tenantMap.put("plan", tenant.getPlan());
+                tenantMap.put("companyCode", tenant.getCompanyCode());
+                tenantMap.put("workspaceSlug", tenant.getWorkspaceSlug());
+                result.put("tenant", tenantMap);
+              });
     }
 
     return result;
   }
 
-  /**
-   * Change password for currently authenticated user.
-   */
+  /** Change password for currently authenticated user. */
   @Transactional
   public Map<String, String> changePassword(Long userId, ChangePasswordRequest request) {
-    User user = userRepository
-        .findByIdUnfiltered(userId)
-        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User user =
+        userRepository
+            .findByIdUnfiltered(userId)
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
       throw new IllegalArgumentException("Current password is incorrect");
@@ -473,8 +534,8 @@ public class AuthService {
   }
 
   /**
-   * Generate a password reset token and store it on the user.
-   * In production, this token would be emailed. For dev, it's returned directly.
+   * Generate a password reset token and store it on the user. In production, this token would be
+   * emailed. For dev, it's returned directly.
    */
   @Transactional
   public Map<String, String> forgotPassword(ForgotPasswordRequest request) {
@@ -503,14 +564,13 @@ public class AuthService {
     return response;
   }
 
-  /**
-   * Reset password using a previously issued reset token.
-   */
+  /** Reset password using a previously issued reset token. */
   @Transactional
   public Map<String, String> resetPassword(ResetPasswordRequest request) {
-    User user = userRepository
-        .findByResetToken(request.getResetToken())
-        .orElseThrow(() -> new IllegalArgumentException("Invalid or expired reset token"));
+    User user =
+        userRepository
+            .findByResetToken(request.getResetToken())
+            .orElseThrow(() -> new IllegalArgumentException("Invalid or expired reset token"));
 
     if (user.getResetTokenExpiry() == null
         || LocalDateTime.now().isAfter(user.getResetTokenExpiry())) {
@@ -532,13 +592,12 @@ public class AuthService {
     return Map.of("message", "Password reset successful");
   }
 
-  /**
-   * Get current user's role and permissions summary.
-   */
+  /** Get current user's role and permissions summary. */
   public Map<String, Object> getMyPermissions(Long userId) {
-    User user = userRepository
-        .findByIdUnfiltered(userId)
-        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User user =
+        userRepository
+            .findByIdUnfiltered(userId)
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     Map<String, Object> result = new HashMap<>();
     result.put("role", user.getRole());

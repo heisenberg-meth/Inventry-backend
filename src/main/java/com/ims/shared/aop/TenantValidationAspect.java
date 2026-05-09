@@ -15,7 +15,8 @@ public class TenantValidationAspect {
 
   private static final Logger log = LoggerFactory.getLogger(TenantValidationAspect.class);
 
-  @Before("execution(* com.ims..service..*(..)) && @annotation(transactional) && !execution(* com.ims.shared.auth..*(..))")
+  @Before(
+      "execution(* com.ims..service..*(..)) && @annotation(transactional) && !execution(* com.ims.shared.auth..*(..))")
   public void validateTenantContext(JoinPoint joinPoint, Transactional transactional) {
     Long tenantId = TenantContext.getTenantId();
 
@@ -38,7 +39,8 @@ public class TenantValidationAspect {
           "Tenant ID not set in TenantContext. Request must include valid JWT token with tenant_id claim.");
     }
 
-    log.debug("TenantContext validated for tenantId={}, method={}.{}",
+    log.debug(
+        "TenantContext validated for tenantId={}, method={}.{}",
         tenantId,
         joinPoint.getSignature().getDeclaringTypeName(),
         joinPoint.getSignature().getName());

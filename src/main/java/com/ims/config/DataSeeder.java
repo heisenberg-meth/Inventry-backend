@@ -14,28 +14,29 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class DataSeeder implements CommandLineRunner {
 
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+  private final UserRepository userRepository;
+  private final PasswordEncoder passwordEncoder;
 
-    @Override
-    public void run(String... args) {
-        seedPlatformAdmin();
-    }
+  @Override
+  public void run(String... args) {
+    seedPlatformAdmin();
+  }
 
-    private void seedPlatformAdmin() {
-        String adminEmail = "admin@platform.com";
-        if (userRepository.findByEmailUnfiltered(adminEmail).isEmpty()) {
-            User admin = User.builder()
-                    .name("Platform Admin")
-                    .email(adminEmail)
-                    .passwordHash(passwordEncoder.encode("REDACTED_PASSWORD"))
-                    .role("PLATFORM_ADMIN")
-                    .scope("PLATFORM")
-                    .isPlatformUser(true)
-                    .isActive(true)
-                    .build();
-            userRepository.save(admin);
-            log.info("Platform Admin seeded: {}", adminEmail);
-        }
+  private void seedPlatformAdmin() {
+    String adminEmail = "admin@platform.com";
+    if (userRepository.findByEmailUnfiltered(adminEmail).isEmpty()) {
+      User admin =
+          User.builder()
+              .name("Platform Admin")
+              .email(adminEmail)
+              .passwordHash(passwordEncoder.encode("REDACTED_PASSWORD"))
+              .role("PLATFORM_ADMIN")
+              .scope("PLATFORM")
+              .isPlatformUser(true)
+              .isActive(true)
+              .build();
+      userRepository.save(admin);
+      log.info("Platform Admin seeded: {}", adminEmail);
     }
+  }
 }

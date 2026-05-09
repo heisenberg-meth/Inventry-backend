@@ -17,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-
 public class PaymentGatewayService {
 
   private final PaymentRepository paymentRepository;
@@ -28,28 +27,34 @@ public class PaymentGatewayService {
 
   @Transactional
   public Map<String, Object> initiatePayment(Long invoiceId, BigDecimal amount, Long userId) {
-    invoiceRepository.findById(invoiceId)
+    invoiceRepository
+        .findById(invoiceId)
         .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
 
     String gatewayOrderId = "order_" + UUID.randomUUID().toString().substring(0, 8);
 
-    Payment payment = Payment.builder()
-        .tenantId(TenantContext.getTenantId())
-        .invoiceId(invoiceId)
-        .amount(amount)
-        .paymentMode("GATEWAY")
-        .gatewayTransactionId(gatewayOrderId)
-        .status("PENDING")
-        .createdBy(userId)
-        .build();
+    Payment payment =
+        Payment.builder()
+            .tenantId(TenantContext.getTenantId())
+            .invoiceId(invoiceId)
+            .amount(amount)
+            .paymentMode("GATEWAY")
+            .gatewayTransactionId(gatewayOrderId)
+            .status("PENDING")
+            .createdBy(userId)
+            .build();
 
     paymentRepository.save(payment);
 
     return Map.of(
-        "gateway_order_id", gatewayOrderId,
-        "amount", amount,
-        "currency", "INR",
-        "payment_id", payment.getId());
+        "gateway_order_id",
+        gatewayOrderId,
+        "amount",
+        amount,
+        "currency",
+        "INR",
+        "payment_id",
+        payment.getId());
   }
 
   @Transactional
@@ -65,18 +70,20 @@ public class PaymentGatewayService {
 
     // Simplified: in real scenario, validate signature here
     // Extract tenantId from payload if possible, otherwise use 0 for global log
-    Long tenantId = payload.containsKey("tenant_id") ? Long.valueOf(payload.get("tenant_id").toString()) : 0L;
+    Long tenantId =
+        payload.containsKey("tenant_id") ? Long.valueOf(payload.get("tenant_id").toString()) : 0L;
 
     try {
       if (tenantId != 0L) {
         TenantContext.setTenantId(tenantId);
       }
 
-      PaymentGatewayLog pgLog = PaymentGatewayLog.builder()
-          .tenantId(tenantId)
-          .eventType(event)
-          .rawPayload(payload.toString())
-          .build();
+      PaymentGatewayLog pgLog =
+          PaymentGatewayLog.builder()
+              .tenantId(tenantId)
+              .eventType(event)
+              .rawPayload(payload.toString())
+              .build();
       logRepository.save(pgLog);
 
       if ("payment.captured".equals(event)) {

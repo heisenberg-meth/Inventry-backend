@@ -27,9 +27,7 @@ public class SubscriptionPlan extends BaseEntity {
   @Builder.Default
   private BigDecimal price = BigDecimal.ZERO;
 
-  @Column
-  @Builder.Default
-  private String currency = "INR";
+  @Column @Builder.Default private String currency = "INR";
 
   @Column(name = "billing_cycle", nullable = false)
   private String billingCycle;
@@ -49,9 +47,7 @@ public class SubscriptionPlan extends BaseEntity {
   @Builder.Default
   private Integer maxProducts = 0;
 
-  @Column
-  @Builder.Default
-  private String status = "ACTIVE";
+  @Column @Builder.Default private String status = "ACTIVE";
 
   @Column(name = "updated_by")
   private Long updatedBy;

@@ -30,7 +30,9 @@ public class SaleController {
 
   @PostMapping
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
-  @Operation(summary = "Record a sale with billing", description = "Creates a sales order and automatically generates an invoice")
+  @Operation(
+      summary = "Record a sale with billing",
+      description = "Creates a sales order and automatically generates an invoice")
   public ResponseEntity<OrderResponse> createSale(@RequestBody CreateOrderRequest request) {
     var auth = SecurityContextHolder.getContext().getAuthentication();
     Long userId = null;

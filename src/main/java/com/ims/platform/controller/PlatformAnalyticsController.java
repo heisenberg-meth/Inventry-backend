@@ -19,26 +19,26 @@ import org.springframework.web.bind.annotation.RestController;
 @SecurityRequirement(name = "bearerAuth")
 public class PlatformAnalyticsController {
 
-    private final PlatformAnalyticsService analyticsService;
+  private final PlatformAnalyticsService analyticsService;
 
-    @GetMapping("/revenue")
-    @PreAuthorize("hasRole('ROOT')")
-    @Operation(summary = "Get revenue analytics (MRR/ARR)")
-    public ResponseEntity<Map<String, Object>> getRevenue() {
-        return ResponseEntity.ok(analyticsService.getRevenueAnalytics());
-    }
+  @GetMapping("/revenue")
+  @PreAuthorize("hasRole('ROOT')")
+  @Operation(summary = "Get revenue analytics (MRR/ARR)")
+  public ResponseEntity<Map<String, Object>> getRevenue() {
+    return ResponseEntity.ok(analyticsService.getRevenueAnalytics());
+  }
 
-    @GetMapping("/tenants")
-    @PreAuthorize("hasRole('ROOT')")
-    @Operation(summary = "Get tenant growth analytics")
-    public ResponseEntity<Map<String, Object>> getTenants() {
-        return ResponseEntity.ok(analyticsService.getTenantAnalytics());
-    }
+  @GetMapping("/tenants")
+  @PreAuthorize("hasRole('ROOT')")
+  @Operation(summary = "Get tenant growth analytics")
+  public ResponseEntity<Map<String, Object>> getTenants() {
+    return ResponseEntity.ok(analyticsService.getTenantAnalytics());
+  }
 
-    @GetMapping("/usage")
-    @PreAuthorize("hasRole('ROOT')")
-    @Operation(summary = "Get system usage analytics")
-    public ResponseEntity<Map<String, Object>> getUsage() {
-        return ResponseEntity.ok(analyticsService.getUsageAnalytics());
-    }
+  @GetMapping("/usage")
+  @PreAuthorize("hasRole('ROOT')")
+  @Operation(summary = "Get system usage analytics")
+  public ResponseEntity<Map<String, Object>> getUsage() {
+    return ResponseEntity.ok(analyticsService.getUsageAnalytics());
+  }
 }

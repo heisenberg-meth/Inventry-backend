@@ -33,12 +33,9 @@ public class WarehouseProduct {
   @Column(name = "storage_location")
   private String storageLocation;
 
-  @Column
-  private String zone;
+  @Column private String zone;
 
-  @Column
-  private String rack;
+  @Column private String rack;
 
-  @Column
-  private String bin;
+  @Column private String bin;
 }

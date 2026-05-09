@@ -55,14 +55,16 @@ public class TenantService {
 
   @Cacheable(value = "tenant", key = "#id")
   public TenantResponse getTenantById(Long id) {
-    Tenant tenant = tenantRepository
-        .findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
+    Tenant tenant =
+        tenantRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
     return toResponse(tenant);
   }
 
   public boolean isWarehouse(Long tenantId) {
-    return tenantRepository.findById(tenantId)
+    return tenantRepository
+        .findById(tenantId)
         .map(t -> "WAREHOUSE".equals(t.getBusinessType()))
         .orElse(false);
   }
@@ -78,16 +80,17 @@ public class TenantService {
     String baseSlug = generateWorkspaceSlug(request.getName());
     String workspaceSlug = ensureUniqueWorkspaceSlug(baseSlug);
 
-    Tenant tenant = Tenant.builder()
-        .name(request.getName())
-        .workspaceSlug(workspaceSlug)
-        .companyCode(companyCode)
-        .businessType(request.getBusinessType())
-        .plan(request.getPlan() != null ? request.getPlan() : "FREE")
-        .status("ACTIVE")
-        .maxProducts(request.getMaxProducts())
-        .maxUsers(request.getMaxUsers())
-        .build();
+    Tenant tenant =
+        Tenant.builder()
+            .name(request.getName())
+            .workspaceSlug(workspaceSlug)
+            .companyCode(companyCode)
+            .businessType(request.getBusinessType())
+            .plan(request.getPlan() != null ? request.getPlan() : "FREE")
+            .status("ACTIVE")
+            .maxProducts(request.getMaxProducts())
+            .maxUsers(request.getMaxUsers())
+            .build();
 
     Tenant savedTenant = tenantRepository.save(tenant);
 
@@ -111,9 +114,10 @@ public class TenantService {
   @Transactional
   @CacheEvict(value = "tenant", key = "#id")
   public TenantResponse updateTenant(Long id, CreateTenantRequest request) {
-    Tenant tenant = tenantRepository
-        .findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
+    Tenant tenant =
+        tenantRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
 
     if (request.getName() != null) {
       tenant.setName(request.getName());
@@ -138,9 +142,10 @@ public class TenantService {
   @Transactional
   @CacheEvict(value = "tenant", key = "#id")
   public void deactivateTenant(Long id) {
-    Tenant tenant = tenantRepository
-        .findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
+    Tenant tenant =
+        tenantRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
     tenant.setStatus("INACTIVE");
     tenantRepository.save(tenant);
     log.info("Tenant deactivated: id={}", id);
@@ -149,9 +154,10 @@ public class TenantService {
   @Transactional
   @CacheEvict(value = "tenant", key = "#id")
   public Map<String, String> suspendTenant(Long id) {
-    Tenant tenant = tenantRepository
-        .findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
+    Tenant tenant =
+        tenantRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
     tenant.setStatus("SUSPENDED");
     tenantRepository.save(tenant);
 
@@ -164,9 +170,10 @@ public class TenantService {
   @Transactional
   @CacheEvict(value = "tenant", key = "#id")
   public Map<String, String> activateTenant(Long id) {
-    Tenant tenant = tenantRepository
-        .findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
+    Tenant tenant =
+        tenantRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found with id: " + id));
     tenant.setStatus("ACTIVE");
     tenantRepository.save(tenant);
 
@@ -176,12 +183,9 @@ public class TenantService {
     return Map.of("message", "Tenant activated successfully", "status", "ACTIVE");
   }
 
-  /**
-   * List users belonging to a specific tenant with optional search.
-   */
+  /** List users belonging to a specific tenant with optional search. */
   @Transactional(readOnly = true)
-  public Page<UserResponse> getTenantUsers(
-      Long tenantId, String search, Pageable pageable) {
+  public Page<UserResponse> getTenantUsers(Long tenantId, String search, Pageable pageable) {
     if (!tenantRepository.existsById(tenantId)) {
       throw new EntityNotFoundException("Tenant not found with id: " + tenantId);
     }
@@ -196,22 +200,20 @@ public class TenantService {
     return users.map(this::toUserResponse);
   }
 
-  /**
-   * Reset a tenant user's password (by platform admin).
-   */
+  /** Reset a tenant user's password (by platform admin). */
   @Transactional
   public Map<String, String> resetTenantUserPassword(Long userId, String newPassword) {
-    User user = userRepository
-        .findByIdUnfiltered(userId)
-        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User user =
+        userRepository
+            .findByIdUnfiltered(userId)
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     if (!"TENANT".equals(user.getScope())) {
       throw new IllegalArgumentException("User is not a tenant user");
     }
 
-    String password = (newPassword != null && !newPassword.isBlank())
-        ? newPassword
-        : generateRandomPassword();
+    String password =
+        (newPassword != null && !newPassword.isBlank()) ? newPassword : generateRandomPassword();
 
     user.setPasswordHash(passwordEncoder.encode(password));
     user.setResetToken(null);
@@ -232,19 +234,19 @@ public class TenantService {
     return response;
   }
 
-  /**
-   * Assign a subscription plan to a tenant.
-   */
+  /** Assign a subscription plan to a tenant. */
   @Transactional
   @CacheEvict(value = "tenant", key = "#tenantId")
   public Map<String, Object> assignPlan(Long tenantId, AssignPlanRequest request) {
-    Tenant tenant = tenantRepository
-        .findById(tenantId)
-        .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+    Tenant tenant =
+        tenantRepository
+            .findById(tenantId)
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
-    SubscriptionPlan plan = subscriptionPlanRepository
-        .findById(request.getPlanId())
-        .orElseThrow(() -> new EntityNotFoundException("Subscription plan not found"));
+    SubscriptionPlan plan =
+        subscriptionPlanRepository
+            .findById(request.getPlanId())
+            .orElseThrow(() -> new EntityNotFoundException("Subscription plan not found"));
 
     if (!"ACTIVE".equals(plan.getStatus())) {
       throw new IllegalArgumentException("Plan is not active");
@@ -253,10 +255,11 @@ public class TenantService {
     // Deactivate current active subscriptions
     subscriptionRepository
         .findByTenantIdAndStatus(tenantId, "ACTIVE")
-        .forEach(sub -> {
-          sub.setStatus("DEACTIVATED");
-          subscriptionRepository.save(sub);
-        });
+        .forEach(
+            sub -> {
+              sub.setStatus("DEACTIVATED");
+              subscriptionRepository.save(sub);
+            });
 
     // Update tenant limits
     tenant.setPlan(plan.getName());
@@ -274,13 +277,14 @@ public class TenantService {
     LocalDateTime startDate = LocalDateTime.now();
     LocalDateTime endDate = startDate.plusDays(durationDays);
 
-    Subscription subscription = Subscription.builder()
-        .tenantId(tenantId)
-        .plan(plan.getName())
-        .status("ACTIVE")
-        .startDate(startDate)
-        .endDate(endDate)
-        .build();
+    Subscription subscription =
+        Subscription.builder()
+            .tenantId(tenantId)
+            .plan(plan.getName())
+            .status("ACTIVE")
+            .startDate(startDate)
+            .endDate(endDate)
+            .build();
     Subscription savedSub = subscriptionRepository.save(subscription);
 
     auditLogService.log(
@@ -299,13 +303,12 @@ public class TenantService {
     return response;
   }
 
-  /**
-   * Get tenant subscription info.
-   */
+  /** Get tenant subscription info. */
   public Map<String, Object> getSubscription(Long tenantId) {
-    Tenant tenant = tenantRepository
-        .findById(tenantId)
-        .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+    Tenant tenant =
+        tenantRepository
+            .findById(tenantId)
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
     Map<String, Object> response = new HashMap<>();
     response.put("plan", tenant.getPlan());
@@ -313,18 +316,18 @@ public class TenantService {
 
     subscriptionRepository
         .findFirstByTenantIdOrderByCreatedAtDesc(tenantId)
-        .ifPresent(sub -> {
-          response.put("subscriptionStatus", sub.getStatus());
-          response.put("startDate", sub.getStartDate());
-          response.put("endDate", sub.getEndDate());
-        });
+        .ifPresent(
+            sub -> {
+              response.put("subscriptionStatus", sub.getStatus());
+              response.put("startDate", sub.getStartDate());
+              response.put("endDate", sub.getEndDate());
+            });
 
     return response;
   }
 
   @Transactional
-  public UserResponse createTenantUser(
-      Long tenantId, CreateTenantUserRequest request) {
+  public UserResponse createTenantUser(Long tenantId, CreateTenantUserRequest request) {
     if (!tenantRepository.existsById(tenantId)) {
       throw new EntityNotFoundException("Tenant not found with id: " + tenantId);
     }
@@ -334,25 +337,26 @@ public class TenantService {
       throw new IllegalArgumentException("Email already in use");
     }
 
-    User user = User.builder()
-        .name(request.getUsername())
-        .email(email)
-        .passwordHash(passwordEncoder.encode(request.getPassword()))
-        .role(request.getRole())
-        .scope(request.getScope())
-        .tenantId(tenantId)
-        .isActive(true)
-        .build();
+    User user =
+        User.builder()
+            .name(request.getUsername())
+            .email(email)
+            .passwordHash(passwordEncoder.encode(request.getPassword()))
+            .role(request.getRole())
+            .scope(request.getScope())
+            .tenantId(tenantId)
+            .isActive(true)
+            .build();
 
-    Tenant tenant = tenantRepository
-        .findById(tenantId)
-        .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+    Tenant tenant =
+        tenantRepository
+            .findById(tenantId)
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
     if (tenant.getMaxUsers() != null) {
       long currentCount = userRepository.countActiveByTenantId(tenantId);
       if (currentCount >= tenant.getMaxUsers()) {
-        throw new IllegalArgumentException(
-            "User limit reached (" + tenant.getMaxUsers() + ")");
+        throw new IllegalArgumentException("User limit reached (" + tenant.getMaxUsers() + ")");
       }
     }
 
@@ -371,8 +375,10 @@ public class TenantService {
 
   @Transactional
   public void hardDeleteTenantUser(Long tenantId, Long userId) {
-    User user = userRepository.findByIdUnfiltered(userId)
-        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User user =
+        userRepository
+            .findByIdUnfiltered(userId)
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     if (!Objects.equals(user.getTenantId(), tenantId)) {
       throw new IllegalArgumentException("User does not belong to this tenant");
@@ -381,7 +387,10 @@ public class TenantService {
     userRepository.delete(user);
     log.info("Platform hard-deleted user: {} (tenant={})", user.getEmail(), tenantId);
 
-    auditLogService.log(AuditAction.PLATFORM_DELETE_USER, tenantId, null,
+    auditLogService.log(
+        AuditAction.PLATFORM_DELETE_USER,
+        tenantId,
+        null,
         "Platform admin hard-deleted user: " + user.getEmail());
   }
 
@@ -422,11 +431,12 @@ public class TenantService {
   }
 
   private String generateWorkspaceSlug(String name) {
-    String baseSlug = name.toLowerCase()
-        .replaceAll("[^a-z0-9\\s-]", "")
-        .replaceAll("\\s+", "-")
-        .replaceAll("-+", "-")
-        .replaceAll("^-|-$", "");
+    String baseSlug =
+        name.toLowerCase()
+            .replaceAll("[^a-z0-9\\s-]", "")
+            .replaceAll("\\s+", "-")
+            .replaceAll("-+", "-")
+            .replaceAll("^-|-$", "");
     String suffix = UUID.randomUUID().toString().substring(0, 4);
     return baseSlug + "-" + suffix;
   }

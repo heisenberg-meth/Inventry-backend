@@ -3,9 +3,9 @@ package com.ims.tenant.service;
 import com.ims.dto.TransferOrderStatusRequest;
 import com.ims.model.StockMovement;
 import com.ims.model.TransferOrder;
+import com.ims.platform.service.TenantService;
 import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.domain.warehouse.WarehouseProduct;
-import com.ims.platform.service.TenantService;
 import com.ims.tenant.repository.StockMovementRepository;
 import com.ims.tenant.repository.TransferOrderRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -22,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-
 public class StockService {
 
   private final StockMovementRepository stockMovementRepository;
@@ -53,19 +52,23 @@ public class StockService {
 
   public TransferOrder getTransferOrderById(Long id) {
     checkWarehouseType();
-    return Objects.requireNonNull(transferOrderRepository
-        .findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Transfer Order not found")));
+    return Objects.requireNonNull(
+        transferOrderRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Transfer Order not found")));
   }
 
   @Transactional
-  @CacheEvict(value = { "stock", "products" }, allEntries = true)
-  public TransferOrder updateTransferStatus(Long id, TransferOrderStatusRequest request,
-      Long userId) {
+  @CacheEvict(
+      value = {"stock", "products"},
+      allEntries = true)
+  public TransferOrder updateTransferStatus(
+      Long id, TransferOrderStatusRequest request, Long userId) {
     checkWarehouseType();
-    TransferOrder order = transferOrderRepository
-        .findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("Transfer Order not found"));
+    TransferOrder order =
+        transferOrderRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("Transfer Order not found"));
 
     String currentStatus = order.getStatus();
     String newStatus = request.getStatus();
@@ -87,9 +90,10 @@ public class StockService {
 
     if ("COMPLETED".equals(newStatus)) {
       // Update warehouse product location
-      WarehouseProduct wp = warehouseProductRepository
-          .findById(Objects.requireNonNull(order.getProductId()))
-          .orElseThrow(() -> new EntityNotFoundException("Warehouse product not found"));
+      WarehouseProduct wp =
+          warehouseProductRepository
+              .findById(Objects.requireNonNull(order.getProductId()))
+              .orElseThrow(() -> new EntityNotFoundException("Warehouse product not found"));
       wp.setStorageLocation(order.getToLocation());
       warehouseProductRepository.save(wp);
 
@@ -119,19 +123,25 @@ public class StockService {
   }
 
   @Transactional
-  @CacheEvict(value = { "stock", "products" }, allEntries = true)
+  @CacheEvict(
+      value = {"stock", "products"},
+      allEntries = true)
   public void stockIn(Long productId, int qty, String notes, Long userId) {
     inventoryService.increaseStock(TenantContext.getTenantId(), productId, qty, notes, userId);
   }
 
   @Transactional
-  @CacheEvict(value = { "stock", "products" }, allEntries = true)
+  @CacheEvict(
+      value = {"stock", "products"},
+      allEntries = true)
   public void stockOut(Long productId, int qty, String notes, Long userId) {
     inventoryService.decreaseStock(TenantContext.getTenantId(), productId, qty, notes, userId);
   }
 
   @Transactional
-  @CacheEvict(value = { "stock", "products" }, allEntries = true)
+  @CacheEvict(
+      value = {"stock", "products"},
+      allEntries = true)
   public void stockAdjust(Long productId, int qty, String notes, Long userId) {
     inventoryService.adjustStock(TenantContext.getTenantId(), productId, qty, notes, userId);
   }
@@ -142,6 +152,7 @@ public class StockService {
 
   public Page<StockMovement> getFilteredMovements(
       Long productId, LocalDateTime from, LocalDateTime to, Pageable pageable) {
-    return Objects.requireNonNull(stockMovementRepository.findByFilters(productId, from, to, pageable));
+    return Objects.requireNonNull(
+        stockMovementRepository.findByFilters(productId, from, to, pageable));
   }
 }

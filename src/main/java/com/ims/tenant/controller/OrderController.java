@@ -1,11 +1,11 @@
 package com.ims.tenant.controller;
 
+import com.ims.model.Order;
 import com.ims.order.dto.CreateOrderRequest;
 import com.ims.order.dto.OrderResponse;
 import com.ims.order.entity.OrderStatus;
 import com.ims.order.entity.OrderType;
 import com.ims.shared.auth.TenantContext;
-import com.ims.model.Order;
 import com.ims.tenant.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -34,7 +34,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @Tag(name = "Tenant - Orders", description = "Order management")
 @SecurityRequirement(name = "bearerAuth")
-
 public class OrderController {
 
   private final OrderService orderService;
@@ -54,8 +53,7 @@ public class OrderController {
   @PostMapping
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "Create order (SALE or PURCHASE)")
-  public ResponseEntity<OrderResponse> createOrder(
-      @Valid @RequestBody CreateOrderRequest request) {
+  public ResponseEntity<OrderResponse> createOrder(@Valid @RequestBody CreateOrderRequest request) {
     Long userId = extractUserId();
     Long tenantId = TenantContext.getTenantId();
 
@@ -136,7 +134,9 @@ public class OrderController {
     Long tenantId = TenantContext.getTenantId();
     byte[] pdf = orderService.generateOrderPdf(id, tenantId);
     return ResponseEntity.ok()
-        .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=order-" + id + ".pdf")
+        .header(
+            org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+            "attachment; filename=order-" + id + ".pdf")
         .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "application/pdf")
         .body(pdf);
   }
@@ -148,6 +148,7 @@ public class OrderController {
       @PathVariable Long id, @RequestBody Map<String, String> body) {
     Long tenantId = TenantContext.getTenantId();
     String statusStr = Objects.requireNonNull(body.get("status"));
-    return ResponseEntity.ok(orderService.updateOrderStatus(id, tenantId, OrderStatus.valueOf(statusStr)));
+    return ResponseEntity.ok(
+        orderService.updateOrderStatus(id, tenantId, OrderStatus.valueOf(statusStr)));
   }
 }

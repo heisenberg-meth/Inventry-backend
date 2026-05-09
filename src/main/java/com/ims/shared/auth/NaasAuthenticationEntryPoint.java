@@ -12,13 +12,16 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class NaasAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
-    private final NaasService naasService;
+  private final NaasService naasService;
 
-    @Override
-    public void commence(HttpServletRequest request, HttpServletResponse response,
-            AuthenticationException authException) throws IOException {
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.setContentType("text/plain");
-        response.getWriter().write(naasService.getNoMessage());
-    }
+  @Override
+  public void commence(
+      HttpServletRequest request,
+      HttpServletResponse response,
+      AuthenticationException authException)
+      throws IOException {
+    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    response.setContentType("text/plain");
+    response.getWriter().write(naasService.getNoMessage());
+  }
 }

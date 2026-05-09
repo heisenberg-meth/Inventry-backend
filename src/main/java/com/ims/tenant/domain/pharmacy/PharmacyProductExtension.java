@@ -2,12 +2,12 @@ package com.ims.tenant.domain.pharmacy;
 
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.response.ProductResponse;
+import com.ims.platform.service.SystemConfigService;
 import com.ims.product.Product;
 import com.ims.product.extension.ProductExtensionStrategy;
-import com.ims.platform.service.SystemConfigService;
+import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import java.time.LocalDate;
 
 @Component
 @RequiredArgsConstructor
@@ -29,20 +29,16 @@ public class PharmacyProductExtension implements ProductExtensionStrategy {
 
     if (request.getPharmacyDetails() != null) {
       var pd = request.getPharmacyDetails();
-      PharmacyProduct pp = pharmacyProductRepository
-          .findById(product.getId())
-          .orElse(PharmacyProduct.builder().product(product).build());
+      PharmacyProduct pp =
+          pharmacyProductRepository
+              .findById(product.getId())
+              .orElse(PharmacyProduct.builder().product(product).build());
 
-      if (pd.getBatchNumber() != null)
-        pp.setBatchNumber(pd.getBatchNumber());
-      if (pd.getExpiryDate() != null)
-        pp.setExpiryDate(LocalDate.parse(pd.getExpiryDate()));
-      if (pd.getManufacturer() != null)
-        pp.setManufacturer(pd.getManufacturer());
-      if (pd.getHsnCode() != null)
-        pp.setHsnCode(pd.getHsnCode());
-      if (pd.getSchedule() != null)
-        pp.setSchedule(pd.getSchedule());
+      if (pd.getBatchNumber() != null) pp.setBatchNumber(pd.getBatchNumber());
+      if (pd.getExpiryDate() != null) pp.setExpiryDate(LocalDate.parse(pd.getExpiryDate()));
+      if (pd.getManufacturer() != null) pp.setManufacturer(pd.getManufacturer());
+      if (pd.getHsnCode() != null) pp.setHsnCode(pd.getHsnCode());
+      if (pd.getSchedule() != null) pp.setSchedule(pd.getSchedule());
 
       pharmacyProductRepository.save(pp);
     } else if (product.getId() == null) {
@@ -53,15 +49,18 @@ public class PharmacyProductExtension implements ProductExtensionStrategy {
   }
 
   @Override
-  public void enrichProductResponse(Product product, ProductResponse.ProductResponseBuilder builder) {
-    pharmacyProductRepository.findById(product.getId())
-        .ifPresent(pp -> {
-          builder
-              .batchNumber(pp.getBatchNumber())
-              .expiryDate(pp.getExpiryDate())
-              .manufacturer(pp.getManufacturer())
-              .hsnCode(pp.getHsnCode())
-              .schedule(pp.getSchedule());
-        });
+  public void enrichProductResponse(
+      Product product, ProductResponse.ProductResponseBuilder builder) {
+    pharmacyProductRepository
+        .findById(product.getId())
+        .ifPresent(
+            pp -> {
+              builder
+                  .batchNumber(pp.getBatchNumber())
+                  .expiryDate(pp.getExpiryDate())
+                  .manufacturer(pp.getManufacturer())
+                  .hsnCode(pp.getHsnCode())
+                  .schedule(pp.getSchedule());
+            });
   }
 }

@@ -8,10 +8,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import java.util.Objects;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -51,8 +51,7 @@ public class InvoiceController {
   @PostMapping
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Manually generate invoice from order")
-  public ResponseEntity<Invoice> createInvoice(
-      @Valid @RequestBody CreateInvoiceRequest request) {
+  public ResponseEntity<Invoice> createInvoice(@Valid @RequestBody CreateInvoiceRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED).body(invoiceService.createManual(request));
   }
 
@@ -60,7 +59,8 @@ public class InvoiceController {
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Generate invoice from order (SALE orders only)")
   public ResponseEntity<Invoice> generateFromOrder(@PathVariable Long orderId) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(invoiceService.generateFromOrder(orderId));
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(invoiceService.generateFromOrder(orderId));
   }
 
   @PostMapping("/{id}/void")
@@ -76,6 +76,13 @@ public class InvoiceController {
   public ResponseEntity<Invoice> updateStatus(
       @PathVariable Long id, @Valid @RequestBody InvoiceStatusRequest request) {
     return ResponseEntity.ok(invoiceService.updateStatus(id, request));
+  }
+
+  @GetMapping("/{id}")
+  @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+  @Operation(summary = "Get invoice detail")
+  public ResponseEntity<Invoice> getInvoice(@PathVariable Long id) {
+    return ResponseEntity.ok(invoiceService.getInvoiceById(id));
   }
 
   @GetMapping("/{id}/pdf")

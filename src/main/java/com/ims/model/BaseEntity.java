@@ -35,8 +35,7 @@ public abstract class BaseEntity {
   @Column(name = "updated_at")
   private LocalDateTime updatedAt;
 
-  @Version
-  private Long version;
+  @Version private Long version;
 
   @PrePersist
   public void prePersist() {
@@ -50,7 +49,6 @@ public abstract class BaseEntity {
     if (this.tenantId == null) {
       this.tenantId = TenantContext.requireTenantId();
     }
-
   }
 
   @PreUpdate

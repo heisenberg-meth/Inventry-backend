@@ -32,8 +32,8 @@ public class WebhookController {
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Create new webhook")
   public ResponseEntity<Webhook> create(@RequestBody Map<String, String> body) {
-    return ResponseEntity.ok(webhookService.createWebhook(
-        body.get("url"), body.get("eventTypes"), body.get("secret")));
+    return ResponseEntity.ok(
+        webhookService.createWebhook(body.get("url"), body.get("eventTypes"), body.get("secret")));
   }
 
   @DeleteMapping("/{id}")

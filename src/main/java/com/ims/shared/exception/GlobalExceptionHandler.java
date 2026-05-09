@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,7 +14,6 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import lombok.extern.slf4j.Slf4j;
 
 @RestControllerAdvice
 @Slf4j
@@ -31,19 +31,28 @@ public class GlobalExceptionHandler {
   public ResponseEntity<Map<String, Object>> handleAuthentication(
       org.springframework.security.core.AuthenticationException ex, HttpServletRequest request) {
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-        .body(errorBody(STATUS_UNAUTHORIZED, "UNAUTHORIZED", ex.getMessage(), request.getRequestURI()));
+        .body(
+            errorBody(
+                STATUS_UNAUTHORIZED, "UNAUTHORIZED", ex.getMessage(), request.getRequestURI()));
   }
 
   @ExceptionHandler(org.springframework.security.authentication.BadCredentialsException.class)
   public ResponseEntity<Map<String, Object>> handleBadCredentials(
-      org.springframework.security.authentication.BadCredentialsException ex, HttpServletRequest request) {
+      org.springframework.security.authentication.BadCredentialsException ex,
+      HttpServletRequest request) {
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-        .body(errorBody(STATUS_UNAUTHORIZED, "UNAUTHORIZED", "Invalid email or password", request.getRequestURI()));
+        .body(
+            errorBody(
+                STATUS_UNAUTHORIZED,
+                "UNAUTHORIZED",
+                "Invalid email or password",
+                request.getRequestURI()));
   }
 
   @ExceptionHandler(org.springframework.security.authentication.DisabledException.class)
   public ResponseEntity<Map<String, Object>> handleDisabled(
-      org.springframework.security.authentication.DisabledException ex, HttpServletRequest request) {
+      org.springframework.security.authentication.DisabledException ex,
+      HttpServletRequest request) {
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
         .body(errorBody(STATUS_UNAUTHORIZED, "DISABLED", ex.getMessage(), request.getRequestURI()));
   }
@@ -56,8 +65,9 @@ public class GlobalExceptionHandler {
         .getFieldErrors()
         .forEach(err -> fieldErrors.put(err.getField(), err.getDefaultMessage()));
 
-    Map<String, Object> body = errorBody(
-        STATUS_BAD_REQUEST, "VALIDATION_FAILED", "Validation failed", request.getRequestURI());
+    Map<String, Object> body =
+        errorBody(
+            STATUS_BAD_REQUEST, "VALIDATION_FAILED", "Validation failed", request.getRequestURI());
     body.put("fields", fieldErrors);
     return ResponseEntity.badRequest().body(body);
   }
@@ -86,8 +96,9 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(InsufficientStockException.class)
   public ResponseEntity<Map<String, Object>> handleInsufficientStock(
       InsufficientStockException ex, HttpServletRequest request) {
-    Map<String, Object> body = errorBody(STATUS_UNPROCESSABLE, "INSUFFICIENT_STOCK", ex.getMessage(),
-        request.getRequestURI());
+    Map<String, Object> body =
+        errorBody(
+            STATUS_UNPROCESSABLE, "INSUFFICIENT_STOCK", ex.getMessage(), request.getRequestURI());
     body.put("available_stock", ex.getAvailableStock());
     body.put("requested_qty", ex.getRequestedQty());
     return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(body);
@@ -106,7 +117,8 @@ public class GlobalExceptionHandler {
   public ResponseEntity<Map<String, Object>> handleBadRequest(
       IllegalArgumentException ex, HttpServletRequest request) {
     return ResponseEntity.badRequest()
-        .body(errorBody(STATUS_BAD_REQUEST, "BAD_REQUEST", ex.getMessage(), request.getRequestURI()));
+        .body(
+            errorBody(STATUS_BAD_REQUEST, "BAD_REQUEST", ex.getMessage(), request.getRequestURI()));
   }
 
   @ExceptionHandler(IllegalStateException.class)
@@ -114,21 +126,27 @@ public class GlobalExceptionHandler {
       IllegalStateException ex, HttpServletRequest request) {
     log.warn("Illegal state encountered at {}: {}", request.getRequestURI(), ex.getMessage());
     return ResponseEntity.status(HttpStatus.CONFLICT)
-        .body(errorBody(STATUS_CONFLICT, "ILLEGAL_STATE", ex.getMessage(), request.getRequestURI()));
+        .body(
+            errorBody(STATUS_CONFLICT, "ILLEGAL_STATE", ex.getMessage(), request.getRequestURI()));
   }
 
   @ExceptionHandler({
-      org.springframework.web.servlet.resource.NoResourceFoundException.class,
-      org.springframework.web.servlet.NoHandlerFoundException.class
+    org.springframework.web.servlet.resource.NoResourceFoundException.class,
+    org.springframework.web.servlet.NoHandlerFoundException.class
   })
-  public ResponseEntity<Map<String, Object>> handleNoResourceFound(Exception ex, HttpServletRequest request) {
+  public ResponseEntity<Map<String, Object>> handleNoResourceFound(
+      Exception ex, HttpServletRequest request) {
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .body(errorBody(STATUS_NOT_FOUND, "NOT_FOUND", "Resource not found", request.getRequestURI()));
+        .body(
+            errorBody(
+                STATUS_NOT_FOUND, "NOT_FOUND", "Resource not found", request.getRequestURI()));
   }
 
-  @ExceptionHandler(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class)
+  @ExceptionHandler(
+      org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class)
   public ResponseEntity<Map<String, Object>> handleTypeMismatch(
-      org.springframework.web.method.annotation.MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+      org.springframework.web.method.annotation.MethodArgumentTypeMismatchException ex,
+      HttpServletRequest request) {
     Class<?> requiredType = ex.getRequiredType();
     String typeName = requiredType != null ? requiredType.getSimpleName() : "unknown";
     String message = String.format("Parameter '%s' should be of type '%s'", ex.getName(), typeName);
@@ -140,33 +158,51 @@ public class GlobalExceptionHandler {
   public ResponseEntity<Map<String, Object>> handleConstraintViolation(
       jakarta.validation.ConstraintViolationException ex, HttpServletRequest request) {
     Map<String, String> errors = new HashMap<>();
-    ex.getConstraintViolations().forEach(violation -> {
-      errors.put(violation.getPropertyPath().toString(), violation.getMessage());
-    });
-    Map<String, Object> body = errorBody(STATUS_BAD_REQUEST, "CONSTRAINT_VIOLATION", "Constraint violation",
-        request.getRequestURI());
+    ex.getConstraintViolations()
+        .forEach(
+            violation -> {
+              errors.put(violation.getPropertyPath().toString(), violation.getMessage());
+            });
+    Map<String, Object> body =
+        errorBody(
+            STATUS_BAD_REQUEST,
+            "CONSTRAINT_VIOLATION",
+            "Constraint violation",
+            request.getRequestURI());
     body.put("errors", errors);
     return ResponseEntity.badRequest().body(body);
   }
 
   @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
   public ResponseEntity<Map<String, Object>> handleMethodNotSupported(
-      org.springframework.web.HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+      org.springframework.web.HttpRequestMethodNotSupportedException ex,
+      HttpServletRequest request) {
     return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
-        .body(errorBody(HttpStatus.METHOD_NOT_ALLOWED.value(), "METHOD_NOT_ALLOWED", ex.getMessage(),
-            request.getRequestURI()));
+        .body(
+            errorBody(
+                HttpStatus.METHOD_NOT_ALLOWED.value(),
+                "METHOD_NOT_ALLOWED",
+                ex.getMessage(),
+                request.getRequestURI()));
   }
 
   @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
   public ResponseEntity<Map<String, Object>> handleHttpMessageNotReadable(
-      org.springframework.http.converter.HttpMessageNotReadableException ex, HttpServletRequest request) {
+      org.springframework.http.converter.HttpMessageNotReadableException ex,
+      HttpServletRequest request) {
     return ResponseEntity.badRequest()
-        .body(errorBody(STATUS_BAD_REQUEST, "MALFORMED_JSON", "Malformed JSON request body", request.getRequestURI()));
+        .body(
+            errorBody(
+                STATUS_BAD_REQUEST,
+                "MALFORMED_JSON",
+                "Malformed JSON request body",
+                request.getRequestURI()));
   }
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<Map<String, Object>> handleAll(Exception ex, HttpServletRequest request) {
-    log.error("Unexpected error occurred at [{}]: {}", request.getRequestURI(), ex.getMessage(), ex);
+    log.error(
+        "Unexpected error occurred at [{}]: {}", request.getRequestURI(), ex.getMessage(), ex);
 
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
         .body(

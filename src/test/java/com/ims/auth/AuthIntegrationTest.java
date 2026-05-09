@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.SignupRequest;
 import com.ims.shared.auth.SignupService;
@@ -16,8 +17,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 @AutoConfigureMockMvc
 public class AuthIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired
-  private SignupService signupService;
+  @Autowired private SignupService signupService;
 
   @BeforeEach
   void setup() {
@@ -27,11 +27,13 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
   @Test
   void testSecurityAndIsolationFlow() throws Exception {
     // 1. Signup Tenant 1
-    SignupRequest t1Signup = createSignupRequest("Unique Business 1", "unique-t1-auth", "admin1@t1.com");
+    SignupRequest t1Signup =
+        createSignupRequest("Unique Business 1", "unique-t1-auth", "admin1@t1.com");
     com.ims.dto.response.SignupResponse t1Response = signupService.signup(t1Signup);
 
     // 2. Signup Tenant 2
-    SignupRequest t2Signup = createSignupRequest("Unique Business 2", "unique-t2-auth", "admin2@t2.com");
+    SignupRequest t2Signup =
+        createSignupRequest("Unique Business 2", "unique-t2-auth", "admin2@t2.com");
     com.ims.dto.response.SignupResponse t2Response = signupService.signup(t2Signup);
 
     // 3. Verify users (simulating email verification)
@@ -78,9 +80,9 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
 
   @Test
   void testUnauthorizedAccess() throws Exception {
-    mockMvc.perform(get("/api/v1/tenant/users"))
+    mockMvc
+        .perform(get("/api/v1/tenant/users"))
         .andDo(print())
         .andExpect(status().isUnauthorized());
   }
-
 }

@@ -31,12 +31,9 @@ public class TransferOrder extends BaseEntity {
   @Column(name = "quantity", nullable = false)
   private Integer quantity;
 
-  @Column
-  @Builder.Default
-  private String status = "PENDING";
+  @Column @Builder.Default private String status = "PENDING";
 
-  @Column
-  private String notes;
+  @Column private String notes;
 
   @Column(name = "created_by")
   private Long createdBy;

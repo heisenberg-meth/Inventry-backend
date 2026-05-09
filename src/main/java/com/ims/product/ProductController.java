@@ -51,10 +51,11 @@ public class ProductController {
 
   @GetMapping("/next")
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
-  @Operation(summary = "List products (Cursor pagination)", description = "High performance, no offset")
+  @Operation(
+      summary = "List products (Cursor pagination)",
+      description = "High performance, no offset")
   public ResponseEntity<List<ProductResponse>> getNextProducts(
-      @RequestParam Long lastId,
-      @RequestParam(defaultValue = "20") int limit) {
+      @RequestParam Long lastId, @RequestParam(defaultValue = "20") int limit) {
     return ResponseEntity.ok(productService.getNextProducts(lastId, limit));
   }
 
@@ -121,8 +122,7 @@ public class ProductController {
   @PostMapping("/bulk-import")
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Bulk import products via CSV")
-  public ResponseEntity<Map<String, Object>> bulkImport(
-      @RequestParam("file") MultipartFile file) {
+  public ResponseEntity<Map<String, Object>> bulkImport(@RequestParam("file") MultipartFile file) {
     return ResponseEntity.ok(importService.importProducts(file));
   }
 
@@ -130,26 +130,34 @@ public class ProductController {
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Export all products as CSV")
   public ResponseEntity<String> exportProducts() {
-    var products = productRepository
-        .findByTenantIdAndIsDeletedFalse(TenantContext.requireTenantId(), Pageable.unpaged())
-        .getContent();
+    var products =
+        productRepository
+            .findByTenantIdAndIsDeletedFalse(TenantContext.requireTenantId(), Pageable.unpaged())
+            .getContent();
 
-    var data = products.stream().map(p -> {
-      Map<String, Object> map = new LinkedHashMap<>();
-      map.put("ID", p.getId());
-      map.put("Name", p.getName());
-      map.put("SKU", p.getSku());
-      map.put("Stock", p.getStock());
-      map.put("Price", p.getSalePrice());
-      map.put("CategoryID", p.getCategoryId());
-      return map;
-    }).collect(Collectors.toList());
+    var data =
+        products.stream()
+            .map(
+                p -> {
+                  Map<String, Object> map = new LinkedHashMap<>();
+                  map.put("ID", p.getId());
+                  map.put("Name", p.getName());
+                  map.put("SKU", p.getSku());
+                  map.put("Stock", p.getStock());
+                  map.put("Price", p.getSalePrice());
+                  map.put("CategoryID", p.getCategoryId());
+                  return map;
+                })
+            .collect(Collectors.toList());
 
-    String csv = csvExportService.exportToCsv(List.of("ID", "Name", "SKU", "Stock", "Price", "CategoryID"),
-        data);
+    String csv =
+        csvExportService.exportToCsv(
+            List.of("ID", "Name", "SKU", "Stock", "Price", "CategoryID"), data);
 
     return ResponseEntity.ok()
-        .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=products.csv")
+        .header(
+            org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+            "attachment; filename=products.csv")
         .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "text/csv")
         .body(csv);
   }
@@ -159,7 +167,8 @@ public class ProductController {
   @Operation(summary = "Generate barcode for product")
   public ResponseEntity<byte[]> getBarcode(@PathVariable Long id) {
     ProductResponse p = productService.getProductById(id);
-    byte[] image = barcodeService.generateBarcodeImage(p.getBarcode() != null ? p.getBarcode() : p.getSku());
+    byte[] image =
+        barcodeService.generateBarcodeImage(p.getBarcode() != null ? p.getBarcode() : p.getSku());
     return ResponseEntity.ok()
         .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "image/png")
         .body(image);

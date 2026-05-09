@@ -16,36 +16,36 @@ import org.springframework.kafka.core.ProducerFactory;
 @Configuration
 public class KafkaConfig {
 
-    @Value("${spring.kafka.bootstrap-servers:localhost:9092}")
-    private String bootstrapServers;
+  @Value("${spring.kafka.bootstrap-servers:localhost:9092}")
+  private String bootstrapServers;
 
-    @Bean
-    public ProducerFactory<String, String> producerFactory() {
-        Map<String, Object> configProps = new HashMap<>();
-        configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        configProps.put(ProducerConfig.ACKS_CONFIG, "all");
-        return new DefaultKafkaProducerFactory<>(configProps);
-    }
+  @Bean
+  public ProducerFactory<String, String> producerFactory() {
+    Map<String, Object> configProps = new HashMap<>();
+    configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+    configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+    configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+    configProps.put(ProducerConfig.ACKS_CONFIG, "all");
+    return new DefaultKafkaProducerFactory<>(configProps);
+  }
 
-    @Bean
-    public KafkaTemplate<String, String> kafkaTemplate() {
-        return new KafkaTemplate<>(producerFactory());
-    }
+  @Bean
+  public KafkaTemplate<String, String> kafkaTemplate() {
+    return new KafkaTemplate<>(producerFactory());
+  }
 
-    @Bean
-    public NewTopic inventoryAlertsTopic() {
-        return TopicBuilder.name("ims.inventory.alerts").partitions(3).replicas(1).build();
-    }
+  @Bean
+  public NewTopic inventoryAlertsTopic() {
+    return TopicBuilder.name("ims.inventory.alerts").partitions(3).replicas(1).build();
+  }
 
-    @Bean
-    public NewTopic invoiceGenerateTopic() {
-        return TopicBuilder.name("ims.invoice.generate").partitions(3).replicas(1).build();
-    }
+  @Bean
+  public NewTopic invoiceGenerateTopic() {
+    return TopicBuilder.name("ims.invoice.generate").partitions(3).replicas(1).build();
+  }
 
-    @Bean
-    public NewTopic auditLogsTopic() {
-        return TopicBuilder.name("ims.audit.logs").partitions(3).replicas(1).build();
-    }
+  @Bean
+  public NewTopic auditLogsTopic() {
+    return TopicBuilder.name("ims.audit.logs").partitions(3).replicas(1).build();
+  }
 }

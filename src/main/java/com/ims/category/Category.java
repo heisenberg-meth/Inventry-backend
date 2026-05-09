@@ -1,10 +1,10 @@
 package com.ims.category;
 
-import java.math.BigDecimal;
 import com.ims.model.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -26,8 +26,7 @@ public class Category extends BaseEntity {
   @Column(nullable = false)
   private String name;
 
-  @Column
-  private String description;
+  @Column private String description;
 
   @Column(name = "tax_rate")
   @Builder.Default

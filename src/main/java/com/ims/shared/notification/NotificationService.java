@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-
 public class NotificationService {
 
   private final NotificationRepository notificationRepository;
@@ -26,10 +25,13 @@ public class NotificationService {
 
   @Transactional
   public void markAsRead(Long id) {
-    notificationRepository.findById(id).ifPresent(n -> {
-      n.setIsRead(true);
-      notificationRepository.save(n);
-    });
+    notificationRepository
+        .findById(id)
+        .ifPresent(
+            n -> {
+              n.setIsRead(true);
+              notificationRepository.save(n);
+            });
   }
 
   @Transactional
@@ -40,15 +42,17 @@ public class NotificationService {
   }
 
   @Transactional
-  public void createNotification(Long userId, String title, String message, String type, Long resourceId) {
-    Notification notification = Notification.builder()
-        .userId(userId)
-        .tenantId(TenantContext.getTenantId())
-        .title(title)
-        .message(message)
-        .type(type)
-        .resourceId(resourceId)
-        .build();
+  public void createNotification(
+      Long userId, String title, String message, String type, Long resourceId) {
+    Notification notification =
+        Notification.builder()
+            .userId(userId)
+            .tenantId(TenantContext.getTenantId())
+            .title(title)
+            .message(message)
+            .type(type)
+            .resourceId(resourceId)
+            .build();
     notificationRepository.save(notification);
     log.debug("Notification created for user {}: {}", userId, title);
   }

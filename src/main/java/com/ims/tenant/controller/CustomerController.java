@@ -6,13 +6,13 @@ import com.ims.tenant.service.CustomerService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import java.util.Objects;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -45,7 +45,8 @@ public class CustomerController {
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Create customer")
   public ResponseEntity<Customer> create(@RequestBody Customer customer) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(Objects.requireNonNull(customerService.create(customer)));
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(Objects.requireNonNull(customerService.create(customer)));
   }
 
   @GetMapping("/{id}")
@@ -58,8 +59,7 @@ public class CustomerController {
   @PutMapping("/{id}")
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Update customer")
-  public ResponseEntity<Customer> update(@PathVariable Long id,
-      @RequestBody Customer customer) {
+  public ResponseEntity<Customer> update(@PathVariable Long id, @RequestBody Customer customer) {
     return ResponseEntity.ok(Objects.requireNonNull(customerService.update(id, customer)));
   }
 
@@ -89,7 +89,8 @@ public class CustomerController {
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Bulk import customers via CSV")
   public ResponseEntity<java.util.Map<String, Object>> bulkImport(
-      @org.springframework.web.bind.annotation.RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+      @org.springframework.web.bind.annotation.RequestParam("file")
+          org.springframework.web.multipart.MultipartFile file) {
     return ResponseEntity.ok(importService.importCustomers(file));
   }
 
@@ -97,23 +98,29 @@ public class CustomerController {
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Export customers as CSV")
   public ResponseEntity<String> export() {
-    var data = customerRepository.findAll().stream().map(c -> {
-      java.util.Map<String, Object> map = new java.util.LinkedHashMap<>();
-      map.put("ID", c.getId());
-      map.put("Name", c.getName());
-      map.put("Phone", c.getPhone());
-      map.put("Email", c.getEmail());
-      map.put("Address", c.getAddress());
-      map.put("GSTIN", c.getGstin());
-      return map;
-    }).collect(java.util.stream.Collectors.toList());
+    var data =
+        customerRepository.findAll().stream()
+            .map(
+                c -> {
+                  java.util.Map<String, Object> map = new java.util.LinkedHashMap<>();
+                  map.put("ID", c.getId());
+                  map.put("Name", c.getName());
+                  map.put("Phone", c.getPhone());
+                  map.put("Email", c.getEmail());
+                  map.put("Address", c.getAddress());
+                  map.put("GSTIN", c.getGstin());
+                  return map;
+                })
+            .collect(java.util.stream.Collectors.toList());
 
-    String csv = csvExportService.exportToCsv(java.util.List.of("ID", "Name", "Phone", "Email", "Address", "GSTIN"),
-        data);
+    String csv =
+        csvExportService.exportToCsv(
+            java.util.List.of("ID", "Name", "Phone", "Email", "Address", "GSTIN"), data);
     return ResponseEntity.ok()
-        .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=customers.csv")
+        .header(
+            org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+            "attachment; filename=customers.csv")
         .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "text/csv")
         .body(csv);
-
   }
 }

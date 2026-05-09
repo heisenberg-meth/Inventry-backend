@@ -15,23 +15,31 @@ import org.springframework.stereotype.Repository;
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
   @Query("SELECT p FROM Payment p WHERE p.tenantId = :tenantId AND p.id = :id")
-  java.util.Optional<Payment> findByIdAndTenantId(@Param("tenantId") Long tenantId, @Param("id") Long id);
+  java.util.Optional<Payment> findByIdAndTenantId(
+      @Param("tenantId") Long tenantId, @Param("id") Long id);
 
   @Query("SELECT p FROM Payment p WHERE p.tenantId = :tenantId")
   Page<Payment> findAllByTenantId(@Param("tenantId") Long tenantId, Pageable pageable);
 
-  @Query("SELECT p FROM Payment p JOIN Invoice i ON p.invoiceId = i.id JOIN Order o ON i.orderId = o.id WHERE p.tenantId = :tenantId AND o.customerId = :customerId")
-  List<Payment> findByTenantIdAndCustomerId(@Param("tenantId") Long tenantId, @Param("customerId") Long customerId);
+  @Query(
+      "SELECT p FROM Payment p JOIN Invoice i ON p.invoiceId = i.id JOIN Order o ON i.orderId = o.id WHERE p.tenantId = :tenantId AND o.customerId = :customerId")
+  List<Payment> findByTenantIdAndCustomerId(
+      @Param("tenantId") Long tenantId, @Param("customerId") Long customerId);
 
-  @Query("SELECT p FROM Payment p JOIN Invoice i ON p.invoiceId = i.id JOIN Order o ON i.orderId = o.id WHERE p.tenantId = :tenantId AND o.supplierId = :supplierId")
-  List<Payment> findByTenantIdAndSupplierId(@Param("tenantId") Long tenantId, @Param("supplierId") Long supplierId);
+  @Query(
+      "SELECT p FROM Payment p JOIN Invoice i ON p.invoiceId = i.id JOIN Order o ON i.orderId = o.id WHERE p.tenantId = :tenantId AND o.supplierId = :supplierId")
+  List<Payment> findByTenantIdAndSupplierId(
+      @Param("tenantId") Long tenantId, @Param("supplierId") Long supplierId);
 
-  @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.tenantId = :tenantId AND p.invoiceId = :invoiceId AND (p.status = 'COMPLETED' OR p.status = 'SUCCESS')")
-  BigDecimal sumAmountByTenantIdAndInvoiceId(@Param("tenantId") Long tenantId, @Param("invoiceId") Long invoiceId);
+  @Query(
+      "SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.tenantId = :tenantId AND p.invoiceId = :invoiceId AND (p.status = 'COMPLETED' OR p.status = 'SUCCESS')")
+  BigDecimal sumAmountByTenantIdAndInvoiceId(
+      @Param("tenantId") Long tenantId, @Param("invoiceId") Long invoiceId);
 
-  @Query("SELECT p FROM Payment p WHERE p.tenantId = :tenantId AND p.gatewayTransactionId = :gatewayTransactionId")
-  Optional<Payment> findByTenantIdAndGatewayTransactionId(@Param("tenantId") Long tenantId,
-      @Param("gatewayTransactionId") String gatewayTransactionId);
+  @Query(
+      "SELECT p FROM Payment p WHERE p.tenantId = :tenantId AND p.gatewayTransactionId = :gatewayTransactionId")
+  Optional<Payment> findByTenantIdAndGatewayTransactionId(
+      @Param("tenantId") Long tenantId, @Param("gatewayTransactionId") String gatewayTransactionId);
 
   Optional<Payment> findByGatewayTransactionId(String gatewayTransactionId);
 

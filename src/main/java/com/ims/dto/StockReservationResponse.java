@@ -10,8 +10,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class StockReservationResponse {
-    private Long productId;
-    private Integer reservedQuantity;
-    private Integer availableAfterReservation;
-    private String reservationId;
+  private Long productId;
+  private Integer reservedQuantity;
+  private Integer availableAfterReservation;
+  private String reservationId;
 }

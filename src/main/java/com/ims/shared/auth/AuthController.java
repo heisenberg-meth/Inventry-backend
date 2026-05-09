@@ -35,9 +35,14 @@ public class AuthController {
   private static final int BEARER_PREFIX_LENGTH = 7;
 
   @PostMapping("/login")
-  @Operation(summary = "Login", description = "Authenticate with email/password, returns JWT tokens")
+  @Operation(
+      summary = "Login",
+      description = "Authenticate with email/password, returns JWT tokens")
   public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-    log.info("Login request received: email={}, companyCode={}", request.getEmail(), request.getCompanyCode());
+    log.info(
+        "Login request received: email={}, companyCode={}",
+        request.getEmail(),
+        request.getCompanyCode());
     LoginResponse response = authService.login(request);
     return ResponseEntity.ok(response);
   }
@@ -82,7 +87,9 @@ public class AuthController {
   }
 
   @PostMapping("/forgot-password")
-  @Operation(summary = "Forgot password", description = "Request password reset token (sent via email)")
+  @Operation(
+      summary = "Forgot password",
+      description = "Request password reset token (sent via email)")
   public ResponseEntity<Map<String, String>> forgotPassword(
       @Valid @RequestBody ForgotPasswordRequest request) {
     return ResponseEntity.ok(authService.forgotPassword(request));
@@ -103,7 +110,8 @@ public class AuthController {
 
   @PostMapping("/resend-verification")
   @Operation(summary = "Resend verification email", description = "Resend email verification token")
-  public ResponseEntity<Map<String, String>> resendVerification(@RequestBody Map<String, String> body) {
+  public ResponseEntity<Map<String, String>> resendVerification(
+      @RequestBody Map<String, String> body) {
     String email = body.get("email");
     if (email == null || email.isBlank()) {
       return ResponseEntity.badRequest().build();

@@ -35,18 +35,22 @@ public class PlatformUserService {
       throw new IllegalArgumentException("Email already in use");
     }
 
-    User user = User.builder()
-        .name(request.getName())
-        .email(request.getEmail())
-        .passwordHash(passwordEncoder.encode(request.getPassword()))
-        .role(request.getRole())
-        .scope("PLATFORM")
-        .tenantId(null)
-        .isActive(true)
-        .build();
+    User user =
+        User.builder()
+            .name(request.getName())
+            .email(request.getEmail())
+            .passwordHash(passwordEncoder.encode(request.getPassword()))
+            .role(request.getRole())
+            .scope("PLATFORM")
+            .tenantId(null)
+            .isActive(true)
+            .build();
 
     User saved = Objects.requireNonNull(userRepository.save(Objects.requireNonNull(user)));
-    auditLogService.log(AuditAction.CREATE_PLATFORM_ADMIN, null, saved.getId(),
+    auditLogService.log(
+        AuditAction.CREATE_PLATFORM_ADMIN,
+        null,
+        saved.getId(),
         "Created platform user: " + saved.getEmail() + " role=" + saved.getRole());
     return saved;
   }
@@ -58,9 +62,10 @@ public class PlatformUserService {
 
   @Transactional(readOnly = true)
   public Map<String, Object> getPlatformUser(Long id) {
-    User user = userRepository
-        .findByIdAndTenantIdIsNull(id)
-        .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
+    User user =
+        userRepository
+            .findByIdAndTenantIdIsNull(id)
+            .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
 
     Map<String, Object> response = new HashMap<>();
     response.put("id", user.getId());
@@ -78,9 +83,10 @@ public class PlatformUserService {
     if (!role.equals("PLATFORM_ADMIN") && !role.equals("SUPPORT_ADMIN")) {
       throw new IllegalArgumentException("Invalid role. Must be PLATFORM_ADMIN or SUPPORT_ADMIN.");
     }
-    User user = userRepository
-        .findByIdAndTenantIdIsNull(id)
-        .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
+    User user =
+        userRepository
+            .findByIdAndTenantIdIsNull(id)
+            .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
 
     if (user.getRole().equals("ROOT")) {
       throw new IllegalArgumentException("Cannot modify ROOT user role");
@@ -92,9 +98,10 @@ public class PlatformUserService {
 
   @Transactional
   public void suspendPlatformUser(Long id) {
-    User user = userRepository
-        .findByIdAndTenantIdIsNull(id)
-        .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
+    User user =
+        userRepository
+            .findByIdAndTenantIdIsNull(id)
+            .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
 
     if (user.getRole().equals("ROOT")) {
       throw new IllegalArgumentException("Cannot suspend ROOT user");
@@ -102,29 +109,37 @@ public class PlatformUserService {
 
     user.setIsActive(false);
     userRepository.save(user);
-    auditLogService.log(AuditAction.SUSPEND_PLATFORM_ADMIN, null, id,
+    auditLogService.log(
+        AuditAction.SUSPEND_PLATFORM_ADMIN,
+        null,
+        id,
         "Suspended platform user: " + user.getEmail());
     log.info("Platform user suspended: id={}", id);
   }
 
   @Transactional
   public void activatePlatformUser(Long id) {
-    User user = userRepository
-        .findByIdAndTenantIdIsNull(id)
-        .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
+    User user =
+        userRepository
+            .findByIdAndTenantIdIsNull(id)
+            .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
 
     user.setIsActive(true);
     userRepository.save(user);
-    auditLogService.log(AuditAction.ACTIVATE_PLATFORM_ADMIN, null, id,
+    auditLogService.log(
+        AuditAction.ACTIVATE_PLATFORM_ADMIN,
+        null,
+        id,
         "Activated platform user: " + user.getEmail());
     log.info("Platform user activated: id={}", id);
   }
 
   @Transactional
   public void deactivatePlatformUser(Long id) {
-    User user = userRepository
-        .findByIdAndTenantIdIsNull(id)
-        .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
+    User user =
+        userRepository
+            .findByIdAndTenantIdIsNull(id)
+            .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
 
     if (user.getRole().equals("ROOT")) {
       throw new IllegalArgumentException("Cannot deactivate ROOT user");
@@ -135,18 +150,21 @@ public class PlatformUserService {
   }
 
   @Transactional
-  public Map<String, String> resetPlatformUserPassword(
-      Long id, String newPassword) {
-    User user = userRepository
-        .findByIdAndTenantIdIsNull(id)
-        .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
+  public Map<String, String> resetPlatformUserPassword(Long id, String newPassword) {
+    User user =
+        userRepository
+            .findByIdAndTenantIdIsNull(id)
+            .orElseThrow(() -> new EntityNotFoundException("Platform user not found"));
 
     user.setPasswordHash(passwordEncoder.encode(newPassword));
     user.setResetToken(null);
     user.setResetTokenExpiry(null);
     userRepository.save(user);
 
-    auditLogService.log(AuditAction.RESET_PLATFORM_ADMIN_PASSWORD, null, id,
+    auditLogService.log(
+        AuditAction.RESET_PLATFORM_ADMIN_PASSWORD,
+        null,
+        id,
         "Reset password for platform user: " + user.getEmail());
     log.info("Password reset for platform user: id={}", id);
     return Objects.requireNonNull(Map.of("message", "Password reset successfully"));

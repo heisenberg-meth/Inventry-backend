@@ -33,7 +33,12 @@ public class JwtUtil {
   }
 
   public String generateToken(
-      Long userId, Long tenantId, String role, List<String> permissions, String scope, String businessType,
+      Long userId,
+      Long tenantId,
+      String role,
+      List<String> permissions,
+      String scope,
+      String businessType,
       boolean isPlatformUser) {
     Map<String, Object> claims = new HashMap<>();
     claims.put("user_id", userId);
@@ -59,7 +64,12 @@ public class JwtUtil {
   }
 
   public String generateRefreshToken(
-      Long userId, Long tenantId, String role, List<String> permissions, String scope, String businessType,
+      Long userId,
+      Long tenantId,
+      String role,
+      List<String> permissions,
+      String scope,
+      String businessType,
       boolean isPlatformUser) {
     Map<String, Object> claims = new HashMap<>();
     claims.put("user_id", userId);
@@ -99,11 +109,7 @@ public class JwtUtil {
   }
 
   public Claims extractAllClaims(String token) {
-    return Jwts.parser()
-        .verifyWith(key)
-        .build()
-        .parseSignedClaims(token)
-        .getPayload();
+    return Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
   }
 
   public Long extractUserId(String token) {

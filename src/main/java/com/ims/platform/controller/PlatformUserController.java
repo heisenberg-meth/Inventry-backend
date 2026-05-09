@@ -37,8 +37,7 @@ public class PlatformUserController {
   @Operation(summary = "Create platform user (ROOT only)")
   @PreAuthorize("hasRole('ROOT')")
   @ResponseStatus(HttpStatus.CREATED)
-  public User createPlatformUser(
-      @Valid @RequestBody CreatePlatformUserRequest request) {
+  public User createPlatformUser(@Valid @RequestBody CreatePlatformUserRequest request) {
     return Objects.requireNonNull(platformUserService.createPlatformUser(request));
   }
 
@@ -59,8 +58,7 @@ public class PlatformUserController {
   @Operation(summary = "Update platform user role (ROOT only)")
   @PatchMapping("/{id}/role")
   @PreAuthorize("hasRole('ROOT')")
-  public User updateRole(
-      @PathVariable Long id, @RequestBody Map<String, String> body) {
+  public User updateRole(@PathVariable Long id, @RequestBody Map<String, String> body) {
     String role = body.get("role");
     if (role == null) {
       throw new IllegalArgumentException("Role is required");

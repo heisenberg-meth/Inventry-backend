@@ -15,12 +15,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class OrderItemRequest {
 
-  @NotNull
-  private Long productId;
+  @NotNull private Long productId;
 
-  @NotNull
-  @Positive
-  private Integer quantity;
+  @NotNull @Positive private Integer quantity;
 
   @DecimalMin(value = "0.00", message = "Unit price must be zero or positive")
   private BigDecimal unitPrice;

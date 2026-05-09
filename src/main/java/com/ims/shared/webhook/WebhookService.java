@@ -14,7 +14,6 @@ import org.springframework.web.client.RestTemplate;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-
 public class WebhookService {
 
   private final WebhookRepository webhookRepository;
@@ -26,23 +25,27 @@ public class WebhookService {
 
   @Transactional
   public Webhook createWebhook(String url, String eventTypes, String secret) {
-    Webhook webhook = Webhook.builder()
-        .tenantId(TenantContext.getTenantId())
-        .url(url)
-        .eventTypes(eventTypes)
-        .secret(secret)
-        .isActive(true)
-        .build();
+    Webhook webhook =
+        Webhook.builder()
+            .tenantId(TenantContext.getTenantId())
+            .url(url)
+            .eventTypes(eventTypes)
+            .secret(secret)
+            .isActive(true)
+            .build();
     return webhookRepository.save(webhook);
   }
 
   @Transactional
   public void deleteWebhook(Long id) {
-    webhookRepository.findById(id).ifPresent(w -> {
-      if (w.getTenantId().equals(TenantContext.getTenantId())) {
-        webhookRepository.delete(w);
-      }
-    });
+    webhookRepository
+        .findById(id)
+        .ifPresent(
+            w -> {
+              if (w.getTenantId().equals(TenantContext.getTenantId())) {
+                webhookRepository.delete(w);
+              }
+            });
   }
 
   @Async
@@ -50,13 +53,15 @@ public class WebhookService {
     List<Webhook> webhooks = webhookRepository.findByTenantId(tenantId);
 
     for (Webhook webhook : webhooks) {
-      if (Boolean.TRUE.equals(webhook.getIsActive()) && webhook.getEventTypes().contains(eventType)) {
+      if (Boolean.TRUE.equals(webhook.getIsActive())
+          && webhook.getEventTypes().contains(eventType)) {
         try {
-          Map<String, Object> body = Map.of(
-              "event", eventType,
-              "tenant_id", tenantId,
-              "timestamp", java.time.LocalDateTime.now().toString(),
-              "data", payload);
+          Map<String, Object> body =
+              Map.of(
+                  "event", eventType,
+                  "tenant_id", tenantId,
+                  "timestamp", java.time.LocalDateTime.now().toString(),
+                  "data", payload);
           restTemplate.postForEntity(webhook.getUrl(), body, String.class);
           log.debug("Webhook dispatched to {} for event {}", webhook.getUrl(), eventType);
         } catch (Exception e) {

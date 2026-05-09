@@ -7,8 +7,8 @@ import com.ims.order.entity.OrderStatus;
 import com.ims.shared.auth.TenantContext;
 import com.ims.shared.exception.ResourceNotFoundException;
 import com.ims.tenant.repository.CustomerRepository;
-import com.ims.tenant.repository.OrderRepository;
 import com.ims.tenant.repository.InvoiceRepository;
+import com.ims.tenant.repository.OrderRepository;
 import com.ims.tenant.repository.PaymentRepository;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -46,8 +46,10 @@ public class CustomerService {
     this.orderRepository = orderRepository;
     this.invoiceRepository = invoiceRepository;
     this.paymentRepository = paymentRepository;
-    this.customerCreatedCounter = Counter.builder("customer.creation.total").register(meterRegistry);
-    this.duplicateEmailCounter = Counter.builder("customer.duplicate_email_conflicts").register(meterRegistry);
+    this.customerCreatedCounter =
+        Counter.builder("customer.creation.total").register(meterRegistry);
+    this.duplicateEmailCounter =
+        Counter.builder("customer.duplicate_email_conflicts").register(meterRegistry);
     this.customerHistoryTimer = Timer.builder("customer.history.latency").register(meterRegistry);
   }
 
@@ -75,14 +77,16 @@ public class CustomerService {
     normalizeEmail(customer);
 
     if (customer.getEmail() != null
-        && customerRepository.existsByTenantIdAndEmailAndIsDeletedFalse(tenantId, customer.getEmail().toLowerCase())) {
+        && customerRepository.existsByTenantIdAndEmailAndIsDeletedFalse(
+            tenantId, customer.getEmail().toLowerCase())) {
       duplicateEmailCounter.increment();
       throw new IllegalArgumentException("Customer with this email already exists");
     }
 
     Customer saved = customerRepository.save(customer);
     customerCreatedCounter.increment();
-    log.info("Customer created: id={} tenant={} email={}", saved.getId(), tenantId, saved.getEmail());
+    log.info(
+        "Customer created: id={} tenant={} email={}", saved.getId(), tenantId, saved.getEmail());
     return saved;
   }
 
@@ -100,7 +104,8 @@ public class CustomerService {
     if (updates.getEmail() != null && !updates.getEmail().equalsIgnoreCase(customer.getEmail())) {
       Long tenantId = TenantContext.getTenantId();
       normalizeEmail(updates);
-      if (customerRepository.existsByTenantIdAndEmailAndIsDeletedFalse(tenantId, updates.getEmail().toLowerCase())) {
+      if (customerRepository.existsByTenantIdAndEmailAndIsDeletedFalse(
+          tenantId, updates.getEmail().toLowerCase())) {
         duplicateEmailCounter.increment();
         throw new IllegalArgumentException("Customer with this email already exists");
       }
@@ -128,10 +133,12 @@ public class CustomerService {
     Customer customer = getById(id);
     Long tenantId = TenantContext.getTenantId();
 
-    List<Order> orders = orderRepository.findByTenantIdAndCustomerId(tenantId, id, Pageable.unpaged())
-        .getContent();
-    List<com.ims.model.Invoice> invoices = invoiceRepository.findByTenantIdAndCustomerId(tenantId, id);
-    List<com.ims.model.Payment> payments = paymentRepository.findByTenantIdAndCustomerId(tenantId, id);
+    List<Order> orders =
+        orderRepository.findByTenantIdAndCustomerId(tenantId, id, Pageable.unpaged()).getContent();
+    List<com.ims.model.Invoice> invoices =
+        invoiceRepository.findByTenantIdAndCustomerId(tenantId, id);
+    List<com.ims.model.Payment> payments =
+        paymentRepository.findByTenantIdAndCustomerId(tenantId, id);
 
     return Map.of(
         "customer", customer,
@@ -142,33 +149,42 @@ public class CustomerService {
 
   @Transactional(readOnly = true)
   public CustomerHistoryResponse getCustomerHistory(Long id) {
-    return customerHistoryTimer.record(() -> {
-      Customer customer = getById(id);
-      Long tenantId = TenantContext.getTenantId();
+    return customerHistoryTimer.record(
+        () -> {
+          Customer customer = getById(id);
+          Long tenantId = TenantContext.getTenantId();
 
-      List<Order> orders = orderRepository.findByTenantIdAndCustomerId(tenantId, id, Pageable.unpaged())
-          .getContent();
+          List<Order> orders =
+              orderRepository
+                  .findByTenantIdAndCustomerId(tenantId, id, Pageable.unpaged())
+                  .getContent();
 
-      int totalOrders = orders.size();
-      BigDecimal totalSpent = orders.stream()
-          .filter(o -> o.getTotalAmount() != null)
-          .map(Order::getTotalAmount)
-          .reduce(BigDecimal.ZERO, BigDecimal::add);
+          int totalOrders = orders.size();
+          BigDecimal totalSpent =
+              orders.stream()
+                  .filter(o -> o.getTotalAmount() != null)
+                  .map(Order::getTotalAmount)
+                  .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-      int pendingOrders = (int) orders.stream()
-          .filter(o -> OrderStatus.PENDING == o.getStatus() || OrderStatus.CONFIRMED == o.getStatus())
-          .count();
+          int pendingOrders =
+              (int)
+                  orders.stream()
+                      .filter(
+                          o ->
+                              OrderStatus.PENDING == o.getStatus()
+                                  || OrderStatus.CONFIRMED == o.getStatus())
+                      .count();
 
-      return CustomerHistoryResponse.builder()
-          .customerId(customer.getId())
-          .customerName(customer.getName())
-          .customerEmail(customer.getEmail())
-          .totalOrders(totalOrders)
-          .totalSpent(totalSpent)
-          .pendingOrders(pendingOrders)
-          .orders(orders.stream().limit(10).toList())
-          .build();
-    });
+          return CustomerHistoryResponse.builder()
+              .customerId(customer.getId())
+              .customerName(customer.getName())
+              .customerEmail(customer.getEmail())
+              .totalOrders(totalOrders)
+              .totalSpent(totalSpent)
+              .pendingOrders(pendingOrders)
+              .orders(orders.stream().limit(10).toList())
+              .build();
+        });
   }
 
   private void normalizeEmail(Customer customer) {

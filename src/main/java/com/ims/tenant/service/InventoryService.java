@@ -47,15 +47,19 @@ public class InventoryService {
     this.productRepository = productRepository;
     this.stockMovementRepository = stockMovementRepository;
     this.alertService = alertService;
-    this.stockConflictCounter = Counter.builder("inventory.stock_conflicts").register(meterRegistry);
-    this.lowStockAlertCounter = Counter.builder("inventory.low_stock_alerts").register(meterRegistry);
+    this.stockConflictCounter =
+        Counter.builder("inventory.stock_conflicts").register(meterRegistry);
+    this.lowStockAlertCounter =
+        Counter.builder("inventory.low_stock_alerts").register(meterRegistry);
   }
 
   @Transactional(readOnly = true)
   public InventoryResponse getInventoryByProductId(Long tenantId, Long productId) {
-    Inventory inventory = inventoryRepository
-        .findByProductIdAndTenantId(productId, tenantId)
-        .orElseThrow(() -> new EntityNotFoundException("Inventory not found for product: " + productId));
+    Inventory inventory =
+        inventoryRepository
+            .findByProductIdAndTenantId(productId, tenantId)
+            .orElseThrow(
+                () -> new EntityNotFoundException("Inventory not found for product: " + productId));
     return toResponse(inventory);
   }
 
@@ -71,7 +75,9 @@ public class InventoryService {
 
   @Transactional(readOnly = true)
   public Page<InventoryResponse> getReorderLevelInventories(Long tenantId, Pageable pageable) {
-    return inventoryRepository.findBelowReorderLevelByTenantId(tenantId, pageable).map(this::toResponse);
+    return inventoryRepository
+        .findBelowReorderLevelByTenantId(tenantId, pageable)
+        .map(this::toResponse);
   }
 
   @Transactional(readOnly = true)
@@ -83,15 +89,22 @@ public class InventoryService {
   }
 
   @Transactional
-  @Retryable(retryFor = { OptimisticLockException.class,
-      ObjectOptimisticLockingFailureException.class,
-      PessimisticLockException.class }, maxAttempts = 3, backoff = @Backoff(delay = 200, maxDelay = 1000, multiplier = 2))
-  public InventoryResponse increaseStock(Long tenantId, Long productId, int quantity, String notes, Long userId) {
+  @Retryable(
+      retryFor = {
+        OptimisticLockException.class,
+        ObjectOptimisticLockingFailureException.class,
+        PessimisticLockException.class
+      },
+      maxAttempts = 3,
+      backoff = @Backoff(delay = 200, maxDelay = 1000, multiplier = 2))
+  public InventoryResponse increaseStock(
+      Long tenantId, Long productId, int quantity, String notes, Long userId) {
     log.info("Increasing stock: product={} qty={} tenant={}", productId, quantity, tenantId);
 
-    Inventory inventory = inventoryRepository
-        .findByProductIdAndTenantIdWithLock(productId, tenantId)
-        .orElseGet(() -> createInventory(productId, tenantId));
+    Inventory inventory =
+        inventoryRepository
+            .findByProductIdAndTenantIdWithLock(productId, tenantId)
+            .orElseGet(() -> createInventory(productId, tenantId));
 
     int previousQuantity = inventory.getQuantity();
     inventory.setQuantity(previousQuantity + quantity);
@@ -99,23 +112,42 @@ public class InventoryService {
     inventory = inventoryRepository.save(inventory);
     syncProductStock(productId, inventory.getQuantity());
 
-    recordStockMovement(tenantId, productId, "IN", quantity, previousQuantity, inventory.getQuantity(), notes, userId);
+    recordStockMovement(
+        tenantId,
+        productId,
+        "IN",
+        quantity,
+        previousQuantity,
+        inventory.getQuantity(),
+        notes,
+        userId);
 
-    log.info("Stock increased: product={} {}→{} tenant={}", productId, previousQuantity, inventory.getQuantity(),
+    log.info(
+        "Stock increased: product={} {}→{} tenant={}",
+        productId,
+        previousQuantity,
+        inventory.getQuantity(),
         tenantId);
     return toResponse(inventory);
   }
 
   @Transactional
-  @Retryable(retryFor = { OptimisticLockException.class,
-      ObjectOptimisticLockingFailureException.class,
-      PessimisticLockException.class }, maxAttempts = 3, backoff = @Backoff(delay = 200, maxDelay = 1000, multiplier = 2))
-  public InventoryResponse decreaseStock(Long tenantId, Long productId, int quantity, String notes, Long userId) {
+  @Retryable(
+      retryFor = {
+        OptimisticLockException.class,
+        ObjectOptimisticLockingFailureException.class,
+        PessimisticLockException.class
+      },
+      maxAttempts = 3,
+      backoff = @Backoff(delay = 200, maxDelay = 1000, multiplier = 2))
+  public InventoryResponse decreaseStock(
+      Long tenantId, Long productId, int quantity, String notes, Long userId) {
     log.info("Decreasing stock: product={} qty={} tenant={}", productId, quantity, tenantId);
 
-    Inventory inventory = inventoryRepository
-        .findByProductIdAndTenantIdWithLock(productId, tenantId)
-        .orElseGet(() -> createInventory(productId, tenantId));
+    Inventory inventory =
+        inventoryRepository
+            .findByProductIdAndTenantIdWithLock(productId, tenantId)
+            .orElseGet(() -> createInventory(productId, tenantId));
 
     int previousQuantity = inventory.getQuantity();
     int availableQuantity = inventory.getAvailableQuantity();
@@ -132,25 +164,44 @@ public class InventoryService {
     inventory = inventoryRepository.save(inventory);
     syncProductStock(productId, inventory.getQuantity());
 
-    recordStockMovement(tenantId, productId, "OUT", quantity, previousQuantity, inventory.getQuantity(), notes, userId);
+    recordStockMovement(
+        tenantId,
+        productId,
+        "OUT",
+        quantity,
+        previousQuantity,
+        inventory.getQuantity(),
+        notes,
+        userId);
 
     checkLowStockAndAlert(inventory);
 
-    log.info("Stock decreased: product={} {}→{} tenant={}", productId, previousQuantity, inventory.getQuantity(),
+    log.info(
+        "Stock decreased: product={} {}→{} tenant={}",
+        productId,
+        previousQuantity,
+        inventory.getQuantity(),
         tenantId);
     return toResponse(inventory);
   }
 
   @Transactional
-  @Retryable(retryFor = { OptimisticLockException.class,
-      ObjectOptimisticLockingFailureException.class,
-      PessimisticLockException.class }, maxAttempts = 3, backoff = @Backoff(delay = 200, maxDelay = 1000, multiplier = 2))
-  public InventoryResponse adjustStock(Long tenantId, Long productId, int quantity, String notes, Long userId) {
+  @Retryable(
+      retryFor = {
+        OptimisticLockException.class,
+        ObjectOptimisticLockingFailureException.class,
+        PessimisticLockException.class
+      },
+      maxAttempts = 3,
+      backoff = @Backoff(delay = 200, maxDelay = 1000, multiplier = 2))
+  public InventoryResponse adjustStock(
+      Long tenantId, Long productId, int quantity, String notes, Long userId) {
     log.info("Adjusting stock: product={} qty={} tenant={}", productId, quantity, tenantId);
 
-    Inventory inventory = inventoryRepository
-        .findByProductIdAndTenantIdWithLock(productId, tenantId)
-        .orElseGet(() -> createInventory(productId, tenantId));
+    Inventory inventory =
+        inventoryRepository
+            .findByProductIdAndTenantIdWithLock(productId, tenantId)
+            .orElseGet(() -> createInventory(productId, tenantId));
 
     int previousQuantity = inventory.getQuantity();
     int newQuantity = previousQuantity + quantity;
@@ -168,32 +219,48 @@ public class InventoryService {
     syncProductStock(productId, inventory.getQuantity());
 
     // Use "ADJUSTMENT" to match StockAuditIntegrationTest expectations
-    recordStockMovement(tenantId, productId, "ADJUSTMENT", Math.abs(quantity), previousQuantity,
-        inventory.getQuantity(), notes,
+    recordStockMovement(
+        tenantId,
+        productId,
+        "ADJUSTMENT",
+        Math.abs(quantity),
+        previousQuantity,
+        inventory.getQuantity(),
+        notes,
         userId);
 
     if (quantity < 0) {
       checkLowStockAndAlert(inventory);
     }
 
-    log.info("Stock adjusted: product={} {}→{} tenant={}", productId, previousQuantity, inventory.getQuantity(),
+    log.info(
+        "Stock adjusted: product={} {}→{} tenant={}",
+        productId,
+        previousQuantity,
+        inventory.getQuantity(),
         tenantId);
     return toResponse(inventory);
   }
 
   @Transactional
-  @Retryable(retryFor = { OptimisticLockException.class,
-      ObjectOptimisticLockingFailureException.class,
-      PessimisticLockException.class }, maxAttempts = 3, backoff = @Backoff(delay = 200, maxDelay = 1000, multiplier = 2))
+  @Retryable(
+      retryFor = {
+        OptimisticLockException.class,
+        ObjectOptimisticLockingFailureException.class,
+        PessimisticLockException.class
+      },
+      maxAttempts = 3,
+      backoff = @Backoff(delay = 200, maxDelay = 1000, multiplier = 2))
   public StockReservationResponse reserveStock(Long tenantId, StockReservationRequest request) {
     Long productId = request.getProductId();
     int quantity = request.getQuantity();
 
     log.info("Reserving stock: product={} qty={} tenant={}", productId, quantity, tenantId);
 
-    Inventory inventory = inventoryRepository
-        .findByProductIdAndTenantIdWithLock(productId, tenantId)
-        .orElseGet(() -> createInventory(productId, tenantId));
+    Inventory inventory =
+        inventoryRepository
+            .findByProductIdAndTenantIdWithLock(productId, tenantId)
+            .orElseGet(() -> createInventory(productId, tenantId));
 
     int availableQuantity = inventory.getAvailableQuantity();
     if (availableQuantity < quantity) {
@@ -208,11 +275,22 @@ public class InventoryService {
     inventory.setReservedQuantity(previousReserved + quantity);
     inventory = inventoryRepository.save(inventory);
 
-    recordStockMovement(tenantId, productId, "RESERVE", quantity, previousReserved, inventory.getReservedQuantity(),
-        "Stock reservation", request.getUserId());
+    recordStockMovement(
+        tenantId,
+        productId,
+        "RESERVE",
+        quantity,
+        previousReserved,
+        inventory.getReservedQuantity(),
+        "Stock reservation",
+        request.getUserId());
 
-    log.info("Stock reserved: product={} qty={} reserved={} tenant={}", productId, quantity,
-        inventory.getReservedQuantity(), tenantId);
+    log.info(
+        "Stock reserved: product={} qty={} reserved={} tenant={}",
+        productId,
+        quantity,
+        inventory.getReservedQuantity(),
+        tenantId);
 
     return StockReservationResponse.builder()
         .productId(productId)
@@ -223,15 +301,22 @@ public class InventoryService {
   }
 
   @Transactional
-  @Retryable(retryFor = { OptimisticLockException.class,
-      ObjectOptimisticLockingFailureException.class,
-      PessimisticLockException.class }, maxAttempts = 3, backoff = @Backoff(delay = 200, maxDelay = 1000, multiplier = 2))
-  public InventoryResponse releaseReservation(Long tenantId, Long productId, int quantity, String notes, Long userId) {
+  @Retryable(
+      retryFor = {
+        OptimisticLockException.class,
+        ObjectOptimisticLockingFailureException.class,
+        PessimisticLockException.class
+      },
+      maxAttempts = 3,
+      backoff = @Backoff(delay = 200, maxDelay = 1000, multiplier = 2))
+  public InventoryResponse releaseReservation(
+      Long tenantId, Long productId, int quantity, String notes, Long userId) {
     log.info("Releasing reservation: product={} qty={} tenant={}", productId, quantity, tenantId);
 
-    Inventory inventory = inventoryRepository
-        .findByProductIdAndTenantIdWithLock(productId, tenantId)
-        .orElseGet(() -> createInventory(productId, tenantId));
+    Inventory inventory =
+        inventoryRepository
+            .findByProductIdAndTenantIdWithLock(productId, tenantId)
+            .orElseGet(() -> createInventory(productId, tenantId));
 
     int previousReserved = inventory.getReservedQuantity();
     int releaseQty = Math.min(quantity, previousReserved);
@@ -239,25 +324,43 @@ public class InventoryService {
     inventory.setReservedQuantity(previousReserved - releaseQty);
     inventory = inventoryRepository.save(inventory);
 
-    recordStockMovement(tenantId, productId, "RELEASE", releaseQty, previousReserved, inventory.getReservedQuantity(),
-        notes != null ? notes : "Reservation release", userId);
+    recordStockMovement(
+        tenantId,
+        productId,
+        "RELEASE",
+        releaseQty,
+        previousReserved,
+        inventory.getReservedQuantity(),
+        notes != null ? notes : "Reservation release",
+        userId);
 
-    log.info("Reservation released: product={} released={} remaining={} tenant={}",
-        productId, releaseQty, inventory.getReservedQuantity(), tenantId);
+    log.info(
+        "Reservation released: product={} released={} remaining={} tenant={}",
+        productId,
+        releaseQty,
+        inventory.getReservedQuantity(),
+        tenantId);
 
     return toResponse(inventory);
   }
 
   @Transactional
-  @Retryable(retryFor = { OptimisticLockException.class,
-      ObjectOptimisticLockingFailureException.class,
-      PessimisticLockException.class }, maxAttempts = 3, backoff = @Backoff(delay = 200, maxDelay = 1000, multiplier = 2))
-  public InventoryResponse fulfillReservation(Long tenantId, Long productId, int quantity, String notes, Long userId) {
+  @Retryable(
+      retryFor = {
+        OptimisticLockException.class,
+        ObjectOptimisticLockingFailureException.class,
+        PessimisticLockException.class
+      },
+      maxAttempts = 3,
+      backoff = @Backoff(delay = 200, maxDelay = 1000, multiplier = 2))
+  public InventoryResponse fulfillReservation(
+      Long tenantId, Long productId, int quantity, String notes, Long userId) {
     log.info("Fulfilling reservation: product={} qty={} tenant={}", productId, quantity, tenantId);
 
-    Inventory inventory = inventoryRepository
-        .findByProductIdAndTenantIdWithLock(productId, tenantId)
-        .orElseGet(() -> createInventory(productId, tenantId));
+    Inventory inventory =
+        inventoryRepository
+            .findByProductIdAndTenantIdWithLock(productId, tenantId)
+            .orElseGet(() -> createInventory(productId, tenantId));
 
     int previousReserved = inventory.getReservedQuantity();
     int fulfillQty = Math.min(quantity, previousReserved);
@@ -267,23 +370,35 @@ public class InventoryService {
     inventory = inventoryRepository.save(inventory);
     syncProductStock(productId, inventory.getQuantity());
 
-    recordStockMovement(tenantId, productId, "FULFILL", fulfillQty, previousReserved, inventory.getReservedQuantity(),
-        notes != null ? notes : "Reservation fulfilled", userId);
+    recordStockMovement(
+        tenantId,
+        productId,
+        "FULFILL",
+        fulfillQty,
+        previousReserved,
+        inventory.getReservedQuantity(),
+        notes != null ? notes : "Reservation fulfilled",
+        userId);
 
     checkLowStockAndAlert(inventory);
 
-    log.info("Reservation fulfilled: product={} fulfilled={} qty={} tenant={}",
-        productId, fulfillQty, inventory.getQuantity(), tenantId);
+    log.info(
+        "Reservation fulfilled: product={} fulfilled={} qty={} tenant={}",
+        productId,
+        fulfillQty,
+        inventory.getQuantity(),
+        tenantId);
 
     return toResponse(inventory);
   }
 
   @Transactional
-  public InventoryResponse updateThresholds(Long tenantId, Long productId, Integer lowStockThreshold,
-      Integer reorderLevel) {
-    Inventory inventory = inventoryRepository
-        .findByProductIdAndTenantId(productId, tenantId)
-        .orElseGet(() -> createInventory(productId, tenantId));
+  public InventoryResponse updateThresholds(
+      Long tenantId, Long productId, Integer lowStockThreshold, Integer reorderLevel) {
+    Inventory inventory =
+        inventoryRepository
+            .findByProductIdAndTenantId(productId, tenantId)
+            .orElseGet(() -> createInventory(productId, tenantId));
 
     if (lowStockThreshold != null) {
       inventory.setLowStockThreshold(lowStockThreshold);
@@ -293,40 +408,55 @@ public class InventoryService {
     }
 
     inventory = inventoryRepository.save(inventory);
-    log.info("Thresholds updated: product={} lowStock={} reorder={} tenant={}",
-        productId, lowStockThreshold, reorderLevel, tenantId);
+    log.info(
+        "Thresholds updated: product={} lowStock={} reorder={} tenant={}",
+        productId,
+        lowStockThreshold,
+        reorderLevel,
+        tenantId);
 
     return toResponse(inventory);
   }
 
   private Inventory createInventory(Long productId, Long tenantId) {
-    Product product = productRepository.findById(productId)
-        .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
+    Product product =
+        productRepository
+            .findById(productId)
+            .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
 
-    Inventory inventory = Inventory.builder()
-        .tenantId(tenantId)
-        .productId(productId)
-        .quantity(product.getStock())
-        .reservedQuantity(0)
-        .lowStockThreshold(10)
-        .reorderLevel(product.getReorderLevel() != null ? product.getReorderLevel() : 10)
-        .build();
+    Inventory inventory =
+        Inventory.builder()
+            .tenantId(tenantId)
+            .productId(productId)
+            .quantity(product.getStock())
+            .reservedQuantity(0)
+            .lowStockThreshold(10)
+            .reorderLevel(product.getReorderLevel() != null ? product.getReorderLevel() : 10)
+            .build();
 
     return inventoryRepository.save(inventory);
   }
 
-  private void recordStockMovement(Long tenantId, Long productId, String movementType, int quantity,
-      int previousStock, int newStock, String notes, Long userId) {
-    StockMovement movement = StockMovement.builder()
-        .tenantId(tenantId)
-        .productId(productId)
-        .movementType(movementType)
-        .quantity(quantity)
-        .previousStock(previousStock)
-        .newStock(newStock)
-        .notes(notes)
-        .createdBy(userId)
-        .build();
+  private void recordStockMovement(
+      Long tenantId,
+      Long productId,
+      String movementType,
+      int quantity,
+      int previousStock,
+      int newStock,
+      String notes,
+      Long userId) {
+    StockMovement movement =
+        StockMovement.builder()
+            .tenantId(tenantId)
+            .productId(productId)
+            .movementType(movementType)
+            .quantity(quantity)
+            .previousStock(previousStock)
+            .newStock(newStock)
+            .notes(notes)
+            .createdBy(userId)
+            .build();
     stockMovementRepository.save(movement);
   }
 
@@ -338,10 +468,13 @@ public class InventoryService {
   }
 
   private void syncProductStock(Long productId, int quantity) {
-    productRepository.findById(productId).ifPresent(p -> {
-      p.setStock(quantity);
-      productRepository.save(p);
-    });
+    productRepository
+        .findById(productId)
+        .ifPresent(
+            p -> {
+              p.setStock(quantity);
+              productRepository.save(p);
+            });
   }
 
   private InventoryResponse toResponse(Inventory inventory) {

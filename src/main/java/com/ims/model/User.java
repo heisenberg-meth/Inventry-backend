@@ -32,8 +32,7 @@ public class User extends BaseEntity {
   @Column(nullable = false)
   private String email;
 
-  @Column
-  private String phone;
+  @Column private String phone;
 
   @Column(name = "password_hash", nullable = false)
   private String passwordHash;
@@ -50,7 +49,10 @@ public class User extends BaseEntity {
   private Boolean isPlatformUser = false;
 
   @ManyToMany(fetch = FetchType.EAGER)
-  @JoinTable(name = "user_permissions", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "permission_id"))
+  @JoinTable(
+      name = "user_permissions",
+      joinColumns = @JoinColumn(name = "user_id"),
+      inverseJoinColumns = @JoinColumn(name = "permission_id"))
   @Builder.Default
   private Set<Permission> customPermissions = new HashSet<>();
 

@@ -16,6 +16,7 @@ public class TenantPersistenceService {
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public Tenant saveTenant(Tenant tenant) {
-    return Objects.requireNonNull(tenantRepository.saveAndFlush(Objects.requireNonNull(tenant))); // commits immediately
+    return Objects.requireNonNull(
+        tenantRepository.saveAndFlush(Objects.requireNonNull(tenant))); // commits immediately
   }
 }

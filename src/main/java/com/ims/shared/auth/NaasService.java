@@ -21,8 +21,7 @@ public class NaasService {
     this.restTemplate = new RestTemplate(factory);
   }
 
-  @Getter
-  private String noMessage = "No"; // Default fallback
+  @Getter private String noMessage = "No"; // Default fallback
 
   @PostConstruct
   public void init() {
@@ -30,7 +29,8 @@ public class NaasService {
         () -> {
           try {
             log.info("Fetching NaaS message asynchronously...");
-            String response = restTemplate.getForObject("https://naas.isalman.dev/no", String.class);
+            String response =
+                restTemplate.getForObject("https://naas.isalman.dev/no", String.class);
             if (response != null && !response.isBlank()) {
               this.noMessage = response.trim();
               log.info("NaaS message cached successfully: {}", noMessage);

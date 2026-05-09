@@ -43,24 +43,21 @@ public class TenantSupportController {
       @Valid @RequestBody CreateTicketRequest request) {
     JwtAuthDetails auth = getAuthDetails();
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(supportService.createTicket(
-            Objects.requireNonNull(auth.getUserId()), request));
+        .body(supportService.createTicket(Objects.requireNonNull(auth.getUserId()), request));
   }
 
   @GetMapping
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "List my tenant tickets")
   public ResponseEntity<Page<SupportTicket>> listTickets(Pageable pageable) {
-    return ResponseEntity.ok(
-        supportService.listTenantTickets(pageable));
+    return ResponseEntity.ok(supportService.listTenantTickets(pageable));
   }
 
   @GetMapping("/{id}")
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "Get ticket details")
   public ResponseEntity<Map<String, Object>> getTicketDetails(@PathVariable Long id) {
-    return ResponseEntity.ok(
-        supportService.getTenantTicketDetails(id));
+    return ResponseEntity.ok(supportService.getTenantTicketDetails(id));
   }
 
   @PostMapping("/{id}/messages")
@@ -70,16 +67,16 @@ public class TenantSupportController {
       @PathVariable Long id, @Valid @RequestBody AddMessageRequest request) {
     JwtAuthDetails auth = getAuthDetails();
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(supportService.addMessage(
-            id, Objects.requireNonNull(auth.getUserId()), "TENANT", request));
+        .body(
+            supportService.addMessage(
+                id, Objects.requireNonNull(auth.getUserId()), "TENANT", request));
   }
 
   @PatchMapping("/{id}/close")
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Close ticket")
   public ResponseEntity<SupportTicket> closeTicket(@PathVariable Long id) {
-    return ResponseEntity.ok(
-        supportService.closeTicketByTenant(id));
+    return ResponseEntity.ok(supportService.closeTicketByTenant(id));
   }
 
   private JwtAuthDetails getAuthDetails() {

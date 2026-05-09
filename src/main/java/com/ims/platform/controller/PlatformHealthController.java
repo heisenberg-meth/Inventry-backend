@@ -24,43 +24,46 @@ import org.springframework.web.bind.annotation.RestController;
 @SecurityRequirement(name = "bearerAuth")
 public class PlatformHealthController {
 
-    private final DataSource dataSource;
-    private final RedisTemplate<String, Object> redisTemplate;
+  private final DataSource dataSource;
+  private final RedisTemplate<String, Object> redisTemplate;
 
-    @GetMapping("/extended")
-    @PreAuthorize("hasRole('ROOT')")
-    @Operation(summary = "Deep health check", description = "Checks DB, Redis, and Disk space")
-    public ResponseEntity<Map<String, Object>> getExtendedHealth() {
-        Map<String, Object> health = new LinkedHashMap<>();
+  @GetMapping("/extended")
+  @PreAuthorize("hasRole('ROOT')")
+  @Operation(summary = "Deep health check", description = "Checks DB, Redis, and Disk space")
+  public ResponseEntity<Map<String, Object>> getExtendedHealth() {
+    Map<String, Object> health = new LinkedHashMap<>();
 
-        // 1. Database Health
-        try (var conn = dataSource.getConnection()) {
-            health.put("database", Map.of("status", "UP", "message", "Connection successful"));
-        } catch (Exception e) {
-            health.put("database", Map.of("status", "DOWN", "error", e.getMessage()));
-        }
-
-        // 2. Redis Health
-        try {
-            redisTemplate.execute((RedisConnection connection) -> {
-                return connection.serverCommands().info();
-            });
-            health.put("redis", Map.of("status", "UP"));
-        } catch (Exception e) {
-            health.put("redis", Map.of("status", "DOWN", "error", e.getMessage()));
-        }
-
-        // 3. Disk Space
-        File root = new File("/");
-        long total = root.getTotalSpace();
-        long free = root.getUsableSpace();
-        health.put("disk", Map.of(
-                "total_gb", total / (1024 * 1024 * 1024),
-                "free_gb", free / (1024 * 1024 * 1024),
-                "usage_percent", total > 0 ? (double) (total - free) / total * 100 : 0));
-
-        health.put("system_time", LocalDateTime.now().toString());
-
-        return ResponseEntity.ok(health);
+    // 1. Database Health
+    try (var conn = dataSource.getConnection()) {
+      health.put("database", Map.of("status", "UP", "message", "Connection successful"));
+    } catch (Exception e) {
+      health.put("database", Map.of("status", "DOWN", "error", e.getMessage()));
     }
+
+    // 2. Redis Health
+    try {
+      redisTemplate.execute(
+          (RedisConnection connection) -> {
+            return connection.serverCommands().info();
+          });
+      health.put("redis", Map.of("status", "UP"));
+    } catch (Exception e) {
+      health.put("redis", Map.of("status", "DOWN", "error", e.getMessage()));
+    }
+
+    // 3. Disk Space
+    File root = new File("/");
+    long total = root.getTotalSpace();
+    long free = root.getUsableSpace();
+    health.put(
+        "disk",
+        Map.of(
+            "total_gb", total / (1024 * 1024 * 1024),
+            "free_gb", free / (1024 * 1024 * 1024),
+            "usage_percent", total > 0 ? (double) (total - free) / total * 100 : 0));
+
+    health.put("system_time", LocalDateTime.now().toString());
+
+    return ResponseEntity.ok(health);
+  }
 }

@@ -12,22 +12,24 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class UserDetailsServiceImpl implements UserDetailsService {
 
-    private final UserRepository userRepository;
+  private final UserRepository userRepository;
 
-    @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        return userRepository.findByEmail(email)
-                .map(u -> {
-                    String role = u.getRole();
-                    if (role != null && role.startsWith("ROLE_")) {
-                        role = role.substring(5);
-                    }
-                    return User.builder()
-                            .username(u.getEmail())
-                            .password(u.getPasswordHash())
-                            .roles(role)
-                            .build();
-                })
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
-    }
+  @Override
+  public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+    return userRepository
+        .findByEmail(email)
+        .map(
+            u -> {
+              String role = u.getRole();
+              if (role != null && role.startsWith("ROLE_")) {
+                role = role.substring(5);
+              }
+              return User.builder()
+                  .username(u.getEmail())
+                  .password(u.getPasswordHash())
+                  .roles(role)
+                  .build();
+            })
+        .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
+  }
 }

@@ -2,7 +2,6 @@ package com.ims.platform.controller;
 
 import com.ims.model.SystemConfig;
 import com.ims.platform.service.SystemConfigService;
-import org.springframework.security.access.prepost.PreAuthorize;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -11,6 +10,7 @@ import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -43,7 +43,8 @@ public class SystemConfigController {
     if (value == null) {
       throw new IllegalArgumentException("Value is required");
     }
-    return ResponseEntity
-        .ok(systemConfigService.updateConfig(Objects.requireNonNull(key), Objects.requireNonNull(value)));
+    return ResponseEntity.ok(
+        systemConfigService.updateConfig(
+            Objects.requireNonNull(key), Objects.requireNonNull(value)));
   }
 }

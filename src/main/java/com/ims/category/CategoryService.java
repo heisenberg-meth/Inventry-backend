@@ -1,18 +1,18 @@
 package com.ims.category;
 
+import com.ims.dto.CategoryRequest;
 import com.ims.dto.response.CategoryResponse;
+import com.ims.product.ProductRepository;
 import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditLogService;
 import com.ims.shared.audit.AuditResource;
-import com.ims.dto.CategoryRequest;
-import com.ims.product.ProductRepository;
 import com.ims.shared.auth.TenantContext;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
+import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
 import java.util.Objects;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -36,7 +36,10 @@ public class CategoryService {
   private final MeterRegistry meterRegistry;
   private final ObservationRegistry observationRegistry;
 
-  @Cacheable(cacheResolver = "tenantAwareCacheResolver", value = "categories", key = "'list:' + #pageable.pageNumber + ':' + #pageable.pageSize")
+  @Cacheable(
+      cacheResolver = "tenantAwareCacheResolver",
+      value = "categories",
+      key = "'list:' + #pageable.pageNumber + ':' + #pageable.pageSize")
   public Page<Category> getCategories(Pageable pageable) {
     Long tenantId = TenantContext.requireTenantId();
 
@@ -57,32 +60,40 @@ public class CategoryService {
     return Observation.createNotStarted("ims.category.create", observationRegistry)
         .contextualName("create-category")
         .lowCardinalityKeyValue("tenantId", String.valueOf(TenantContext.getTenantId()))
-        .observe(() -> {
-          if (categoryRepository.existsByNameIgnoreCaseAndTenantId(request.getName(), TenantContext.getTenantId())) {
-            throw new IllegalArgumentException("Category with this name already exists");
-          }
+        .observe(
+            () -> {
+              if (categoryRepository.existsByNameIgnoreCaseAndTenantId(
+                  request.getName(), TenantContext.getTenantId())) {
+                throw new IllegalArgumentException("Category with this name already exists");
+              }
 
-          Category category = Category.builder()
-              .tenantId(TenantContext.getTenantId())
-              .name(request.getName())
-              .description(request.getDescription())
-              .taxRate(request.getTaxRate() != null ? request.getTaxRate() : BigDecimal.ZERO)
-              .build();
+              Category category =
+                  Category.builder()
+                      .tenantId(TenantContext.getTenantId())
+                      .name(request.getName())
+                      .description(request.getDescription())
+                      .taxRate(
+                          request.getTaxRate() != null ? request.getTaxRate() : BigDecimal.ZERO)
+                      .build();
 
-          Category savedCategory = categoryRepository.save(category);
+              Category savedCategory = categoryRepository.save(category);
 
-          auditLogService.logAudit(
-              AuditAction.CREATE,
-              AuditResource.CATEGORY,
-              savedCategory.getId(),
-              "Created category: " + savedCategory.getName());
+              auditLogService.logAudit(
+                  AuditAction.CREATE,
+                  AuditResource.CATEGORY,
+                  savedCategory.getId(),
+                  "Created category: " + savedCategory.getName());
 
-          // Custom Metric: Category Creation
-          meterRegistry.counter("ims.category.created", "tenantId", String.valueOf(TenantContext.getTenantId()))
-              .increment();
+              // Custom Metric: Category Creation
+              meterRegistry
+                  .counter(
+                      "ims.category.created",
+                      "tenantId",
+                      String.valueOf(TenantContext.getTenantId()))
+                  .increment();
 
-          return savedCategory;
-        });
+              return savedCategory;
+            });
   }
 
   @Transactional
@@ -118,7 +129,8 @@ public class CategoryService {
   @PreAuthorize("hasAuthority('delete_category')")
   public void delete(Long id) {
     Category category = getById(id);
-    long productCount = productRepository.countByCategoryIdAndTenantId(id, TenantContext.requireTenantId());
+    long productCount =
+        productRepository.countByCategoryIdAndTenantId(id, TenantContext.requireTenantId());
 
     if (productCount > 0) {
       throw new DataIntegrityViolationException(
@@ -128,13 +140,12 @@ public class CategoryService {
     categoryRepository.delete(category);
 
     auditLogService.logAudit(
-        AuditAction.DELETE,
-        AuditResource.CATEGORY,
-        id,
-        "Deleted category: " + category.getName());
+        AuditAction.DELETE, AuditResource.CATEGORY, id, "Deleted category: " + category.getName());
 
     // Custom Metric: Category Deletion
-    meterRegistry.counter("ims.category.deleted", "tenantId", String.valueOf(TenantContext.getTenantId())).increment();
+    meterRegistry
+        .counter("ims.category.deleted", "tenantId", String.valueOf(TenantContext.getTenantId()))
+        .increment();
   }
 
   public CategoryResponse toResponse(Category category) {

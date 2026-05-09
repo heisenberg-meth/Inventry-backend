@@ -15,32 +15,34 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class OutboxService {
 
-    private final OutboxEventRepository outboxEventRepository;
-    private final ObjectMapper objectMapper;
+  private final OutboxEventRepository outboxEventRepository;
+  private final ObjectMapper objectMapper;
 
-    @Transactional(propagation = Propagation.MANDATORY)
-    public void saveEvent(String aggregateType, String aggregateId, String type, Object payload) {
-        saveEvent(aggregateType, aggregateId, type, payload, TenantContext.getTenantId());
-    }
+  @Transactional(propagation = Propagation.MANDATORY)
+  public void saveEvent(String aggregateType, String aggregateId, String type, Object payload) {
+    saveEvent(aggregateType, aggregateId, type, payload, TenantContext.getTenantId());
+  }
 
-    @Transactional(propagation = Propagation.MANDATORY)
-    public void saveEvent(String aggregateType, String aggregateId, String type, Object payload, Long tenantId) {
-        try {
-            String jsonPayload = objectMapper.writeValueAsString(payload);
-            OutboxEvent event = OutboxEvent.builder()
-                    .id(UUID.randomUUID())
-                    .tenantId(tenantId != null ? tenantId : TenantContext.getTenantId())
-                    .aggregateType(aggregateType)
-                    .aggregateId(aggregateId)
-                    .type(type)
-                    .payload(jsonPayload)
-                    .status("PENDING")
-                    .build();
-            outboxEventRepository.save(event);
-            log.debug("Outbox event saved: {}/{}", aggregateType, type);
-        } catch (JsonProcessingException e) {
-            log.error("Failed to serialize outbox event payload", e);
-            throw new RuntimeException("Outbox serialization error", e);
-        }
+  @Transactional(propagation = Propagation.MANDATORY)
+  public void saveEvent(
+      String aggregateType, String aggregateId, String type, Object payload, Long tenantId) {
+    try {
+      String jsonPayload = objectMapper.writeValueAsString(payload);
+      OutboxEvent event =
+          OutboxEvent.builder()
+              .id(UUID.randomUUID())
+              .tenantId(tenantId != null ? tenantId : TenantContext.getTenantId())
+              .aggregateType(aggregateType)
+              .aggregateId(aggregateId)
+              .type(type)
+              .payload(jsonPayload)
+              .status("PENDING")
+              .build();
+      outboxEventRepository.save(event);
+      log.debug("Outbox event saved: {}/{}", aggregateType, type);
+    } catch (JsonProcessingException e) {
+      log.error("Failed to serialize outbox event payload", e);
+      throw new RuntimeException("Outbox serialization error", e);
     }
+  }
 }

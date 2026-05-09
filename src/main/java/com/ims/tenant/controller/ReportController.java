@@ -1,7 +1,9 @@
 package com.ims.tenant.controller;
 
-import com.ims.order.entity.OrderType;
 import com.ims.model.StockMovement;
+import com.ims.order.entity.OrderType;
+import com.ims.shared.utils.CsvExportService;
+import com.ims.tenant.repository.OrderRepository;
 import com.ims.tenant.repository.StockMovementRepository;
 import com.ims.tenant.service.ReportService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -9,9 +11,11 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,10 +27,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import com.ims.shared.utils.CsvExportService;
-import com.ims.tenant.repository.OrderRepository;
-import java.util.LinkedHashMap;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/tenant")
@@ -48,27 +48,36 @@ public class ReportController {
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
 
-    var orders = type != null
-        ? orderRepository.findByType(type, Pageable.unpaged()).getContent()
-        : orderRepository.findAll(Pageable.unpaged()).getContent();
+    var orders =
+        type != null
+            ? orderRepository.findByType(type, Pageable.unpaged()).getContent()
+            : orderRepository.findAll(Pageable.unpaged()).getContent();
 
-    var filtered = orders.stream()
-        .filter(o -> !o.getCreatedAt().toLocalDate().isBefore(from) && !o.getCreatedAt().toLocalDate().isAfter(to))
-        .map(o -> {
-          Map<String, Object> map = new LinkedHashMap<>();
-          map.put("ID", o.getId());
-          map.put("Type", o.getType());
-          map.put("Status", o.getStatus());
-          map.put("Total", o.getTotalAmount());
-          map.put("Date", o.getCreatedAt());
-          return map;
-        })
-        .collect(Collectors.toList());
+    var filtered =
+        orders.stream()
+            .filter(
+                o ->
+                    !o.getCreatedAt().toLocalDate().isBefore(from)
+                        && !o.getCreatedAt().toLocalDate().isAfter(to))
+            .map(
+                o -> {
+                  Map<String, Object> map = new LinkedHashMap<>();
+                  map.put("ID", o.getId());
+                  map.put("Type", o.getType());
+                  map.put("Status", o.getStatus());
+                  map.put("Total", o.getTotalAmount());
+                  map.put("Date", o.getCreatedAt());
+                  return map;
+                })
+            .collect(Collectors.toList());
 
-    String csv = csvExportService.exportToCsv(List.of("ID", "Type", "Status", "Total", "Date"), filtered);
+    String csv =
+        csvExportService.exportToCsv(List.of("ID", "Type", "Status", "Total", "Date"), filtered);
 
     return ResponseEntity.ok()
-        .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=orders.csv")
+        .header(
+            org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+            "attachment; filename=orders.csv")
         .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "text/csv")
         .body(csv);
   }
@@ -81,25 +90,34 @@ public class ReportController {
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
 
     var orders = orderRepository.findByType(OrderType.SALE, Pageable.unpaged()).getContent();
-    var filtered = orders.stream()
-        .filter(o -> !o.getCreatedAt().toLocalDate().isBefore(from) && !o.getCreatedAt().toLocalDate().isAfter(to))
-        .map(o -> {
-          Map<String, Object> map = new LinkedHashMap<>();
-          map.put("Order ID", o.getId());
-          map.put("Customer ID", o.getCustomerId());
-          map.put("Total Amount", o.getTotalAmount());
-          map.put("Tax", o.getTaxAmount());
-          map.put("Discount", o.getDiscount());
-          map.put("Date", o.getCreatedAt());
-          return map;
-        })
-        .collect(Collectors.toList());
+    var filtered =
+        orders.stream()
+            .filter(
+                o ->
+                    !o.getCreatedAt().toLocalDate().isBefore(from)
+                        && !o.getCreatedAt().toLocalDate().isAfter(to))
+            .map(
+                o -> {
+                  Map<String, Object> map = new LinkedHashMap<>();
+                  map.put("Order ID", o.getId());
+                  map.put("Customer ID", o.getCustomerId());
+                  map.put("Total Amount", o.getTotalAmount());
+                  map.put("Tax", o.getTaxAmount());
+                  map.put("Discount", o.getDiscount());
+                  map.put("Date", o.getCreatedAt());
+                  return map;
+                })
+            .collect(Collectors.toList());
 
-    String csv = csvExportService
-        .exportToCsv(List.of("Order ID", "Customer ID", "Total Amount", "Tax", "Discount", "Date"), filtered);
+    String csv =
+        csvExportService.exportToCsv(
+            List.of("Order ID", "Customer ID", "Total Amount", "Tax", "Discount", "Date"),
+            filtered);
 
     return ResponseEntity.ok()
-        .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=sales.csv")
+        .header(
+            org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+            "attachment; filename=sales.csv")
         .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "text/csv")
         .body(csv);
   }
@@ -112,24 +130,32 @@ public class ReportController {
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
 
     var orders = orderRepository.findByType(OrderType.PURCHASE, Pageable.unpaged()).getContent();
-    var filtered = orders.stream()
-        .filter(o -> !o.getCreatedAt().toLocalDate().isBefore(from) && !o.getCreatedAt().toLocalDate().isAfter(to))
-        .map(o -> {
-          Map<String, Object> map = new LinkedHashMap<>();
-          map.put("Order ID", o.getId());
-          map.put("Supplier ID", o.getSupplierId());
-          map.put("Total Amount", o.getTotalAmount());
-          map.put("Tax", o.getTaxAmount());
-          map.put("Date", o.getCreatedAt());
-          return map;
-        })
-        .collect(Collectors.toList());
+    var filtered =
+        orders.stream()
+            .filter(
+                o ->
+                    !o.getCreatedAt().toLocalDate().isBefore(from)
+                        && !o.getCreatedAt().toLocalDate().isAfter(to))
+            .map(
+                o -> {
+                  Map<String, Object> map = new LinkedHashMap<>();
+                  map.put("Order ID", o.getId());
+                  map.put("Supplier ID", o.getSupplierId());
+                  map.put("Total Amount", o.getTotalAmount());
+                  map.put("Tax", o.getTaxAmount());
+                  map.put("Date", o.getCreatedAt());
+                  return map;
+                })
+            .collect(Collectors.toList());
 
-    String csv = csvExportService.exportToCsv(List.of("Order ID", "Supplier ID", "Total Amount", "Tax", "Date"),
-        filtered);
+    String csv =
+        csvExportService.exportToCsv(
+            List.of("Order ID", "Supplier ID", "Total Amount", "Tax", "Date"), filtered);
 
     return ResponseEntity.ok()
-        .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=purchases.csv")
+        .header(
+            org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+            "attachment; filename=purchases.csv")
         .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "text/csv")
         .body(csv);
   }
@@ -140,8 +166,8 @@ public class ReportController {
   public ResponseEntity<Map<String, Object>> getPurchasesReport(
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-    return ResponseEntity
-        .ok(reportService.getPurchasesReport(Objects.requireNonNull(from), Objects.requireNonNull(to)));
+    return ResponseEntity.ok(
+        reportService.getPurchasesReport(Objects.requireNonNull(from), Objects.requireNonNull(to)));
   }
 
   @GetMapping("/reports/dashboard")
@@ -165,7 +191,8 @@ public class ReportController {
   public ResponseEntity<Map<String, Object>> getSalesReport(
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-    return ResponseEntity.ok(reportService.getSalesAnalytics(Objects.requireNonNull(from), Objects.requireNonNull(to)));
+    return ResponseEntity.ok(
+        reportService.getSalesAnalytics(Objects.requireNonNull(from), Objects.requireNonNull(to)));
   }
 
   @GetMapping("/reports/profit-loss")
@@ -174,7 +201,8 @@ public class ReportController {
   public ResponseEntity<Map<String, Object>> getProfitLoss(
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-    return ResponseEntity.ok(reportService.getProfitLoss(Objects.requireNonNull(from), Objects.requireNonNull(to)));
+    return ResponseEntity.ok(
+        reportService.getProfitLoss(Objects.requireNonNull(from), Objects.requireNonNull(to)));
   }
 
   @GetMapping("/reports/gst")
@@ -206,10 +234,11 @@ public class ReportController {
   @Operation(summary = "Full audit log")
   public ResponseEntity<Page<StockMovement>> getAuditLog(
       @RequestParam(required = false) Long productId,
-      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
-      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+          LocalDateTime from,
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+          LocalDateTime to,
       Pageable pageable) {
-    return ResponseEntity.ok(
-        stockMovementRepository.findByFilters(productId, from, to, pageable));
+    return ResponseEntity.ok(stockMovementRepository.findByFilters(productId, from, to, pageable));
   }
 }

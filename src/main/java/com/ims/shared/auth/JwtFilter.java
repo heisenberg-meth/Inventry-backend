@@ -67,15 +67,15 @@ public class JwtFilter extends OncePerRequestFilter {
           isBlacklisted = redisTemplate.hasKey("jwt:blacklist:" + tokenHash);
         }
       } catch (Exception e) {
-        log.warn("Redis unavailable for JWT blacklist check. Proceeding as fail-open for resilience. Error: {}",
+        log.warn(
+            "Redis unavailable for JWT blacklist check. Proceeding as fail-open for resilience. Error: {}",
             e.getMessage());
       }
 
       if (Boolean.TRUE.equals(isBlacklisted)) {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json");
-        response.getWriter()
-            .write("{\"error\":\"Unauthorized\", \"message\":\"Token revoked\"}");
+        response.getWriter().write("{\"error\":\"Unauthorized\", \"message\":\"Token revoked\"}");
         return;
       }
 
@@ -88,7 +88,8 @@ public class JwtFilter extends OncePerRequestFilter {
       boolean isPlatformUser = Boolean.TRUE.equals(claims.get("is_platform_user", Boolean.class));
 
       // Normalize to ROLE_ prefix for Spring Security and add granular permissions
-      java.util.List<org.springframework.security.core.GrantedAuthority> authorities = new java.util.ArrayList<>();
+      java.util.List<org.springframework.security.core.GrantedAuthority> authorities =
+          new java.util.ArrayList<>();
       if (role != null) {
         String roleWithPrefix = role.startsWith("ROLE_") ? role : "ROLE_" + role;
         String roleWithoutPrefix = role.startsWith("ROLE_") ? role.substring(5) : role;
@@ -102,14 +103,11 @@ public class JwtFilter extends OncePerRequestFilter {
         permissions.forEach(p -> authorities.add(new SimpleGrantedAuthority(p)));
       }
 
-      var auth = new JwtAuthenticationToken(
-          String.valueOf(userId),
-          userId,
-          tenantId,
-          authorities);
+      var auth = new JwtAuthenticationToken(String.valueOf(userId), userId, tenantId, authorities);
 
       // Set details for backward compatibility with existing code
-      auth.setDetails(new JwtAuthDetails(userId, tenantId, role, scope, businessType, isPlatformUser));
+      auth.setDetails(
+          new JwtAuthDetails(userId, tenantId, role, scope, businessType, isPlatformUser));
 
       SecurityContextHolder.getContext().setAuthentication(auth);
 

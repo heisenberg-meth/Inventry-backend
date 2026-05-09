@@ -47,16 +47,14 @@ public class RoleController {
   @PreAuthorize("hasRole('ADMIN')")
   @Operation(summary = "Create a new role")
   public ResponseEntity<Role> createRole(@Valid @RequestBody CreateRoleRequest request) {
-    return ResponseEntity.status(HttpStatus.CREATED)
-        .body(roleService.create(request));
+    return ResponseEntity.status(HttpStatus.CREATED).body(roleService.create(request));
   }
 
   @PostMapping("/{id}/permissions")
   @PreAuthorize("hasRole('ADMIN')")
   @Operation(summary = "Assign permissions to role")
   public ResponseEntity<Role> assignPermissions(
-      @PathVariable Long id,
-      @Valid @RequestBody AssignPermissionsRequest request) {
+      @PathVariable Long id, @Valid @RequestBody AssignPermissionsRequest request) {
     return ResponseEntity.ok(roleService.assignPermissions(id, request));
   }
 }

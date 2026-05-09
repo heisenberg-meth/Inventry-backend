@@ -22,8 +22,7 @@ public class Webhook extends BaseEntity {
   @Column(nullable = false, columnDefinition = "TEXT")
   private String url;
 
-  @Column
-  private String secret;
+  @Column private String secret;
 
   @Column(name = "event_types", nullable = false, columnDefinition = "TEXT")
   private String eventTypes;

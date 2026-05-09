@@ -32,15 +32,11 @@ public class Payment extends BaseEntity {
   @Column(name = "gateway_transaction_id")
   private String gatewayTransactionId;
 
-  @Column
-  @Builder.Default
-  private String status = "PENDING";
+  @Column @Builder.Default private String status = "PENDING";
 
-  @Column
-  private String reference;
+  @Column private String reference;
 
-  @Column
-  private String notes;
+  @Column private String notes;
 
   @Column(name = "created_by")
   private Long createdBy;

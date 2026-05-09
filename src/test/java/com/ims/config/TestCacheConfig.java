@@ -8,19 +8,18 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 
 /**
- * Test configuration that provides a simple in-memory CacheManager.
- * This enables cache logic validation in tests without requiring Redis.
+ * Test configuration that provides a simple in-memory CacheManager. This enables cache logic
+ * validation in tests without requiring Redis.
  */
 @Configuration
 @EnableCaching
 @Profile("test")
 public class TestCacheConfig {
 
-    @Bean
-    public CacheManager cacheManager() {
-        // Use ConcurrentMapCacheManager for tests - simple in-memory cache
-        // The tenantAwareCacheResolver from CacheConfig will wrap these caches
-        return new ConcurrentMapCacheManager(
-                "products", "categories", "stock", "reports", "tenant");
-    }
+  @Bean
+  public CacheManager cacheManager() {
+    // Use ConcurrentMapCacheManager for tests - simple in-memory cache
+    // The tenantAwareCacheResolver from CacheConfig will wrap these caches
+    return new ConcurrentMapCacheManager("products", "categories", "stock", "reports", "tenant");
+  }
 }

@@ -25,20 +25,16 @@ public class Product extends BaseEntity {
   @Column(nullable = false)
   private String name;
 
-  @Column
-  private String sku;
+  @Column private String sku;
 
-  @Column
-  private String description;
+  @Column private String description;
 
-  @Column
-  private String barcode;
+  @Column private String barcode;
 
   @Column(name = "category_id")
   private Long categoryId;
 
-  @Column
-  private String unit;
+  @Column private String unit;
 
   @jakarta.validation.constraints.PositiveOrZero
   @Column(name = "purchase_price", precision = 10, scale = 2)
@@ -48,10 +44,7 @@ public class Product extends BaseEntity {
   @Column(name = "sale_price", nullable = false, precision = 10, scale = 2)
   private BigDecimal salePrice;
 
-  @jakarta.validation.constraints.PositiveOrZero
-  @Column
-  @Builder.Default
-  private Integer stock = 0;
+  @jakarta.validation.constraints.PositiveOrZero @Column @Builder.Default private Integer stock = 0;
 
   @Column(name = "reorder_level")
   @jakarta.validation.constraints.PositiveOrZero

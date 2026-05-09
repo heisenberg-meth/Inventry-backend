@@ -38,9 +38,7 @@ public class Invoice extends BaseEntity {
   @Builder.Default
   private BigDecimal discount = BigDecimal.ZERO;
 
-  @Column
-  @Builder.Default
-  private String status = "UNPAID";
+  @Column @Builder.Default private String status = "UNPAID";
 
   @Column(name = "due_date")
   private LocalDate dueDate;

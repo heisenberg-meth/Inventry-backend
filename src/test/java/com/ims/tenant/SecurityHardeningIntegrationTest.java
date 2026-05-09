@@ -2,18 +2,17 @@ package com.ims.tenant;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
 import com.ims.BaseIntegrationTest;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
-import java.util.Map;
 
 @AutoConfigureMockMvc
-@TestPropertySource(properties = {
-    "app.rate-limit.enabled=false"
-})
+@TestPropertySource(properties = {"app.rate-limit.enabled=false"})
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
 
@@ -28,7 +27,8 @@ public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
   void testCorrelationIdInHeadersAndError() throws Exception {
     clearRateLimits();
 
-    mockMvc.perform(get("/api/auth/invalid-path"))
+    mockMvc
+        .perform(get("/api/auth/invalid-path"))
         .andExpect(status().isUnauthorized())
         .andExpect(header().exists("X-Correlation-ID"));
   }
@@ -37,8 +37,8 @@ public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
   void testRateLimitEnforcement() throws Exception {
     clearRateLimits();
 
-    mockMvc.perform(get("/api/auth/check-email")
-        .param("email", "test@test.com"))
+    mockMvc
+        .perform(get("/api/auth/check-email").param("email", "test@test.com"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.available").exists());
   }
@@ -47,10 +47,11 @@ public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
   void testAuthRateLimitEnforcement() throws Exception {
     clearRateLimits();
 
-    String authLoginJson = objectMapper.writeValueAsString(Map.of("email", "root@ims.com", "password", "root123"));
-    mockMvc.perform(post("/api/auth/login")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(authLoginJson))
+    String authLoginJson =
+        objectMapper.writeValueAsString(Map.of("email", "root@ims.com", "password", "root123"));
+    mockMvc
+        .perform(
+            post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(authLoginJson))
         .andExpect(status().isUnauthorized());
   }
 
@@ -59,12 +60,11 @@ public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
     clearRateLimits();
     String token = login("root@test.com", "root123", null);
 
-    mockMvc.perform(get("/api/platform/users/test-error")
-        .header("Authorization", "Bearer " + token))
+    mockMvc
+        .perform(get("/api/platform/users/test-error").header("Authorization", "Bearer " + token))
         .andExpect(status().isInternalServerError())
         .andExpect(jsonPath("$.error").value("INTERNAL_ERROR"))
         .andExpect(jsonPath("$.message").value("An unexpected error occurred"))
         .andExpect(jsonPath("$.stack_trace").doesNotExist());
   }
-
 }

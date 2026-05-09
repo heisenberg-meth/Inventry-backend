@@ -4,8 +4,8 @@ import com.ims.dto.TransferOrderStatusRequest;
 import com.ims.dto.request.StockInRequest;
 import com.ims.model.StockMovement;
 import com.ims.model.TransferOrder;
-import com.ims.tenant.domain.warehouse.WarehouseProduct;
 import com.ims.tenant.domain.warehouse.TransferOrderService;
+import com.ims.tenant.domain.warehouse.WarehouseProduct;
 import com.ims.tenant.service.StockService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -36,7 +36,8 @@ public class StockController {
   @Operation(summary = "Transfer stock between locations")
   public ResponseEntity<TransferOrder> transfer(@RequestBody Map<String, Object> body) {
     Long userId = extractUserId();
-    TransferOrder result = Objects.requireNonNull(transferOrderService.createTransfer(body, userId));
+    TransferOrder result =
+        Objects.requireNonNull(transferOrderService.createTransfer(body, userId));
     return ResponseEntity.ok(result);
   }
 
@@ -45,7 +46,8 @@ public class StockController {
   @Operation(summary = "List products at storage location")
   public ResponseEntity<Page<WarehouseProduct>> getByLocation(
       @RequestParam String location, Pageable pageable) {
-    return ResponseEntity.ok(Objects.requireNonNull(stockService.getProductsByLocation(location, pageable)));
+    return ResponseEntity.ok(
+        Objects.requireNonNull(stockService.getProductsByLocation(location, pageable)));
   }
 
   @GetMapping("/transfers")
@@ -68,7 +70,8 @@ public class StockController {
   public ResponseEntity<TransferOrder> updateTransferStatus(
       @PathVariable Long id, @Valid @RequestBody TransferOrderStatusRequest request) {
     Long userId = extractUserId();
-    return ResponseEntity.ok(Objects.requireNonNull(stockService.updateTransferStatus(id, request, userId)));
+    return ResponseEntity.ok(
+        Objects.requireNonNull(stockService.updateTransferStatus(id, request, userId)));
   }
 
   @PostMapping("/in")

@@ -28,11 +28,13 @@ public class Role extends BaseEntity {
   @Column(nullable = false)
   private String name;
 
-  @Column
-  private String description;
+  @Column private String description;
 
   @ManyToMany(fetch = FetchType.EAGER)
-  @JoinTable(name = "role_permissions", joinColumns = @JoinColumn(name = "role_id"), inverseJoinColumns = @JoinColumn(name = "permission_id"))
+  @JoinTable(
+      name = "role_permissions",
+      joinColumns = @JoinColumn(name = "role_id"),
+      inverseJoinColumns = @JoinColumn(name = "permission_id"))
   @Builder.Default
   private List<Permission> permissions = new ArrayList<>();
 }

@@ -4,16 +4,16 @@ import com.ims.dto.request.CreateSubscriptionPlanRequest;
 import com.ims.dto.request.UpdateSubscriptionPlanRequest;
 import com.ims.model.SubscriptionPlan;
 import com.ims.platform.service.SubscriptionPlanService;
-import org.springframework.security.access.prepost.PreAuthorize;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -60,8 +60,7 @@ public class SubscriptionPlanController {
   @PreAuthorize("hasRole('ROOT')")
   @Operation(summary = "Update subscription plan")
   public ResponseEntity<SubscriptionPlan> update(
-      @PathVariable Long id,
-      @RequestBody @Valid UpdateSubscriptionPlanRequest request) {
+      @PathVariable Long id, @RequestBody @Valid UpdateSubscriptionPlanRequest request) {
     return ResponseEntity.ok(planService.updatePlan(id, request));
   }
 

@@ -5,10 +5,10 @@ import com.ims.shared.auth.JwtAuthDetails;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import java.util.Objects;
 
 @Service
 @Slf4j
@@ -40,44 +40,70 @@ public class AuditLogService {
     log(action, tenantId, userId, null, null, null, null, details);
   }
 
-  public void log(AuditAction action, Long tenantId, Long userId, String entityType, Long entityId, String oldValue,
-      String newValue, String details) {
-    auditWriteTimer.record(() -> {
-      try {
-        String requestId = getCurrentRequestId();
-        log.info("AUDIT: tenant={} user={} action={} entity={}:{} request={} details={}",
-            tenantId, userId, action, entityType, entityId, requestId, details);
+  public void log(
+      AuditAction action,
+      Long tenantId,
+      Long userId,
+      String entityType,
+      Long entityId,
+      String oldValue,
+      String newValue,
+      String details) {
+    auditWriteTimer.record(
+        () -> {
+          try {
+            String requestId = getCurrentRequestId();
+            log.info(
+                "AUDIT: tenant={} user={} action={} entity={}:{} request={} details={}",
+                tenantId,
+                userId,
+                action,
+                entityType,
+                entityId,
+                requestId,
+                details);
 
-        com.ims.model.AuditLog auditEntry = com.ims.model.AuditLog.builder()
-            .tenantId(tenantId)
-            .userId(userId)
-            .action(action.name())
-            .entityType(entityType)
-            .entityId(entityId)
-            .oldValue(oldValue)
-            .newValue(newValue)
-            .details(details)
-            .requestId(requestId)
-            .build();
+            com.ims.model.AuditLog auditEntry =
+                com.ims.model.AuditLog.builder()
+                    .tenantId(tenantId)
+                    .userId(userId)
+                    .action(action.name())
+                    .entityType(entityType)
+                    .entityId(entityId)
+                    .oldValue(oldValue)
+                    .newValue(newValue)
+                    .details(details)
+                    .requestId(requestId)
+                    .build();
 
-        auditEntry = Objects.requireNonNull(auditLogRepository.save(auditEntry),
-            "Audit entry must not be null after save");
-        auditWriteCounter.increment();
+            auditEntry =
+                Objects.requireNonNull(
+                    auditLogRepository.save(auditEntry), "Audit entry must not be null after save");
+            auditWriteCounter.increment();
 
-        try {
-          outboxService.saveEvent("AUDIT", auditEntry.getId().toString(), action.name(), auditEntry, tenantId);
-        } catch (Exception e) {
-          log.warn("Failed to save audit event to outbox, proceeding anyway: {}", e.getMessage());
-        }
-      } catch (Exception e) {
-        auditFailureCounter.increment();
-        log.error("Failed to write audit log (suppressing to prevent business outage): {}", e.getMessage(), e);
-      }
-
-    });
+            try {
+              outboxService.saveEvent(
+                  "AUDIT", auditEntry.getId().toString(), action.name(), auditEntry, tenantId);
+            } catch (Exception e) {
+              log.warn(
+                  "Failed to save audit event to outbox, proceeding anyway: {}", e.getMessage());
+            }
+          } catch (Exception e) {
+            auditFailureCounter.increment();
+            log.error(
+                "Failed to write audit log (suppressing to prevent business outage): {}",
+                e.getMessage(),
+                e);
+          }
+        });
   }
 
-  public void logChange(AuditAction action, AuditResource resource, Long resourceId, Object oldState, Object newState,
+  public void logChange(
+      AuditAction action,
+      AuditResource resource,
+      Long resourceId,
+      Object oldState,
+      Object newState,
       String details) {
     Long tenantId = com.ims.shared.auth.TenantContext.getTenantId();
     Long userId = null;
@@ -94,8 +120,7 @@ public class AuditLogService {
   }
 
   private String toJson(Object obj) {
-    if (obj == null)
-      return null;
+    if (obj == null) return null;
     try {
       return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(obj);
     } catch (Exception e) {
@@ -105,7 +130,8 @@ public class AuditLogService {
   }
 
   public static void setCurrentRequestId(String requestId) {
-    org.springframework.util.ConcurrentReferenceHashMap<String, String> context = getRequestIdContext();
+    org.springframework.util.ConcurrentReferenceHashMap<String, String> context =
+        getRequestIdContext();
     context.put(CURRENT_REQUEST_ID, requestId);
   }
 
@@ -113,12 +139,16 @@ public class AuditLogService {
     return getRequestIdContext().get(CURRENT_REQUEST_ID);
   }
 
-  private static org.springframework.util.ConcurrentReferenceHashMap<String, String> getRequestIdContext() {
+  private static org.springframework.util.ConcurrentReferenceHashMap<String, String>
+      getRequestIdContext() {
     return REQUEST_ID_CONTEXT.get();
   }
 
-  private static final ThreadLocal<org.springframework.util.ConcurrentReferenceHashMap<String, String>> REQUEST_ID_CONTEXT = ThreadLocal
-      .withInitial(() -> new org.springframework.util.ConcurrentReferenceHashMap<>(4));
+  private static final ThreadLocal<
+          org.springframework.util.ConcurrentReferenceHashMap<String, String>>
+      REQUEST_ID_CONTEXT =
+          ThreadLocal.withInitial(
+              () -> new org.springframework.util.ConcurrentReferenceHashMap<>(4));
 
   /**
    * @deprecated Use {@link #log(AuditAction, Long, Long, String)} instead.
@@ -130,17 +160,20 @@ public class AuditLogService {
       log(a, tenantId, userId, details);
     } catch (IllegalArgumentException e) {
       log.warn("Legacy log called with non-enum value: {}. Logging as string.", action);
-      com.ims.model.AuditLog auditEntry = com.ims.model.AuditLog.builder()
-          .tenantId(tenantId)
-          .userId(userId)
-          .action(action)
-          .details(details)
-          .build();
-      Objects.requireNonNull(auditLogRepository.save(auditEntry), "Audit entry must not be null after save");
+      com.ims.model.AuditLog auditEntry =
+          com.ims.model.AuditLog.builder()
+              .tenantId(tenantId)
+              .userId(userId)
+              .action(action)
+              .details(details)
+              .build();
+      Objects.requireNonNull(
+          auditLogRepository.save(auditEntry), "Audit entry must not be null after save");
     }
   }
 
-  public void logAudit(AuditAction action, AuditResource resource, Long resourceId, String details) {
+  public void logAudit(
+      AuditAction action, AuditResource resource, Long resourceId, String details) {
     Long tenantId = null;
     Long userId = null;
 
@@ -159,8 +192,7 @@ public class AuditLogService {
   }
 
   /**
-   * @deprecated Use {@link #logAudit(AuditAction, AuditResource, Long, String)}
-   *             instead.
+   * @deprecated Use {@link #logAudit(AuditAction, AuditResource, Long, String)} instead.
    */
   @Deprecated
   public void logAudit(String action, String resource, Long resourceId, String details) {
@@ -169,7 +201,9 @@ public class AuditLogService {
       AuditResource r = AuditResource.valueOf(resource);
       logAudit(a, r, resourceId, details);
     } catch (IllegalArgumentException e) {
-      log.warn("Legacy audit log called with non-enum values: action={}, resource={}. Logging as string.", action,
+      log.warn(
+          "Legacy audit log called with non-enum values: action={}, resource={}. Logging as string.",
+          action,
           resource);
       // Fallback if enums don't match yet
       Long tenantId = com.ims.shared.auth.TenantContext.getTenantId();

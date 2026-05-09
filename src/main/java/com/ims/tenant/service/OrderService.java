@@ -47,13 +47,10 @@ public class OrderService {
 
   private static final int PERCENTAGE_BASE = 100;
 
-  /**
-   * Phase 5.2.6: PURCHASE ORDER FLOW
-   */
+  /** Phase 5.2.6: PURCHASE ORDER FLOW */
   @Transactional
-  public com.ims.order.dto.OrderResponse createPurchaseOrder(Long tenantId,
-      com.ims.order.dto.CreateOrderRequest request,
-      Long userId) {
+  public com.ims.order.dto.OrderResponse createPurchaseOrder(
+      Long tenantId, com.ims.order.dto.CreateOrderRequest request, Long userId) {
     Long supplierId = request.getSupplierId();
 
     var supplierOpt = supplierRepository.findActiveByIdAndTenantId(supplierId, tenantId);
@@ -68,33 +65,40 @@ public class OrderService {
       Long productId = itemReq.getProductId();
       int qty = itemReq.getQuantity();
 
-      Product product = productService.findByIdWithLock(productId)
-          .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
+      Product product =
+          productService
+              .findByIdWithLock(productId)
+              .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
 
-      BigDecimal unitPrice = itemReq.getUnitPrice() != null ? itemReq.getUnitPrice()
-          : (product.getPurchasePrice() != null ? product.getPurchasePrice() : BigDecimal.ZERO);
+      BigDecimal unitPrice =
+          itemReq.getUnitPrice() != null
+              ? itemReq.getUnitPrice()
+              : (product.getPurchasePrice() != null ? product.getPurchasePrice() : BigDecimal.ZERO);
 
       BigDecimal discount = itemReq.getDiscount() != null ? itemReq.getDiscount() : BigDecimal.ZERO;
       BigDecimal taxRate = itemReq.getTaxRate() != null ? itemReq.getTaxRate() : BigDecimal.ZERO;
 
       BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(qty)).subtract(discount);
-      BigDecimal itemTax = itemTotal.multiply(taxRate).divide(BigDecimal.valueOf(PERCENTAGE_BASE), 2,
-          RoundingMode.HALF_UP);
+      BigDecimal itemTax =
+          itemTotal
+              .multiply(taxRate)
+              .divide(BigDecimal.valueOf(PERCENTAGE_BASE), 2, RoundingMode.HALF_UP);
 
       totalAmount = totalAmount.add(itemTotal);
       taxAmount = taxAmount.add(itemTax);
     }
 
-    Order order = Order.builder()
-        .type(OrderType.PURCHASE)
-        .status(OrderStatus.PENDING)
-        .tenantId(tenantId)
-        .supplierId(supplierId)
-        .totalAmount(totalAmount)
-        .taxAmount(taxAmount)
-        .notes(request.getNotes())
-        .createdBy(userId)
-        .build();
+    Order order =
+        Order.builder()
+            .type(OrderType.PURCHASE)
+            .status(OrderStatus.PENDING)
+            .tenantId(tenantId)
+            .supplierId(supplierId)
+            .totalAmount(totalAmount)
+            .taxAmount(taxAmount)
+            .notes(request.getNotes())
+            .createdBy(userId)
+            .build();
 
     order = orderRepository.save(order);
 
@@ -103,28 +107,34 @@ public class OrderService {
       int qty = itemReq.getQuantity();
       Product product = productRepository.findById(productId).orElseThrow();
 
-      BigDecimal unitPrice = itemReq.getUnitPrice() != null ? itemReq.getUnitPrice()
-          : (product.getPurchasePrice() != null ? product.getPurchasePrice() : BigDecimal.ZERO);
+      BigDecimal unitPrice =
+          itemReq.getUnitPrice() != null
+              ? itemReq.getUnitPrice()
+              : (product.getPurchasePrice() != null ? product.getPurchasePrice() : BigDecimal.ZERO);
       BigDecimal discount = itemReq.getDiscount() != null ? itemReq.getDiscount() : BigDecimal.ZERO;
       BigDecimal taxRate = itemReq.getTaxRate() != null ? itemReq.getTaxRate() : BigDecimal.ZERO;
       BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(qty)).subtract(discount);
 
-      OrderItem orderItem = OrderItem.builder()
-          .tenantId(tenantId)
-          .orderId(order.getId())
-          .productId(productId)
-          .quantity(qty)
-          .unitPrice(unitPrice)
-          .discount(discount)
-          .taxRate(taxRate)
-          .subtotal(itemTotal)
-          .total(itemTotal)
-          .build();
+      OrderItem orderItem =
+          OrderItem.builder()
+              .tenantId(tenantId)
+              .orderId(order.getId())
+              .productId(productId)
+              .quantity(qty)
+              .unitPrice(unitPrice)
+              .discount(discount)
+              .taxRate(taxRate)
+              .subtotal(itemTotal)
+              .total(itemTotal)
+              .build();
       orderItemRepository.save(orderItem);
     }
 
     log.info("Purchase order created: id={} total={}", order.getId(), totalAmount);
-    auditLogService.logAudit(AuditAction.CREATE_PURCHASE_ORDER, AuditResource.ORDER, order.getId(),
+    auditLogService.logAudit(
+        AuditAction.CREATE_PURCHASE_ORDER,
+        AuditResource.ORDER,
+        order.getId(),
         "Created purchase order #" + order.getId());
 
     businessMetricsService.incrementOrdersCreated();
@@ -133,16 +143,15 @@ public class OrderService {
     return toOrderResponse(order);
   }
 
-  /**
-   * Phase 5.2.1: SALE ORDER FLOW
-   */
+  /** Phase 5.2.1: SALE ORDER FLOW */
   @Transactional
-  public com.ims.order.dto.OrderResponse createSalesOrder(Long tenantId, com.ims.order.dto.CreateOrderRequest request,
-      Long userId) {
+  public com.ims.order.dto.OrderResponse createSalesOrder(
+      Long tenantId, com.ims.order.dto.CreateOrderRequest request, Long userId) {
     Long customerId = request.getCustomerId();
 
     if (customerId != null) {
-      customerRepository.findByIdAndTenantId(customerId, tenantId)
+      customerRepository
+          .findByIdAndTenantId(customerId, tenantId)
           .orElseThrow(() -> new EntityNotFoundException("Customer not found"));
     }
 
@@ -153,39 +162,47 @@ public class OrderService {
       Long productId = itemReq.getProductId();
       int qty = itemReq.getQuantity();
 
-      Product product = productService.findByIdWithLock(productId)
-          .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
+      Product product =
+          productService
+              .findByIdWithLock(productId)
+              .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
 
       int availableStock = inventoryService.getAvailableStock(tenantId, productId);
       if (availableStock < qty) {
-        throw new InsufficientStockException("Insufficient stock for " + product.getName(), availableStock, qty);
+        throw new InsufficientStockException(
+            "Insufficient stock for " + product.getName(), availableStock, qty);
       }
 
-      BigDecimal unitPrice = itemReq.getUnitPrice() != null ? itemReq.getUnitPrice() : product.getSalePrice();
+      BigDecimal unitPrice =
+          itemReq.getUnitPrice() != null ? itemReq.getUnitPrice() : product.getSalePrice();
       BigDecimal discount = itemReq.getDiscount() != null ? itemReq.getDiscount() : BigDecimal.ZERO;
       BigDecimal taxRate = itemReq.getTaxRate() != null ? itemReq.getTaxRate() : BigDecimal.ZERO;
 
       BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(qty)).subtract(discount);
-      BigDecimal itemTax = itemTotal.multiply(taxRate).divide(BigDecimal.valueOf(PERCENTAGE_BASE), 2,
-          RoundingMode.HALF_UP);
+      BigDecimal itemTax =
+          itemTotal
+              .multiply(taxRate)
+              .divide(BigDecimal.valueOf(PERCENTAGE_BASE), 2, RoundingMode.HALF_UP);
 
       totalAmount = totalAmount.add(itemTotal);
       taxAmount = taxAmount.add(itemTax);
     }
 
-    BigDecimal rootDiscount = request.getDiscount() != null ? request.getDiscount() : BigDecimal.ZERO;
+    BigDecimal rootDiscount =
+        request.getDiscount() != null ? request.getDiscount() : BigDecimal.ZERO;
 
-    Order order = Order.builder()
-        .type(OrderType.SALE)
-        .status(OrderStatus.PENDING)
-        .tenantId(tenantId)
-        .customerId(customerId)
-        .totalAmount(totalAmount)
-        .taxAmount(taxAmount)
-        .discount(rootDiscount)
-        .notes(request.getNotes())
-        .createdBy(userId)
-        .build();
+    Order order =
+        Order.builder()
+            .type(OrderType.SALE)
+            .status(OrderStatus.PENDING)
+            .tenantId(tenantId)
+            .customerId(customerId)
+            .totalAmount(totalAmount)
+            .taxAmount(taxAmount)
+            .discount(rootDiscount)
+            .notes(request.getNotes())
+            .createdBy(userId)
+            .build();
 
     order = orderRepository.save(order);
 
@@ -194,27 +211,32 @@ public class OrderService {
       int qty = itemReq.getQuantity();
       Product product = productRepository.findById(productId).orElseThrow();
 
-      BigDecimal unitPrice = itemReq.getUnitPrice() != null ? itemReq.getUnitPrice() : product.getSalePrice();
+      BigDecimal unitPrice =
+          itemReq.getUnitPrice() != null ? itemReq.getUnitPrice() : product.getSalePrice();
       BigDecimal discount = itemReq.getDiscount() != null ? itemReq.getDiscount() : BigDecimal.ZERO;
       BigDecimal taxRate = itemReq.getTaxRate() != null ? itemReq.getTaxRate() : BigDecimal.ZERO;
       BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(qty)).subtract(discount);
 
-      OrderItem orderItem = OrderItem.builder()
-          .tenantId(tenantId)
-          .orderId(order.getId())
-          .productId(productId)
-          .quantity(qty)
-          .unitPrice(unitPrice)
-          .discount(discount)
-          .taxRate(taxRate)
-          .subtotal(itemTotal)
-          .total(itemTotal)
-          .build();
+      OrderItem orderItem =
+          OrderItem.builder()
+              .tenantId(tenantId)
+              .orderId(order.getId())
+              .productId(productId)
+              .quantity(qty)
+              .unitPrice(unitPrice)
+              .discount(discount)
+              .taxRate(taxRate)
+              .subtotal(itemTotal)
+              .total(itemTotal)
+              .build();
       orderItemRepository.save(orderItem);
     }
 
     log.info("Sales order created: id={} total={}", order.getId(), totalAmount);
-    auditLogService.logAudit(AuditAction.CREATE_SALE_ORDER, AuditResource.ORDER, order.getId(),
+    auditLogService.logAudit(
+        AuditAction.CREATE_SALE_ORDER,
+        AuditResource.ORDER,
+        order.getId(),
         "Created sales order #" + order.getId());
 
     businessMetricsService.incrementOrdersCreated();
@@ -231,8 +253,10 @@ public class OrderService {
       throw new IllegalArgumentException("Invalid items format");
     }
 
-    Order originalOrder = orderRepository.findByIdAndTenantId(originalOrderId, tenantId)
-        .orElseThrow(() -> new EntityNotFoundException("Original order not found"));
+    Order originalOrder =
+        orderRepository
+            .findByIdAndTenantId(originalOrderId, tenantId)
+            .orElseThrow(() -> new EntityNotFoundException("Original order not found"));
 
     if (OrderType.SALE != originalOrder.getType()) {
       throw new IllegalArgumentException("Returns can only be created for SALE orders");
@@ -241,19 +265,21 @@ public class OrderService {
     BigDecimal returnTotal = BigDecimal.ZERO;
     BigDecimal returnTax = BigDecimal.ZERO;
 
-    Order returnOrder = Order.builder()
-        .type(OrderType.RETURN)
-        .status(OrderStatus.COMPLETED)
-        .tenantId(tenantId)
-        .customerId(originalOrder.getCustomerId())
-        .referenceOrderId(originalOrderId)
-        .notes(request.getOrDefault("notes", "Customer return").toString())
-        .createdBy(userId)
-        .build();
+    Order returnOrder =
+        Order.builder()
+            .type(OrderType.RETURN)
+            .status(OrderStatus.COMPLETED)
+            .tenantId(tenantId)
+            .customerId(originalOrder.getCustomerId())
+            .referenceOrderId(originalOrderId)
+            .notes(request.getOrDefault("notes", "Customer return").toString())
+            .createdBy(userId)
+            .build();
 
     returnOrder = orderRepository.save(returnOrder);
 
-    List<OrderItem> originalItems = orderItemRepository.findByOrderIdAndTenantId(originalOrderId, tenantId);
+    List<OrderItem> originalItems =
+        orderItemRepository.findByOrderIdAndTenantId(originalOrderId, tenantId);
 
     for (Object itemObj : list) {
       @SuppressWarnings("unchecked")
@@ -261,12 +287,14 @@ public class OrderService {
       Long productId = Long.valueOf(item.get("product_id").toString());
       int qty = Integer.parseInt(item.get("quantity").toString());
 
-      OrderItem originalItem = originalItems.stream()
-          .filter(oi -> oi.getProductId().equals(productId))
-          .findFirst()
-          .orElseThrow(() -> new IllegalArgumentException("Product not in original order"));
+      OrderItem originalItem =
+          originalItems.stream()
+              .filter(oi -> oi.getProductId().equals(productId))
+              .findFirst()
+              .orElseThrow(() -> new IllegalArgumentException("Product not in original order"));
 
-      int alreadyReturned = orderItemRepository.sumReturnedQtyByTenantId(originalOrderId, tenantId, productId);
+      int alreadyReturned =
+          orderItemRepository.sumReturnedQtyByTenantId(originalOrderId, tenantId, productId);
       if (alreadyReturned + qty > originalItem.getQuantity()) {
         throw new IllegalArgumentException("Return quantity too high");
       }
@@ -274,26 +302,29 @@ public class OrderService {
       BigDecimal unitPrice = originalItem.getUnitPrice();
       BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(qty));
       BigDecimal taxRate = originalItem.getTaxRate();
-      BigDecimal itemTax = itemTotal.multiply(taxRate).divide(BigDecimal.valueOf(PERCENTAGE_BASE), 2,
-          RoundingMode.HALF_UP);
+      BigDecimal itemTax =
+          itemTotal
+              .multiply(taxRate)
+              .divide(BigDecimal.valueOf(PERCENTAGE_BASE), 2, RoundingMode.HALF_UP);
 
       returnTotal = returnTotal.add(itemTotal);
       returnTax = returnTax.add(itemTax);
 
-      OrderItem returnOrderItem = OrderItem.builder()
-          .tenantId(tenantId)
-          .orderId(returnOrder.getId())
-          .productId(productId)
-          .quantity(qty)
-          .unitPrice(unitPrice)
-          .taxRate(taxRate)
-          .subtotal(itemTotal)
-          .total(itemTotal)
-          .build();
+      OrderItem returnOrderItem =
+          OrderItem.builder()
+              .tenantId(tenantId)
+              .orderId(returnOrder.getId())
+              .productId(productId)
+              .quantity(qty)
+              .unitPrice(unitPrice)
+              .taxRate(taxRate)
+              .subtotal(itemTotal)
+              .total(itemTotal)
+              .build();
       orderItemRepository.save(returnOrderItem);
 
-      inventoryService.increaseStock(tenantId, productId, qty, "Return Order #" + originalOrderId,
-          userId);
+      inventoryService.increaseStock(
+          tenantId, productId, qty, "Return Order #" + originalOrderId, userId);
     }
 
     returnOrder.setTotalAmount(returnTotal);
@@ -301,16 +332,17 @@ public class OrderService {
     orderRepository.save(returnOrder);
 
     invoiceService.createCreditNote(returnOrder, null);
-    outboxService.saveEvent("ORDER", returnOrder.getId().toString(), "RETURNED", returnOrder, tenantId);
+    outboxService.saveEvent(
+        "ORDER", returnOrder.getId().toString(), "RETURNED", returnOrder, tenantId);
 
     return returnOrder;
   }
 
   private com.ims.order.dto.OrderResponse toOrderResponse(Order order) {
-    List<OrderItem> items = orderItemRepository.findByOrderIdAndTenantId(order.getId(), order.getTenantId());
-    List<com.ims.order.dto.OrderItemResponse> itemResponses = items.stream()
-        .map(this::toOrderItemResponse)
-        .toList();
+    List<OrderItem> items =
+        orderItemRepository.findByOrderIdAndTenantId(order.getId(), order.getTenantId());
+    List<com.ims.order.dto.OrderItemResponse> itemResponses =
+        items.stream().map(this::toOrderItemResponse).toList();
 
     return com.ims.order.dto.OrderResponse.builder()
         .id(order.getId())
@@ -352,18 +384,24 @@ public class OrderService {
   }
 
   public com.ims.order.dto.OrderResponse getOrderWithItems(Long id, Long tenantId) {
-    Order order = orderRepository.findByIdAndTenantId(id, tenantId)
-        .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+    Order order =
+        orderRepository
+            .findByIdAndTenantId(id, tenantId)
+            .orElseThrow(() -> new EntityNotFoundException("Order not found"));
     return toOrderResponse(order);
   }
 
   @Transactional(readOnly = true)
   public byte[] generateOrderPdf(Long id, Long tenantId) {
-    Order order = orderRepository.findByIdAndTenantId(id, tenantId)
-        .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+    Order order =
+        orderRepository
+            .findByIdAndTenantId(id, tenantId)
+            .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
-    com.ims.model.Tenant tenant = tenantRepository.findById(tenantId)
-        .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+    com.ims.model.Tenant tenant =
+        tenantRepository
+            .findById(tenantId)
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
 
     String partnerName = "N/A";
     String partnerAddress = "N/A";
@@ -382,20 +420,27 @@ public class OrderService {
       }
     }
 
-    List<OrderItem> orderItems = orderItemRepository.findByOrderIdAndTenantId(order.getId(), tenantId);
+    List<OrderItem> orderItems =
+        orderItemRepository.findByOrderIdAndTenantId(order.getId(), tenantId);
     List<Long> productIds = orderItems.stream().map(OrderItem::getProductId).distinct().toList();
-    Map<Long, String> productNameMap = productRepository.findAllById(productIds).stream()
-        .collect(java.util.stream.Collectors.toMap(Product::getId, Product::getName));
+    Map<Long, String> productNameMap =
+        productRepository.findAllById(productIds).stream()
+            .collect(java.util.stream.Collectors.toMap(Product::getId, Product::getName));
 
-    List<Map<String, Object>> items = orderItems.stream().map(item -> {
-      Map<String, Object> map = new java.util.HashMap<>();
-      map.put("productName", productNameMap.getOrDefault(item.getProductId(), "Unknown"));
-      map.put("quantity", item.getQuantity());
-      map.put("unitPrice", item.getUnitPrice());
-      map.put("discount", item.getDiscount());
-      map.put("total", item.getTotal());
-      return map;
-    }).toList();
+    List<Map<String, Object>> items =
+        orderItems.stream()
+            .map(
+                item -> {
+                  Map<String, Object> map = new java.util.HashMap<>();
+                  map.put(
+                      "productName", productNameMap.getOrDefault(item.getProductId(), "Unknown"));
+                  map.put("quantity", item.getQuantity());
+                  map.put("unitPrice", item.getUnitPrice());
+                  map.put("discount", item.getDiscount());
+                  map.put("total", item.getTotal());
+                  return map;
+                })
+            .toList();
 
     org.thymeleaf.context.Context context = new org.thymeleaf.context.Context();
     context.setVariable("tenantName", tenant.getName());
@@ -408,7 +453,8 @@ public class OrderService {
     context.setVariable("status", order.getStatus());
     context.setVariable("type", order.getType());
     context.setVariable("items", items);
-    context.setVariable("subtotal", order.getTotalAmount().subtract(order.getTaxAmount()).add(order.getDiscount()));
+    context.setVariable(
+        "subtotal", order.getTotalAmount().subtract(order.getTaxAmount()).add(order.getDiscount()));
     context.setVariable("taxAmount", order.getTaxAmount());
     context.setVariable("discount", order.getDiscount());
     context.setVariable("totalAmount", order.getTotalAmount());
@@ -418,25 +464,35 @@ public class OrderService {
 
   @Transactional
   public Order confirmOrder(Long id, Long tenantId, Long userId) {
-    Order order = orderRepository.findByIdAndTenantId(id, tenantId)
-        .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+    Order order =
+        orderRepository
+            .findByIdAndTenantId(id, tenantId)
+            .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
     if (OrderStatus.PENDING != order.getStatus()) {
       throw new IllegalStateException("Only PENDING orders can be confirmed");
     }
 
     if (OrderType.SALE == order.getType()) {
-      List<OrderItem> items = orderItemRepository.findByOrderIdAndTenantId(order.getId(), order.getTenantId());
+      List<OrderItem> items =
+          orderItemRepository.findByOrderIdAndTenantId(order.getId(), order.getTenantId());
       for (OrderItem item : items) {
-        productService.findByIdWithLock(item.getProductId())
+        productService
+            .findByIdWithLock(item.getProductId())
             .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
-        int availableStock = inventoryService.getAvailableStock(order.getTenantId(), item.getProductId());
+        int availableStock =
+            inventoryService.getAvailableStock(order.getTenantId(), item.getProductId());
         if (availableStock < item.getQuantity()) {
-          throw new InsufficientStockException("Insufficient stock", availableStock, item.getQuantity());
+          throw new InsufficientStockException(
+              "Insufficient stock", availableStock, item.getQuantity());
         }
-        inventoryService.decreaseStock(order.getTenantId(), item.getProductId(), item.getQuantity(),
-            "Confirmed Sale Order #" + order.getId(), userId);
+        inventoryService.decreaseStock(
+            order.getTenantId(),
+            item.getProductId(),
+            item.getQuantity(),
+            "Confirmed Sale Order #" + order.getId(),
+            userId);
       }
       order.setStatus(OrderStatus.CONFIRMED);
       invoiceService.createFromOrder(order);
@@ -451,8 +507,10 @@ public class OrderService {
 
   @Transactional
   public Order shipOrder(Long id, Long tenantId, Long userId) {
-    Order order = orderRepository.findByIdAndTenantId(id, tenantId)
-        .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+    Order order =
+        orderRepository
+            .findByIdAndTenantId(id, tenantId)
+            .orElseThrow(() -> new EntityNotFoundException("Order not found"));
     order.setStatus(OrderStatus.SHIPPED);
     order = orderRepository.save(order);
     outboxService.saveEvent("ORDER", order.getId().toString(), "SHIPPED", order, tenantId);
@@ -461,14 +519,21 @@ public class OrderService {
 
   @Transactional
   public Order completeOrder(Long id, Long tenantId, Long userId) {
-    Order order = orderRepository.findByIdAndTenantId(id, tenantId)
-        .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+    Order order =
+        orderRepository
+            .findByIdAndTenantId(id, tenantId)
+            .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
     if (OrderType.PURCHASE == order.getType() && OrderStatus.RECEIVED != order.getStatus()) {
-      List<OrderItem> items = orderItemRepository.findByOrderIdAndTenantId(order.getId(), order.getTenantId());
+      List<OrderItem> items =
+          orderItemRepository.findByOrderIdAndTenantId(order.getId(), order.getTenantId());
       for (OrderItem item : items) {
-        inventoryService.increaseStock(order.getTenantId(), item.getProductId(), item.getQuantity(),
-            "Received Purchase Order #" + order.getId(), userId);
+        inventoryService.increaseStock(
+            order.getTenantId(),
+            item.getProductId(),
+            item.getQuantity(),
+            "Received Purchase Order #" + order.getId(),
+            userId);
       }
       order.setStatus(OrderStatus.RECEIVED);
     } else {
@@ -482,15 +547,23 @@ public class OrderService {
 
   @Transactional
   public Order cancelOrder(Long id, Long tenantId, Long userId) {
-    Order order = orderRepository.findByIdAndTenantId(id, tenantId)
-        .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+    Order order =
+        orderRepository
+            .findByIdAndTenantId(id, tenantId)
+            .orElseThrow(() -> new EntityNotFoundException("Order not found"));
 
     if (OrderType.SALE == order.getType()
-        && (OrderStatus.CONFIRMED == order.getStatus() || OrderStatus.SHIPPED == order.getStatus())) {
-      List<OrderItem> items = orderItemRepository.findByOrderIdAndTenantId(order.getId(), order.getTenantId());
+        && (OrderStatus.CONFIRMED == order.getStatus()
+            || OrderStatus.SHIPPED == order.getStatus())) {
+      List<OrderItem> items =
+          orderItemRepository.findByOrderIdAndTenantId(order.getId(), order.getTenantId());
       for (OrderItem item : items) {
-        inventoryService.increaseStock(order.getTenantId(), item.getProductId(), item.getQuantity(),
-            "Cancelled Sale Order #" + order.getId(), userId);
+        inventoryService.increaseStock(
+            order.getTenantId(),
+            item.getProductId(),
+            item.getQuantity(),
+            "Cancelled Sale Order #" + order.getId(),
+            userId);
       }
     }
 
@@ -510,8 +583,10 @@ public class OrderService {
 
   @Transactional
   public Order updateOrderStatus(Long id, Long tenantId, OrderStatus status) {
-    Order order = orderRepository.findByIdAndTenantId(id, tenantId)
-        .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+    Order order =
+        orderRepository
+            .findByIdAndTenantId(id, tenantId)
+            .orElseThrow(() -> new EntityNotFoundException("Order not found"));
     order.setStatus(status);
     return orderRepository.save(order);
   }

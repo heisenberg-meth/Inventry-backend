@@ -17,9 +17,12 @@ public class PaymentRequest {
 
   @Size(max = 50, message = "Payment mode must not exceed 50 characters")
   private String paymentMode;
+
   @Size(max = 255, message = "Reference must not exceed 255 characters")
   private String reference;
+
   @Size(max = 500, message = "Notes must not exceed 500 characters")
   private String notes;
+
   private Long userId;
 }

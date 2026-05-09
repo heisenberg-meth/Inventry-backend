@@ -23,13 +23,13 @@ public class TenantSettingsService {
   @Transactional(readOnly = true)
   public TenantResponse getSettings() {
     Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null)
-      throw new IllegalStateException("Missing tenant context");
+    if (tenantId == null) throw new IllegalStateException("Missing tenant context");
 
-    Tenant tenant = Objects.requireNonNull(
-        tenantRepository
-            .findById(Objects.requireNonNull(tenantId))
-            .orElseThrow(() -> new EntityNotFoundException("Tenant not found")));
+    Tenant tenant =
+        Objects.requireNonNull(
+            tenantRepository
+                .findById(Objects.requireNonNull(tenantId))
+                .orElseThrow(() -> new EntityNotFoundException("Tenant not found")));
     return toResponse(tenant);
   }
 
@@ -37,15 +37,16 @@ public class TenantSettingsService {
   @CacheEvict(value = "tenant", key = "T(com.ims.shared.auth.TenantContext).getTenantId()")
   public TenantResponse updateSettings(UpdateTenantSettingsRequest request) {
     Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null)
-      throw new IllegalStateException("Missing tenant context");
+    if (tenantId == null) throw new IllegalStateException("Missing tenant context");
 
-    Tenant tenant = Objects.requireNonNull(
-        tenantRepository
-            .findById(Objects.requireNonNull(tenantId))
-            .orElseThrow(() -> new EntityNotFoundException("Tenant not found")));
+    Tenant tenant =
+        Objects.requireNonNull(
+            tenantRepository
+                .findById(Objects.requireNonNull(tenantId))
+                .orElseThrow(() -> new EntityNotFoundException("Tenant not found")));
 
-    if (request.getWorkspaceSlug() != null && !request.getWorkspaceSlug().equals(tenant.getWorkspaceSlug())) {
+    if (request.getWorkspaceSlug() != null
+        && !request.getWorkspaceSlug().equals(tenant.getWorkspaceSlug())) {
       throw new IllegalArgumentException("Workspace slug cannot be changed after tenant creation");
     }
 
@@ -62,22 +63,24 @@ public class TenantSettingsService {
     }
 
     tenant = Objects.requireNonNull(tenantRepository.save(Objects.requireNonNull(tenant)));
-    log.info("Tenant settings updated for id={}: workspaceSlug={}", tenantId, tenant.getWorkspaceSlug());
+    log.info(
+        "Tenant settings updated for id={}: workspaceSlug={}", tenantId, tenant.getWorkspaceSlug());
     return toResponse(tenant);
   }
 
   private TenantResponse toResponse(Tenant tenant) {
-    return Objects.requireNonNull(TenantResponse.builder()
-        .id(tenant.getId())
-        .name(tenant.getName())
-        .workspaceSlug(tenant.getWorkspaceSlug())
-        .businessType(tenant.getBusinessType())
-        .plan(tenant.getPlan())
-        .status(tenant.getStatus())
-        .maxProducts(tenant.getMaxProducts())
-        .maxUsers(tenant.getMaxUsers())
-        .expiryThresholdDays(tenant.getExpiryThresholdDays())
-        .createdAt(tenant.getCreatedAt())
-        .build());
+    return Objects.requireNonNull(
+        TenantResponse.builder()
+            .id(tenant.getId())
+            .name(tenant.getName())
+            .workspaceSlug(tenant.getWorkspaceSlug())
+            .businessType(tenant.getBusinessType())
+            .plan(tenant.getPlan())
+            .status(tenant.getStatus())
+            .maxProducts(tenant.getMaxProducts())
+            .maxUsers(tenant.getMaxUsers())
+            .expiryThresholdDays(tenant.getExpiryThresholdDays())
+            .createdAt(tenant.getCreatedAt())
+            .build());
   }
 }

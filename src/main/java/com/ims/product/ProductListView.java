@@ -4,59 +4,54 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- * Optimized projection for product listing to reduce DB load and serialization
- * cost.
- */
+/** Optimized projection for product listing to reduce DB load and serialization cost. */
 public interface ProductListView {
-    Long getId();
+  Long getId();
 
-    String getName();
+  String getName();
 
-    String getSku();
+  String getSku();
 
-    String getBarcode();
+  String getBarcode();
 
-    Long getCategoryId();
+  Long getCategoryId();
 
-    String getUnit();
+  String getUnit();
 
-    BigDecimal getPurchasePrice();
+  BigDecimal getPurchasePrice();
 
-    BigDecimal getSalePrice();
+  BigDecimal getSalePrice();
 
-    Integer getStock();
+  Integer getStock();
 
-    Integer getReorderLevel();
+  Integer getReorderLevel();
 
-    Boolean getIsDeleted();
+  Boolean getIsDeleted();
 
-    LocalDateTime getCreatedAt();
+  LocalDateTime getCreatedAt();
 
-    // Pharmacy fields
-    String getBatchNumber();
+  // Pharmacy fields
+  String getBatchNumber();
 
-    LocalDate getExpiryDate();
+  LocalDate getExpiryDate();
 
-    String getManufacturer();
+  String getManufacturer();
 
-    String getHsnCode();
+  String getHsnCode();
 
-    String getSchedule();
+  String getSchedule();
 
-    // Warehouse fields
-    String getStorageLocation();
+  // Warehouse fields
+  String getStorageLocation();
 
-    String getZone();
+  String getZone();
 
-    String getRack();
+  String getRack();
 
-    String getBin();
+  String getBin();
 
-    /**
-     * Helper to bridge isDeleted to status string.
-     */
-    default String getStatus() {
-        return Boolean.TRUE.equals(getIsDeleted()) ? "DELETED" : "ACTIVE";
-    }
+  /** Helper to bridge isDeleted to status string. */
+  default String getStatus() {
+    return Boolean.TRUE.equals(getIsDeleted()) ? "DELETED" : "ACTIVE";
+  }
 }

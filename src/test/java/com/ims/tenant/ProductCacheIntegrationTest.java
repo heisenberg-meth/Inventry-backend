@@ -2,38 +2,54 @@ package com.ims.tenant;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
 import com.ims.BaseIntegrationTest;
 import com.ims.TestDataFactory;
 import com.ims.dto.request.SignupRequest;
 import com.ims.shared.auth.SignupService;
+import java.util.Objects;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.cache.CacheManager;
-import java.util.Objects;
 
 @AutoConfigureMockMvc
-@org.springframework.security.test.context.support.WithMockUser(username = "admin", authorities = { "ADMIN",
-    "ROLE_ADMIN", "create_product", "view_product", "update_product", "delete_product", "create_order", "view_order",
-    "create_supplier", "view_supplier", "delete_supplier", "manage_stock", "view_stock" })
+@org.springframework.security.test.context.support.WithMockUser(
+    username = "admin",
+    authorities = {
+      "ADMIN",
+      "ROLE_ADMIN",
+      "create_product",
+      "view_product",
+      "update_product",
+      "delete_product",
+      "create_order",
+      "view_order",
+      "create_supplier",
+      "view_supplier",
+      "delete_supplier",
+      "manage_stock",
+      "view_stock"
+    })
 public class ProductCacheIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired
-  private SignupService signupService;
-  @Autowired
-  private CacheManager cacheManager;
+  @Autowired private SignupService signupService;
+  @Autowired private CacheManager cacheManager;
 
   @BeforeEach
   void setup() throws Exception {
     cleanupDatabase();
     // Clear cache before each test
-    cacheManager.getCacheNames().forEach(name -> {
-      org.springframework.cache.Cache cache = cacheManager.getCache(name);
-      if (cache != null) {
-        cache.clear();
-      }
-    });
+    cacheManager
+        .getCacheNames()
+        .forEach(
+            name -> {
+              org.springframework.cache.Cache cache = cacheManager.getCache(name);
+              if (cache != null) {
+                cache.clear();
+              }
+            });
   }
 
   @Test
@@ -50,12 +66,11 @@ public class ProductCacheIntegrationTest extends BaseIntegrationTest {
     String token = login(uniqueEmail, "password123", response.getCompanyCode());
 
     // 1. Fetch products first time (triggers cache fill)
-    mockMvc.perform(get("/api/v1/tenant/products")
-        .header("Authorization", "Bearer " + token))
+    mockMvc
+        .perform(get("/api/v1/tenant/products").header("Authorization", "Bearer " + token))
         .andExpect(status().isOk());
 
     // 2. Verify cache contains data
     Objects.requireNonNull(cacheManager.getCache("products"), "Products cache should exist");
   }
-
 }

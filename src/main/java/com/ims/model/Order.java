@@ -49,8 +49,7 @@ public class Order extends BaseEntity {
   @Builder.Default
   private BigDecimal discount = BigDecimal.ZERO;
 
-  @Column
-  private String notes;
+  @Column private String notes;
 
   @Column(name = "created_by")
   private Long createdBy;

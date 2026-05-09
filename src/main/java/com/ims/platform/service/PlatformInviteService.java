@@ -3,8 +3,8 @@ package com.ims.platform.service;
 import com.ims.model.PlatformInvite;
 import com.ims.model.User;
 import com.ims.platform.repository.PlatformInviteRepository;
-import com.ims.tenant.repository.UserRepository;
 import com.ims.shared.auth.JwtAuthDetails;
+import com.ims.tenant.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
@@ -31,31 +31,38 @@ public class PlatformInviteService {
       throw new IllegalArgumentException("User with this email already exists");
     }
 
-    inviteRepository.findByEmail(email).ifPresent(invite -> {
-      if (!invite.isExpired() && !invite.isUsed()) {
-        throw new IllegalArgumentException("A pending invite already exists for this email");
-      }
-      inviteRepository.delete(invite);
-    });
+    inviteRepository
+        .findByEmail(email)
+        .ifPresent(
+            invite -> {
+              if (!invite.isExpired() && !invite.isUsed()) {
+                throw new IllegalArgumentException(
+                    "A pending invite already exists for this email");
+              }
+              inviteRepository.delete(invite);
+            });
 
     Long currentUserId = extractUserId();
     String token = UUID.randomUUID().toString();
 
-    PlatformInvite invite = PlatformInvite.builder()
-        .email(email)
-        .role(role)
-        .token(token)
-        .expiresAt(LocalDateTime.now().plusHours(24))
-        .createdBy(currentUserId)
-        .build();
+    PlatformInvite invite =
+        PlatformInvite.builder()
+            .email(email)
+            .role(role)
+            .token(token)
+            .expiresAt(LocalDateTime.now().plusHours(24))
+            .createdBy(currentUserId)
+            .build();
 
     log.info("Platform invite created for {} by {}", email, currentUserId);
     return Objects.requireNonNull(inviteRepository.save(invite), "Saved invite must not be null");
   }
 
   public PlatformInvite validateToken(String token) {
-    PlatformInvite invite = inviteRepository.findByToken(token)
-        .orElseThrow(() -> new IllegalArgumentException("Invalid invite token"));
+    PlatformInvite invite =
+        inviteRepository
+            .findByToken(token)
+            .orElseThrow(() -> new IllegalArgumentException("Invalid invite token"));
 
     if (invite.isExpired()) {
       throw new IllegalArgumentException("Invite token has expired");
@@ -72,16 +79,17 @@ public class PlatformInviteService {
   public void completeInvite(String token, String password, String name) {
     PlatformInvite invite = validateToken(token);
 
-    User user = User.builder()
-        .name(name)
-        .email(invite.getEmail())
-        .passwordHash(passwordEncoder.encode(password))
-        .role(invite.getRole())
-        .scope("PLATFORM")
-        .isPlatformUser(true)
-        .isActive(true)
-        .isVerified(true)
-        .build();
+    User user =
+        User.builder()
+            .name(name)
+            .email(invite.getEmail())
+            .passwordHash(passwordEncoder.encode(password))
+            .role(invite.getRole())
+            .scope("PLATFORM")
+            .isPlatformUser(true)
+            .isActive(true)
+            .isVerified(true)
+            .build();
 
     Objects.requireNonNull(userRepository.save(user), "Saved user must not be null");
 

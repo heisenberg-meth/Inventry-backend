@@ -25,8 +25,7 @@ public class Tenant {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Version
-  private Long version;
+  @Version private Long version;
 
   @Column(nullable = false)
   private String name;
@@ -40,13 +39,9 @@ public class Tenant {
   @Column(name = "business_type", nullable = false)
   private String businessType;
 
-  @Column
-  @Builder.Default
-  private String plan = "FREE";
+  @Column @Builder.Default private String plan = "FREE";
 
-  @Column
-  @Builder.Default
-  private String status = "ACTIVE";
+  @Column @Builder.Default private String status = "ACTIVE";
 
   @Column(name = "invoice_sequence")
   @Builder.Default
@@ -66,11 +61,9 @@ public class Tenant {
   @Builder.Default
   private Boolean isActive = true;
 
-  @Column
-  private String address;
+  @Column private String address;
 
-  @Column
-  private String gstin;
+  @Column private String gstin;
 
   @Column(name = "created_at")
   @Builder.Default

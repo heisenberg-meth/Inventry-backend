@@ -37,12 +37,10 @@ public class PharmacyProduct {
   @Column(name = "expiry_date", nullable = false)
   private LocalDate expiryDate;
 
-  @Column
-  private String manufacturer;
+  @Column private String manufacturer;
 
   @Column(name = "hsn_code")
   private String hsnCode;
 
-  @Column
-  private String schedule;
+  @Column private String schedule;
 }

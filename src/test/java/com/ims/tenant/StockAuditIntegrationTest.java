@@ -1,29 +1,43 @@
 package com.ims.tenant;
 
 import static org.assertj.core.api.Assertions.assertThat;
+
 import com.ims.BaseIntegrationTest;
-import com.ims.product.Product;
 import com.ims.model.StockMovement;
 import com.ims.model.User;
+import com.ims.product.Product;
 import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.service.StockService;
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Objects;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import java.util.Objects;
-import java.util.List;
 
-@org.springframework.security.test.context.support.WithMockUser(username = "admin", authorities = { "ADMIN",
-    "ROLE_ADMIN", "create_product", "view_product", "update_product", "delete_product", "create_order", "view_order",
-    "create_supplier", "view_supplier", "delete_supplier", "manage_stock", "view_stock" })
+@org.springframework.security.test.context.support.WithMockUser(
+    username = "admin",
+    authorities = {
+      "ADMIN",
+      "ROLE_ADMIN",
+      "create_product",
+      "view_product",
+      "update_product",
+      "delete_product",
+      "create_order",
+      "view_order",
+      "create_supplier",
+      "view_supplier",
+      "delete_supplier",
+      "manage_stock",
+      "view_stock"
+    })
 public class StockAuditIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired
-  private StockService stockService;
+  @Autowired private StockService stockService;
 
   private Long product1Id;
   private Long product2Id;
@@ -36,39 +50,55 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
 
     // Tenant 1
     TenantContext.setTenantId(testTenant1Id);
-    User u1 = User.builder().tenantId(testTenant1Id).email("u1@t1.com").name("U1").passwordHash("p").role("ADMIN")
-        .scope("TENANT").build();
+    User u1 =
+        User.builder()
+            .tenantId(testTenant1Id)
+            .email("u1@t1.com")
+            .name("U1")
+            .passwordHash("p")
+            .role("ADMIN")
+            .scope("TENANT")
+            .build();
     u1 = userRepository.save(Objects.requireNonNull(u1));
     user1Id = u1.getId();
 
-    Product p1 = Product.builder()
-        .tenantId(testTenant1Id)
-        .name("T1 Product")
-        .sku("T1-PROD")
-        .salePrice(BigDecimal.valueOf(10.0))
-        .stock(50)
-        .reorderLevel(5)
-        .isDeleted(false)
-        .build();
+    Product p1 =
+        Product.builder()
+            .tenantId(testTenant1Id)
+            .name("T1 Product")
+            .sku("T1-PROD")
+            .salePrice(BigDecimal.valueOf(10.0))
+            .stock(50)
+            .reorderLevel(5)
+            .isDeleted(false)
+            .build();
     p1 = productRepository.save(Objects.requireNonNull(p1));
     product1Id = p1.getId();
 
     // Tenant 2
     TenantContext.setTenantId(testTenant2Id);
-    User u2 = User.builder().tenantId(testTenant2Id).email("u2@t2.com").name("U2").passwordHash("p").role("ADMIN")
-        .scope("TENANT").build();
+    User u2 =
+        User.builder()
+            .tenantId(testTenant2Id)
+            .email("u2@t2.com")
+            .name("U2")
+            .passwordHash("p")
+            .role("ADMIN")
+            .scope("TENANT")
+            .build();
     u2 = userRepository.save(Objects.requireNonNull(u2));
     user2Id = u2.getId();
 
-    Product p2 = Product.builder()
-        .tenantId(testTenant2Id)
-        .name("T2 Product")
-        .sku("T2-PROD")
-        .salePrice(BigDecimal.valueOf(20.0))
-        .stock(100)
-        .reorderLevel(10)
-        .isDeleted(false)
-        .build();
+    Product p2 =
+        Product.builder()
+            .tenantId(testTenant2Id)
+            .name("T2 Product")
+            .sku("T2-PROD")
+            .salePrice(BigDecimal.valueOf(20.0))
+            .stock(100)
+            .reorderLevel(10)
+            .isDeleted(false)
+            .build();
     p2 = productRepository.save(Objects.requireNonNull(p2));
     product2Id = p2.getId();
 
@@ -133,8 +163,10 @@ public class StockAuditIntegrationTest extends BaseIntegrationTest {
     TenantContext.setTenantId(testTenant2Id);
     Page<StockMovement> t2Movements = stockService.getMovements(PageRequest.of(0, 10));
     assertThat(t2Movements.getContent()).hasSize(2);
-    assertThat(t2Movements.getContent().stream().anyMatch(m -> m.getNotes().equals("T2 In"))).isTrue();
-    assertThat(t2Movements.getContent().stream().anyMatch(m -> m.getNotes().equals("T2 Out"))).isTrue();
+    assertThat(t2Movements.getContent().stream().anyMatch(m -> m.getNotes().equals("T2 In")))
+        .isTrue();
+    assertThat(t2Movements.getContent().stream().anyMatch(m -> m.getNotes().equals("T2 Out")))
+        .isTrue();
   }
 
   @Test

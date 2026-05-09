@@ -6,7 +6,6 @@ import com.ims.dto.request.CreateTenantUserRequest;
 import com.ims.dto.response.TenantResponse;
 import com.ims.dto.response.UserResponse;
 import com.ims.platform.service.TenantService;
-import org.springframework.security.access.prepost.PreAuthorize;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -17,6 +16,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -100,7 +100,8 @@ public class TenantController {
   @GetMapping("/{id}/audit")
   @PreAuthorize("hasAnyRole('ROOT', 'PLATFORM_ADMIN')")
   @Operation(summary = "Get audit logs for a specific tenant")
-  public ResponseEntity<Page<com.ims.model.AuditLog>> getTenantAuditLogs(@PathVariable Long id, Pageable pageable) {
+  public ResponseEntity<Page<com.ims.model.AuditLog>> getTenantAuditLogs(
+      @PathVariable Long id, Pageable pageable) {
     try {
       com.ims.shared.auth.TenantContext.setTenantId(id);
       return ResponseEntity.ok(auditLogService.getTenantLogs(pageable));
@@ -111,18 +112,19 @@ public class TenantController {
 
   @GetMapping("/{id}/users")
   @PreAuthorize("hasAnyRole('ROOT', 'PLATFORM_ADMIN')")
-  @Operation(summary = "List tenant users", description = "List users of a specific tenant with optional search")
+  @Operation(
+      summary = "List tenant users",
+      description = "List users of a specific tenant with optional search")
   public ResponseEntity<Page<UserResponse>> getTenantUsers(
-      @PathVariable Long id,
-      @RequestParam(required = false) String q,
-      Pageable pageable) {
+      @PathVariable Long id, @RequestParam(required = false) String q, Pageable pageable) {
     return ResponseEntity.ok(tenantService.getTenantUsers(id, q, pageable));
   }
 
   @DeleteMapping("/{id}/users/{userId}")
   @PreAuthorize("hasRole('ROOT')")
   @Operation(summary = "Platform hard-delete a tenant user")
-  public ResponseEntity<Void> hardDeleteTenantUser(@PathVariable Long id, @PathVariable Long userId) {
+  public ResponseEntity<Void> hardDeleteTenantUser(
+      @PathVariable Long id, @PathVariable Long userId) {
     tenantService.hardDeleteTenantUser(id, userId);
     return ResponseEntity.noContent().build();
   }
@@ -131,8 +133,7 @@ public class TenantController {
   @PreAuthorize("hasAnyRole('ROOT', 'PLATFORM_ADMIN')")
   @Operation(summary = "Reset a tenant user's password")
   public ResponseEntity<Map<String, String>> resetTenantUserPassword(
-      @PathVariable Long userId,
-      @RequestBody(required = false) Map<String, String> body) {
+      @PathVariable Long userId, @RequestBody(required = false) Map<String, String> body) {
     String newPassword = (body != null) ? body.get("newPassword") : null;
     return ResponseEntity.ok(tenantService.resetTenantUserPassword(userId, newPassword));
   }
@@ -156,8 +157,7 @@ public class TenantController {
   @PreAuthorize("hasAnyRole('ROOT', 'PLATFORM_ADMIN')")
   @Operation(summary = "Create tenant admin user")
   public ResponseEntity<UserResponse> createTenantAdmin(
-      @PathVariable Long tenantId,
-      @Valid @RequestBody CreateTenantUserRequest request) {
+      @PathVariable Long tenantId, @Valid @RequestBody CreateTenantUserRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(tenantService.createTenantUser(tenantId, request));
   }

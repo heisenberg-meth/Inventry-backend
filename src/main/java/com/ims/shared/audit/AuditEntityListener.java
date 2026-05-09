@@ -41,7 +41,10 @@ public class AuditEntityListener {
     logAudit(AuditAction.DELETE, entity, toMap(entity), null);
   }
 
-  private void logAudit(AuditAction action, Object entity, Map<String, Object> oldValue,
+  private void logAudit(
+      AuditAction action,
+      Object entity,
+      Map<String, Object> oldValue,
       Map<String, Object> newValue) {
     if (staticRepository == null) {
       log.warn("Audit repository not initialized, skipping audit log");
@@ -56,14 +59,15 @@ public class AuditEntityListener {
     String entityType = entity.getClass().getSimpleName();
     Long entityId = extractEntityId(entity);
 
-    AuditLog auditEntry = AuditLog.builder()
-        .tenantId(tenantId)
-        .action(action.name())
-        .entityType(entityType)
-        .entityId(entityId)
-        .oldValue(serialize(oldValue))
-        .newValue(serialize(newValue))
-        .build();
+    AuditLog auditEntry =
+        AuditLog.builder()
+            .tenantId(tenantId)
+            .action(action.name())
+            .entityType(entityType)
+            .entityId(entityId)
+            .oldValue(serialize(oldValue))
+            .newValue(serialize(newValue))
+            .build();
 
     try {
       staticRepository.save(auditEntry);
@@ -84,8 +88,7 @@ public class AuditEntityListener {
 
   private Map<String, Object> toMap(Object entity) {
     try {
-      return MAPPER.convertValue(entity, new TypeReference<Map<String, Object>>() {
-      });
+      return MAPPER.convertValue(entity, new TypeReference<Map<String, Object>>() {});
     } catch (Exception e) {
       log.warn("Failed to serialize entity to map: {}", entity.getClass().getSimpleName(), e);
       return Map.of();

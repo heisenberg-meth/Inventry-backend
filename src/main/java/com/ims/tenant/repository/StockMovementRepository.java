@@ -19,12 +19,13 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, Lo
     return findByTenantIdOrderByCreatedAtDesc(TenantContext.getTenantId(), pageable);
   }
 
-  @Query("SELECT sm FROM StockMovement sm WHERE "
-      + "sm.tenantId = :tenantId "
-      + "AND (:productId IS NULL OR sm.productId = :productId) "
-      + "AND (:from IS NULL OR sm.createdAt >= :from) "
-      + "AND (:to IS NULL OR sm.createdAt <= :to) "
-      + "ORDER BY sm.createdAt DESC")
+  @Query(
+      "SELECT sm FROM StockMovement sm WHERE "
+          + "sm.tenantId = :tenantId "
+          + "AND (:productId IS NULL OR sm.productId = :productId) "
+          + "AND (:from IS NULL OR sm.createdAt >= :from) "
+          + "AND (:to IS NULL OR sm.createdAt <= :to) "
+          + "ORDER BY sm.createdAt DESC")
   Page<StockMovement> findByFilters(
       @Param("tenantId") Long tenantId,
       @Param("productId") Long productId,
@@ -37,12 +38,13 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, Lo
     return findByFilters(TenantContext.getTenantId(), productId, from, to, pageable);
   }
 
-  @Query("SELECT SUM(CASE " +
-      "  WHEN sm.movementType = 'IN' THEN sm.quantity " +
-      "  WHEN sm.movementType = 'OUT' THEN -sm.quantity " +
-      "  WHEN sm.movementType = 'ADJUSTMENT' THEN sm.quantity " +
-      "  ELSE 0 END) " +
-      "FROM StockMovement sm " +
-      "WHERE sm.productId = :productId AND sm.tenantId = :tenantId")
+  @Query(
+      "SELECT SUM(CASE "
+          + "  WHEN sm.movementType = 'IN' THEN sm.quantity "
+          + "  WHEN sm.movementType = 'OUT' THEN -sm.quantity "
+          + "  WHEN sm.movementType = 'ADJUSTMENT' THEN sm.quantity "
+          + "  ELSE 0 END) "
+          + "FROM StockMovement sm "
+          + "WHERE sm.productId = :productId AND sm.tenantId = :tenantId")
   Integer calculateStock(@Param("productId") Long productId, @Param("tenantId") Long tenantId);
 }

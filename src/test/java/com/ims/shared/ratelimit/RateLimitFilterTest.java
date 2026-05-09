@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -12,7 +13,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.ArgumentMatchers.any;
+
 import com.ims.shared.auth.JwtUtil;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,20 +38,22 @@ class RateLimitFilterTest {
   @BeforeEach
   void setup() {
     rateLimiterService = mock(RateLimiterService.class);
-    filter = new RateLimitFilter(
-        rateLimiterService,
-        jwtUtil,
-        true,
-        AUTH_RPM,
-        PUBLIC_RPM,
-        AUTHENTICATED_RPM,
-        TENANT_RPM,
-        WINDOW_SECONDS);
+    filter =
+        new RateLimitFilter(
+            rateLimiterService,
+            jwtUtil,
+            true,
+            AUTH_RPM,
+            PUBLIC_RPM,
+            AUTHENTICATED_RPM,
+            TENANT_RPM,
+            WINDOW_SECONDS);
   }
 
   @Test
   void allowsRequestBelowPublicLimit() throws Exception {
-    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt(), anyBoolean())).thenReturn(true);
+    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt(), anyBoolean()))
+        .thenReturn(true);
     when(rateLimiterService.getCount(anyString())).thenReturn(1);
 
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/tenant/products");
@@ -69,7 +72,8 @@ class RateLimitFilterTest {
 
   @Test
   void blocksRequestOverPublicLimit() throws Exception {
-    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt(), anyBoolean())).thenReturn(false);
+    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt(), anyBoolean()))
+        .thenReturn(false);
 
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/public/something");
     req.setRemoteAddr("10.0.0.2");
@@ -86,7 +90,8 @@ class RateLimitFilterTest {
 
   @Test
   void enforcesStricterLimitOnAuthEndpoints() throws Exception {
-    when(rateLimiterService.isAllowed(anyString(), eq(AUTH_RPM), anyInt(), anyBoolean())).thenReturn(false);
+    when(rateLimiterService.isAllowed(anyString(), eq(AUTH_RPM), anyInt(), anyBoolean()))
+        .thenReturn(false);
 
     MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/auth/login");
     req.setRemoteAddr("10.0.0.3");
@@ -102,7 +107,8 @@ class RateLimitFilterTest {
 
   @Test
   void usesTenantLimitWhenBearerTokenCarriesTenantId() throws Exception {
-    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt(), anyBoolean())).thenReturn(true);
+    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt(), anyBoolean()))
+        .thenReturn(true);
     when(jwtUtil.extractUserId("good-token")).thenReturn(123L);
     when(jwtUtil.extractTenantId("good-token")).thenReturn(42L);
 
@@ -117,15 +123,17 @@ class RateLimitFilterTest {
     assertEquals(200, res.getStatus());
     // Primary limit for authenticated user
     assertEquals(String.valueOf(AUTHENTICATED_RPM), res.getHeader("X-RateLimit-Limit"));
-    verify(rateLimiterService).isAllowed(eq("rate_limit:user:123"), eq(AUTHENTICATED_RPM), eq(WINDOW_SECONDS),
-        eq(false));
-    verify(rateLimiterService).isAllowed(eq("rate_limit:tenant:42"), eq(TENANT_RPM), eq(WINDOW_SECONDS), eq(false));
+    verify(rateLimiterService)
+        .isAllowed(eq("rate_limit:user:123"), eq(AUTHENTICATED_RPM), eq(WINDOW_SECONDS), eq(false));
+    verify(rateLimiterService)
+        .isAllowed(eq("rate_limit:tenant:42"), eq(TENANT_RPM), eq(WINDOW_SECONDS), eq(false));
     verify(chain).doFilter(req, res);
   }
 
   @Test
   void fallsBackToPublicTierWhenTokenIsInvalid() throws Exception {
-    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt(), anyBoolean())).thenReturn(true);
+    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt(), anyBoolean()))
+        .thenReturn(true);
     when(jwtUtil.extractUserId("bad-token")).thenThrow(new RuntimeException("bad token"));
 
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/tenant/products");
@@ -138,13 +146,15 @@ class RateLimitFilterTest {
 
     assertEquals(200, res.getStatus());
     assertEquals(String.valueOf(PUBLIC_RPM), res.getHeader("X-RateLimit-Limit"));
-    verify(rateLimiterService).isAllowed(eq("rate_limit:ip:10.0.0.5"), eq(PUBLIC_RPM), eq(WINDOW_SECONDS), eq(false));
+    verify(rateLimiterService)
+        .isAllowed(eq("rate_limit:ip:10.0.0.5"), eq(PUBLIC_RPM), eq(WINDOW_SECONDS), eq(false));
     verify(chain).doFilter(req, res);
   }
 
   @Test
   void honorsXForwardedForWhenBuildingKey() throws Exception {
-    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt(), anyBoolean())).thenReturn(true);
+    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt(), anyBoolean()))
+        .thenReturn(true);
 
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/public/ping");
     req.setRemoteAddr("10.0.0.99"); // proxy
@@ -154,12 +164,14 @@ class RateLimitFilterTest {
 
     filter.doFilter(req, res, chain);
 
-    verify(rateLimiterService).isAllowed(eq("rate_limit:ip:203.0.113.7"), anyInt(), anyInt(), anyBoolean());
+    verify(rateLimiterService)
+        .isAllowed(eq("rate_limit:ip:203.0.113.7"), anyInt(), anyInt(), anyBoolean());
   }
 
   @Test
   void usesSingleXForwardedForIpWhenPresent() throws Exception {
-    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt(), anyBoolean())).thenReturn(true);
+    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt(), anyBoolean()))
+        .thenReturn(true);
 
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/public/ping");
     req.setRemoteAddr("10.0.0.99");
@@ -169,12 +181,14 @@ class RateLimitFilterTest {
 
     filter.doFilter(req, res, chain);
 
-    verify(rateLimiterService).isAllowed(eq("rate_limit:ip:198.51.100.23"), anyInt(), anyInt(), anyBoolean());
+    verify(rateLimiterService)
+        .isAllowed(eq("rate_limit:ip:198.51.100.23"), anyInt(), anyInt(), anyBoolean());
   }
 
   @Test
   void fallsBackToXRealIpWhenForwardedForBlank() throws Exception {
-    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt(), anyBoolean())).thenReturn(true);
+    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt(), anyBoolean()))
+        .thenReturn(true);
 
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/public/ping");
     req.setRemoteAddr("10.0.0.99");
@@ -185,12 +199,14 @@ class RateLimitFilterTest {
 
     filter.doFilter(req, res, chain);
 
-    verify(rateLimiterService).isAllowed(eq("rate_limit:ip:198.51.100.42"), anyInt(), anyInt(), anyBoolean());
+    verify(rateLimiterService)
+        .isAllowed(eq("rate_limit:ip:198.51.100.42"), anyInt(), anyInt(), anyBoolean());
   }
 
   @Test
   void fallsBackToRemoteAddrWhenNoProxyHeaders() throws Exception {
-    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt(), anyBoolean())).thenReturn(true);
+    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt(), anyBoolean()))
+        .thenReturn(true);
 
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/public/ping");
     req.setRemoteAddr("192.0.2.55");
@@ -199,7 +215,8 @@ class RateLimitFilterTest {
 
     filter.doFilter(req, res, chain);
 
-    verify(rateLimiterService).isAllowed(eq("rate_limit:ip:192.0.2.55"), anyInt(), anyInt(), anyBoolean());
+    verify(rateLimiterService)
+        .isAllowed(eq("rate_limit:ip:192.0.2.55"), anyInt(), anyInt(), anyBoolean());
   }
 
   @Test
@@ -255,7 +272,7 @@ class RateLimitFilterTest {
 
   @Test
   void skipsExcludedSwaggerAndApiDocsPaths() throws Exception {
-    for (String path : new String[] { "/swagger-ui/index.html", "/v3/api-docs/ims-api" }) {
+    for (String path : new String[] {"/swagger-ui/index.html", "/v3/api-docs/ims-api"}) {
       MockHttpServletRequest req = new MockHttpServletRequest("GET", path);
       req.setRemoteAddr("10.0.0.8");
       MockHttpServletResponse res = new MockHttpServletResponse();
@@ -271,7 +288,8 @@ class RateLimitFilterTest {
 
   @Test
   void stillRateLimitsNearMissOfExcludedPath() throws Exception {
-    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt(), anyBoolean())).thenReturn(true);
+    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt(), anyBoolean()))
+        .thenReturn(true);
 
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/actuatorx/health");
     req.setRemoteAddr("10.0.0.9");
@@ -287,7 +305,8 @@ class RateLimitFilterTest {
 
   @Test
   void doesNotTreatUnrelatedAuthSubstringAsAuthEndpoint() throws Exception {
-    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt(), anyBoolean())).thenReturn(true);
+    when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt(), anyBoolean()))
+        .thenReturn(true);
 
     MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/tenant/auth-logs");
     req.setRemoteAddr("10.0.0.10");
@@ -306,37 +325,80 @@ class RateLimitFilterTest {
     // Each setting is checked and reported independently so operators see the exact
     // property key
     // (e.g. app.rate-limit.public-rpm) that needs fixing.
-    IllegalArgumentException authEx = assertThrows(
-        IllegalArgumentException.class,
-        () -> new RateLimitFilter(
-            rateLimiterService, jwtUtil, true, 0, PUBLIC_RPM, AUTHENTICATED_RPM, TENANT_RPM, WINDOW_SECONDS));
+    IllegalArgumentException authEx =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new RateLimitFilter(
+                    rateLimiterService,
+                    jwtUtil,
+                    true,
+                    0,
+                    PUBLIC_RPM,
+                    AUTHENTICATED_RPM,
+                    TENANT_RPM,
+                    WINDOW_SECONDS));
     assertEquals("app.rate-limit.auth-rpm must be >= 1 (got 0)", authEx.getMessage());
 
-    IllegalArgumentException publicEx = assertThrows(
-        IllegalArgumentException.class,
-        () -> new RateLimitFilter(
-            rateLimiterService, jwtUtil, true, AUTH_RPM, 0, AUTHENTICATED_RPM, TENANT_RPM, WINDOW_SECONDS));
+    IllegalArgumentException publicEx =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new RateLimitFilter(
+                    rateLimiterService,
+                    jwtUtil,
+                    true,
+                    AUTH_RPM,
+                    0,
+                    AUTHENTICATED_RPM,
+                    TENANT_RPM,
+                    WINDOW_SECONDS));
     assertEquals("app.rate-limit.public-rpm must be >= 1 (got 0)", publicEx.getMessage());
 
-    IllegalArgumentException authenticatedEx = assertThrows(
-        IllegalArgumentException.class,
-        () -> new RateLimitFilter(
-            rateLimiterService, jwtUtil, true, AUTH_RPM, PUBLIC_RPM, 0, TENANT_RPM, WINDOW_SECONDS));
+    IllegalArgumentException authenticatedEx =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new RateLimitFilter(
+                    rateLimiterService,
+                    jwtUtil,
+                    true,
+                    AUTH_RPM,
+                    PUBLIC_RPM,
+                    0,
+                    TENANT_RPM,
+                    WINDOW_SECONDS));
     assertEquals(
         "app.rate-limit.authenticated-rpm must be >= 1 (got 0)", authenticatedEx.getMessage());
 
-    IllegalArgumentException tenantEx = assertThrows(
-        IllegalArgumentException.class,
-        () -> new RateLimitFilter(
-            rateLimiterService, jwtUtil, true, AUTH_RPM, PUBLIC_RPM, AUTHENTICATED_RPM, 0, WINDOW_SECONDS));
-    assertEquals(
-        "app.rate-limit.tenant-rpm must be >= 1 (got 0)", tenantEx.getMessage());
+    IllegalArgumentException tenantEx =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new RateLimitFilter(
+                    rateLimiterService,
+                    jwtUtil,
+                    true,
+                    AUTH_RPM,
+                    PUBLIC_RPM,
+                    AUTHENTICATED_RPM,
+                    0,
+                    WINDOW_SECONDS));
+    assertEquals("app.rate-limit.tenant-rpm must be >= 1 (got 0)", tenantEx.getMessage());
 
-    IllegalArgumentException windowEx = assertThrows(
-        IllegalArgumentException.class,
-        () -> new RateLimitFilter(rateLimiterService, jwtUtil, true, AUTH_RPM, PUBLIC_RPM, AUTHENTICATED_RPM,
-            TENANT_RPM, 0));
-    assertEquals(
-        "app.rate-limit.window-seconds must be >= 1 (got 0)", windowEx.getMessage());
+    IllegalArgumentException windowEx =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new RateLimitFilter(
+                    rateLimiterService,
+                    jwtUtil,
+                    true,
+                    AUTH_RPM,
+                    PUBLIC_RPM,
+                    AUTHENTICATED_RPM,
+                    TENANT_RPM,
+                    0));
+    assertEquals("app.rate-limit.window-seconds must be >= 1 (got 0)", windowEx.getMessage());
   }
 }

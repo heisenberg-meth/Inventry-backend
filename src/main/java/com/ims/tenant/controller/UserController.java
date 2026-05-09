@@ -38,7 +38,8 @@ public class UserController {
   @PreAuthorize("hasRole('ADMIN')")
   @Operation(summary = "Create tenant user")
   public ResponseEntity<UserResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(userService.createUser(Objects.requireNonNull(request)));
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(userService.createUser(Objects.requireNonNull(request)));
   }
 
   @GetMapping
@@ -64,7 +65,8 @@ public class UserController {
     if (role == null || role.isBlank()) {
       throw new IllegalArgumentException("Role is required");
     }
-    return ResponseEntity.ok(userService.updateRole(Objects.requireNonNull(id), Objects.requireNonNull(role)));
+    return ResponseEntity.ok(
+        userService.updateRole(Objects.requireNonNull(id), Objects.requireNonNull(role)));
   }
 
   @PostMapping("/{id}/permissions")
@@ -72,8 +74,8 @@ public class UserController {
   @Operation(summary = "Assign custom permissions to user")
   public ResponseEntity<UserResponse> assignPermissions(
       @PathVariable Long id, @Valid @RequestBody AssignPermissionsRequest request) {
-    return ResponseEntity
-        .ok(userService.assignPermissions(Objects.requireNonNull(id), Objects.requireNonNull(request)));
+    return ResponseEntity.ok(
+        userService.assignPermissions(Objects.requireNonNull(id), Objects.requireNonNull(request)));
   }
 
   @DeleteMapping("/{id}")

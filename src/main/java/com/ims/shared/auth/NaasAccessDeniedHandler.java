@@ -12,13 +12,16 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class NaasAccessDeniedHandler implements AccessDeniedHandler {
 
-    private final NaasService naasService;
+  private final NaasService naasService;
 
-    @Override
-    public void handle(HttpServletRequest request, HttpServletResponse response,
-            AccessDeniedException accessDeniedException) throws IOException {
-        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-        response.setContentType("text/plain");
-        response.getWriter().write(naasService.getNoMessage());
-    }
+  @Override
+  public void handle(
+      HttpServletRequest request,
+      HttpServletResponse response,
+      AccessDeniedException accessDeniedException)
+      throws IOException {
+    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+    response.setContentType("text/plain");
+    response.getWriter().write(naasService.getNoMessage());
+  }
 }

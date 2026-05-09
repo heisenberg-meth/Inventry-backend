@@ -4,9 +4,9 @@ import com.ims.model.TransferOrder;
 import com.ims.shared.auth.TenantContext;
 import com.ims.tenant.repository.TransferOrderRepository;
 import java.util.Map;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,17 +27,19 @@ public class TransferOrderService {
     String notes = request.getOrDefault("notes", "").toString();
 
     // Create transfer order
-    TransferOrder transfer = TransferOrder.builder()
-        .tenantId(tenantId)
-        .productId(productId)
-        .quantity(quantity)
-        .fromLocation(fromLocation)
-        .toLocation(toLocation)
-        .status("PENDING")
-        .notes(notes)
-        .createdBy(userId)
-        .build();
-    transfer = Objects.requireNonNull(transferOrderRepository.save(Objects.requireNonNull(transfer)));
+    TransferOrder transfer =
+        TransferOrder.builder()
+            .tenantId(tenantId)
+            .productId(productId)
+            .quantity(quantity)
+            .fromLocation(fromLocation)
+            .toLocation(toLocation)
+            .status("PENDING")
+            .notes(notes)
+            .createdBy(userId)
+            .build();
+    transfer =
+        Objects.requireNonNull(transferOrderRepository.save(Objects.requireNonNull(transfer)));
 
     log.info(
         "Transfer order created (PENDING): id={} product={} quantity={} {} -> {}",

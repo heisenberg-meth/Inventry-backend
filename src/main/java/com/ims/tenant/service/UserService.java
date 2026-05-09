@@ -1,7 +1,5 @@
 package com.ims.tenant.service;
 
-import com.ims.shared.audit.AuditAction;
-import com.ims.shared.audit.AuditResource;
 import com.ims.dto.request.AssignPermissionsRequest;
 import com.ims.dto.request.CreateUserRequest;
 import com.ims.dto.response.UserResponse;
@@ -9,7 +7,9 @@ import com.ims.model.Permission;
 import com.ims.model.Role;
 import com.ims.model.User;
 import com.ims.platform.repository.TenantRepository;
+import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditLogService;
+import com.ims.shared.audit.AuditResource;
 import com.ims.shared.auth.JwtAuthDetails;
 import com.ims.tenant.repository.PermissionRepository;
 import com.ims.tenant.repository.RoleRepository;
@@ -52,10 +52,11 @@ public class UserService {
   }
 
   public UserResponse getUserById(Long id) {
-    User user = Objects.requireNonNull(
-        userRepository
-            .findById(Objects.requireNonNull(id))
-            .orElseThrow(() -> new EntityNotFoundException("User not found")));
+    User user =
+        Objects.requireNonNull(
+            userRepository
+                .findById(Objects.requireNonNull(id))
+                .orElseThrow(() -> new EntityNotFoundException("User not found")));
     return toResponse(user);
   }
 
@@ -74,9 +75,10 @@ public class UserService {
     // Check user limits for tenant
     Long tenantId = getTenantId();
     if (tenantId != null) {
-      var tenant = tenantRepository
-          .findById(tenantId)
-          .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+      var tenant =
+          tenantRepository
+              .findById(tenantId)
+              .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
       if (tenant.getMaxUsers() != null) {
         long currentCount = userRepository.countActive();
         if (currentCount >= tenant.getMaxUsers()) {
@@ -86,18 +88,22 @@ public class UserService {
       }
     }
 
-    User user = User.builder()
-        .name(request.getName())
-        .email(request.getEmail())
-        .passwordHash(passwordEncoder.encode(request.getPassword()))
-        .role(request.getRole())
-        .scope("TENANT")
-        .isActive(true)
-        .build();
+    User user =
+        User.builder()
+            .name(request.getName())
+            .email(request.getEmail())
+            .passwordHash(passwordEncoder.encode(request.getPassword()))
+            .role(request.getRole())
+            .scope("TENANT")
+            .isActive(true)
+            .build();
 
     user = Objects.requireNonNull(userRepository.save(Objects.requireNonNull(user)));
 
-    auditLogService.logAudit(AuditAction.CREATE, AuditResource.USER, user.getId(),
+    auditLogService.logAudit(
+        AuditAction.CREATE,
+        AuditResource.USER,
+        user.getId(),
         "Created user: " + user.getEmail() + " with role: " + user.getRole());
 
     log.info("User created: id={} email={} role={}", user.getId(), user.getEmail(), user.getRole());
@@ -110,15 +116,19 @@ public class UserService {
       throw new IllegalArgumentException("Invalid role. Must be one of: " + VALID_TENANT_ROLES);
     }
 
-    User user = Objects.requireNonNull(
-        userRepository
-            .findById(Objects.requireNonNull(id))
-            .orElseThrow(() -> new EntityNotFoundException("User not found")));
+    User user =
+        Objects.requireNonNull(
+            userRepository
+                .findById(Objects.requireNonNull(id))
+                .orElseThrow(() -> new EntityNotFoundException("User not found")));
 
     user.setRole(newRole);
     user = Objects.requireNonNull(userRepository.save(Objects.requireNonNull(user)));
 
-    auditLogService.logAudit(AuditAction.UPDATE_ROLE, AuditResource.USER, id,
+    auditLogService.logAudit(
+        AuditAction.UPDATE_ROLE,
+        AuditResource.USER,
+        id,
         "Updated role for user " + user.getEmail() + " to " + newRole);
 
     log.info("User role updated: id={} newRole={}", id, newRole);
@@ -127,14 +137,19 @@ public class UserService {
 
   @Transactional
   public UserResponse assignPermissions(Long id, AssignPermissionsRequest request) {
-    User user = userRepository.findById(id)
-        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User user =
+        userRepository
+            .findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     var perms = permissionRepository.findByIdIn(request.getPermissionIds());
     user.setCustomPermissions(new HashSet<>(perms));
     userRepository.save(user);
 
-    auditLogService.logAudit(AuditAction.ASSIGN_PERMISSIONS, AuditResource.USER, id,
+    auditLogService.logAudit(
+        AuditAction.ASSIGN_PERMISSIONS,
+        AuditResource.USER,
+        id,
         "Assigned " + perms.size() + " custom permissions to user: " + user.getEmail());
 
     return toResponse(user);
@@ -142,14 +157,18 @@ public class UserService {
 
   @Transactional
   public void deactivateUser(Long id) {
-    User user = Objects.requireNonNull(
-        userRepository
-            .findById(Objects.requireNonNull(id))
-            .orElseThrow(() -> new EntityNotFoundException("User not found")));
+    User user =
+        Objects.requireNonNull(
+            userRepository
+                .findById(Objects.requireNonNull(id))
+                .orElseThrow(() -> new EntityNotFoundException("User not found")));
     user.setIsActive(false);
     userRepository.save(Objects.requireNonNull(user));
 
-    auditLogService.logAudit(AuditAction.DEACTIVATE, AuditResource.USER, id,
+    auditLogService.logAudit(
+        AuditAction.DEACTIVATE,
+        AuditResource.USER,
+        id,
         "Deactivated user account: " + user.getEmail());
     log.info("User deactivated: id={}", id);
   }
@@ -170,23 +189,28 @@ public class UserService {
   @Transactional(readOnly = true)
   public Set<String> getCachedPermissions(Long userId) {
     Long tenantId = getTenantId();
-    User user = userRepository.findByIdAndTenantId(userId, tenantId)
-        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    User user =
+        userRepository
+            .findByIdAndTenantId(userId, tenantId)
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     Set<String> allPermissions = new HashSet<>();
 
     if (user.getRole() != null) {
       Optional<Role> roleOpt = roleRepository.findByNameAndTenantId(user.getRole(), tenantId);
-      roleOpt.ifPresent(role -> allPermissions.addAll(role.getPermissions().stream()
-          .map(Permission::getKey)
-          .collect(Collectors.toSet())));
+      roleOpt.ifPresent(
+          role ->
+              allPermissions.addAll(
+                  role.getPermissions().stream()
+                      .map(Permission::getKey)
+                      .collect(Collectors.toSet())));
     }
 
-    allPermissions.addAll(user.getCustomPermissions().stream()
-        .map(Permission::getKey)
-        .collect(Collectors.toSet()));
+    allPermissions.addAll(
+        user.getCustomPermissions().stream().map(Permission::getKey).collect(Collectors.toSet()));
 
-    log.debug("Cached permissions loaded for user {}: {} permissions", userId, allPermissions.size());
+    log.debug(
+        "Cached permissions loaded for user {}: {} permissions", userId, allPermissions.size());
     return allPermissions;
   }
 
@@ -201,29 +225,33 @@ public class UserService {
     // 1. Role permissions
     if (user.getRole() != null) {
       Long tenantId = getTenantId();
-      Optional<Role> roleOpt = tenantId != null
-          ? roleRepository.findByNameAndTenantId(user.getRole(), tenantId)
-          : roleRepository.findByNameAndTenantIdIsNull(user.getRole());
+      Optional<Role> roleOpt =
+          tenantId != null
+              ? roleRepository.findByNameAndTenantId(user.getRole(), tenantId)
+              : roleRepository.findByNameAndTenantIdIsNull(user.getRole());
 
-      roleOpt.ifPresent(role -> allPermissions.addAll(role.getPermissions().stream()
-          .map(Permission::getKey)
-          .collect(Collectors.toSet())));
+      roleOpt.ifPresent(
+          role ->
+              allPermissions.addAll(
+                  role.getPermissions().stream()
+                      .map(Permission::getKey)
+                      .collect(Collectors.toSet())));
     }
 
     // 2. Custom permissions
-    allPermissions.addAll(user.getCustomPermissions().stream()
-        .map(Permission::getKey)
-        .collect(Collectors.toSet()));
+    allPermissions.addAll(
+        user.getCustomPermissions().stream().map(Permission::getKey).collect(Collectors.toSet()));
 
-    return Objects.requireNonNull(UserResponse.builder()
-        .id(user.getId())
-        .name(user.getName())
-        .email(user.getEmail())
-        .role(user.getRole())
-        .scope(user.getScope())
-        .isActive(user.getIsActive())
-        .permissions(new java.util.ArrayList<>(allPermissions))
-        .createdAt(user.getCreatedAt())
-        .build());
+    return Objects.requireNonNull(
+        UserResponse.builder()
+            .id(user.getId())
+            .name(user.getName())
+            .email(user.getEmail())
+            .role(user.getRole())
+            .scope(user.getScope())
+            .isActive(user.getIsActive())
+            .permissions(new java.util.ArrayList<>(allPermissions))
+            .createdAt(user.getCreatedAt())
+            .build());
   }
 }

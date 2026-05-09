@@ -22,16 +22,16 @@ public class ExpiryAlertService {
     List<PharmacyProduct> expiring = pharmacyProductRepository.findByExpiryDateBefore(threshold);
 
     expiring.forEach(
-        pp -> log.warn(
-            "EXPIRY ALERT: tenant={} product={} expires={}",
-            pp.getProduct().getTenantId(),
-            pp.getProduct().getName(),
-            pp.getExpiryDate()));
+        pp ->
+            log.warn(
+                "EXPIRY ALERT: tenant={} product={} expires={}",
+                pp.getProduct().getTenantId(),
+                pp.getProduct().getName(),
+                pp.getExpiryDate()));
 
     log.info(
         "Expiry check complete. {} products expiring within {} days.",
         expiring.size(),
         EXPIRY_THRESHOLD_DAYS);
   }
-
 }

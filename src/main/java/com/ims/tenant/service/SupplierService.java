@@ -1,21 +1,21 @@
 package com.ims.tenant.service;
 
+import com.ims.model.Supplier;
 import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditResource;
-import com.ims.model.Supplier;
 import com.ims.shared.auth.TenantContext;
 import com.ims.shared.exception.ResourceNotFoundException;
-import com.ims.tenant.repository.SupplierRepository;
-import com.ims.tenant.repository.OrderRepository;
 import com.ims.tenant.repository.InvoiceRepository;
+import com.ims.tenant.repository.OrderRepository;
 import com.ims.tenant.repository.PaymentRepository;
-import java.util.Map;
+import com.ims.tenant.repository.SupplierRepository;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
-import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,9 +36,11 @@ public class SupplierService {
 
   public Supplier getById(Long id) {
     Long tenantId = TenantContext.requireTenantId();
-    return Objects.requireNonNull(supplierRepository
-        .findActiveByIdAndTenantId(id, tenantId)
-        .orElseThrow(() -> new ResourceNotFoundException("Supplier not found or has been deleted")));
+    return Objects.requireNonNull(
+        supplierRepository
+            .findActiveByIdAndTenantId(id, tenantId)
+            .orElseThrow(
+                () -> new ResourceNotFoundException("Supplier not found or has been deleted")));
   }
 
   @Transactional
@@ -47,11 +49,13 @@ public class SupplierService {
     supplier.setTenantId(tenantId);
 
     if (supplier.getEmail() != null
-        && supplierRepository.existsByTenantIdAndEmailAndIsDeletedFalse(tenantId, supplier.getEmail())) {
+        && supplierRepository.existsByTenantIdAndEmailAndIsDeletedFalse(
+            tenantId, supplier.getEmail())) {
       throw new IllegalArgumentException("Supplier with this email already exists for this tenant");
     }
     if (supplier.getPhone() != null
-        && supplierRepository.existsByTenantIdAndPhoneAndIsDeletedFalse(tenantId, supplier.getPhone())) {
+        && supplierRepository.existsByTenantIdAndPhoneAndIsDeletedFalse(
+            tenantId, supplier.getPhone())) {
       throw new IllegalArgumentException("Supplier with this phone already exists for this tenant");
     }
 
@@ -72,13 +76,15 @@ public class SupplierService {
     Long tenantId = TenantContext.requireTenantId();
 
     if (updates.getEmail() != null && !updates.getEmail().equals(supplier.getEmail())) {
-      if (supplierRepository.existsByTenantIdAndEmailAndIsDeletedFalse(tenantId, updates.getEmail())) {
+      if (supplierRepository.existsByTenantIdAndEmailAndIsDeletedFalse(
+          tenantId, updates.getEmail())) {
         throw new IllegalArgumentException("Supplier with this email already exists");
       }
       supplier.setEmail(updates.getEmail());
     }
     if (updates.getPhone() != null && !updates.getPhone().equals(supplier.getPhone())) {
-      if (supplierRepository.existsByTenantIdAndPhoneAndIsDeletedFalse(tenantId, updates.getPhone())) {
+      if (supplierRepository.existsByTenantIdAndPhoneAndIsDeletedFalse(
+          tenantId, updates.getPhone())) {
         throw new IllegalArgumentException("Supplier with this phone already exists");
       }
       supplier.setPhone(updates.getPhone());
@@ -123,10 +129,12 @@ public class SupplierService {
     Supplier supplier = getById(id);
     Long tenantId = TenantContext.requireTenantId();
 
-    List<com.ims.model.Order> orders = orderRepository.findByTenantIdAndSupplierId(tenantId, id, Pageable.unpaged())
-        .getContent();
-    List<com.ims.model.Invoice> invoices = invoiceRepository.findByTenantIdAndSupplierId(tenantId, id);
-    List<com.ims.model.Payment> payments = paymentRepository.findByTenantIdAndSupplierId(tenantId, id);
+    List<com.ims.model.Order> orders =
+        orderRepository.findByTenantIdAndSupplierId(tenantId, id, Pageable.unpaged()).getContent();
+    List<com.ims.model.Invoice> invoices =
+        invoiceRepository.findByTenantIdAndSupplierId(tenantId, id);
+    List<com.ims.model.Payment> payments =
+        paymentRepository.findByTenantIdAndSupplierId(tenantId, id);
 
     return Map.of(
         "supplier", supplier,

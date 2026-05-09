@@ -16,23 +16,17 @@ import org.springframework.web.filter.OncePerRequestFilter;
 /**
  * Sliding-window rate limiter backed by Redis (Valkey).
  *
- * <p>
- * Three tiers are enforced:
+ * <p>Three tiers are enforced:
  *
  * <ul>
- * <li><b>Auth</b> — strict per-IP limit for {@code /auth/**} and
- * {@code /api/auth/**} endpoints
- * to mitigate credential stuffing and brute-force attacks.
- * <li><b>Tenant</b> — generous per-tenant+IP limit for authenticated API
- * traffic.
- * <li><b>Public</b> — per-IP limit for any other unauthenticated traffic.
+ *   <li><b>Auth</b> — strict per-IP limit for {@code /auth/**} and {@code /api/auth/**} endpoints
+ *       to mitigate credential stuffing and brute-force attacks.
+ *   <li><b>Tenant</b> — generous per-tenant+IP limit for authenticated API traffic.
+ *   <li><b>Public</b> — per-IP limit for any other unauthenticated traffic.
  * </ul>
  *
- * <p>
- * Limits are configured via {@code app.rate-limit.*} properties in
- * {@code application.yml}. If
- * Redis is unavailable the filter fails open (logs a warning and allows the
- * request) so that a
+ * <p>Limits are configured via {@code app.rate-limit.*} properties in {@code application.yml}. If
+ * Redis is unavailable the filter fails open (logs a warning and allows the request) so that a
  * cache outage does not take down the API.
  */
 @Component
@@ -42,15 +36,16 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
   private static final int STATUS_TOO_MANY_REQUESTS = 429;
 
-  private static final List<String> EXCLUDED_PREFIXES = List.of(
-      "/actuator",
-      "/swagger-ui",
-      "/v3/api-docs",
-      "/api-docs",
-      "/swagger-resources",
-      "/webjars",
-      "/favicon.ico",
-      "/error");
+  private static final List<String> EXCLUDED_PREFIXES =
+      List.of(
+          "/actuator",
+          "/swagger-ui",
+          "/v3/api-docs",
+          "/api-docs",
+          "/swagger-resources",
+          "/webjars",
+          "/favicon.ico",
+          "/error");
 
   private static final List<String> AUTH_PREFIXES = List.of("/auth", "/api/auth");
 
@@ -73,20 +68,24 @@ public class RateLimitFilter extends OncePerRequestFilter {
       @Value("${app.rate-limit.tenant-rpm:1000}") int tenantRpm,
       @Value("${app.rate-limit.window-seconds:60}") int windowSeconds) {
     if (authRpm < 1) {
-      throw new IllegalArgumentException("app.rate-limit.auth-rpm must be >= 1 (got " + authRpm + ")");
+      throw new IllegalArgumentException(
+          "app.rate-limit.auth-rpm must be >= 1 (got " + authRpm + ")");
     }
     if (publicRpm < 1) {
-      throw new IllegalArgumentException("app.rate-limit.public-rpm must be >= 1 (got " + publicRpm + ")");
+      throw new IllegalArgumentException(
+          "app.rate-limit.public-rpm must be >= 1 (got " + publicRpm + ")");
     }
     if (authenticatedRpm < 1) {
       throw new IllegalArgumentException(
           "app.rate-limit.authenticated-rpm must be >= 1 (got " + authenticatedRpm + ")");
     }
     if (tenantRpm < 1) {
-      throw new IllegalArgumentException("app.rate-limit.tenant-rpm must be >= 1 (got " + tenantRpm + ")");
+      throw new IllegalArgumentException(
+          "app.rate-limit.tenant-rpm must be >= 1 (got " + tenantRpm + ")");
     }
     if (windowSeconds < 1) {
-      throw new IllegalArgumentException("app.rate-limit.window-seconds must be >= 1 (got " + windowSeconds + ")");
+      throw new IllegalArgumentException(
+          "app.rate-limit.window-seconds must be >= 1 (got " + windowSeconds + ")");
     }
     this.rateLimiterService = rateLimiterService;
     this.jwtUtil = jwtUtil;
@@ -150,7 +149,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
         return;
       }
     } catch (Exception e) {
-      log.error("Rate limiter primary check failed for key {}. Failing {}.", key, failClosed ? "CLOSED" : "OPEN", e);
+      log.error(
+          "Rate limiter primary check failed for key {}. Failing {}.",
+          key,
+          failClosed ? "CLOSED" : "OPEN",
+          e);
       if (failClosed) {
         handleRateLimitExceeded(res, tier, key, limit);
         return;
@@ -178,7 +181,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
     chain.doFilter(req, res);
   }
 
-  private void handleRateLimitExceeded(HttpServletResponse res, String tier, String key, int limit) throws IOException {
+  private void handleRateLimitExceeded(HttpServletResponse res, String tier, String key, int limit)
+      throws IOException {
     log.warn("Rate limit exceeded (tier={}, key={}, limit={})", tier, key, limit);
     res.setStatus(STATUS_TOO_MANY_REQUESTS);
     res.setHeader("Retry-After", String.valueOf(windowSeconds));

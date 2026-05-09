@@ -11,11 +11,13 @@ import org.springframework.stereotype.Repository;
 public interface PharmacyProductRepository extends JpaRepository<PharmacyProduct, Long> {
   List<PharmacyProduct> findByExpiryDateBefore(LocalDate date);
 
-  @Query("SELECT pp FROM PharmacyProduct pp JOIN pp.product p "
-      + "WHERE pp.expiryDate <= :date AND p.isDeleted = false")
+  @Query(
+      "SELECT pp FROM PharmacyProduct pp JOIN pp.product p "
+          + "WHERE pp.expiryDate <= :date AND p.isDeleted = false")
   List<PharmacyProduct> findExpiring(@Param("date") LocalDate date);
 
-  @Query("SELECT COUNT(pp) FROM PharmacyProduct pp JOIN pp.product p "
-      + "WHERE pp.expiryDate <= :date AND p.isDeleted = false")
+  @Query(
+      "SELECT COUNT(pp) FROM PharmacyProduct pp JOIN pp.product p "
+          + "WHERE pp.expiryDate <= :date AND p.isDeleted = false")
   long countExpiring(@Param("date") LocalDate date);
 }

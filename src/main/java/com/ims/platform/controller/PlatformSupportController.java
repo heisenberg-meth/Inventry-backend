@@ -67,16 +67,16 @@ public class PlatformSupportController {
       @PathVariable Long id, @Valid @RequestBody AddMessageRequest request) {
     JwtAuthDetails auth = getAuthDetails();
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(supportService.addMessage(
-            id, Objects.requireNonNull(auth.getUserId()), "PLATFORM", request));
+        .body(
+            supportService.addMessage(
+                id, Objects.requireNonNull(auth.getUserId()), "PLATFORM", request));
   }
 
   @PatchMapping("/{id}/assign")
   @PreAuthorize("hasAnyRole('ROOT', 'PLATFORM_ADMIN')")
   @Operation(summary = "Assign ticket to support admin")
   public ResponseEntity<SupportTicket> assignTicket(
-      @PathVariable Long id,
-      @Valid @RequestBody AssignTicketRequest request) {
+      @PathVariable Long id, @Valid @RequestBody AssignTicketRequest request) {
     return ResponseEntity.ok(supportService.assignTicket(id, request));
   }
 
@@ -84,8 +84,7 @@ public class PlatformSupportController {
   @PreAuthorize("hasAnyRole('ROOT', 'PLATFORM_ADMIN', 'SUPPORT_ADMIN')")
   @Operation(summary = "Update ticket status")
   public ResponseEntity<SupportTicket> updateStatus(
-      @PathVariable Long id,
-      @Valid @RequestBody UpdateTicketStatusRequest request) {
+      @PathVariable Long id, @Valid @RequestBody UpdateTicketStatusRequest request) {
     return ResponseEntity.ok(supportService.updateStatus(id, request));
   }
 

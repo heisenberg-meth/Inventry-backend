@@ -22,7 +22,9 @@ public class SignupController {
   private final SignupService signupService;
 
   @PostMapping
-  @Operation(summary = "Registration for new business", description = "Creates a new tenant and its first admin user.")
+  @Operation(
+      summary = "Registration for new business",
+      description = "Creates a new tenant and its first admin user.")
   public ResponseEntity<SignupResponse> signup(@Valid @RequestBody SignupRequest request) {
     SignupResponse response = signupService.signup(request);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);

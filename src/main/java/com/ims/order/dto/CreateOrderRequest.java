@@ -16,8 +16,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CreateOrderRequest {
 
-  @NotNull
-  private OrderType type;
+  @NotNull private OrderType type;
 
   private Long customerId;
 
@@ -27,6 +26,5 @@ public class CreateOrderRequest {
 
   private String notes;
 
-  @NotEmpty
-  private List<OrderItemRequest> items;
+  @NotEmpty private List<OrderItemRequest> items;
 }

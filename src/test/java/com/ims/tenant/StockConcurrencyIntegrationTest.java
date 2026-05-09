@@ -2,6 +2,7 @@ package com.ims.tenant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.ims.BaseIntegrationTest;
 import com.ims.product.Product;
 import com.ims.product.ProductRepository;
@@ -19,16 +20,28 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-@org.springframework.security.test.context.support.WithMockUser(username = "admin", authorities = { "ADMIN",
-    "ROLE_ADMIN", "create_product", "view_product", "update_product", "delete_product", "create_order", "view_order",
-    "create_supplier", "view_supplier", "delete_supplier", "manage_stock", "view_stock" })
+@org.springframework.security.test.context.support.WithMockUser(
+    username = "admin",
+    authorities = {
+      "ADMIN",
+      "ROLE_ADMIN",
+      "create_product",
+      "view_product",
+      "update_product",
+      "delete_product",
+      "create_order",
+      "view_order",
+      "create_supplier",
+      "view_supplier",
+      "delete_supplier",
+      "manage_stock",
+      "view_stock"
+    })
 class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired
-  private StockService stockService;
+  @Autowired private StockService stockService;
 
-  @Autowired
-  private ProductRepository productRepository;
+  @Autowired private ProductRepository productRepository;
 
   private Product testProduct;
 
@@ -38,14 +51,15 @@ class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
 
     TenantContext.setTenantId(testTenant1Id);
 
-    testProduct = Product.builder()
-        .name("Concurrency Test Product")
-        .sku("CONC-001")
-        .stock(5)
-        .reorderLevel(2)
-        .salePrice(BigDecimal.TEN)
-        .purchasePrice(BigDecimal.ONE)
-        .build();
+    testProduct =
+        Product.builder()
+            .name("Concurrency Test Product")
+            .sku("CONC-001")
+            .stock(5)
+            .reorderLevel(2)
+            .salePrice(BigDecimal.TEN)
+            .purchasePrice(BigDecimal.ONE)
+            .build();
     testProduct.setTenantId(testTenant1Id);
     testProduct = productRepository.save(testProduct);
   }
@@ -64,24 +78,26 @@ class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
     AtomicInteger failCount = new AtomicInteger();
 
     for (int i = 0; i < threadCount; i++) {
-      executor.submit(() -> {
-        try {
-          startLatch.await();
-          TenantContext.setTenantId(testTenant1Id);
-          try {
-            stockService.stockOut(testProduct.getId(), requestQty, "Concurrent test", testTenant1Id);
-            successCount.incrementAndGet();
-          } catch (InsufficientStockException e) {
-            failCount.incrementAndGet();
-          } catch (Exception e) {
-            failCount.incrementAndGet();
-          }
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-        } finally {
-          doneLatch.countDown();
-        }
-      });
+      executor.submit(
+          () -> {
+            try {
+              startLatch.await();
+              TenantContext.setTenantId(testTenant1Id);
+              try {
+                stockService.stockOut(
+                    testProduct.getId(), requestQty, "Concurrent test", testTenant1Id);
+                successCount.incrementAndGet();
+              } catch (InsufficientStockException e) {
+                failCount.incrementAndGet();
+              } catch (Exception e) {
+                failCount.incrementAndGet();
+              }
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+            } finally {
+              doneLatch.countDown();
+            }
+          });
     }
 
     startLatch.countDown();
@@ -91,11 +107,16 @@ class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
 
     Product after = productRepository.findById(testProduct.getId()).orElseThrow();
 
-    assertThat(after.getStock()).isGreaterThanOrEqualTo(0)
+    assertThat(after.getStock())
+        .isGreaterThanOrEqualTo(0)
         .as("Stock must never be negative under concurrent access");
-    assertThat(successCount.get()).isEqualTo(1)
-        .as("Exactly one stockOut should succeed when stock=%d and each requests %d", initialStock, requestQty);
-    assertThat(failCount.get()).isEqualTo(threadCount - 1)
+    assertThat(successCount.get())
+        .isEqualTo(1)
+        .as(
+            "Exactly one stockOut should succeed when stock=%d and each requests %d",
+            initialStock, requestQty);
+    assertThat(failCount.get())
+        .isEqualTo(threadCount - 1)
         .as("Remaining %d concurrent requests should fail", threadCount - 1);
   }
 
@@ -120,7 +141,8 @@ class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
   @Test
   @DisplayName("StockOut exceeds available stock throws InsufficientStockException")
   void stockOutExceedsStockThrowsException() {
-    assertThatThrownBy(() -> stockService.stockOut(testProduct.getId(), 999, "Over-stock test", testTenant1Id))
+    assertThatThrownBy(
+            () -> stockService.stockOut(testProduct.getId(), 999, "Over-stock test", testTenant1Id))
         .isInstanceOf(InsufficientStockException.class)
         .hasMessageContaining("Insufficient stock");
 

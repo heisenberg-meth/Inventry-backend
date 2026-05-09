@@ -21,40 +21,39 @@ import org.hibernate.type.SqlTypes;
 @Builder
 public class OutboxEvent {
 
-    @Id
-    private UUID id;
+  @Id private UUID id;
 
-    @Column(name = "tenant_id", nullable = false)
-    private Long tenantId;
+  @Column(name = "tenant_id", nullable = false)
+  private Long tenantId;
 
-    @Column(name = "aggregate_type", nullable = false)
-    private String aggregateType;
+  @Column(name = "aggregate_type", nullable = false)
+  private String aggregateType;
 
-    @Column(name = "aggregate_id", nullable = false)
-    private String aggregateId;
+  @Column(name = "aggregate_id", nullable = false)
+  private String aggregateId;
 
-    @Column(nullable = false)
-    private String type;
+  @Column(nullable = false)
+  private String type;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb", nullable = false)
-    private String payload;
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(columnDefinition = "jsonb", nullable = false)
+  private String payload;
 
-    @Column(length = 20)
-    @Builder.Default
-    private String status = "PENDING";
+  @Column(length = 20)
+  @Builder.Default
+  private String status = "PENDING";
 
-    @Column(name = "error_message")
-    private String errorMessage;
+  @Column(name = "error_message")
+  private String errorMessage;
 
-    @Column(name = "retry_count")
-    @Builder.Default
-    private Integer retryCount = 0;
+  @Column(name = "retry_count")
+  @Builder.Default
+  private Integer retryCount = 0;
 
-    @Column(name = "created_at")
-    @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now();
+  @Column(name = "created_at")
+  @Builder.Default
+  private LocalDateTime createdAt = LocalDateTime.now();
 
-    @Column(name = "processed_at")
-    private LocalDateTime processedAt;
+  @Column(name = "processed_at")
+  private LocalDateTime processedAt;
 }
