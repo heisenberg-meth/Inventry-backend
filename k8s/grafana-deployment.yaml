@@ -1,7 +1,20 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-pvc
+  namespace: inventry
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: grafana
+  namespace: inventry
 spec:
   replicas: 1
   selector:
@@ -14,24 +27,97 @@ spec:
     spec:
       containers:
         - name: grafana
-          image: grafana/grafana
+          image: grafana/grafana:11.0.0
           ports:
             - containerPort: 3000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 60
+            periodSeconds: 20
           env:
             - name: GF_SECURITY_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: ims-app-secret
                   key: grafana-admin-password
+            - name: GF_PATHS_DATA
+              value: /var/lib/grafana
+          volumeMounts:
+            - name: grafana-storage
+              mountPath: /var/lib/grafana
+        - name: grafana-sc-dashboard
+          image: kiwigrid/k8s-sidecar:1.25.2
+          env:
+            - name: METHOD
+              value: LIST
+            - name: LABEL
+              value: grafana_dashboard
+            - name: FOLDER
+              value: /tmp/dashboards
+            - name: RESOURCE
+              value: configmap
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          volumeMounts:
+            - name: sc-dashboard-volume
+              mountPath: /tmp/dashboards
+      volumes:
+        - name: grafana-storage
+          persistentVolumeClaim:
+            claimName: grafana-pvc
+        - name: sc-dashboard-volume
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: grafana-service
+  namespace: inventry
 spec:
   selector:
     app: grafana
   ports:
     - port: 3000
       targetPort: 3000
-  type: NodePort
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  namespace: inventry
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  rules:
+    - host: grafana.ims-inventory.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana-service
+                port:
+                  number: 3000

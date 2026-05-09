@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    access: proxy
+    url: http://prometheus-service.monitoring.svc.cluster.local:9090
+    isDefault: true
+    editable: false

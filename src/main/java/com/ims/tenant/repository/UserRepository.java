@@ -13,56 +13,56 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> findByEmail(String email);
+        Optional<User> findByEmail(String email);
 
-    Optional<User> findByIdAndTenantId(Long id, Long tenantId);
+        Optional<User> findByIdAndTenantId(Long id, Long tenantId);
 
-    @Query("SELECT u FROM User u LEFT JOIN FETCH u.customPermissions WHERE u.id = :id")
-    Optional<User> findByIdWithPermissions(@Param("id") Long id);
+        @Query("SELECT u FROM User u LEFT JOIN FETCH u.customPermissions WHERE u.id = :id")
+        Optional<User> findByIdWithPermissions(@Param("id") Long id);
 
-    @Query(value = "SELECT * FROM users WHERE email = :email", nativeQuery = true)
-    Optional<User> findByEmailUnfiltered(@Param("email") String email);
+        @Query(value = "SELECT * FROM users WHERE email = :email", nativeQuery = true)
+        Optional<User> findByEmailUnfiltered(@Param("email") String email);
 
-    @Query(value = "SELECT * FROM users WHERE id = :id", nativeQuery = true)
-    Optional<User> findByIdUnfiltered(@Param("id") Long id);
+        @Query(value = "SELECT * FROM users WHERE id = :id", nativeQuery = true)
+        Optional<User> findByIdUnfiltered(@Param("id") Long id);
 
-    // findById is inherited
+        // findById is inherited
 
-    Optional<User> findByIdAndTenantIdIsNull(Long id);
+        Optional<User> findByIdAndTenantIdIsNull(Long id);
 
-    Page<User> findByTenantIdIsNull(Pageable pageable);
+        Page<User> findByTenantIdIsNull(Pageable pageable);
 
-    @Query("SELECT COUNT(u) FROM User u WHERE u.isActive = true")
-    long countActive();
+        @Query("SELECT COUNT(u) FROM User u WHERE u.isActive = true")
+        long countActive();
 
-    @Query(value = "SELECT COUNT(*) FROM users WHERE tenant_id = :tenantId AND is_active = true", nativeQuery = true)
-    long countActiveByTenantId(@Param("tenantId") Long tenantId);
+        @Query(value = "SELECT COUNT(*) FROM users WHERE tenant_id = :tenantId AND is_active = true", nativeQuery = true)
+        long countActiveByTenantId(@Param("tenantId") Long tenantId);
 
-    boolean existsByEmail(String email);
+        boolean existsByEmail(String email);
 
-    @Query(value = "SELECT * FROM users WHERE reset_token = :token", nativeQuery = true)
-    Optional<User> findByResetToken(@Param("token") String token);
+        @Query(value = "SELECT * FROM users WHERE reset_token = :token", nativeQuery = true)
+        Optional<User> findByResetToken(@Param("token") String token);
 
-    @Query(value = "SELECT * FROM users WHERE tenant_id = :tenantId AND role = :role LIMIT 1", nativeQuery = true)
-    Optional<User> findFirstByTenantIdAndRole(@Param("tenantId") Long tenantId, @Param("role") String role);
+        @Query(value = "SELECT * FROM users WHERE tenant_id = :tenantId AND role = :role LIMIT 1", nativeQuery = true)
+        Optional<User> findFirstByTenantIdAndRole(@Param("tenantId") Long tenantId, @Param("role") String role);
 
-    @Query(value = "SELECT * FROM users WHERE tenant_id = :tenantId AND scope = 'TENANT'", nativeQuery = true)
-    Page<User> findByTenantIdAndScope(
-            @Param("tenantId") Long tenantId, Pageable pageable);
+        @Query(value = "SELECT * FROM users WHERE tenant_id = :tenantId AND scope = 'TENANT'", nativeQuery = true)
+        Page<User> findByTenantIdAndScope(
+                        @Param("tenantId") Long tenantId, Pageable pageable);
 
-    @Query(value = "SELECT * FROM users WHERE tenant_id = :tenantId AND scope = 'TENANT'"
-            + " AND (name ILIKE '%' || :search || '%' OR email ILIKE '%' || :search || '%')", nativeQuery = true)
-    Page<User> findByTenantIdAndSearch(
-            @Param("tenantId") Long tenantId,
-            @Param("search") String search,
-            Pageable pageable);
+        @Query(value = "SELECT * FROM users WHERE tenant_id = :tenantId AND scope = 'TENANT'"
+                        + " AND (name ILIKE '%' || :search || '%' OR email ILIKE '%' || :search || '%')", nativeQuery = true)
+        Page<User> findByTenantIdAndSearch(
+                        @Param("tenantId") Long tenantId,
+                        @Param("search") String search,
+                        Pageable pageable);
 
-    @org.springframework.data.jpa.repository.Modifying
-    @Query("UPDATE User u SET u.lastLogin = :lastLogin WHERE u.id = :id")
-    void updateLastLogin(@Param("id") Long id, @Param("lastLogin") java.time.LocalDateTime lastLogin);
+        @org.springframework.data.jpa.repository.Modifying
+        @Query("UPDATE User u SET u.lastLogin = :lastLogin WHERE u.id = :id")
+        void updateLastLogin(@Param("id") Long id, @Param("lastLogin") java.time.LocalDateTime lastLogin);
 
-    @Modifying
-    @Transactional
-    @Query(value = "UPDATE users SET is_verified = :status WHERE id = :id", nativeQuery = true)
-    void updateVerificationStatus(@Param("id") Long id, @Param("status") boolean status);
+        @Modifying
+        @Transactional
+        @Query(value = "UPDATE users SET is_verified = :status WHERE id = :id", nativeQuery = true)
+        void updateVerificationStatus(@Param("id") Long id, @Param("status") boolean status);
 }

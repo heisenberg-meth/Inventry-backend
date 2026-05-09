@@ -11,7 +11,7 @@ spec:
   - name: infra-alerts
     rules:
     - alert: HighCpuUsage
-      expr: rate(container_cpu_usage_seconds_total{pod=~"inventry-backend.*"}[5m]) > 0.8
+      expr: rate(container_cpu_usage_seconds_total{pod=~"inventry-backend.*", container!=""}[5m]) > 0.8
       for: 5m
       labels:
         severity: warning
@@ -19,7 +19,7 @@ spec:
         summary: "High CPU usage on {{ $labels.pod }}"
         description: "CPU usage above 80% for 5 minutes"
     - alert: HighMemoryUsage
-      expr: container_memory_usage_bytes{pod=~"inventry-backend.*"} / container_spec_memory_limit_bytes > 0.9
+      expr: (container_memory_usage_bytes{pod=~"inventry-backend.*", container!=""} / container_spec_memory_limit_bytes{pod=~"inventry-backend.*", container!=""}) > 0.9
       for: 5m
       labels:
         severity: warning
@@ -28,27 +28,27 @@ spec:
         description: "Memory usage above 90% for 5 minutes"
   - name: business-alerts
     rules:
-    - alert: TenantDataLeakDetected
-      expr: rate(ims_category_create_error[5m]) > 0.1
+    - alert: HighCategoryCreationFailureRate
+      expr: rate(ims_category_create_error[5m]) > 0.5
       for: 2m
       labels:
         severity: critical
       annotations:
-        summary: "Possible tenant data leak detected"
-        description: "High rate of category creation errors, possible tenant isolation failure"
+        summary: "High failure rate in category creation"
+        description: "Category creation is failing at a high rate (> 0.5/s), which may indicate database or service issues."
     - alert: AuthFailureSpike
-      expr: rate(http_server_requests_seconds_count{status="403"}[5m]) > 0.5
+      expr: sum(rate(http_server_requests_seconds_count{status="403", uri!~"/actuator/.*"}[5m])) > 10
       for: 2m
       labels:
         severity: critical
       annotations:
         summary: "Spike in 403 Forbidden errors"
-        description: "High rate of auth failures, possible brute force or misconfigured RBAC"
+        description: "Auth failures detected across non-actuator endpoints, possible brute force or misconfigured RBAC"
     - alert: CategoryServiceErrorRate
-      expr: rate(ims_category_create_error[5m]) / rate(ims_category_create_success[5m]) > 0.1
+      expr: sum(rate(ims_category_create_error[5m])) / sum(rate(ims_category_create_total[5m])) > 0.1
       for: 5m
       labels:
         severity: warning
       annotations:
         summary: "High category service error rate"
-        description: "Error rate for category operations above 10%"
+        description: "Error rate for category operations is above 10%"

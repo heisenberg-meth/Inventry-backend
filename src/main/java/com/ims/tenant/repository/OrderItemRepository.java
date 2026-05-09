@@ -18,5 +18,6 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
       "    SELECT 1 FROM Order o WHERE o.id = oi.orderId AND o.referenceOrderId = :originalOrderId " +
       "    AND o.type = 'RETURN'" +
       ")")
-  int sumReturnedQtyByTenantId(@Param("originalOrderId") Long originalOrderId, @Param("tenantId") Long tenantId, @Param("productId") Long productId);
+  int sumReturnedQtyByTenantId(@Param("originalOrderId") Long originalOrderId, @Param("tenantId") Long tenantId,
+      @Param("productId") Long productId);
 }

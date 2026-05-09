@@ -8,7 +8,6 @@ import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-
 import java.util.Objects;
 
 @Service
@@ -156,8 +155,7 @@ public class AuditLogService {
       tenantId = com.ims.shared.auth.TenantContext.getTenantId();
     }
 
-    String fullDetails = String.format("[%s:%s] %s", resource.name(), resourceId != null ? resourceId : "N/A", details);
-    log(action, tenantId, userId, fullDetails);
+    log(action, tenantId, userId, resource.name(), resourceId, null, null, details);
   }
 
   /**

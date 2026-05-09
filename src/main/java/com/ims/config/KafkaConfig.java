@@ -43,7 +43,7 @@ public class KafkaConfig {
     public NewTopic invoiceGenerateTopic() {
         return TopicBuilder.name("ims.invoice.generate").partitions(3).replicas(1).build();
     }
-    
+
     @Bean
     public NewTopic auditLogsTopic() {
         return TopicBuilder.name("ims.audit.logs").partitions(3).replicas(1).build();

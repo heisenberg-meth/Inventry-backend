@@ -13,10 +13,10 @@ public class LoginPage extends BasePage {
 
     public LoginPage(Page page) {
         super(page);
-        this.emailInput = page.locator("input[type='email']");
-        this.passwordInput = page.locator("input[type='password']");
-        this.companyCodeInput = page.locator("input[name='companyCode'], input[placeholder*='Company']");
-        this.loginButton = page.locator("button[type='submit'], button:has-text('Sign in')");
+        this.emailInput = page.getByTestId("login-email");
+        this.passwordInput = page.getByTestId("login-password");
+        this.companyCodeInput = page.getByTestId("login-company");
+        this.loginButton = page.getByTestId("login-submit");
     }
 
     @Override
@@ -24,12 +24,11 @@ public class LoginPage extends BasePage {
         return "/login";
     }
 
-    public DashboardPage loginAs(String email, String password, String companyCode) {
-        fill(emailInput, email);
-        fill(passwordInput, password);
-        fill(companyCodeInput, companyCode);
-        clickAndWaitForNav(loginButton);
-        return new DashboardPage(page);
+    public void login(String email, String password, String companyCode) {
+        emailInput.fill(email);
+        passwordInput.fill(password);
+        companyCodeInput.fill(companyCode);
+        loginButton.click();
     }
 
     public LoginPage loginExpectingError(String email, String password, String companyCode) {
@@ -42,6 +41,6 @@ public class LoginPage extends BasePage {
     }
 
     public Locator errorMessage() {
-        return page.locator(".error-message");
+        return page.getByTestId("login-error-message");
     }
 }

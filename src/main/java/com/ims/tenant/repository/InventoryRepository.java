@@ -19,7 +19,8 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("SELECT i FROM Inventory i WHERE i.productId = :productId AND i.tenantId = :tenantId")
-  Optional<Inventory> findByProductIdAndTenantIdWithLock(@Param("productId") Long productId, @Param("tenantId") Long tenantId);
+  Optional<Inventory> findByProductIdAndTenantIdWithLock(@Param("productId") Long productId,
+      @Param("tenantId") Long tenantId);
 
   @Query("SELECT i FROM Inventory i WHERE i.tenantId = :tenantId")
   Page<Inventory> findAllByTenantId(@Param("tenantId") Long tenantId, Pageable pageable);

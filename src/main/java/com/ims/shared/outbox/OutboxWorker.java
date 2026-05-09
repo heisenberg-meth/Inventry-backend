@@ -33,21 +33,21 @@ public class OutboxWorker {
             try {
                 String topic = "ims." + event.getAggregateType().toLowerCase() + "." + event.getType().toLowerCase();
                 kafkaProducerService.sendMessage(topic, event.getAggregateId(), event.getPayload());
-                
+
                 event.setStatus("SENT");
                 event.setProcessedAt(LocalDateTime.now());
             } catch (Exception e) {
                 int retries = event.getRetryCount() + 1;
                 event.setRetryCount(retries);
                 log.error("Failed to process outbox event: {} (Attempt {})", event.getId(), retries, e);
-                
+
                 if (retries >= 3) {
                     event.setStatus("FAILED");
                 }
                 event.setErrorMessage(e.getMessage());
             }
         }
-        
+
         outboxEventRepository.saveAll(events);
     }
 }

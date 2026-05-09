@@ -6,7 +6,6 @@ import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
@@ -28,7 +27,8 @@ public class CacheMetricsService {
     }
 
     public void recordLatency(String cacheName, long millis) {
-        latencyTimers.computeIfAbsent(cacheName, this::createLatencyTimer).record(millis, java.util.concurrent.TimeUnit.MILLISECONDS);
+        latencyTimers.computeIfAbsent(cacheName, this::createLatencyTimer).record(millis,
+                java.util.concurrent.TimeUnit.MILLISECONDS);
     }
 
     public double getHitRatio(String cacheName) {

@@ -8,9 +8,7 @@ import com.ims.product.ProductRepository;
 import com.ims.category.CategoryRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-
 import java.util.function.Supplier;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -291,8 +289,8 @@ public abstract class BaseIntegrationTest {
     } catch (Exception e) {
     }
     try {
-      // Use known BCrypt hash for "root123" to ensure test users can login
-      String passwordHash = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
+      // Use passwordEncoder to ensure the hash matches "root123"
+      String passwordHash = passwordEncoder.encode("root123");
       jdbcTemplate.execute(
           "INSERT INTO users (name, email, password_hash, role, scope, is_active, is_verified, is_platform_user, tenant_id, created_at, updated_at, version) VALUES ('Root Admin', 'root@test.com', '"
               + passwordHash + "', 'ROOT', 'PLATFORM', true, true, true, " + testTenant1Id + ", NOW(), NOW(), 0)");

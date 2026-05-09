@@ -74,8 +74,7 @@ public class PaymentService {
         "paymentId", payment.getId(),
         "invoiceId", invoiceId,
         "amount", amount,
-        "status", payment.getStatus()
-    ));
+        "status", payment.getStatus()));
 
     return Objects.requireNonNull(payment);
   }
@@ -84,7 +83,8 @@ public class PaymentService {
   public void updatePaymentStatus(String gatewayTransactionId, String status, String reference) {
     Long tenantId = TenantContext.getTenantId();
     Payment payment = paymentRepository.findByTenantIdAndGatewayTransactionId(tenantId, gatewayTransactionId)
-        .orElseThrow(() -> new ResourceNotFoundException("Payment not found for gateway transaction: " + gatewayTransactionId));
+        .orElseThrow(
+            () -> new ResourceNotFoundException("Payment not found for gateway transaction: " + gatewayTransactionId));
 
     if ("COMPLETED".equals(payment.getStatus())) {
       log.warn("Payment {} already COMPLETED, skipping", gatewayTransactionId);

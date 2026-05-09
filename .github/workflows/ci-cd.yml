@@ -60,13 +60,13 @@ jobs:
           name: coverage-report
           path: target/site/jacoco/
 
-       - name: Upload test results on failure
-         if: failure()
-         uses: actions/upload-artifact@v4
-         with:
-           name: surefire-reports
-           path: target/surefire-reports/
-           retention-days: 30
+      - name: Upload test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: target/surefire-reports/
+          retention-days: 30
 
   e2e:
     needs: test
@@ -104,11 +104,23 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build and start application
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm install
+
+      - name: Start frontend
+        working-directory: frontend
+        run: npm run dev -- --host 0.0.0.0 &
+
+      - name: Build and start backend
         run: |
-          mvn clean package
+          mvn clean package -DskipTests
           java -jar target/ims-backend-1.0.0-SNAPSHOT.jar --spring.profiles.active=test &
-          sleep 30
         env:
           JWT_SECRET: "ci-test-secret-at-least-32-characters-long!!"
           DB_URL: jdbc:postgresql://localhost:5432/ims_db
@@ -117,11 +129,27 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
 
+      - name: Wait for backend readiness
+        run: |
+          echo "Waiting for backend to be ready..."
+          until curl -f http://localhost:8080/actuator/health; do
+            sleep 5
+            echo "Retrying backend health check..."
+          done
+
+      - name: Wait for frontend readiness
+        run: |
+          echo "Waiting for frontend to be ready..."
+          until curl -f http://localhost:5173; do
+            sleep 5
+            echo "Retrying frontend health check..."
+          done
+
       - name: Install Playwright
         run: mvn exec:java -e -Dexec.mainClass=com.microsoft.playwright.CLI -Dexec.args="install --with-deps chromium"
 
       - name: Run E2E tests
-        run: mvn test -Dtest="com.ims.e2e.ui.*" -Dheadless=true
+        run: mvn test -Dtest="com.ims.e2e.ui.*" -Dheadless=true -DfrontendUrl=http://localhost:5173
         env:
           JWT_SECRET: "ci-test-secret-at-least-32-characters-long!!"
 

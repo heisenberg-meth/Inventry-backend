@@ -30,7 +30,8 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
   BigDecimal sumAmountByTenantIdAndInvoiceId(@Param("tenantId") Long tenantId, @Param("invoiceId") Long invoiceId);
 
   @Query("SELECT p FROM Payment p WHERE p.tenantId = :tenantId AND p.gatewayTransactionId = :gatewayTransactionId")
-  Optional<Payment> findByTenantIdAndGatewayTransactionId(@Param("tenantId") Long tenantId, @Param("gatewayTransactionId") String gatewayTransactionId);
+  Optional<Payment> findByTenantIdAndGatewayTransactionId(@Param("tenantId") Long tenantId,
+      @Param("gatewayTransactionId") String gatewayTransactionId);
 
   Optional<Payment> findByGatewayTransactionId(String gatewayTransactionId);
 

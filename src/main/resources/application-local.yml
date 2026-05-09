@@ -18,7 +18,7 @@ app:
     expiry-seconds: 86400
     refresh-expiry-seconds: 604800
   security:
-    allowed-origins: "http://localhost:3000,http://localhost:5173"
+    allowed-origins: "http://localhost:5173,https://inventory-management-frontend-r3amqhnaf.vercel.app/"
   rate-limit:
     auth-rpm: 20
     public-rpm: 50

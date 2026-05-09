@@ -11,7 +11,9 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@org.springframework.security.test.context.support.WithMockUser(username = "admin", authorities = {"ADMIN", "ROLE_ADMIN", "create_product", "view_product", "update_product", "delete_product", "create_order", "view_order", "create_supplier", "view_supplier", "delete_supplier", "manage_stock", "view_stock"})
+@org.springframework.security.test.context.support.WithMockUser(username = "admin", authorities = { "ADMIN",
+                "ROLE_ADMIN", "create_product", "view_product", "update_product", "delete_product", "create_order",
+                "view_order", "create_supplier", "view_supplier", "delete_supplier", "manage_stock", "view_stock" })
 public class ProcurementIntegrationTest extends BaseIntegrationTest {
 
         @Autowired
@@ -87,7 +89,8 @@ public class ProcurementIntegrationTest extends BaseIntegrationTest {
                                                                 .unitPrice(new BigDecimal("50.00"))
                                                                 .build()))
                                 .build();
-                com.ims.order.dto.OrderResponse orderResult = orderService.createPurchaseOrder(tenantId, orderReq, userId);
+                com.ims.order.dto.OrderResponse orderResult = orderService.createPurchaseOrder(tenantId, orderReq,
+                                userId);
                 Long orderId = orderResult.getId();
                 assertNotNull(orderId);
 

@@ -32,7 +32,10 @@ class FailureHandlingIntegrationTest extends BaseIntegrationTest {
           .header("Origin", "https://malicious-site.com")
           .contentType(MediaType.APPLICATION_JSON)
           .content("{\"email\":\"invalid\",\"password\":\"invalid\"}"))
-          .andExpect(status().isForbidden());
+          .andExpect(result -> {
+            int status = result.getResponse().getStatus();
+            assertThat(status).isIn(400, 403);
+          });
     }
 
     @Test

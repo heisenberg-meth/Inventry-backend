@@ -8,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.List;
 
 @Service
@@ -24,7 +23,7 @@ public class StockReconciliationService {
     @Transactional
     public void reconcileAllStock() {
         log.info("Starting daily stock reconciliation...");
-        
+
         var tenants = tenantRepository.findAll();
         for (var tenant : tenants) {
             com.ims.shared.auth.TenantContext.setTenantId(tenant.getId());
@@ -38,7 +37,7 @@ public class StockReconciliationService {
                 com.ims.shared.auth.TenantContext.clear();
             }
         }
-        
+
         log.info("Stock reconciliation completed.");
     }
 
@@ -51,7 +50,7 @@ public class StockReconciliationService {
         if (product.getStock() != calculatedStock) {
             log.error("Stock mismatch for product {} (ID: {}). DB Stock: {}, Calculated: {}",
                     product.getName(), product.getId(), product.getStock(), calculatedStock);
-            
+
             // In a real app, you might auto-adjust or flag for review
             // product.setStock(calculatedStock);
             // productRepository.save(product);

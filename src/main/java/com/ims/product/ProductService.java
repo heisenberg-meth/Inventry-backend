@@ -2,7 +2,6 @@ package com.ims.product;
 
 import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditResource;
-
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.response.ProductResponse;
 import com.ims.shared.auth.JwtAuthDetails;
@@ -14,7 +13,6 @@ import org.springframework.cache.annotation.CacheConfig;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.access.prepost.PreAuthorize;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;

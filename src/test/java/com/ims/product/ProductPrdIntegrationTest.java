@@ -10,7 +10,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 
-@org.springframework.security.test.context.support.WithMockUser(username = "admin", authorities = {"ADMIN", "ROLE_ADMIN", "create_product", "view_product", "update_product", "delete_product", "create_order", "view_order", "create_supplier", "view_supplier", "delete_supplier", "manage_stock", "view_stock"})
+@org.springframework.security.test.context.support.WithMockUser(username = "admin", authorities = { "ADMIN",
+                "ROLE_ADMIN", "create_product", "view_product", "update_product", "delete_product", "create_order",
+                "view_order", "create_supplier", "view_supplier", "delete_supplier", "manage_stock", "view_stock" })
 public class ProductPrdIntegrationTest extends BaseIntegrationTest {
 
         @Autowired

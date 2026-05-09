@@ -26,7 +26,7 @@ public class KafkaConsumers {
         try {
             Alert alert = objectMapper.readValue(message, Alert.class);
             log.info("Consumed low stock alert: {}", alert.getMessage());
-            
+
             TenantContext.setTenantId(alert.getTenantId());
             try {
                 // In a real app, this could send an email or push notification
@@ -35,8 +35,7 @@ public class KafkaConsumers {
                         "Low Stock Alert",
                         alert.getMessage(),
                         "LOW_STOCK",
-                        alert.getResourceId()
-                );
+                        alert.getResourceId());
             } finally {
                 TenantContext.clear();
             }
@@ -50,13 +49,13 @@ public class KafkaConsumers {
         try {
             Invoice invoice = objectMapper.readValue(message, Invoice.class);
             log.info("Consumed invoice generate: {}", invoice.getInvoiceNumber());
-            
+
             TenantContext.setTenantId(invoice.getTenantId());
             try {
                 // Async PDF generation simulation
                 byte[] pdf = invoiceService.generatePdf(invoice.getId());
                 log.info("PDF generated for invoice {}: {} bytes", invoice.getInvoiceNumber(), pdf.length);
-                
+
                 // In a real app, upload to S3/Cloud Storage here
             } finally {
                 TenantContext.clear();
@@ -71,7 +70,7 @@ public class KafkaConsumers {
         try {
             Order order = objectMapper.readValue(message, Order.class);
             log.info("Consumed order created: #{}", order.getId());
-            
+
             // Example: send confirmation email
         } catch (Exception e) {
             log.error("Error processing order created message", e);

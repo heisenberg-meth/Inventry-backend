@@ -90,9 +90,9 @@ public class InvoiceServiceUnitTest {
                 when(invoiceRepository.existsByTenantIdAndOrderId(1L, 1L)).thenReturn(false);
                 when(tenantRepository.findByIdWithLock(1L)).thenReturn(Optional.of(tenant));
                 when(invoiceRepository.save(any(Invoice.class))).thenAnswer(i -> {
-                    Invoice inv = i.getArgument(0);
-                    inv.setId(1L);
-                    return inv;
+                        Invoice inv = i.getArgument(0);
+                        inv.setId(1L);
+                        return inv;
                 });
 
                 CreateInvoiceRequest request = new CreateInvoiceRequest();

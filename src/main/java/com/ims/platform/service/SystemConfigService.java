@@ -45,7 +45,8 @@ public class SystemConfigService {
   }
 
   private String maskSensitive(String value) {
-    if (value == null || value.isBlank()) return "****";
+    if (value == null || value.isBlank())
+      return "****";
     return value.length() > 4 ? value.substring(0, 2) + "****" + value.substring(value.length() - 2) : "****";
   }
 

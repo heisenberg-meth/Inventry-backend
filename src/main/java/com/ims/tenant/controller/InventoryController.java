@@ -110,7 +110,8 @@ public class InventoryController {
       @RequestParam Long productId, @RequestParam Integer quantity,
       @RequestParam(required = false) String notes) {
     Long userId = extractUserId();
-    return ResponseEntity.ok(inventoryService.releaseReservation(TenantContext.getTenantId(), productId, quantity, notes, userId));
+    return ResponseEntity
+        .ok(inventoryService.releaseReservation(TenantContext.getTenantId(), productId, quantity, notes, userId));
   }
 
   @PostMapping("/fulfill")
@@ -120,7 +121,8 @@ public class InventoryController {
       @RequestParam Long productId, @RequestParam Integer quantity,
       @RequestParam(required = false) String notes) {
     Long userId = extractUserId();
-    return ResponseEntity.ok(inventoryService.fulfillReservation(TenantContext.getTenantId(), productId, quantity, notes, userId));
+    return ResponseEntity
+        .ok(inventoryService.fulfillReservation(TenantContext.getTenantId(), productId, quantity, notes, userId));
   }
 
   @PutMapping("/thresholds/{productId}")
@@ -130,7 +132,8 @@ public class InventoryController {
       @PathVariable Long productId,
       @RequestParam(required = false) Integer lowStockThreshold,
       @RequestParam(required = false) Integer reorderLevel) {
-    return ResponseEntity.ok(inventoryService.updateThresholds(TenantContext.getTenantId(), productId, lowStockThreshold, reorderLevel));
+    return ResponseEntity
+        .ok(inventoryService.updateThresholds(TenantContext.getTenantId(), productId, lowStockThreshold, reorderLevel));
   }
 
   private Long extractUserId() {

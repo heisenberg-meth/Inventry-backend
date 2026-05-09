@@ -50,7 +50,8 @@ public class AlertService {
     public void checkLowStock(Inventory inventory) {
         if (inventory.isLowStock() || inventory.isBelowReorderLevel()) {
             String severity = inventory.getQuantity() == 0 ? "CRITICAL" : "WARNING";
-            String message = String.format("Inventory for product ID %d is %s. Quantity: %d, Low threshold: %d, Reorder at: %d",
+            String message = String.format(
+                    "Inventory for product ID %d is %s. Quantity: %d, Low threshold: %d, Reorder at: %d",
                     inventory.getProductId(), severity, inventory.getQuantity(),
                     inventory.getLowStockThreshold() != null ? inventory.getLowStockThreshold() : 0,
                     inventory.getReorderLevel() != null ? inventory.getReorderLevel() : 0);

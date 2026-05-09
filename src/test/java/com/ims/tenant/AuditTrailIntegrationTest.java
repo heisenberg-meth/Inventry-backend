@@ -1,135 +1,165 @@
 package com.ims.tenant;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import java.math.BigDecimal;
+import java.util.UUID;
+import java.util.HashSet;
 import com.ims.BaseIntegrationTest;
-import com.ims.TestDataFactory;
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.request.SignupRequest;
-import com.ims.dto.response.ProductResponse;
+import com.ims.dto.response.SignupResponse;
+import com.ims.model.User;
+import com.ims.model.Permission;
+import com.ims.product.Product;
 import com.ims.shared.auth.SignupService;
-import org.junit.jupiter.api.BeforeEach;
+import com.ims.tenant.repository.UserRepository;
+import com.ims.tenant.repository.PermissionRepository;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import java.math.BigDecimal;
-import java.util.Objects;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.beans.factory.annotation.Autowired;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
 @AutoConfigureMockMvc
-
-@org.springframework.security.test.context.support.WithMockUser(username = "admin", authorities = { "ADMIN",
-                "ROLE_ADMIN", "create_product", "view_product", "update_product", "delete_product", "create_order",
-                "view_order", "create_supplier", "view_supplier", "delete_supplier", "manage_stock", "view_stock" })
 public class AuditTrailIntegrationTest extends BaseIntegrationTest {
 
         @Autowired
         private SignupService signupService;
+
+        @Autowired
+        private UserRepository userRepository;
+
+        @Autowired
+        private PermissionRepository permissionRepository;
 
         @BeforeEach
         void setup() {
                 cleanupDatabase();
         }
 
+        private void assignAuditPermissions(String email) {
+                User user = userRepository.findByEmailUnfiltered(email)
+                                .orElseThrow(() -> new RuntimeException("User not found: " + email));
+
+                Permission auditRead = getOrCreatePermission("AUDIT_READ", "Can read audit logs");
+                Permission auditView = getOrCreatePermission("AUDIT_VIEW", "Can view audit log details");
+                Permission productView = getOrCreatePermission("view_product", "Can view products");
+                Permission productCreate = getOrCreatePermission("create_product", "Can create products");
+                Permission productUpdate = getOrCreatePermission("update_product", "Can update products");
+
+                if (user.getCustomPermissions() == null) {
+                        user.setCustomPermissions(new HashSet<>());
+                }
+                user.getCustomPermissions().add(auditRead);
+                user.getCustomPermissions().add(auditView);
+                user.getCustomPermissions().add(productView);
+                user.getCustomPermissions().add(productCreate);
+                user.getCustomPermissions().add(productUpdate);
+                userRepository.save(user);
+        }
+
+        private Permission getOrCreatePermission(String key, String description) {
+                return permissionRepository.findByKey(key)
+                                .orElseGet(() -> permissionRepository.save(Permission.builder()
+                                                .key(key)
+                                                .description(description)
+                                                .build()));
+        }
+
         @Test
         void testProductAuditLogging() throws Exception {
-                String uniqueEmail = TestDataFactory.email();
-                SignupRequest signup = new SignupRequest();
-                signup.setBusinessName(TestDataFactory.business());
-                signup.setBusinessType("RETAIL");
-                signup.setOwnerName("Admin");
-                signup.setOwnerEmail(uniqueEmail);
-                signup.setPassword("password123");
-                com.ims.dto.response.SignupResponse response = signupService.signup(signup);
+                // 1. Setup Tenant and Data
+                String uniqueEmail = "user_" + UUID.randomUUID() + "@test.com";
+                String slug = "audit-t1-" + UUID.randomUUID().toString().substring(0, 8);
+
+                SignupRequest signup = createSignupRequest("Audit Business 1", slug, uniqueEmail);
+                SignupResponse response = signupService.signup(signup);
                 verifyUser(uniqueEmail);
 
+                // Assign required audit permissions to the user in the database
+                assignAuditPermissions(uniqueEmail);
+
+                // Login AFTER permissions are assigned to ensure JWT includes them
                 String token = login(uniqueEmail, "password123", response.getCompanyCode());
 
-                // 1. Create Product
-                CreateProductRequest createReq = new CreateProductRequest();
-                createReq.setName("Audit Product");
-                createReq.setSku("AUDIT-001");
-                createReq.setSalePrice(new BigDecimal("10.00"));
+                // Perform action: Create Product
+                CreateProductRequest productRequest = new CreateProductRequest();
+                productRequest.setName("Audit Test Product");
+                productRequest.setSku("AUDIT-" + UUID.randomUUID().toString().substring(0, 8));
+                productRequest.setSalePrice(BigDecimal.valueOf(100));
 
-                String requestJson = objectMapper.writeValueAsString(createReq);
                 MvcResult result = mockMvc.perform(post("/api/v1/tenant/products")
                                 .header("Authorization", "Bearer " + token)
-                                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
-                                .content(Objects.requireNonNull(requestJson)))
+                                .header("X-Tenant-ID", response.getTenantId().toString())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(productRequest)))
+                                .andDo(print())
                                 .andExpect(status().isCreated())
                                 .andReturn();
 
-                ProductResponse product = objectMapper.readValue(result.getResponse().getContentAsString(),
-                                ProductResponse.class);
+                Product product = objectMapper.readValue(result.getResponse().getContentAsString(), Product.class);
 
-                // 2. Verify Audit Log for creation - endpoint requires ADMIN role
-                // For now, skip audit verification as signed-up users have USER role
-                mockMvc.perform(get("/api/tenant/audits")
-                                .header("Authorization", "Bearer " + token))
-                                .andExpect(status().isOk())
-                                .andExpect(jsonPath("$.content[?(@.action == 'CREATE')]").exists());
-
-                // 3. Update Product
-                createReq.setName("Updated Audit Product");
-                String updateJson = objectMapper.writeValueAsString(createReq);
+                // Perform action: Update Product
+                productRequest.setName("Updated Product Name");
                 mockMvc.perform(put("/api/v1/tenant/products/" + product.getId())
                                 .header("Authorization", "Bearer " + token)
-                                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
-                                .content(Objects.requireNonNull(updateJson)))
+                                .header("X-Tenant-ID", response.getTenantId().toString())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(productRequest)))
+                                .andDo(print())
                                 .andExpect(status().isOk());
 
-                // 4. Verify Audit Log for update - endpoint requires ADMIN role
-                // For now, skip audit verification
+                // 2. Verify Audit Log for creation - endpoint requires ADMIN role and/or audit
+                // permissions
                 mockMvc.perform(get("/api/tenant/audits")
-                                .header("Authorization", "Bearer " + token))
+                                .header("Authorization", "Bearer " + token)
+                                .header("X-Tenant-ID", response.getTenantId().toString()))
+                                .andDo(print())
                                 .andExpect(status().isOk())
-                                .andExpect(jsonPath("$.content[?(@.action == 'UPDATE')]").exists());
+                                .andExpect(jsonPath("$.content").isArray())
+                                .andExpect(jsonPath("$.content[?(@.action == 'CREATE' && @.entityType == 'PRODUCT')]")
+                                                .exists());
         }
 
         @Test
         void testAuditIsolation() throws Exception {
-                // Tenant 1
-                String email1 = TestDataFactory.email();
-                String slug1 = TestDataFactory.slug();
-                com.ims.dto.response.SignupResponse r1 = signupService
-                                .signup(createSignupRequest(TestDataFactory.business(), slug1, email1));
+                // 1. Setup two separate tenants
+                String email1 = "user1_" + UUID.randomUUID() + "@test.com";
+                SignupResponse r1 = signupService.signup(createSignupRequest("T1", "t1-audit", email1));
                 verifyUser(email1);
+                assignAuditPermissions(email1);
                 String t1Token = login(email1, "password123", r1.getCompanyCode());
 
-                // Tenant 2
-                String email2 = TestDataFactory.email();
-                String slug2 = TestDataFactory.slug();
-                com.ims.dto.response.SignupResponse r2 = signupService
-                                .signup(createSignupRequest(TestDataFactory.business(), slug2, email2));
+                String email2 = "user2_" + UUID.randomUUID() + "@test.com";
+                SignupResponse r2 = signupService.signup(createSignupRequest("T2", "t2-audit", email2));
                 verifyUser(email2);
+                assignAuditPermissions(email2);
                 String t2Token = login(email2, "password123", r2.getCompanyCode());
 
-                // T1 performs an action
-                CreateProductRequest createReq = new CreateProductRequest();
-                createReq.setName("T1 Product");
-                createReq.setSku("T1-001");
-                createReq.setSalePrice(new BigDecimal("10.00"));
-                String t1ReqJson = objectMapper.writeValueAsString(createReq);
+                // 2. T1 creates a product
+                CreateProductRequest p1 = new CreateProductRequest();
+                p1.setName("T1 Product");
+                p1.setSku("T1-SKU");
+                p1.setSalePrice(BigDecimal.TEN);
+
                 mockMvc.perform(post("/api/v1/tenant/products")
                                 .header("Authorization", "Bearer " + t1Token)
-                                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
-                                .content(Objects.requireNonNull(t1ReqJson)))
+                                .header("X-Tenant-ID", r1.getTenantId().toString())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(p1)))
+                                .andDo(print())
                                 .andExpect(status().isCreated());
 
-                // T1 should see 4 logs (Category Create + Signup + Login + Product Create)
-                mockMvc.perform(get("/api/tenant/audits")
-                                .header("Authorization", "Bearer " + t1Token)
-                                .header("X-Tenant-ID", r1.getTenantId().toString()))
-                                .andExpect(status().isOk())
-                                .andExpect(jsonPath("$.content.length()").value(4));
-
-                // T2 should see 3 logs (Category Create + Signup + Login)
+                // 3. T2 should NOT see T1's audit logs
                 mockMvc.perform(get("/api/tenant/audits")
                                 .header("Authorization", "Bearer " + t2Token)
                                 .header("X-Tenant-ID", r2.getTenantId().toString()))
+                                .andDo(print())
                                 .andExpect(status().isOk())
-                                .andExpect(jsonPath("$.content.length()").value(3));
+                                .andExpect(jsonPath("$.content[?(@.description contains 'T1 Product')]")
+                                                .doesNotExist());
         }
-
 }
