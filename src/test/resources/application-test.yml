@@ -1,4 +1,21 @@
+management:
+  health:
+    defaults:
+      enabled: false
+    redis:
+      enabled: false
+    kafka:
+      enabled: false
+    mail:
+      enabled: false
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus,info
+
 spring:
+  kafka:
+    enabled: false
   datasource:
     url: jdbc:postgresql://localhost:5433/ims_db
     username: ims_user
@@ -18,10 +35,12 @@ spring:
     exclude:
       - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
       - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
   data:
     redis:
       repositories:
-        enabled: false
+        enabled: true
       password: changeme
   main:
     allow-bean-definition-overriding: true

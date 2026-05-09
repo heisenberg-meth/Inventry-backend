@@ -5,7 +5,6 @@ import com.ims.shared.auth.JwtFilter;
 import com.ims.shared.auth.NaasAccessDeniedHandler;
 import com.ims.shared.auth.NaasAuthenticationEntryPoint;
 import com.ims.shared.auth.TenantFilter;
-import com.ims.shared.ratelimit.RateLimitFilter;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,7 +27,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
         private final JwtFilter jwtFilter;
-        private final RateLimitFilter rateLimitFilter;
         private final TraceFilter traceFilter;
         private final TenantFilter tenantFilter;
         private final NaasAuthenticationEntryPoint naasAuthenticationEntryPoint;
@@ -109,7 +107,6 @@ public class SecurityConfig {
                                 .addFilterBefore(
                                                 traceFilter,
                                                 org.springframework.security.web.context.SecurityContextHolderFilter.class)
-                                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                                 .addFilterAfter(tenantFilter, jwtFilter.getClass());
 

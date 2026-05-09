@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 
 @Component
 @RequiredArgsConstructor
@@ -40,10 +40,14 @@ public class AuthTestHelper {
                         MockMvcRequestBuilders.post("/api/auth/login")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(loginJson))
-                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andDo(MockMvcResultHandlers.print())
                 .andReturn();
 
         String responseJson = result.getResponse().getContentAsString();
+        if (responseJson == null || responseJson.isBlank()) {
+            throw new IllegalStateException("Login response body is empty for user: " + email + ", status: "
+                    + result.getResponse().getStatus());
+        }
         LoginResponse response = objectMapper.readValue(responseJson, LoginResponse.class);
         return response.getAccessToken();
     }

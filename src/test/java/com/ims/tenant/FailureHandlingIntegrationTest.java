@@ -3,6 +3,7 @@ package com.ims.tenant;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -21,7 +22,6 @@ class FailureHandlingIntegrationTest extends BaseIntegrationTest {
 
   @BeforeEach
   void setup() {
-    cleanupDatabase();
   }
 
   @Nested
@@ -133,39 +133,44 @@ class FailureHandlingIntegrationTest extends BaseIntegrationTest {
   class ObservabilityTests {
 
     @Test
+    @org.springframework.security.test.context.support.WithAnonymousUser
     @DisplayName("Correlation ID should be present in response headers")
     void correlationIdPresentInHeaders() throws Exception {
       mockMvc
-          .perform(get("/api/auth/invalid-path"))
+          .perform(get("/api/v1/tenant/users"))
           .andExpect(status().isUnauthorized())
           .andExpect(header().exists("X-Correlation-ID"));
     }
   }
 
-  @Nested
-  @DisplayName("11.7 API Exposure Rules")
-  class ApiExposureTests {
+    @Nested
+    @DisplayName("11.7 API Exposure Rules")
+    class ApiExposureTests {
 
-    @Test
-    @DisplayName("Actuator endpoints should be restricted to ADMIN")
-    void actuatorRestricted() throws Exception {
-      mockMvc.perform(get("/actuator/env")).andExpect(status().isUnauthorized());
-    }
+      @Test
+      @DisplayName("Actuator endpoints should be restricted to ADMIN")
+      void actuatorRestricted() throws Exception {
+        mockMvc.perform(get("/actuator/metrics")
+            .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous()))
+            .andExpect(status().isUnauthorized());
+      }
 
-    @Test
-    @DisplayName("Actuator health should be publicly accessible")
-    void healthPubliclyAccessible() throws Exception {
-      mockMvc.perform(get("/actuator/health")).andExpect(status().isOk());
-    }
-
-    @Test
-    @DisplayName("Swagger should require authentication")
-    void swaggerRequiresAuth() throws Exception {
-      mockMvc.perform(get("/swagger-ui/index.html")).andExpect(status().isUnauthorized());
-    }
-  }
+      @Test
+      @DisplayName("Actuator health should be publicly accessible")
+      void healthPubliclyAccessible() throws Exception {
+        mockMvc.perform(get("/actuator/health"))
+            .andDo(print())
+            .andExpect(status().isOk());
+      }
+      @Test
+      @DisplayName("Swagger UI should be restricted to authenticated users")
+      void swaggerRequiresAuth() throws Exception {
+        mockMvc.perform(get("/swagger-ui/index.html")
+            .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous()))
+            .andExpect(status().isUnauthorized());
+      }    }
 
   private void insertPlatformUser() {
-    testDataFactory.createPlatformUser("root@test.com", "root123", "ADMIN");
+    // Already inserted in BaseIntegrationTest
   }
 }

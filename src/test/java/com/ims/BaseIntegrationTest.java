@@ -12,9 +12,10 @@ import com.ims.shared.audit.AuditLogRepository;
 import com.ims.helper.AuthTestHelper;
 import com.ims.helper.DatabaseCleanupHelper;
 import com.ims.helper.ProductTestHelper;
+import com.ims.helper.SecurityTestUtils;
 import com.ims.helper.TenantTestHelper;
 import com.ims.helper.TestDataFactory;
-import com.ims.helper.SecurityTestUtils;
+import com.ims.config.RedisStateCleaner;
 import com.ims.tenant.repository.CustomerRepository;
 import com.ims.tenant.repository.InventoryRepository;
 import com.ims.tenant.repository.InvoiceRepository;
@@ -31,9 +32,7 @@ import com.ims.tenant.repository.TransferOrderRepository;
 import com.ims.tenant.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-
 import java.util.function.Supplier;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +43,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.annotation.DirtiesContext;
@@ -56,11 +56,18 @@ import org.springframework.transaction.support.TransactionTemplate;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-@SpringBootTest(classes = ImsApplication.class, webEnvironment = SpringBootTest.WebEnvironment.MOCK)
+@SpringBootTest(classes = ImsApplication.class, webEnvironment = SpringBootTest.WebEnvironment.MOCK, properties = {
+    "spring.data.redis.repositories.enabled=false",
+    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration"
+})
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-@Import(BaseIntegrationTest.FlywayTestConfig.class)
+@Import({
+    BaseIntegrationTest.FlywayTestConfig.class,
+    com.ims.config.TestRedisConfig.class,
+    com.ims.config.TestCacheConfig.class
+})
 public abstract class BaseIntegrationTest {
 
   @TestConfiguration
@@ -208,6 +215,8 @@ public abstract class BaseIntegrationTest {
   protected ProductTestHelper productTestHelper;
   @Autowired
   protected TestDataFactory testDataFactory;
+  @Autowired
+  protected ApplicationContext applicationContext;
 
   protected String login(String email, String password, String companyCode) throws Exception {
     return authTestHelper.login(email, password, companyCode);
@@ -220,6 +229,8 @@ public abstract class BaseIntegrationTest {
 
   @BeforeEach
   void baseSetUp() {
+    applicationContext.getBeanProvider(RedisStateCleaner.class)
+        .ifAvailable(RedisStateCleaner::clear);
     cleanupDatabase();
 
     // Create fresh tenants for each test
@@ -232,6 +243,9 @@ public abstract class BaseIntegrationTest {
     // Create a fresh user for tenant 1
     var user = testDataFactory.createUser(tenant1);
     testUserId = user.getId();
+
+    // Create platform admin for platform-level tests
+    testDataFactory.createPlatformUser("root@test.com", "root123", "ROOT");
 
     // Initialize contexts for tenant 1 by default
     testDataFactory.initializeTenantContext(tenant1);

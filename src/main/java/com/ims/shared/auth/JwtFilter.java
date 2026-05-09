@@ -121,9 +121,7 @@ public class JwtFilter extends OncePerRequestFilter {
     } finally {
       TenantContext.clear();
       MDC.remove("tenantId");
-      // SecurityContext is typically cleared by the framework, but manual clearing is
-      // safer
-      // if we aren't using the standard SecurityContextPersistenceFilter correctly
+      SecurityContextHolder.clearContext();
     }
   }
 

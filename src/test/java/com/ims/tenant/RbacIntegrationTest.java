@@ -34,7 +34,6 @@ public class RbacIntegrationTest extends BaseIntegrationTest {
 
   @BeforeEach
   void setup() throws Exception {
-    cleanupDatabase();
 
     // 1. Signup a new tenant (owner is ADMIN)
     String uniqueEmail = TestDataFactory.email();

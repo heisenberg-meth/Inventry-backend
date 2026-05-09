@@ -51,7 +51,6 @@ class TransactionRollbackIntegrationTest extends BaseIntegrationTest {
 
   @BeforeEach
   void setup() {
-    cleanupDatabase();
     TenantContext.setTenantId(testTenant1Id);
   }
 

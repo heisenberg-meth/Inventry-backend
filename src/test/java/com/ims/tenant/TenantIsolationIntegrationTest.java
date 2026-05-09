@@ -52,7 +52,6 @@ class TenantIsolationIntegrationTest extends BaseIntegrationTest {
 
     @BeforeEach
     void setup() throws Exception {
-        cleanupDatabase();
 
         // Create fresh tenants and users using factory
         tenant1 = testDataFactory.createTenant();

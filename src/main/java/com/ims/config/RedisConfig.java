@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -16,10 +17,12 @@ import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 /**
- * Redis-specific configuration. Active in all profiles where Redis is available. The tenant-aware
+ * Redis-specific configuration. Active in all profiles where Redis is
+ * available. The tenant-aware
  * cache resolver is in CacheConfig (active in all profiles).
  */
 @Configuration
+@Profile("!test")
 public class RedisConfig {
 
   private static final int TTL_PRODUCTS_MINUTES = 15;

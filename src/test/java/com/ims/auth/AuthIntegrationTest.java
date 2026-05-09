@@ -5,36 +5,36 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.SignupRequest;
+import com.ims.dto.response.SignupResponse;
 import com.ims.shared.auth.SignupService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 
 @AutoConfigureMockMvc
 public class AuthIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired private SignupService signupService;
+  @Autowired
+  private SignupService signupService;
 
   @BeforeEach
   void setup() {
-    cleanupDatabase();
+    // Parent baseSetUp already calls cleanupDatabase()
   }
 
   @Test
   void testSecurityAndIsolationFlow() throws Exception {
     // 1. Signup Tenant 1
-    SignupRequest t1Signup =
-        createSignupRequest("Unique Business 1", "unique-t1-auth", "admin1@t1.com");
-    com.ims.dto.response.SignupResponse t1Response = signupService.signup(t1Signup);
+    SignupRequest t1Signup = createSignupRequest("Unique Business 1", "unique-t1-auth", "admin1@t1.com");
+    SignupResponse t1Response = signupService.signup(t1Signup);
 
     // 2. Signup Tenant 2
-    SignupRequest t2Signup =
-        createSignupRequest("Unique Business 2", "unique-t2-auth", "admin2@t2.com");
-    com.ims.dto.response.SignupResponse t2Response = signupService.signup(t2Signup);
+    SignupRequest t2Signup = createSignupRequest("Unique Business 2", "unique-t2-auth", "admin2@t2.com");
+    SignupResponse t2Response = signupService.signup(t2Signup);
 
     // 3. Verify users (simulating email verification)
     verifyUser("admin1@t1.com");
@@ -81,7 +81,8 @@ public class AuthIntegrationTest extends BaseIntegrationTest {
   @Test
   void testUnauthorizedAccess() throws Exception {
     mockMvc
-        .perform(get("/api/v1/tenant/users"))
+        .perform(get("/api/v1/tenant/users")
+            .with(SecurityMockMvcRequestPostProcessors.anonymous()))
         .andDo(print())
         .andExpect(status().isUnauthorized());
   }

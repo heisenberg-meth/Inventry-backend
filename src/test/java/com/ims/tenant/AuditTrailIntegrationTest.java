@@ -38,7 +38,6 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
 
   @BeforeEach
   void setup() {
-    cleanupDatabase();
   }
 
   private void assignAuditPermissions(String email) {

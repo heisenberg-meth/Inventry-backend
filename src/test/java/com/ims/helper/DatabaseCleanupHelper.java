@@ -8,42 +8,41 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class DatabaseCleanupHelper {
     private final JdbcTemplate jdbcTemplate;
-    private static final String[] TABLES = {
-            "order_items",
-            "orders",
-            "customers",
-            "suppliers",
-            "products",
-            "categories",
-            "users",
-            "tenants",
-            "roles",
-            "permissions",
-            "notifications",
-            "alerts",
-            "webhooks",
-            "audit_logs",
-            "payments",
-            "subscriptions",
-            "subscription_plans",
-            "support_attachments",
-            "support_messages",
-            "support_tickets",
-            "system_configs",
-            "stock_movements",
-            "inventory",
-            "transfer_orders",
-            "invoices"
-    };
 
     public void cleanup() {
         if (jdbcTemplate == null)
             return;
-        for (String table : TABLES) {
-            try {
-                jdbcTemplate.execute("DELETE FROM " + table + " WHERE 1=1");
-            } catch (Exception expected) {
+
+        String[] CASCADE_TABLES = {
+            "order_items", "orders", "customers", "suppliers", "products", "categories",
+            "users", "tenants", "roles", "permissions", "notifications", "alerts",
+            "webhooks", "payments", "subscriptions", "subscription_plans",
+            "support_attachments", "support_messages", "support_tickets",
+            "system_configs", "stock_movements", "inventory", "transfer_orders", "invoices"
+        };
+
+        try {
+            jdbcTemplate.execute("SET session_replication_role = 'replica';");
+        } catch (Exception e) {}
+
+        try {
+            for (String table : CASCADE_TABLES) {
+                jdbcTemplate.execute("TRUNCATE TABLE " + table + " CASCADE");
             }
+            jdbcTemplate.execute("TRUNCATE TABLE audit_logs CASCADE");
+        } catch (Exception e) {
+            for (String table : CASCADE_TABLES) {
+                try {
+                    jdbcTemplate.execute("DELETE FROM " + table);
+                } catch (Exception ignored) {}
+            }
+            try {
+                jdbcTemplate.execute("DELETE FROM audit_logs");
+            } catch (Exception ignored) {}
+        } finally {
+            try {
+                jdbcTemplate.execute("SET session_replication_role = 'origin';");
+            } catch (Exception e) {}
         }
     }
 }

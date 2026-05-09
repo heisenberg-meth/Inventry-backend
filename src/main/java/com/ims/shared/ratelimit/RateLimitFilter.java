@@ -9,28 +9,13 @@ import java.io.IOException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-/**
- * Sliding-window rate limiter backed by Redis (Valkey).
- *
- * <p>Three tiers are enforced:
- *
- * <ul>
- *   <li><b>Auth</b> — strict per-IP limit for {@code /auth/**} and {@code /api/auth/**} endpoints
- *       to mitigate credential stuffing and brute-force attacks.
- *   <li><b>Tenant</b> — generous per-tenant+IP limit for authenticated API traffic.
- *   <li><b>Public</b> — per-IP limit for any other unauthenticated traffic.
- * </ul>
- *
- * <p>Limits are configured via {@code app.rate-limit.*} properties in {@code application.yml}. If
- * Redis is unavailable the filter fails open (logs a warning and allows the request) so that a
- * cache outage does not take down the API.
- */
 @Component
-@org.springframework.core.annotation.Order(org.springframework.core.Ordered.HIGHEST_PRECEDENCE)
+@ConditionalOnProperty(value = "app.rate-limit.enabled", havingValue = "true", matchIfMissing = true)
 @Slf4j
 public class RateLimitFilter extends OncePerRequestFilter {
 

@@ -4,16 +4,26 @@ import com.ims.model.User;
 import com.ims.shared.auth.JwtAuthDetails;
 import com.ims.shared.auth.JwtAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import java.util.Collections;
 
 public class SecurityTestUtils {
 
     public static void setAuthenticatedUser(User user) {
+        java.util.List<org.springframework.security.core.GrantedAuthority> authorities = new java.util.ArrayList<>();
+        if (user.getRole() != null) {
+            authorities.add(
+                    new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + user.getRole()));
+            authorities.add(new org.springframework.security.core.authority.SimpleGrantedAuthority(user.getRole()));
+        }
+        if (user.getCustomPermissions() != null) {
+            user.getCustomPermissions().forEach(p -> authorities
+                    .add(new org.springframework.security.core.authority.SimpleGrantedAuthority(p.getKey())));
+        }
+
         JwtAuthenticationToken auth = new JwtAuthenticationToken(
                 user.getEmail(),
                 user.getId(),
                 user.getTenantId(),
-                Collections.emptyList());
+                authorities);
 
         JwtAuthDetails details = new JwtAuthDetails(
                 user.getId(),

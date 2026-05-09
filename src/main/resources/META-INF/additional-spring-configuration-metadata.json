@@ -88,5 +88,15 @@
     "name": "app.outbox.enabled",
     "type": "java.lang.String",
     "description": "A description for 'app.outbox.enabled'"
+  },
+  {
+    "name": "management.health.kafka.enabled",
+    "type": "java.lang.String",
+    "description": "A description for 'management.health.kafka.enabled'"
+  },
+  {
+    "name": "spring.kafka.enabled",
+    "type": "java.lang.String",
+    "description": "A description for 'spring.kafka.enabled'"
   }
 ]}

@@ -4,12 +4,15 @@ import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 
 @Service
+@ConditionalOnProperty(name = "spring.kafka.enabled", havingValue = "true", matchIfMissing = false)
 @Slf4j
 public class KafkaProducerService {
 
@@ -17,8 +20,9 @@ public class KafkaProducerService {
   private final Counter kafkaSendSuccessCounter;
   private final Counter kafkaSendFailureCounter;
 
+  @Autowired(required = false)
   public KafkaProducerService(
-      KafkaTemplate<String, String> kafkaTemplate, MeterRegistry meterRegistry) {
+          KafkaTemplate<String, String> kafkaTemplate, MeterRegistry meterRegistry) {
     this.kafkaTemplate = kafkaTemplate;
     this.kafkaSendSuccessCounter = Counter.builder("kafka.send.success").register(meterRegistry);
     this.kafkaSendFailureCounter = Counter.builder("kafka.send.failure").register(meterRegistry);

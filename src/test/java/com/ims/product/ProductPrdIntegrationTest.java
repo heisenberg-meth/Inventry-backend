@@ -34,7 +34,6 @@ public class ProductPrdIntegrationTest extends BaseIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    cleanupDatabase();
   }
 
   @Test

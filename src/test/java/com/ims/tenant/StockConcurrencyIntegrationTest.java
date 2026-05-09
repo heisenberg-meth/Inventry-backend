@@ -84,8 +84,7 @@ class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
               TenantContext.setTenantId(testTenant1Id);
               try {
                 stockService.stockOut(
-                    testProduct.getId(), requestQty, "Concurrent test", testTenant1Id);
-                successCount.incrementAndGet();
+                    testProduct.getId(), requestQty, "Concurrent test", testUserId);                successCount.incrementAndGet();
               } catch (InsufficientStockException e) {
                 failCount.incrementAndGet();
               } catch (Exception e) {
@@ -130,7 +129,7 @@ class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
     productRepository.save(testProduct);
 
     for (int i = 0; i < 3; i++) {
-      stockService.stockOut(testProduct.getId(), requestQty, "Sequential test", testTenant1Id);
+      stockService.stockOut(testProduct.getId(), requestQty, "Sequential test", testUserId);
     }
 
     Product after = productRepository.findById(testProduct.getId()).orElseThrow();
@@ -141,7 +140,7 @@ class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
   @DisplayName("StockOut exceeds available stock throws InsufficientStockException")
   void stockOutExceedsStockThrowsException() {
     assertThatThrownBy(
-            () -> stockService.stockOut(testProduct.getId(), 999, "Over-stock test", testTenant1Id))
+            () -> stockService.stockOut(testProduct.getId(), 999, "Over-stock test", testUserId))
         .isInstanceOf(InsufficientStockException.class)
         .hasMessageContaining("Insufficient stock");
 

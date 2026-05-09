@@ -57,7 +57,6 @@ public class ProcurementIntegrationTest extends BaseIntegrationTest {
             .build();
     tenant = tenantRepository.save(tenant);
     Long tenantId = tenant.getId();
-    TenantContext.setTenantId(tenantId);
 
     com.ims.model.User user =
         com.ims.model.User.builder()
@@ -65,10 +64,16 @@ public class ProcurementIntegrationTest extends BaseIntegrationTest {
             .email("test@example.com")
             .passwordHash("secret")
             .role("ADMIN")
+            .scope("TENANT")
             .tenantId(tenantId)
+            .isActive(true)
+            .isVerified(true)
             .build();
     user = userRepository.save(user);
     Long userId = user.getId();
+
+    com.ims.helper.SecurityTestUtils.setAuthenticatedUser(user);
+    TenantContext.setTenantId(tenantId);
 
     // 2. Create Supplier
     Supplier supplier =

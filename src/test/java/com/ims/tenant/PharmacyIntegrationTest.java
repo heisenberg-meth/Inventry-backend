@@ -43,7 +43,6 @@ public class PharmacyIntegrationTest extends BaseIntegrationTest {
 
   @BeforeEach
   void setup() {
-    cleanupDatabase();
   }
 
   @Test
