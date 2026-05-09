@@ -8,7 +8,6 @@ import com.ims.BaseIntegrationTest;
 import com.ims.helper.TestDataFactory;
 import com.ims.dto.request.SignupRequest;
 import com.ims.dto.response.SignupResponse;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -17,11 +16,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 public class ManagementIntegrationTest extends BaseIntegrationTest {
 
   @Autowired private com.ims.shared.auth.SignupService signupService;
-
-  @BeforeEach
-  void setup() {
-    cleanupDatabase();
-  }
 
   @Test
   void testPlatformAdminFlow() throws Exception {
