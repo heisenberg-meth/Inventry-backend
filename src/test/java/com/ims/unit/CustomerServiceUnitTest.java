@@ -1,10 +1,13 @@
 package com.ims.unit;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
-
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import com.ims.model.Customer;
 import com.ims.shared.auth.TenantContext;
 import com.ims.shared.exception.ResourceNotFoundException;
@@ -29,23 +32,26 @@ import org.springframework.data.domain.PageRequest;
 @ExtendWith(MockitoExtension.class)
 class CustomerServiceUnitTest {
 
-  @Mock private CustomerRepository customerRepository;
-  @Mock private OrderRepository orderRepository;
-  @Mock private InvoiceRepository invoiceRepository;
-  @Mock private PaymentRepository paymentRepository;
+  @Mock
+  private CustomerRepository customerRepository;
+  @Mock
+  private OrderRepository orderRepository;
+  @Mock
+  private InvoiceRepository invoiceRepository;
+  @Mock
+  private PaymentRepository paymentRepository;
   private MeterRegistry meterRegistry = new SimpleMeterRegistry();
 
   private CustomerService customerService;
 
   @BeforeEach
   void setUp() {
-    customerService =
-        new CustomerService(
-            customerRepository,
-            orderRepository,
-            invoiceRepository,
-            paymentRepository,
-            meterRegistry);
+    customerService = new CustomerService(
+        customerRepository,
+        orderRepository,
+        invoiceRepository,
+        paymentRepository,
+        meterRegistry);
     TenantContext.setTenantId(1L);
   }
 
@@ -107,8 +113,7 @@ class CustomerServiceUnitTest {
 
   @Test
   void update_withValidData_updatesCustomer() {
-    Customer existing =
-        Customer.builder().id(1L).name("Old Name").phone("0000000000").tenantId(1L).build();
+    Customer existing = Customer.builder().id(1L).name("Old Name").phone("0000000000").tenantId(1L).build();
 
     Customer updates = Customer.builder().name("New Name").phone("1234567890").build();
 

@@ -17,20 +17,15 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 
-/**
- * Cache configuration that works in all profiles (including test). Uses TenantAwareCacheWrapper to
- * provide tenant-isolation via key prefixing. For tests, use a simple CacheManager (like Caffeine
- * or ConcurrentMap).
- */
 @Configuration
 @EnableCaching
 public class CacheConfig {
 
-  private static final Set<String> PLATFORM_CACHE_NAMES =
-      Set.of("platform-subscriptions", "system-config");
+  private static final Set<String> PLATFORM_CACHE_NAMES = Set.of("platform-subscriptions", "system-config");
 
   /**
-   * Tenant-aware cache resolver that wraps caches with tenant key prefixing. Works with any
+   * Tenant-aware cache resolver that wraps caches with tenant key prefixing.
+   * Works with any
    * CacheManager implementation (Redis, Caffeine, etc.).
    */
   @Bean
@@ -47,7 +42,9 @@ public class CacheConfig {
             .map(
                 cacheName -> {
                   Cache cache = cacheManager.getCache(cacheName);
-                  if (cache == null) return null;
+                  if (cache == null) {
+                    return null;
+                  }
 
                   boolean isPlatformCache = PLATFORM_CACHE_NAMES.contains(cacheName);
                   Long cacheTenantId = isPlatformCache ? null : tenantId;

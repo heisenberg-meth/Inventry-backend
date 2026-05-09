@@ -55,32 +55,27 @@ public class ReportService {
     return DEFAULT_DAYS;
   }
 
-  @Cacheable(
-      value = "reports",
-      key = "T(com.ims.shared.auth.TenantContext).get() + ':purchases:' + #from + ':' + #to")
+  @Cacheable(value = "reports", key = "T(com.ims.shared.auth.TenantContext).get() + ':purchases:' + #from + ':' + #to")
   public Map<String, Object> getPurchasesReport(LocalDate from, LocalDate to) {
     LocalDateTime fromDt = Objects.requireNonNull(from).atStartOfDay();
     LocalDateTime toDt = Objects.requireNonNull(to).atTime(LocalTime.MAX);
 
     Long tenantId = TenantContext.requireTenantId();
-    BigDecimal totalSpent =
-        Objects.requireNonNull(
-            orderRepository.sumAmountByTenantIdAndTypeAndDateRange(
-                tenantId,
-                OrderType.PURCHASE,
-                Objects.requireNonNull(fromDt),
-                Objects.requireNonNull(toDt)));
-    long totalOrders =
-        orderRepository.countByTenantIdAndTypeAndDateRange(
+    BigDecimal totalSpent = Objects.requireNonNull(
+        orderRepository.sumAmountByTenantIdAndTypeAndDateRange(
             tenantId,
             OrderType.PURCHASE,
             Objects.requireNonNull(fromDt),
-            Objects.requireNonNull(toDt));
+            Objects.requireNonNull(toDt)));
+    long totalOrders = orderRepository.countByTenantIdAndTypeAndDateRange(
+        tenantId,
+        OrderType.PURCHASE,
+        Objects.requireNonNull(fromDt),
+        Objects.requireNonNull(toDt));
 
-    BigDecimal avgOrderValue =
-        totalOrders > 0
-            ? totalSpent.divide(BigDecimal.valueOf(totalOrders), 2, RoundingMode.HALF_UP)
-            : BigDecimal.ZERO;
+    BigDecimal avgOrderValue = totalOrders > 0
+        ? totalSpent.divide(BigDecimal.valueOf(totalOrders), 2, RoundingMode.HALF_UP)
+        : BigDecimal.ZERO;
 
     Map<String, Object> analytics = new LinkedHashMap<>();
     analytics.put("period", Map.of("from", from, "to", to));
@@ -102,26 +97,23 @@ public class ReportService {
     long lowStockCount = productRepository.countLowStock(tenantId);
     long outOfStockCount = productRepository.countOutOfStock(tenantId);
 
-    BigDecimal todaySalesAmount =
-        Objects.requireNonNull(
-            orderRepository.sumAmountByTenantIdAndTypeAndDateRange(
-                tenantId,
-                OrderType.SALE,
-                Objects.requireNonNull(todayStart),
-                Objects.requireNonNull(todayEnd)));
-    long todaySalesCount =
-        orderRepository.countByTenantIdAndTypeAndDateRange(
+    BigDecimal todaySalesAmount = Objects.requireNonNull(
+        orderRepository.sumAmountByTenantIdAndTypeAndDateRange(
             tenantId,
             OrderType.SALE,
             Objects.requireNonNull(todayStart),
-            Objects.requireNonNull(todayEnd));
-    BigDecimal todayPurchasesAmount =
-        Objects.requireNonNull(
-            orderRepository.sumAmountByTenantIdAndTypeAndDateRange(
-                tenantId,
-                OrderType.PURCHASE,
-                Objects.requireNonNull(todayStart),
-                Objects.requireNonNull(todayEnd)));
+            Objects.requireNonNull(todayEnd)));
+    long todaySalesCount = orderRepository.countByTenantIdAndTypeAndDateRange(
+        tenantId,
+        OrderType.SALE,
+        Objects.requireNonNull(todayStart),
+        Objects.requireNonNull(todayEnd));
+    BigDecimal todayPurchasesAmount = Objects.requireNonNull(
+        orderRepository.sumAmountByTenantIdAndTypeAndDateRange(
+            tenantId,
+            OrderType.PURCHASE,
+            Objects.requireNonNull(todayStart),
+            Objects.requireNonNull(todayEnd)));
 
     Map<String, Object> dashboard = new LinkedHashMap<>();
     dashboard.put("total_products", totalProducts);
@@ -153,33 +145,29 @@ public class ReportService {
         .getContent()
         .stream()
         .map(
-            p ->
-                p.getPurchasePrice() != null
-                    ? p.getPurchasePrice().multiply(BigDecimal.valueOf(p.getStock()))
-                    : BigDecimal.ZERO)
+            p -> p.getPurchasePrice() != null
+                ? p.getPurchasePrice().multiply(BigDecimal.valueOf(p.getStock()))
+                : BigDecimal.ZERO)
         .reduce(BigDecimal.ZERO, BigDecimal::add);
   }
 
   public List<Map<String, Object>> getCategoryDistribution() {
     Long tenantId = TenantContext.requireTenantId();
-    var products =
-        productRepository
-            .findByTenantIdAndIsDeletedFalse(tenantId, Pageable.unpaged())
-            .getContent();
+    var products = productRepository
+        .findByTenantIdAndIsDeletedFalse(tenantId, Pageable.unpaged())
+        .getContent();
 
     var categories = categoryRepository.findAll();
-    var categoryMap =
-        categories.stream()
-            .collect(
-                Collectors.toMap(
-                    com.ims.category.Category::getId, com.ims.category.Category::getName));
+    var categoryMap = categories.stream()
+        .collect(
+            Collectors.toMap(
+                com.ims.category.Category::getId, com.ims.category.Category::getName));
 
-    Map<Long, Long> distribution =
-        products.stream()
-            .filter(p -> p.getCategoryId() != null)
-            .collect(
-                Collectors.groupingBy(
-                    com.ims.product.Product::getCategoryId, Collectors.counting()));
+    Map<Long, Long> distribution = products.stream()
+        .filter(p -> p.getCategoryId() != null)
+        .collect(
+            Collectors.groupingBy(
+                com.ims.product.Product::getCategoryId, Collectors.counting()));
 
     return distribution.entrySet().stream()
         .map(
@@ -193,15 +181,12 @@ public class ReportService {
         .collect(Collectors.toList());
   }
 
-  @Cacheable(
-      value = "reports",
-      key = "T(com.ims.shared.auth.TenantContext).get() + ':stock-report'")
+  @Cacheable(value = "reports", key = "T(com.ims.shared.auth.TenantContext).get() + ':stock-report'")
   public List<Map<String, Object>> getStockReport(@Nullable String filter) {
     Long tenantId = TenantContext.requireTenantId();
-    var products =
-        Objects.requireNonNull(
-                productRepository.findByTenantIdAndIsDeletedFalse(tenantId, Pageable.unpaged()))
-            .getContent();
+    var products = Objects.requireNonNull(
+        productRepository.findByTenantIdAndIsDeletedFalse(tenantId, Pageable.unpaged()))
+        .getContent();
 
     List<Map<String, Object>> report = new ArrayList<>();
     int thresholdDays = getExpiryThreshold();
@@ -263,29 +248,24 @@ public class ReportService {
     return report;
   }
 
-  @Cacheable(
-      value = "reports",
-      key = "T(com.ims.shared.auth.TenantContext).get() + ':sales:' + #from + ':' + #to")
+  @Cacheable(value = "reports", key = "T(com.ims.shared.auth.TenantContext).get() + ':sales:' + #from + ':' + #to")
   public Map<String, Object> getSalesAnalytics(LocalDate from, LocalDate to) {
     LocalDateTime fromDt = Objects.requireNonNull(from).atStartOfDay();
     LocalDateTime toDt = Objects.requireNonNull(to).atTime(LocalTime.MAX);
 
     Long tenantId = TenantContext.requireTenantId();
-    BigDecimal totalRevenue =
-        Objects.requireNonNull(
-            orderRepository.sumAmountByTenantIdAndTypeAndDateRange(
-                tenantId,
-                OrderType.SALE,
-                Objects.requireNonNull(fromDt),
-                Objects.requireNonNull(toDt)));
-    long totalOrders =
-        orderRepository.countByTenantIdAndTypeAndDateRange(
-            tenantId, OrderType.SALE, Objects.requireNonNull(fromDt), Objects.requireNonNull(toDt));
+    BigDecimal totalRevenue = Objects.requireNonNull(
+        orderRepository.sumAmountByTenantIdAndTypeAndDateRange(
+            tenantId,
+            OrderType.SALE,
+            Objects.requireNonNull(fromDt),
+            Objects.requireNonNull(toDt)));
+    long totalOrders = orderRepository.countByTenantIdAndTypeAndDateRange(
+        tenantId, OrderType.SALE, Objects.requireNonNull(fromDt), Objects.requireNonNull(toDt));
 
-    BigDecimal avgOrderValue =
-        totalOrders > 0
-            ? totalRevenue.divide(BigDecimal.valueOf(totalOrders), 2, RoundingMode.HALF_UP)
-            : BigDecimal.ZERO;
+    BigDecimal avgOrderValue = totalOrders > 0
+        ? totalRevenue.divide(BigDecimal.valueOf(totalOrders), 2, RoundingMode.HALF_UP)
+        : BigDecimal.ZERO;
 
     Map<String, Object> analytics = new LinkedHashMap<>();
     analytics.put("period", Map.of("from", from, "to", to));
@@ -302,20 +282,18 @@ public class ReportService {
     LocalDateTime toDt = Objects.requireNonNull(to).atTime(LocalTime.MAX);
 
     Long tenantId = TenantContext.requireTenantId();
-    BigDecimal salesRevenue =
-        Objects.requireNonNull(
-            orderRepository.sumAmountByTenantIdAndTypeAndDateRange(
-                tenantId,
-                OrderType.SALE,
-                Objects.requireNonNull(fromDt),
-                Objects.requireNonNull(toDt)));
-    BigDecimal purchaseCost =
-        Objects.requireNonNull(
-            orderRepository.sumAmountByTenantIdAndTypeAndDateRange(
-                tenantId,
-                OrderType.PURCHASE,
-                Objects.requireNonNull(fromDt),
-                Objects.requireNonNull(toDt)));
+    BigDecimal salesRevenue = Objects.requireNonNull(
+        orderRepository.sumAmountByTenantIdAndTypeAndDateRange(
+            tenantId,
+            OrderType.SALE,
+            Objects.requireNonNull(fromDt),
+            Objects.requireNonNull(toDt)));
+    BigDecimal purchaseCost = Objects.requireNonNull(
+        orderRepository.sumAmountByTenantIdAndTypeAndDateRange(
+            tenantId,
+            OrderType.PURCHASE,
+            Objects.requireNonNull(fromDt),
+            Objects.requireNonNull(toDt)));
 
     BigDecimal profit = salesRevenue.subtract(purchaseCost);
 
@@ -340,12 +318,10 @@ public class ReportService {
     LocalDateTime toDt = to.atTime(LocalTime.MAX);
 
     Long tenantId = TenantContext.requireTenantId();
-    BigDecimal totalSalesTax =
-        orderRepository.sumTaxAmountByTenantIdAndTypeAndDateRange(
-            tenantId, OrderType.SALE, fromDt, toDt);
-    BigDecimal totalPurchaseTax =
-        orderRepository.sumTaxAmountByTenantIdAndTypeAndDateRange(
-            tenantId, OrderType.PURCHASE, fromDt, toDt);
+    BigDecimal totalSalesTax = orderRepository.sumTaxAmountByTenantIdAndTypeAndDateRange(
+        tenantId, OrderType.SALE, fromDt, toDt);
+    BigDecimal totalPurchaseTax = orderRepository.sumTaxAmountByTenantIdAndTypeAndDateRange(
+        tenantId, OrderType.PURCHASE, fromDt, toDt);
 
     Map<String, Object> gst = new LinkedHashMap<>();
     gst.put("period", Map.of("from", from, "to", to));
@@ -387,7 +363,9 @@ public class ReportService {
   }
 
   private int statusPriority(@Nullable String status) {
-    if (status == null) return STATUS_PRIORITY_OK;
+    if (status == null) {
+      return STATUS_PRIORITY_OK;
+    }
     return switch (status) {
       case "OUT_OF_STOCK" -> 0;
       case "LOW" -> 1;

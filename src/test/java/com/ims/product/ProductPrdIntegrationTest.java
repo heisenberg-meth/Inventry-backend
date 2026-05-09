@@ -1,9 +1,10 @@
 package com.ims.product;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 import com.ims.BaseIntegrationTest;
 import com.ims.shared.auth.TenantContext;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,26 +12,25 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 
-@org.springframework.security.test.context.support.WithMockUser(
-    username = "admin",
-    authorities = {
-      "ADMIN",
-      "ROLE_ADMIN",
-      "create_product",
-      "view_product",
-      "update_product",
-      "delete_product",
-      "create_order",
-      "view_order",
-      "create_supplier",
-      "view_supplier",
-      "delete_supplier",
-      "manage_stock",
-      "view_stock"
-    })
+@org.springframework.security.test.context.support.WithMockUser(username = "admin", authorities = {
+    "ADMIN",
+    "ROLE_ADMIN",
+    "create_product",
+    "view_product",
+    "update_product",
+    "delete_product",
+    "create_order",
+    "view_order",
+    "create_supplier",
+    "view_supplier",
+    "delete_supplier",
+    "manage_stock",
+    "view_stock"
+})
 public class ProductPrdIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired private ProductRepository productRepository;
+  @Autowired
+  private ProductRepository productRepository;
 
   @BeforeEach
   void setUp() {
@@ -42,38 +42,35 @@ public class ProductPrdIntegrationTest extends BaseIntegrationTest {
     Long tenantId = 1L;
     TenantContext.setTenantId(tenantId);
 
-    Product p1 =
-        Product.builder()
-            .tenantId(tenantId)
-            .name("Product 1")
-            .sku("SKU-001")
-            .salePrice(BigDecimal.TEN)
-            .isDeleted(false)
-            .build();
+    Product p1 = Product.builder()
+        .tenantId(tenantId)
+        .name("Product 1")
+        .sku("SKU-001")
+        .salePrice(BigDecimal.TEN)
+        .isDeleted(false)
+        .build();
     productRepository.save(p1);
 
     // Same SKU, same tenant -> FAIL
-    Product p2 =
-        Product.builder()
-            .tenantId(tenantId)
-            .name("Product 2")
-            .sku("SKU-001")
-            .salePrice(BigDecimal.ONE)
-            .isDeleted(false)
-            .build();
+    Product p2 = Product.builder()
+        .tenantId(tenantId)
+        .name("Product 2")
+        .sku("SKU-001")
+        .salePrice(BigDecimal.ONE)
+        .isDeleted(false)
+        .build();
     assertThrows(DataIntegrityViolationException.class, () -> productRepository.save(p2));
 
     // Same SKU, different tenant -> PASS
     Long tenant2Id = 2L;
     TenantContext.setTenantId(tenant2Id);
-    Product p3 =
-        Product.builder()
-            .tenantId(tenant2Id)
-            .name("Product 3")
-            .sku("SKU-001")
-            .salePrice(BigDecimal.ONE)
-            .isDeleted(false)
-            .build();
+    Product p3 = Product.builder()
+        .tenantId(tenant2Id)
+        .name("Product 3")
+        .sku("SKU-001")
+        .salePrice(BigDecimal.ONE)
+        .isDeleted(false)
+        .build();
     assertDoesNotThrow(() -> productRepository.save(p3));
   }
 
@@ -82,14 +79,13 @@ public class ProductPrdIntegrationTest extends BaseIntegrationTest {
     Long tenantId = 1L;
     TenantContext.setTenantId(tenantId);
 
-    Product p1 =
-        Product.builder()
-            .tenantId(tenantId)
-            .name("Product 1")
-            .sku("SKU-001")
-            .salePrice(BigDecimal.TEN)
-            .isDeleted(false)
-            .build();
+    Product p1 = Product.builder()
+        .tenantId(tenantId)
+        .name("Product 1")
+        .sku("SKU-001")
+        .salePrice(BigDecimal.TEN)
+        .isDeleted(false)
+        .build();
     productRepository.save(p1);
 
     // Soft delete
@@ -97,14 +93,13 @@ public class ProductPrdIntegrationTest extends BaseIntegrationTest {
     productRepository.save(p1);
 
     // Reuse SKU -> PASS
-    Product p2 =
-        Product.builder()
-            .tenantId(tenantId)
-            .name("Product 2")
-            .sku("SKU-001")
-            .salePrice(BigDecimal.ONE)
-            .isDeleted(false)
-            .build();
+    Product p2 = Product.builder()
+        .tenantId(tenantId)
+        .name("Product 2")
+        .sku("SKU-001")
+        .salePrice(BigDecimal.ONE)
+        .isDeleted(false)
+        .build();
     assertDoesNotThrow(() -> productRepository.save(p2));
   }
 
@@ -113,24 +108,22 @@ public class ProductPrdIntegrationTest extends BaseIntegrationTest {
     Long tenantId = 1L;
     TenantContext.setTenantId(tenantId);
 
-    Product p1 =
-        Product.builder()
-            .tenantId(tenantId)
-            .name("Active Product")
-            .sku("SKU-ACT")
-            .salePrice(BigDecimal.TEN)
-            .isDeleted(false)
-            .build();
+    Product p1 = Product.builder()
+        .tenantId(tenantId)
+        .name("Active Product")
+        .sku("SKU-ACT")
+        .salePrice(BigDecimal.TEN)
+        .isDeleted(false)
+        .build();
     productRepository.save(p1);
 
-    Product p2 =
-        Product.builder()
-            .tenantId(tenantId)
-            .name("Deleted Product")
-            .sku("SKU-DEL")
-            .salePrice(BigDecimal.TEN)
-            .isDeleted(true)
-            .build();
+    Product p2 = Product.builder()
+        .tenantId(tenantId)
+        .name("Deleted Product")
+        .sku("SKU-DEL")
+        .salePrice(BigDecimal.TEN)
+        .isDeleted(true)
+        .build();
     productRepository.save(p2);
 
     var activeProducts = productRepository.findAllWithDetails(tenantId, PageRequest.of(0, 10));
@@ -145,26 +138,24 @@ public class ProductPrdIntegrationTest extends BaseIntegrationTest {
     TenantContext.setTenantId(tenantId);
 
     // Negative price -> FAIL (Bean Validation or DB)
-    Product p1 =
-        Product.builder()
-            .tenantId(tenantId)
-            .name("Bad Price")
-            .sku("SKU-BAD-P")
-            .salePrice(new BigDecimal("-1.0"))
-            .isDeleted(false)
-            .build();
+    Product p1 = Product.builder()
+        .tenantId(tenantId)
+        .name("Bad Price")
+        .sku("SKU-BAD-P")
+        .salePrice(new BigDecimal("-1.0"))
+        .isDeleted(false)
+        .build();
     assertThrows(Exception.class, () -> productRepository.save(p1));
 
     // Negative stock -> FAIL (Bean Validation or DB)
-    Product p2 =
-        Product.builder()
-            .tenantId(tenantId)
-            .name("Bad Stock")
-            .sku("SKU-BAD-S")
-            .salePrice(BigDecimal.TEN)
-            .stock(-5)
-            .isDeleted(false)
-            .build();
+    Product p2 = Product.builder()
+        .tenantId(tenantId)
+        .name("Bad Stock")
+        .sku("SKU-BAD-S")
+        .salePrice(BigDecimal.TEN)
+        .stock(-5)
+        .isDeleted(false)
+        .build();
     assertThrows(Exception.class, () -> productRepository.save(p2));
   }
 
@@ -173,26 +164,24 @@ public class ProductPrdIntegrationTest extends BaseIntegrationTest {
     Long tenantId = 1L;
     TenantContext.setTenantId(tenantId);
 
-    Product p1 =
-        Product.builder()
-            .tenantId(tenantId)
-            .name("Special Laptop")
-            .description("High-end gaming laptop")
-            .sku("LAP-001")
-            .salePrice(new BigDecimal("1500.00"))
-            .isDeleted(false)
-            .build();
+    Product p1 = Product.builder()
+        .tenantId(tenantId)
+        .name("Special Laptop")
+        .description("High-end gaming laptop")
+        .sku("LAP-001")
+        .salePrice(new BigDecimal("1500.00"))
+        .isDeleted(false)
+        .build();
     productRepository.save(p1);
 
-    Product p2 =
-        Product.builder()
-            .tenantId(tenantId)
-            .name("Mouse")
-            .description("Wireless mouse")
-            .sku("MOU-001")
-            .salePrice(new BigDecimal("50.00"))
-            .isDeleted(false)
-            .build();
+    Product p2 = Product.builder()
+        .tenantId(tenantId)
+        .name("Mouse")
+        .description("Wireless mouse")
+        .sku("MOU-001")
+        .salePrice(new BigDecimal("50.00"))
+        .isDeleted(false)
+        .build();
     productRepository.save(p2);
 
     var results = productRepository.searchFast(1L, "laptop", PageRequest.of(0, 10));
@@ -210,37 +199,33 @@ public class ProductPrdIntegrationTest extends BaseIntegrationTest {
     Long tenantB = 2L;
 
     TenantContext.setTenantId(tenantA);
-    Product productA =
-        Product.builder()
-            .tenantId(tenantA)
-            .name("Tenant A Product")
-            .sku("A-001")
-            .salePrice(BigDecimal.TEN)
-            .isDeleted(false)
-            .build();
+    Product productA = Product.builder()
+        .tenantId(tenantA)
+        .name("Tenant A Product")
+        .sku("A-001")
+        .salePrice(BigDecimal.TEN)
+        .isDeleted(false)
+        .build();
     productRepository.save(productA);
 
     TenantContext.setTenantId(tenantB);
-    Product productB =
-        Product.builder()
-            .tenantId(tenantB)
-            .name("Tenant B Product")
-            .sku("B-001")
-            .salePrice(BigDecimal.TEN)
-            .isDeleted(false)
-            .build();
+    Product productB = Product.builder()
+        .tenantId(tenantB)
+        .name("Tenant B Product")
+        .sku("B-001")
+        .salePrice(BigDecimal.TEN)
+        .isDeleted(false)
+        .build();
     productRepository.save(productB);
 
     TenantContext.setTenantId(tenantA);
-    var tenantAProducts =
-        productRepository.findByTenantIdAndIsDeletedFalse(tenantA, PageRequest.of(0, 10));
+    var tenantAProducts = productRepository.findByTenantIdAndIsDeletedFalse(tenantA, PageRequest.of(0, 10));
 
     assertEquals(1, tenantAProducts.getContent().size());
     assertEquals("Tenant A Product", tenantAProducts.getContent().get(0).getName());
 
     TenantContext.setTenantId(tenantB);
-    var tenantBProducts =
-        productRepository.findByTenantIdAndIsDeletedFalse(tenantB, PageRequest.of(0, 10));
+    var tenantBProducts = productRepository.findByTenantIdAndIsDeletedFalse(tenantB, PageRequest.of(0, 10));
 
     assertEquals(1, tenantBProducts.getContent().size());
     assertEquals("Tenant B Product", tenantBProducts.getContent().get(0).getName());
@@ -251,14 +236,13 @@ public class ProductPrdIntegrationTest extends BaseIntegrationTest {
     Long tenantId = 1L;
     TenantContext.setTenantId(tenantId);
 
-    Product product =
-        Product.builder()
-            .tenantId(tenantId)
-            .name("Versioned Product")
-            .sku("VER-001")
-            .salePrice(BigDecimal.TEN)
-            .isDeleted(false)
-            .build();
+    Product product = Product.builder()
+        .tenantId(tenantId)
+        .name("Versioned Product")
+        .sku("VER-001")
+        .salePrice(BigDecimal.TEN)
+        .isDeleted(false)
+        .build();
     product = productRepository.save(product);
 
     Product staleCopy = productRepository.findById(product.getId()).orElseThrow();
@@ -279,15 +263,14 @@ public class ProductPrdIntegrationTest extends BaseIntegrationTest {
     Long tenantId = 1L;
     TenantContext.setTenantId(tenantId);
 
-    Product p =
-        Product.builder()
-            .tenantId(tenantId)
-            .name("Bad Reorder")
-            .sku("REORD-BAD")
-            .salePrice(BigDecimal.TEN)
-            .reorderLevel(-1)
-            .isDeleted(false)
-            .build();
+    Product p = Product.builder()
+        .tenantId(tenantId)
+        .name("Bad Reorder")
+        .sku("REORD-BAD")
+        .salePrice(BigDecimal.TEN)
+        .reorderLevel(-1)
+        .isDeleted(false)
+        .build();
     assertThrows(Exception.class, () -> productRepository.save(p));
   }
 }

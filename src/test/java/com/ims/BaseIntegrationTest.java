@@ -2,11 +2,27 @@ package com.ims;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.category.CategoryRepository;
-import com.ims.platform.repository.*;
+import com.ims.platform.repository.SubscriptionPlanRepository;
+import com.ims.platform.repository.SubscriptionRepository;
+import com.ims.platform.repository.SystemConfigRepository;
+import com.ims.platform.repository.TenantRepository;
 import com.ims.product.ProductRepository;
 import com.ims.shared.audit.AuditLogRepository;
 import com.ims.shared.auth.TenantContext;
-import com.ims.tenant.repository.*;
+import com.ims.tenant.repository.CustomerRepository;
+import com.ims.tenant.repository.InventoryRepository;
+import com.ims.tenant.repository.InvoiceRepository;
+import com.ims.tenant.repository.OrderItemRepository;
+import com.ims.tenant.repository.OrderRepository;
+import com.ims.tenant.repository.PaymentRepository;
+import com.ims.tenant.repository.RoleRepository;
+import com.ims.tenant.repository.StockMovementRepository;
+import com.ims.tenant.repository.SupplierRepository;
+import com.ims.tenant.repository.SupportAttachmentRepository;
+import com.ims.tenant.repository.SupportMessageRepository;
+import com.ims.tenant.repository.SupportTicketRepository;
+import com.ims.tenant.repository.TransferOrderRepository;
+import com.ims.tenant.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.util.function.Supplier;
@@ -31,9 +47,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-@SpringBootTest(
-    classes = com.ims.ImsApplication.class,
-    webEnvironment = SpringBootTest.WebEnvironment.MOCK)
+@SpringBootTest(classes = com.ims.ImsApplication.class, webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
@@ -84,8 +98,7 @@ public abstract class BaseIntegrationTest {
         registry.add("spring.datasource.password", () -> "changeme");
       }
     } else {
-      final String jdbcUrl =
-          String.format("jdbc:postgresql://%s:%d/ims_db", postgresHost, postgresPort);
+      final String jdbcUrl = String.format("jdbc:postgresql://%s:%d/ims_db", postgresHost, postgresPort);
       registry.add("spring.datasource.url", () -> jdbcUrl);
       registry.add("spring.datasource.username", () -> "ims_user");
       registry.add("spring.datasource.password", () -> "changeme");
@@ -132,44 +145,74 @@ public abstract class BaseIntegrationTest {
     }
   }
 
-  @Autowired protected TenantRepository tenantRepository;
-  @Autowired protected UserRepository userRepository;
-  @Autowired protected RoleRepository roleRepository;
-  @Autowired protected CustomerRepository customerRepository;
-  @Autowired protected SupplierRepository supplierRepository;
-  @Autowired protected ProductRepository productRepository;
-  @Autowired protected CategoryRepository categoryRepository;
-  @Autowired protected OrderRepository orderRepository;
-  @Autowired protected OrderItemRepository orderItemRepository;
-  @Autowired protected InventoryRepository inventoryRepository;
-  @Autowired protected StockMovementRepository stockMovementRepository;
-  @Autowired protected InvoiceRepository invoiceRepository;
-  @Autowired protected AuditLogRepository auditLogRepository;
-  @Autowired protected PaymentRepository paymentRepository;
-  @Autowired protected TransferOrderRepository transferOrderRepository;
-  @Autowired protected SubscriptionRepository subscriptionRepository;
-  @Autowired protected SubscriptionPlanRepository subscriptionPlanRepository;
-  @Autowired protected SupportAttachmentRepository supportAttachmentRepository;
-  @Autowired protected SupportMessageRepository supportMessageRepository;
-  @Autowired protected SupportTicketRepository supportTicketRepository;
-  @Autowired protected SystemConfigRepository systemConfigRepository;
+  @Autowired
+  protected TenantRepository tenantRepository;
+  @Autowired
+  protected UserRepository userRepository;
+  @Autowired
+  protected RoleRepository roleRepository;
+  @Autowired
+  protected CustomerRepository customerRepository;
+  @Autowired
+  protected SupplierRepository supplierRepository;
+  @Autowired
+  protected ProductRepository productRepository;
+  @Autowired
+  protected CategoryRepository categoryRepository;
+  @Autowired
+  protected OrderRepository orderRepository;
+  @Autowired
+  protected OrderItemRepository orderItemRepository;
+  @Autowired
+  protected InventoryRepository inventoryRepository;
+  @Autowired
+  protected StockMovementRepository stockMovementRepository;
+  @Autowired
+  protected InvoiceRepository invoiceRepository;
+  @Autowired
+  protected AuditLogRepository auditLogRepository;
+  @Autowired
+  protected PaymentRepository paymentRepository;
+  @Autowired
+  protected TransferOrderRepository transferOrderRepository;
+  @Autowired
+  protected SubscriptionRepository subscriptionRepository;
+  @Autowired
+  protected SubscriptionPlanRepository subscriptionPlanRepository;
+  @Autowired
+  protected SupportAttachmentRepository supportAttachmentRepository;
+  @Autowired
+  protected SupportMessageRepository supportMessageRepository;
+  @Autowired
+  protected SupportTicketRepository supportTicketRepository;
+  @Autowired
+  protected SystemConfigRepository systemConfigRepository;
 
-  @Autowired protected EntityManager entityManager;
-  @Autowired protected JdbcTemplate jdbcTemplate;
-  @Autowired protected PasswordEncoder passwordEncoder;
+  @Autowired
+  protected EntityManager entityManager;
+  @Autowired
+  protected JdbcTemplate jdbcTemplate;
+  @Autowired
+  protected PasswordEncoder passwordEncoder;
 
-  @PersistenceContext protected EntityManager em;
+  @PersistenceContext
+  protected EntityManager em;
 
-  @Autowired protected PlatformTransactionManager transactionManager;
-  @Autowired protected TransactionTemplate transactionTemplate;
+  @Autowired
+  protected PlatformTransactionManager transactionManager;
+  @Autowired
+  protected TransactionTemplate transactionTemplate;
 
   protected Long testTenant1Id;
   protected Long testTenant2Id;
   protected Long testUserId;
 
-  @Autowired protected RedisTemplate<String, Object> redisTemplate;
-  @Autowired protected MockMvc mockMvc;
-  @Autowired protected ObjectMapper objectMapper;
+  @Autowired
+  protected RedisTemplate<String, Object> redisTemplate;
+  @Autowired
+  protected MockMvc mockMvc;
+  @Autowired
+  protected ObjectMapper objectMapper;
 
   protected String login(String email, String password, String companyCode) throws Exception {
     com.ims.dto.request.LoginRequest loginRequest = new com.ims.dto.request.LoginRequest();
@@ -178,20 +221,19 @@ public abstract class BaseIntegrationTest {
     loginRequest.setCompanyCode(companyCode);
 
     String loginJson = objectMapper.writeValueAsString(loginRequest);
-    MvcResult result =
-        mockMvc
-            .perform(
-                org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
-                        "/api/auth/login")
-                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-                    .content(loginJson))
-            .andExpect(
-                org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
-            .andReturn();
+    MvcResult result = mockMvc
+        .perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                "/api/auth/login")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(loginJson))
+        .andExpect(
+            org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+        .andReturn();
 
     String responseJson = result.getResponse().getContentAsString();
-    com.ims.dto.response.LoginResponse response =
-        objectMapper.readValue(responseJson, com.ims.dto.response.LoginResponse.class);
+    com.ims.dto.response.LoginResponse response = objectMapper.readValue(responseJson,
+        com.ims.dto.response.LoginResponse.class);
     return response.getAccessToken();
   }
 
@@ -216,39 +258,41 @@ public abstract class BaseIntegrationTest {
   }
 
   protected void cleanupDatabase() {
-    if (jdbcTemplate == null) return;
+    if (jdbcTemplate == null)
+      return;
 
     String[] tables = {
-      "order_items",
-      "orders",
-      "customers",
-      "suppliers",
-      "products",
-      "categories",
-      "users",
-      "tenants",
-      "roles",
-      "permissions",
-      "notifications",
-      "alerts",
-      "webhooks",
-      "audit_logs",
-      "subscriptions",
-      "subscription_plans",
-      "support_tickets",
-      "support_messages",
-      "support_attachments",
-      "role_permissions",
-      "stock_movements",
-      "invoices",
-      "payments",
-      "outbox_event"
+        "order_items",
+        "orders",
+        "customers",
+        "suppliers",
+        "products",
+        "categories",
+        "users",
+        "tenants",
+        "roles",
+        "permissions",
+        "notifications",
+        "alerts",
+        "webhooks",
+        "audit_logs",
+        "subscriptions",
+        "subscription_plans",
+        "support_tickets",
+        "support_messages",
+        "support_attachments",
+        "role_permissions",
+        "stock_movements",
+        "invoices",
+        "payments",
+        "outbox_event"
     };
 
     for (String table : tables) {
       try {
         jdbcTemplate.execute("TRUNCATE TABLE " + table + " RESTART IDENTITY CASCADE");
       } catch (Exception e) {
+        // Table might not exist or be currently locked
       }
     }
     seedTestData();
@@ -261,49 +305,62 @@ public abstract class BaseIntegrationTest {
   }
 
   protected void seedTestData() {
-    if (jdbcTemplate == null) return;
-    try {
-      jdbcTemplate.execute(
-          "INSERT INTO subscription_plans (name, price, max_users, max_products, billing_cycle, created_at, updated_at, version) VALUES ('FREE', 0.00, 3, 100, 'MONTHLY', NOW(), NOW(), 0)");
-    } catch (Exception e) {
+    if (jdbcTemplate == null) {
+      return;
     }
     try {
       jdbcTemplate.execute(
-          "INSERT INTO tenants (name, workspace_slug, company_code, business_type, status, is_active, created_at, updated_at, version) VALUES ('Tenant 1', 't1', 'T1001', 'RETAIL', 'ACTIVE', true, NOW(), NOW(), 0)");
-      jdbcTemplate.execute(
-          "INSERT INTO tenants (name, workspace_slug, company_code, business_type, status, is_active, created_at, updated_at, version) VALUES ('Tenant 2', 't2', 'T2001', 'RETAIL', 'ACTIVE', true, NOW(), NOW(), 0)");
-
-      testTenant1Id =
-          jdbcTemplate.queryForObject(
-              "SELECT id FROM tenants WHERE workspace_slug = 't1'", Long.class);
-      testTenant2Id =
-          jdbcTemplate.queryForObject(
-              "SELECT id FROM tenants WHERE workspace_slug = 't2'", Long.class);
+          "INSERT INTO subscription_plans (name, price, max_users, max_products, "
+              + "billing_cycle, created_at, updated_at, version) "
+              + "VALUES ('FREE', 0.00, 3, 100, 'MONTHLY', NOW(), NOW(), 0)");
     } catch (Exception e) {
+      // Ignored if already exists
+    }
+    try {
+      jdbcTemplate.execute(
+          "INSERT INTO tenants (name, workspace_slug, company_code, business_type, status, "
+              + "is_active, created_at, updated_at, version) "
+              + "VALUES ('Tenant 1', 't1', 'T1001', 'RETAIL', 'ACTIVE', true, NOW(), NOW(), 0)");
+      jdbcTemplate.execute(
+          "INSERT INTO tenants (name, workspace_slug, company_code, business_type, status, "
+              + "is_active, created_at, updated_at, version) "
+              + "VALUES ('Tenant 2', 't2', 'T2001', 'RETAIL', 'ACTIVE', true, NOW(), NOW(), 0)");
+      testTenant1Id = jdbcTemplate.queryForObject(
+          "SELECT id FROM tenants WHERE workspace_slug = 't1'", Long.class);
+      testTenant2Id = jdbcTemplate.queryForObject(
+          "SELECT id FROM tenants WHERE workspace_slug = 't2'", Long.class);
+    } catch (Exception e) {
+      // Ignored if already exists
     }
     try {
       jdbcTemplate.execute(
           "INSERT INTO roles (name) VALUES ('ADMIN'), ('MANAGER'), ('STAFF'), ('ROOT'), ('PLATFORM_ADMIN')");
     } catch (Exception e) {
+      // Ignored if already exists
     }
     try {
       // Use passwordEncoder to ensure the hash matches "root123"
       String passwordHash = passwordEncoder.encode("root123");
       jdbcTemplate.execute(
-          "INSERT INTO users (name, email, password_hash, role, scope, is_active, is_verified, is_platform_user, tenant_id, created_at, updated_at, version) VALUES ('Root Admin', 'root@test.com', '"
+          "INSERT INTO users (name, email, password_hash, role, scope, is_active, "
+              + "is_verified, is_platform_user, tenant_id, created_at, updated_at, version) "
+              + "VALUES ('Root Admin', 'root@test.com', '"
               + passwordHash
               + "', 'ROOT', 'PLATFORM', true, true, true, "
               + testTenant1Id
               + ", NOW(), NOW(), 0)");
-      testUserId =
-          jdbcTemplate.queryForObject(
-              "SELECT id FROM users WHERE email = 'root@test.com'", Long.class);
+      testUserId = jdbcTemplate.queryForObject(
+          "SELECT id FROM users WHERE email = 'root@test.com'", Long.class);
     } catch (Exception e) {
+      // Ignored if already exists
     }
     try {
       jdbcTemplate.execute(
-          "INSERT INTO permissions (\"key\", description) VALUES ('read:products', 'Read Products'), ('write:products', 'Write Products'), ('read:orders', 'Read Orders'), ('write:orders', 'Write Orders')");
+          "INSERT INTO permissions (\"key\", description) VALUES "
+              + "('read:products', 'Read Products'), ('write:products', 'Write Products'), "
+              + "('read:orders', 'Read Orders'), ('write:orders', 'Write Orders')");
     } catch (Exception e) {
+      // Ignored if already exists
     }
   }
 }

@@ -30,14 +30,18 @@ public class RoleService {
   @Transactional(readOnly = true)
   public List<Role> findByTenant() {
     Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) throw new IllegalStateException("Missing tenant context");
+    if (tenantId == null) {
+      throw new IllegalStateException("Missing tenant context");
+    }
     return roleRepository.findByTenantIdOrderByNameAsc(tenantId);
   }
 
   @Transactional(readOnly = true)
   public Role findOne(Long roleId) {
     Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) throw new IllegalStateException("Missing tenant context");
+    if (tenantId == null) {
+      throw new IllegalStateException("Missing tenant context");
+    }
 
     return roleRepository
         .findByIdAndTenantId(roleId, tenantId)
@@ -47,18 +51,19 @@ public class RoleService {
   @Transactional
   public Role create(CreateRoleRequest request) {
     Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) throw new IllegalStateException("Missing tenant context");
+    if (tenantId == null) {
+      throw new IllegalStateException("Missing tenant context");
+    }
 
     if (roleRepository.findByNameAndTenantId(request.getName(), tenantId).isPresent()) {
       throw new IllegalArgumentException("Role already exists: " + request.getName());
     }
 
-    Role role =
-        Role.builder()
-            .name(request.getName())
-            .description(request.getDescription())
-            .tenantId(tenantId)
-            .build();
+    Role role = Role.builder()
+        .name(request.getName())
+        .description(request.getDescription())
+        .tenantId(tenantId)
+        .build();
 
     Role saved = roleRepository.save(Objects.requireNonNull(role));
     auditLogService.log(
@@ -71,12 +76,13 @@ public class RoleService {
   @CacheEvict(value = "userPermissions", allEntries = true)
   public Role assignPermissions(Long roleId, AssignPermissionsRequest request) {
     Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) throw new IllegalStateException("Missing tenant context");
+    if (tenantId == null) {
+      throw new IllegalStateException("Missing tenant context");
+    }
 
-    Role role =
-        roleRepository
-            .findByIdAndTenantId(roleId, tenantId)
-            .orElseThrow(() -> new EntityNotFoundException("Role not found"));
+    Role role = roleRepository
+        .findByIdAndTenantId(roleId, tenantId)
+        .orElseThrow(() -> new EntityNotFoundException("Role not found"));
 
     List<Permission> permissions = permissionRepository.findByIdIn(request.getPermissionIds());
 

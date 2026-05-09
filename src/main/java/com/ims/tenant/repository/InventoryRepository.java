@@ -26,16 +26,16 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
   @Query("SELECT i FROM Inventory i WHERE i.tenantId = :tenantId")
   Page<Inventory> findAllByTenantId(@Param("tenantId") Long tenantId, Pageable pageable);
 
-  @Query(
-      "SELECT i FROM Inventory i WHERE i.tenantId = :tenantId AND i.quantity <= i.lowStockThreshold")
+  @Query("SELECT i FROM Inventory i WHERE i.tenantId = :tenantId "
+      + "AND i.quantity <= i.lowStockThreshold")
   Page<Inventory> findLowStockByTenantId(@Param("tenantId") Long tenantId, Pageable pageable);
 
   @Query("SELECT i FROM Inventory i WHERE i.tenantId = :tenantId AND i.quantity <= i.reorderLevel")
   Page<Inventory> findBelowReorderLevelByTenantId(
       @Param("tenantId") Long tenantId, Pageable pageable);
 
-  @Query(
-      "SELECT CASE WHEN COUNT(i) > 0 THEN true ELSE false END FROM Inventory i WHERE i.productId = :productId AND i.tenantId = :tenantId")
+  @Query("SELECT CASE WHEN COUNT(i) > 0 THEN true ELSE false END "
+      + "FROM Inventory i WHERE i.productId = :productId AND i.tenantId = :tenantId")
   boolean existsByProductIdAndTenantId(
       @Param("productId") Long productId, @Param("tenantId") Long tenantId);
 }

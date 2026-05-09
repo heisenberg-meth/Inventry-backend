@@ -1,9 +1,11 @@
 package com.ims.tenant;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.LoginRequest;
 import org.junit.jupiter.api.BeforeEach;
@@ -99,16 +101,15 @@ class FailureHandlingIntegrationTest extends BaseIntegrationTest {
       loginRequest.setEmail("root@test.com");
       loginRequest.setPassword("root123");
 
-      String responseJson =
-          mockMvc
-              .perform(
-                  post("/api/auth/login")
-                      .contentType(MediaType.APPLICATION_JSON)
-                      .content(objectMapper.writeValueAsString(loginRequest)))
-              .andExpect(status().isOk())
-              .andReturn()
-              .getResponse()
-              .getContentAsString();
+      String responseJson = mockMvc
+          .perform(
+              post("/api/auth/login")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(loginRequest)))
+          .andExpect(status().isOk())
+          .andReturn()
+          .getResponse()
+          .getContentAsString();
 
       assertThat(responseJson).doesNotContain("root123");
     }
@@ -168,8 +169,10 @@ class FailureHandlingIntegrationTest extends BaseIntegrationTest {
     try {
       entityManager
           .createNativeQuery(
-              "INSERT INTO platform_users (email, password_hash, first_name, last_name, role, enabled, created_at) "
-                  + "VALUES ('root@test.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Root', 'Test', 'ADMIN', true, NOW()) "
+              "INSERT INTO platform_users (email, password_hash, first_name, last_name, "
+                  + "role, enabled, created_at) "
+                  + "VALUES ('root@test.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', "
+                  + "'Root', 'Test', 'ADMIN', true, NOW()) "
                   + "ON CONFLICT (email) DO NOTHING")
           .executeUpdate();
     } catch (Exception e) {

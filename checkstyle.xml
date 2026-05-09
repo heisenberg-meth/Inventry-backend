@@ -25,7 +25,7 @@
             <property name="allowByTailComment" value="true"/>
             <property name="allowNonPrintableEscapes" value="true"/>
         </module>
-        
+
         <module name="AvoidStarImport"/>
         <module name="OneTopLevelClass"/>
         <module name="NoLineWrap"/>
@@ -88,8 +88,7 @@
             <property name="ignoreFinal" value="false"/>
             <property name="allowedAbbreviationLength" value="1"/>
         </module>
-        <module name="OverloadMethodsDeclarationOrder"/>
-        <module name="VariableDeclarationUsageDistance"/>
+
         <module name="MethodParamPad"/>
         <module name="NoWhitespaceBefore">
             <property name="tokens" value="COMMA, SEMI, POST_INC, POST_DEC, DOT, ELLIPSIS, METHOD_REF"/>
@@ -114,13 +113,13 @@
         <module name="EmptyCatchBlock">
             <property name="exceptionVariableName" value="expected"/>
         </module>
-        
+
         <!-- User Requested Fixes -->
         <module name="MagicNumber">
-            <property name="ignoreNumbers" value="-1, 0, 1, 2"/>
+            <property name="ignoreNumbers" value="-1,0,1,2,3,4,5,10,12,24,30,60,100,1000,1024"/>
             <property name="ignoreHashCodeMethod" value="true"/>
             <property name="ignoreAnnotation" value="true"/>
         </module>
-        
+
     </module>
 </module>

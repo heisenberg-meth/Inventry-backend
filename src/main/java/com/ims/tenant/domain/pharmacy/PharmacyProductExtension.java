@@ -29,16 +29,25 @@ public class PharmacyProductExtension implements ProductExtensionStrategy {
 
     if (request.getPharmacyDetails() != null) {
       var pd = request.getPharmacyDetails();
-      PharmacyProduct pp =
-          pharmacyProductRepository
-              .findById(product.getId())
-              .orElse(PharmacyProduct.builder().product(product).build());
+      PharmacyProduct pp = pharmacyProductRepository
+          .findById(product.getId())
+          .orElse(PharmacyProduct.builder().product(product).build());
 
-      if (pd.getBatchNumber() != null) pp.setBatchNumber(pd.getBatchNumber());
-      if (pd.getExpiryDate() != null) pp.setExpiryDate(LocalDate.parse(pd.getExpiryDate()));
-      if (pd.getManufacturer() != null) pp.setManufacturer(pd.getManufacturer());
-      if (pd.getHsnCode() != null) pp.setHsnCode(pd.getHsnCode());
-      if (pd.getSchedule() != null) pp.setSchedule(pd.getSchedule());
+      if (pd.getBatchNumber() != null) {
+        pp.setBatchNumber(pd.getBatchNumber());
+      }
+      if (pd.getExpiryDate() != null) {
+        pp.setExpiryDate(LocalDate.parse(pd.getExpiryDate()));
+      }
+      if (pd.getManufacturer() != null) {
+        pp.setManufacturer(pd.getManufacturer());
+      }
+      if (pd.getHsnCode() != null) {
+        pp.setHsnCode(pd.getHsnCode());
+      }
+      if (pd.getSchedule() != null) {
+        pp.setSchedule(pd.getSchedule());
+      }
 
       pharmacyProductRepository.save(pp);
     } else if (product.getId() == null) {

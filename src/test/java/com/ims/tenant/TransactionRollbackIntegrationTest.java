@@ -24,30 +24,31 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-@WithMockUser(
-    username = "admin",
-    authorities = {
-      "ADMIN",
-      "ROLE_ADMIN",
-      "create_product",
-      "view_product",
-      "update_product",
-      "delete_product",
-      "create_order",
-      "view_order",
-      "create_supplier",
-      "view_supplier",
-      "delete_supplier",
-      "manage_stock",
-      "view_stock"
-    })
+@WithMockUser(username = "admin", authorities = {
+    "ADMIN",
+    "ROLE_ADMIN",
+    "create_product",
+    "view_product",
+    "update_product",
+    "delete_product",
+    "create_order",
+    "view_order",
+    "create_supplier",
+    "view_supplier",
+    "delete_supplier",
+    "manage_stock",
+    "view_stock"
+})
 class TransactionRollbackIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired private OrderService orderService;
+  @Autowired
+  private OrderService orderService;
 
-  @Autowired private ProductService productService;
+  @Autowired
+  private ProductService productService;
 
-  @MockitoBean private InvoiceService invoiceService;
+  @MockitoBean
+  private InvoiceService invoiceService;
 
   @BeforeEach
   void setup() {
@@ -58,18 +59,19 @@ class TransactionRollbackIntegrationTest extends BaseIntegrationTest {
   @Test
   void shouldRollbackStockDeductionWhenInvoiceFails() {
     // 1. Create product with stock
-    CreateProductRequest createReq =
-        CreateProductRequest.builder()
-            .name("Rollback Test Product")
-            .sku("RBK-001")
-            .salePrice(BigDecimal.valueOf(100))
-            .build();
+    CreateProductRequest createReq = CreateProductRequest.builder()
+        .name("Rollback Test Product")
+        .sku("RBK-001")
+        .salePrice(BigDecimal.valueOf(100))
+        .build();
     ProductResponse product = productService.createProduct(createReq);
 
     // Initial stock setup
     jdbcTemplate.update("UPDATE products SET stock = 10 WHERE id = ?", product.getId());
     jdbcTemplate.update(
-        "INSERT INTO inventory (product_id, tenant_id, quantity, reserved_quantity, low_stock_threshold, reorder_level, version) VALUES (?, ?, 10, 0, 5, 5, 0)",
+        "INSERT INTO inventory (product_id, tenant_id, quantity, reserved_quantity, "
+            + "low_stock_threshold, reorder_level, version) "
+            + "VALUES (?, ?, 10, 0, 5, 5, 0)",
         product.getId(),
         testTenant1Id);
 
@@ -79,12 +81,11 @@ class TransactionRollbackIntegrationTest extends BaseIntegrationTest {
         .createFromOrder(any());
 
     // 3. Create sales order
-    CreateOrderRequest orderRequest =
-        CreateOrderRequest.builder()
-            .type(OrderType.SALE)
-            .items(
-                List.of(OrderItemRequest.builder().productId(product.getId()).quantity(3).build()))
-            .build();
+    CreateOrderRequest orderRequest = CreateOrderRequest.builder()
+        .type(OrderType.SALE)
+        .items(
+            List.of(OrderItemRequest.builder().productId(product.getId()).quantity(3).build()))
+        .build();
 
     OrderResponse response = orderService.createSalesOrder(testTenant1Id, orderRequest, testUserId);
 
@@ -97,9 +98,8 @@ class TransactionRollbackIntegrationTest extends BaseIntegrationTest {
         });
 
     // 4. Verify stock was NOT deducted (it was rolled back)
-    Integer currentStock =
-        jdbcTemplate.queryForObject(
-            "SELECT quantity FROM inventory WHERE product_id = ?", Integer.class, product.getId());
+    Integer currentStock = jdbcTemplate.queryForObject(
+        "SELECT quantity FROM inventory WHERE product_id = ?", Integer.class, product.getId());
     assertThat(currentStock).isEqualTo(10);
 
     // 5. Verify order is still PENDING (confirm was rolled back)

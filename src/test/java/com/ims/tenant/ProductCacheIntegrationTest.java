@@ -1,8 +1,7 @@
 package com.ims.tenant;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import com.ims.BaseIntegrationTest;
 import com.ims.TestDataFactory;
 import com.ims.dto.request.SignupRequest;
@@ -15,27 +14,27 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.cache.CacheManager;
 
 @AutoConfigureMockMvc
-@org.springframework.security.test.context.support.WithMockUser(
-    username = "admin",
-    authorities = {
-      "ADMIN",
-      "ROLE_ADMIN",
-      "create_product",
-      "view_product",
-      "update_product",
-      "delete_product",
-      "create_order",
-      "view_order",
-      "create_supplier",
-      "view_supplier",
-      "delete_supplier",
-      "manage_stock",
-      "view_stock"
-    })
+@org.springframework.security.test.context.support.WithMockUser(username = "admin", authorities = {
+    "ADMIN",
+    "ROLE_ADMIN",
+    "create_product",
+    "view_product",
+    "update_product",
+    "delete_product",
+    "create_order",
+    "view_order",
+    "create_supplier",
+    "view_supplier",
+    "delete_supplier",
+    "manage_stock",
+    "view_stock"
+})
 public class ProductCacheIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired private SignupService signupService;
-  @Autowired private CacheManager cacheManager;
+  @Autowired
+  private SignupService signupService;
+  @Autowired
+  private CacheManager cacheManager;
 
   @BeforeEach
   void setup() throws Exception {

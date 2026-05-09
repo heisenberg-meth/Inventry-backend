@@ -23,13 +23,14 @@ public class TenantSettingsService {
   @Transactional(readOnly = true)
   public TenantResponse getSettings() {
     Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) throw new IllegalStateException("Missing tenant context");
+    if (tenantId == null) {
+      throw new IllegalStateException("Missing tenant context");
+    }
 
-    Tenant tenant =
-        Objects.requireNonNull(
-            tenantRepository
-                .findById(Objects.requireNonNull(tenantId))
-                .orElseThrow(() -> new EntityNotFoundException("Tenant not found")));
+    Tenant tenant = Objects.requireNonNull(
+        tenantRepository
+            .findById(Objects.requireNonNull(tenantId))
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found")));
     return toResponse(tenant);
   }
 
@@ -37,13 +38,14 @@ public class TenantSettingsService {
   @CacheEvict(value = "tenant", key = "T(com.ims.shared.auth.TenantContext).getTenantId()")
   public TenantResponse updateSettings(UpdateTenantSettingsRequest request) {
     Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) throw new IllegalStateException("Missing tenant context");
+    if (tenantId == null) {
+      throw new IllegalStateException("Missing tenant context");
+    }
 
-    Tenant tenant =
-        Objects.requireNonNull(
-            tenantRepository
-                .findById(Objects.requireNonNull(tenantId))
-                .orElseThrow(() -> new EntityNotFoundException("Tenant not found")));
+    Tenant tenant = Objects.requireNonNull(
+        tenantRepository
+            .findById(Objects.requireNonNull(tenantId))
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found")));
 
     if (request.getWorkspaceSlug() != null
         && !request.getWorkspaceSlug().equals(tenant.getWorkspaceSlug())) {
