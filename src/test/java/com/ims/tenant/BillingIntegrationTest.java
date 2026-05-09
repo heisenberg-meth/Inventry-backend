@@ -9,7 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.ims.BaseIntegrationTest;
-import com.ims.TestDataFactory;
+import com.ims.helper.TestDataFactory;
 import com.ims.dto.CreateInvoiceRequest;
 import com.ims.dto.InvoiceStatusRequest;
 import com.ims.dto.request.CreateProductRequest;

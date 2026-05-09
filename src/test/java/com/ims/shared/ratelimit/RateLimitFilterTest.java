@@ -56,7 +56,7 @@ class RateLimitFilterTest {
         .thenReturn(true);
     when(rateLimiterService.getCount(anyString())).thenReturn(1);
 
-    MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/tenant/products");
+    MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/v1/tenant/products");
     req.setRemoteAddr("10.0.0.1");
     MockHttpServletResponse res = new MockHttpServletResponse();
     FilterChain chain = mock(FilterChain.class);
@@ -112,7 +112,7 @@ class RateLimitFilterTest {
     when(jwtUtil.extractUserId("good-token")).thenReturn(123L);
     when(jwtUtil.extractTenantId("good-token")).thenReturn(42L);
 
-    MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/tenant/products");
+    MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/v1/tenant/products");
     req.setRemoteAddr("10.0.0.4");
     req.addHeader("Authorization", "Bearer good-token");
     MockHttpServletResponse res = new MockHttpServletResponse();
@@ -136,7 +136,7 @@ class RateLimitFilterTest {
         .thenReturn(true);
     when(jwtUtil.extractUserId("bad-token")).thenThrow(new RuntimeException("bad token"));
 
-    MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/tenant/products");
+    MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/v1/tenant/products");
     req.setRemoteAddr("10.0.0.5");
     req.addHeader("Authorization", "Bearer bad-token");
     MockHttpServletResponse res = new MockHttpServletResponse();
@@ -308,7 +308,7 @@ class RateLimitFilterTest {
     when(rateLimiterService.isAllowed(anyString(), anyInt(), anyInt(), anyBoolean()))
         .thenReturn(true);
 
-    MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/tenant/auth-logs");
+    MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/v1/tenant/auth-logs");
     req.setRemoteAddr("10.0.0.10");
     MockHttpServletResponse res = new MockHttpServletResponse();
     FilterChain chain = mock(FilterChain.class);

@@ -6,7 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ims.BaseIntegrationTest;
-import com.ims.TestDataFactory;
+import com.ims.helper.TestDataFactory;
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.request.SignupRequest;
 import com.ims.dto.response.ProductResponse;

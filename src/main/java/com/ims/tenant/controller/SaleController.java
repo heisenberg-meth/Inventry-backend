@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/tenant/sales")
+@RequestMapping("/api/v1/tenant/sales")
 @RequiredArgsConstructor
 @Tag(name = "Tenant - Sales", description = "Sales and Billing management")
 @SecurityRequirement(name = "bearerAuth")
@@ -30,9 +30,7 @@ public class SaleController {
 
   @PostMapping
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
-  @Operation(
-      summary = "Record a sale with billing",
-      description = "Creates a sales order and automatically generates an invoice")
+  @Operation(summary = "Record a sale with billing", description = "Creates a sales order and automatically generates an invoice")
   public ResponseEntity<OrderResponse> createSale(@RequestBody CreateOrderRequest request) {
     var auth = SecurityContextHolder.getContext().getAuthentication();
     Long userId = null;

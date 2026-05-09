@@ -16,6 +16,6 @@ class CustomerIntegrationTest extends BaseIntegrationTest {
 
   @Test
   void getCustomers_withoutAuth_returns401() throws Exception {
-    mockMvc.perform(get("/api/customers")).andExpect(status().isUnauthorized());
+    mockMvc.perform(get("/api/v1/tenant/customers")).andExpect(status().isUnauthorized());
   }
 }

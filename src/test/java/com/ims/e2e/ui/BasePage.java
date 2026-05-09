@@ -34,10 +34,10 @@ public abstract class BasePage {
         "Page Content Preview: "
             + page.content().substring(0, Math.min(500, page.content().length())));
 
-    Path screenshotPath =
-        Paths.get("target/debug-screenshots/" + this.getClass().getSimpleName() + ".png");
+    Path screenshotPath = Paths.get("target/debug-screenshots/" + this.getClass().getSimpleName() + ".png");
     File dir = screenshotPath.getParent().toFile();
-    if (!dir.exists()) dir.mkdirs();
+    if (!dir.exists())
+      dir.mkdirs();
     page.screenshot(new Page.ScreenshotOptions().setPath(screenshotPath));
     System.out.println("Screenshot saved to: " + screenshotPath.toAbsolutePath());
   }
@@ -53,6 +53,8 @@ public abstract class BasePage {
     page.screenshot(new Page.ScreenshotOptions().setPath(debugPath));
     System.out.println("DEBUG SCREENSHOT saved to: " + debugPath.toAbsolutePath());
 
+    System.out.println("DEBUG - Current URL: " + page.url());
+    System.out.println("DEBUG - Page Content: " + page.content());
     locator.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
     locator.fill(text);
   }

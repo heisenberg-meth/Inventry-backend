@@ -55,7 +55,9 @@ public class JwtFilter extends OncePerRequestFilter {
 
     try {
       if (!jwtUtil.validateToken(token)) {
-        chain.doFilter(request, response);
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json");
+        response.getWriter().write("{\"error\":\"Unauthorized\", \"message\":\"Invalid token\"}");
         return;
       }
 
@@ -88,8 +90,7 @@ public class JwtFilter extends OncePerRequestFilter {
       boolean isPlatformUser = Boolean.TRUE.equals(claims.get("is_platform_user", Boolean.class));
 
       // Normalize to ROLE_ prefix for Spring Security and add granular permissions
-      java.util.List<org.springframework.security.core.GrantedAuthority> authorities =
-          new java.util.ArrayList<>();
+      java.util.List<org.springframework.security.core.GrantedAuthority> authorities = new java.util.ArrayList<>();
       if (role != null) {
         String roleWithPrefix = role.startsWith("ROLE_") ? role : "ROLE_" + role;
         String roleWithoutPrefix = role.startsWith("ROLE_") ? role.substring(5) : role;
@@ -148,8 +149,7 @@ public class JwtFilter extends OncePerRequestFilter {
         || path.equals("/api/auth/check-email")
         || path.equals("/api/auth/check-slug")
         || path.equals("/api/auth/check-company-code")
-        || path.startsWith("/actuator/")
-        || path.startsWith("/swagger-ui")
-        || path.startsWith("/api-docs");
+        || path.startsWith("/actuator/health")
+        || path.startsWith("/actuator/info");
   }
 }

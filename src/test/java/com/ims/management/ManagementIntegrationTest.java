@@ -5,7 +5,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ims.BaseIntegrationTest;
-import com.ims.TestDataFactory;
+import com.ims.helper.TestDataFactory;
 import com.ims.dto.request.SignupRequest;
 import com.ims.dto.response.SignupResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,7 +46,7 @@ public class ManagementIntegrationTest extends BaseIntegrationTest {
 
     // 2. Tenant ADMIN can access their tenant endpoints
     mockMvc
-        .perform(get("/api/tenant/settings").header("Authorization", "Bearer " + t1Token))
+        .perform(get("/api/v1/tenant/settings").header("Authorization", "Bearer " + t1Token))
         .andExpect(status().isOk());
   }
 

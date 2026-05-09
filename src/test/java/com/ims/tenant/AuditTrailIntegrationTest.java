@@ -126,7 +126,7 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
     // permissions
     mockMvc
         .perform(
-            get("/api/tenant/audits")
+            get("/api/v1/tenant/audits")
                 .header("Authorization", "Bearer " + token)
                 .header("X-Tenant-ID", response.getTenantId().toString()))
         .andDo(print())
@@ -170,7 +170,7 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
     // 3. T2 should NOT see T1's audit logs
     mockMvc
         .perform(
-            get("/api/tenant/audits")
+            get("/api/v1/tenant/audits")
                 .header("Authorization", "Bearer " + t2Token)
                 .header("X-Tenant-ID", r2.getTenantId().toString()))
         .andDo(print())
