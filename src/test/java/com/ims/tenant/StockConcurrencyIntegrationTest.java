@@ -47,7 +47,6 @@ class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
 
   @BeforeEach
   void setup() {
-    cleanupDatabase();
 
     TenantContext.setTenantId(testTenant1Id);
 
