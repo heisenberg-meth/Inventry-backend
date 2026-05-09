@@ -15,8 +15,9 @@ public class TenantValidationAspect {
 
   private static final Logger log = LoggerFactory.getLogger(TenantValidationAspect.class);
 
-  @Before("execution(* com.ims..service..*(..)) && @annotation(transactional) "
-      + "&& !execution(* com.ims.shared.auth..*(..))")
+  @Before(
+      "execution(* com.ims..service..*(..)) && @annotation(transactional) "
+          + "&& !execution(* com.ims.shared.auth..*(..))")
   public void validateTenantContext(JoinPoint joinPoint, Transactional transactional) {
     Long tenantId = TenantContext.getTenantId();
 

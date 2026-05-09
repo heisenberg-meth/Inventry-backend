@@ -40,7 +40,8 @@ public class CategoryController {
   public ResponseEntity<Page<CategoryResponse>> list(Pageable pageable) {
     Timer.Sample sample = Timer.start(meterRegistry);
     try {
-      Page<CategoryResponse> result = categoryService.getCategories(pageable).map(categoryService::toResponse);
+      Page<CategoryResponse> result =
+          categoryService.getCategories(pageable).map(categoryService::toResponse);
       meterRegistry.counter("ims.category.list.success").increment();
       return ResponseEntity.ok(result);
     } catch (Exception e) {

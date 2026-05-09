@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
 import com.ims.dto.CreateInvoiceRequest;
 import com.ims.model.Invoice;
 import com.ims.model.Order;
@@ -37,38 +38,31 @@ import org.mockito.quality.Strictness;
 @MockitoSettings(strictness = Strictness.LENIENT)
 public class InvoiceServiceUnitTest {
 
-  @Mock
-  private InvoiceRepository invoiceRepository;
-  @Mock
-  private OrderItemRepository orderItemRepository;
-  @Mock
-  private ProductRepository productRepository;
-  @Mock
-  private TenantRepository tenantRepository;
-  @Mock
-  private OrderRepository orderRepository;
-  @Mock
-  private CustomerRepository customerRepository;
-  @Mock
-  private PdfService pdfService;
-  @Mock
-  private OutboxService outboxService;
+  @Mock private InvoiceRepository invoiceRepository;
+  @Mock private OrderItemRepository orderItemRepository;
+  @Mock private ProductRepository productRepository;
+  @Mock private TenantRepository tenantRepository;
+  @Mock private OrderRepository orderRepository;
+  @Mock private CustomerRepository customerRepository;
+  @Mock private PdfService pdfService;
+  @Mock private OutboxService outboxService;
   private MeterRegistry meterRegistry = new SimpleMeterRegistry();
 
   private InvoiceService invoiceService;
 
   @BeforeEach
   void setUp() {
-    invoiceService = new InvoiceService(
-        invoiceRepository,
-        orderItemRepository,
-        productRepository,
-        tenantRepository,
-        orderRepository,
-        customerRepository,
-        pdfService,
-        outboxService,
-        meterRegistry);
+    invoiceService =
+        new InvoiceService(
+            invoiceRepository,
+            orderItemRepository,
+            productRepository,
+            tenantRepository,
+            orderRepository,
+            customerRepository,
+            pdfService,
+            outboxService,
+            meterRegistry);
     TenantContext.setTenantId(1L);
   }
 
@@ -76,15 +70,16 @@ public class InvoiceServiceUnitTest {
   void createManual_withValidSaleOrder_createsInvoice() {
     Tenant tenant = Tenant.builder().id(1L).invoiceSequence(0).build();
 
-    Order order = Order.builder()
-        .id(1L)
-        .type(OrderType.SALE)
-        .tenantId(1L)
-        .customerId(1L)
-        .totalAmount(new BigDecimal("100.00"))
-        .taxAmount(new BigDecimal("10.00"))
-        .discount(new BigDecimal("0.00"))
-        .build();
+    Order order =
+        Order.builder()
+            .id(1L)
+            .type(OrderType.SALE)
+            .tenantId(1L)
+            .customerId(1L)
+            .totalAmount(new BigDecimal("100.00"))
+            .taxAmount(new BigDecimal("10.00"))
+            .discount(new BigDecimal("0.00"))
+            .build();
 
     when(orderRepository.findByIdAndTenantId(1L, 1L)).thenReturn(Optional.of(order));
     when(invoiceRepository.existsByTenantIdAndOrderId(1L, 1L)).thenReturn(false);

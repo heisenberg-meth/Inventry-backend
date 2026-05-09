@@ -29,7 +29,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/tenant/inventory")
 @RequiredArgsConstructor
-@Tag(name = "Tenant - Inventory", description = "Inventory management with concurrency-safe operations")
+@Tag(
+    name = "Tenant - Inventory",
+    description = "Inventory management with concurrency-safe operations")
 @SecurityRequirement(name = "bearerAuth")
 public class InventoryController {
 

@@ -23,9 +23,10 @@ public class WarehouseProductExtension implements ProductExtensionStrategy {
   public void onProductSaved(Product product, CreateProductRequest request) {
     if (request.getWarehouseDetails() != null) {
       var wd = request.getWarehouseDetails();
-      WarehouseProduct wp = warehouseProductRepository
-          .findById(product.getId())
-          .orElse(WarehouseProduct.builder().product(product).build());
+      WarehouseProduct wp =
+          warehouseProductRepository
+              .findById(product.getId())
+              .orElse(WarehouseProduct.builder().product(product).build());
 
       if (wd.getStorageLocation() != null) {
         wp.setStorageLocation(wd.getStorageLocation());

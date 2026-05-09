@@ -17,11 +17,9 @@ public class TenantAwareCacheWrapper implements Cache {
   private static final String CACHE_KEY_MIDDLE = "cache" + CACHE_KEY_SEPARATOR;
 
   private final Cache delegate;
-  @Nullable
-  private final Long tenantId;
+  @Nullable private final Long tenantId;
   private final boolean platformCache;
-  @Nullable
-  private final StringRedisTemplate redisTemplate;
+  @Nullable private final StringRedisTemplate redisTemplate;
 
   public TenantAwareCacheWrapper(
       Cache delegate,

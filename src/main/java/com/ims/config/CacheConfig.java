@@ -21,11 +21,11 @@ import org.springframework.lang.Nullable;
 @EnableCaching
 public class CacheConfig {
 
-  private static final Set<String> PLATFORM_CACHE_NAMES = Set.of("platform-subscriptions", "system-config");
+  private static final Set<String> PLATFORM_CACHE_NAMES =
+      Set.of("platform-subscriptions", "system-config");
 
   /**
-   * Tenant-aware cache resolver that wraps caches with tenant key prefixing.
-   * Works with any
+   * Tenant-aware cache resolver that wraps caches with tenant key prefixing. Works with any
    * CacheManager implementation (Redis, Caffeine, etc.).
    */
   @Bean

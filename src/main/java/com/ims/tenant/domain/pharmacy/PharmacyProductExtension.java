@@ -29,9 +29,10 @@ public class PharmacyProductExtension implements ProductExtensionStrategy {
 
     if (request.getPharmacyDetails() != null) {
       var pd = request.getPharmacyDetails();
-      PharmacyProduct pp = pharmacyProductRepository
-          .findById(product.getId())
-          .orElse(PharmacyProduct.builder().product(product).build());
+      PharmacyProduct pp =
+          pharmacyProductRepository
+              .findById(product.getId())
+              .orElse(PharmacyProduct.builder().product(product).build());
 
       if (pd.getBatchNumber() != null) {
         pp.setBatchNumber(pd.getBatchNumber());

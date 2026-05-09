@@ -10,6 +10,5 @@ import org.springframework.stereotype.Repository;
 public interface AlertRepository extends JpaRepository<Alert, Long> {
   List<Alert> findByTenantIdAndIsDismissedFalse(Long tenantId);
 
-  Optional<Alert> findByTypeAndResourceIdAndIsDismissedFalse(
-      String type, Long resourceId);
+  Optional<Alert> findByTypeAndResourceIdAndIsDismissedFalse(String type, Long resourceId);
 }

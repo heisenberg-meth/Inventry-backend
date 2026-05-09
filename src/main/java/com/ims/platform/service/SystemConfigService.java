@@ -35,9 +35,10 @@ public class SystemConfigService {
   @Transactional
   @CacheEvict(value = "systemConfig", key = "#key")
   public SystemConfig updateConfig(String key, String value) {
-    SystemConfig config = systemConfigRepository
-        .findById(Objects.requireNonNull(key))
-        .orElseThrow(() -> new EntityNotFoundException("Config not found: " + key));
+    SystemConfig config =
+        systemConfigRepository
+            .findById(Objects.requireNonNull(key))
+            .orElseThrow(() -> new EntityNotFoundException("Config not found: " + key));
     config.setValue(value);
     config.setUpdatedAt(LocalDateTime.now());
     log.info("System config updated: {} = {}", key, maskSensitive(value));

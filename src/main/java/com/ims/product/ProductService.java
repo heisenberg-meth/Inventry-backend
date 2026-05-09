@@ -48,8 +48,9 @@ public class ProductService {
           "Requested page size {} exceeds limit, capping to {}",
           pageable.getPageSize(),
           MAX_PAGE_SIZE);
-      pageable = org.springframework.data.domain.PageRequest.of(
-          pageable.getPageNumber(), MAX_PAGE_SIZE, pageable.getSort());
+      pageable =
+          org.springframework.data.domain.PageRequest.of(
+              pageable.getPageNumber(), MAX_PAGE_SIZE, pageable.getSort());
     }
 
     return productRepository.findAllWithDetails(tenantId, pageable).map(this::toResponse);
@@ -59,7 +60,8 @@ public class ProductService {
   public List<ProductResponse> getNextProducts(Long lastId, int limit) {
     Long tenantId = TenantContext.requireTenantId();
 
-    Pageable pageable = org.springframework.data.domain.PageRequest.of(0, Math.min(limit, MAX_PAGE_SIZE));
+    Pageable pageable =
+        org.springframework.data.domain.PageRequest.of(0, Math.min(limit, MAX_PAGE_SIZE));
     return productRepository.findNextProducts(tenantId, lastId, pageable).stream()
         .map(this::toResponse)
         .collect(Collectors.toList());
@@ -69,9 +71,10 @@ public class ProductService {
   @PreAuthorize("hasAuthority('view_product')")
   public ProductResponse getProductById(Long id) {
     Long tenantId = TenantContext.requireTenantId();
-    Product product = productRepository
-        .findByIdAndTenantIdAndIsDeletedFalse(id, tenantId)
-        .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+    Product product =
+        productRepository
+            .findByIdAndTenantIdAndIsDeletedFalse(id, tenantId)
+            .orElseThrow(() -> new EntityNotFoundException("Product not found"));
     return toResponse(product);
   }
 
@@ -98,9 +101,10 @@ public class ProductService {
     }
 
     // Check product limits
-    var tenant = tenantRepository
-        .findById(tenantId)
-        .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+    var tenant =
+        tenantRepository
+            .findById(tenantId)
+            .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
     if (tenant.getMaxProducts() != null) {
       long currentCount = productRepository.countActive(tenantId);
 
@@ -112,23 +116,24 @@ public class ProductService {
 
     String businessType = getBusinessType();
 
-    Product product = Product.builder()
-        .tenantId(tenantId)
-        .name(request.getName())
-        .sku(normalizedSku)
-        .description(request.getDescription())
-        .barcode(request.getBarcode())
-        .categoryId(request.getCategoryId())
-        .unit(request.getUnit())
-        .purchasePrice(request.getPurchasePrice())
-        .salePrice(request.getSalePrice())
-        .reorderLevel(
-            request.getReorderLevel() != null
-                ? request.getReorderLevel()
-                : DEFAULT_REORDER_LEVEL)
-        .stock(0)
-        .isDeleted(false)
-        .build();
+    Product product =
+        Product.builder()
+            .tenantId(tenantId)
+            .name(request.getName())
+            .sku(normalizedSku)
+            .description(request.getDescription())
+            .barcode(request.getBarcode())
+            .categoryId(request.getCategoryId())
+            .unit(request.getUnit())
+            .purchasePrice(request.getPurchasePrice())
+            .salePrice(request.getSalePrice())
+            .reorderLevel(
+                request.getReorderLevel() != null
+                    ? request.getReorderLevel()
+                    : DEFAULT_REORDER_LEVEL)
+            .stock(0)
+            .isDeleted(false)
+            .build();
 
     product = productRepository.save(product);
 
@@ -153,9 +158,10 @@ public class ProductService {
   @PreAuthorize("hasAuthority('update_product')")
   @CacheEvict(key = "#id")
   public ProductResponse updateProduct(Long id, CreateProductRequest request) {
-    Product product = productRepository
-        .findByIdAndTenantIdAndIsDeletedFalse(id, TenantContext.requireTenantId())
-        .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+    Product product =
+        productRepository
+            .findByIdAndTenantIdAndIsDeletedFalse(id, TenantContext.requireTenantId())
+            .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
     if (request.getName() != null) {
       product.setName(request.getName());
@@ -217,9 +223,10 @@ public class ProductService {
   @PreAuthorize("hasAuthority('delete_product')")
   @CacheEvict(key = "#id")
   public void deleteProduct(Long id) {
-    Product product = productRepository
-        .findByIdAndTenantIdAndIsDeletedFalse(id, TenantContext.requireTenantId())
-        .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+    Product product =
+        productRepository
+            .findByIdAndTenantIdAndIsDeletedFalse(id, TenantContext.requireTenantId())
+            .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
     // PRD 4.1.3 Soft Delete
     product.setIsDeleted(true);
@@ -237,24 +244,26 @@ public class ProductService {
   @Transactional
   @PreAuthorize("hasAuthority('create_product')")
   public ProductResponse duplicateProduct(Long id) {
-    Product original = productRepository
-        .findByIdAndTenantIdAndIsDeletedFalse(id, TenantContext.requireTenantId())
-        .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+    Product original =
+        productRepository
+            .findByIdAndTenantIdAndIsDeletedFalse(id, TenantContext.requireTenantId())
+            .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
-    Product clone = Product.builder()
-        .tenantId(original.getTenantId())
-        .name(original.getName() + " (Copy)")
-        .sku(generateUniqueSku(original.getSku(), original.getTenantId()))
-        .description(original.getDescription())
-        .barcode(null)
-        .categoryId(original.getCategoryId())
-        .unit(original.getUnit())
-        .purchasePrice(original.getPurchasePrice())
-        .salePrice(original.getSalePrice())
-        .stock(0)
-        .reorderLevel(original.getReorderLevel())
-        .isDeleted(false)
-        .build();
+    Product clone =
+        Product.builder()
+            .tenantId(original.getTenantId())
+            .name(original.getName() + " (Copy)")
+            .sku(generateUniqueSku(original.getSku(), original.getTenantId()))
+            .description(original.getDescription())
+            .barcode(null)
+            .categoryId(original.getCategoryId())
+            .unit(original.getUnit())
+            .purchasePrice(original.getPurchasePrice())
+            .salePrice(original.getSalePrice())
+            .stock(0)
+            .reorderLevel(original.getReorderLevel())
+            .isDeleted(false)
+            .build();
 
     Product saved = productRepository.save(clone);
     log.info("Product duplicated: original_id={} new_id={}", id, saved.getId());
@@ -324,20 +333,21 @@ public class ProductService {
   }
 
   private ProductResponse toResponse(Product product) {
-    ProductResponse.ProductResponseBuilder builder = ProductResponse.builder()
-        .id(product.getId())
-        .name(product.getName())
-        .sku(product.getSku())
-        .description(product.getDescription())
-        .barcode(product.getBarcode())
-        .categoryId(product.getCategoryId())
-        .unit(product.getUnit())
-        .purchasePrice(product.getPurchasePrice())
-        .salePrice(product.getSalePrice())
-        .stock(product.getStock())
-        .reorderLevel(product.getReorderLevel())
-        .isDeleted(product.getIsDeleted())
-        .createdAt(product.getCreatedAt());
+    ProductResponse.ProductResponseBuilder builder =
+        ProductResponse.builder()
+            .id(product.getId())
+            .name(product.getName())
+            .sku(product.getSku())
+            .description(product.getDescription())
+            .barcode(product.getBarcode())
+            .categoryId(product.getCategoryId())
+            .unit(product.getUnit())
+            .purchasePrice(product.getPurchasePrice())
+            .salePrice(product.getSalePrice())
+            .stock(product.getStock())
+            .reorderLevel(product.getReorderLevel())
+            .isDeleted(product.getIsDeleted())
+            .createdAt(product.getCreatedAt());
 
     // Enrich response via extensions
     for (ProductExtensionStrategy extension : extensions) {

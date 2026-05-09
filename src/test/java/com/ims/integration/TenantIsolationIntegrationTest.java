@@ -1,59 +1,63 @@
 package com.ims.integration;
 
-import com.ims.BaseIntegrationTest;
-import com.ims.dto.request.CreateProductRequest;
-import com.ims.shared.auth.TenantContext;
-import jakarta.persistence.EntityNotFoundException;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.ims.BaseIntegrationTest;
+import com.ims.dto.request.CreateProductRequest;
+import com.ims.shared.auth.TenantContext;
+import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 
-@org.springframework.security.test.context.support.WithMockUser(username = "admin", authorities = {
-    "ADMIN",
-    "ROLE_ADMIN",
-    "create_product",
-    "view_product",
-    "update_product",
-    "delete_product",
-    "create_order",
-    "view_order",
-    "create_supplier",
-    "view_supplier",
-    "delete_supplier",
-    "manage_stock",
-    "view_stock"
-})
+@org.springframework.security.test.context.support.WithMockUser(
+    username = "admin",
+    authorities = {
+      "ADMIN",
+      "ROLE_ADMIN",
+      "create_product",
+      "view_product",
+      "update_product",
+      "delete_product",
+      "create_order",
+      "view_order",
+      "create_supplier",
+      "view_supplier",
+      "delete_supplier",
+      "manage_stock",
+      "view_stock"
+    })
 public class TenantIsolationIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired
-  private com.ims.product.ProductService productService;
+  @Autowired private com.ims.product.ProductService productService;
 
   @Test
   void shouldPreventCrossTenantDataAccess() {
     // 1. Create product in Tenant 1
     TenantContext.setTenantId(testTenant1Id);
-    CreateProductRequest req1 = CreateProductRequest.builder()
-        .name("Tenant 1 Product")
-        .sku("T1-PROD")
-        .purchasePrice(BigDecimal.TEN)
-        .salePrice(BigDecimal.valueOf(20))
-        .build();
+    CreateProductRequest req1 =
+        CreateProductRequest.builder()
+            .name("Tenant 1 Product")
+            .sku("T1-PROD")
+            .purchasePrice(BigDecimal.TEN)
+            .salePrice(BigDecimal.valueOf(20))
+            .build();
     var resp1 = productService.createProduct(req1);
     Long product1Id = resp1.getId();
 
     // 2. Create product in Tenant 2
     TenantContext.setTenantId(testTenant2Id);
-    CreateProductRequest req2 = CreateProductRequest.builder()
-        .name("Tenant 2 Product")
-        .sku("T2-PROD")
-        .purchasePrice(BigDecimal.TEN)
-        .salePrice(BigDecimal.valueOf(20))
-        .build();
+    CreateProductRequest req2 =
+        CreateProductRequest.builder()
+            .name("Tenant 2 Product")
+            .sku("T2-PROD")
+            .purchasePrice(BigDecimal.TEN)
+            .salePrice(BigDecimal.valueOf(20))
+            .build();
     var resp2 = productService.createProduct(req2);
     Long product2Id = resp2.getId();
 

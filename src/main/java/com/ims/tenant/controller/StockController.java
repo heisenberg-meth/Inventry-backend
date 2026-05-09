@@ -43,7 +43,8 @@ public class StockController {
   @Operation(summary = "Transfer stock between locations")
   public ResponseEntity<TransferOrder> transfer(@RequestBody Map<String, Object> body) {
     Long userId = extractUserId();
-    TransferOrder result = Objects.requireNonNull(transferOrderService.createTransfer(body, userId));
+    TransferOrder result =
+        Objects.requireNonNull(transferOrderService.createTransfer(body, userId));
     return ResponseEntity.ok(result);
   }
 

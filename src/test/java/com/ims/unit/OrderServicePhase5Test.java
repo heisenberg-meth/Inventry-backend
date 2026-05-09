@@ -14,6 +14,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
 import com.ims.model.Order;
 import com.ims.model.OrderItem;
 import com.ims.order.dto.CreateOrderRequest;
@@ -51,154 +52,145 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 public class OrderServicePhase5Test {
 
-    @Mock
-    private OrderRepository orderRepository;
-    @Mock
-    private OrderItemRepository orderItemRepository;
-    @Mock
-    private ProductRepository productRepository;
-    @Mock
-    private ProductService productService;
-    @Mock
-    private InventoryService inventoryService;
-    @Mock
-    private InvoiceService invoiceService;
-    @Mock
-    private CustomerRepository customerRepository;
-    @Mock
-    private SupplierRepository supplierRepository;
-    @Mock
-    private TenantRepository tenantRepository;
-    @Mock
-    private PdfService pdfService;
-    @Mock
-    private AuditLogService auditLogService;
-    @Mock
-    private OutboxService outboxService;
-    @Mock
-    private BusinessMetricsService businessMetricsService;
+  @Mock private OrderRepository orderRepository;
+  @Mock private OrderItemRepository orderItemRepository;
+  @Mock private ProductRepository productRepository;
+  @Mock private ProductService productService;
+  @Mock private InventoryService inventoryService;
+  @Mock private InvoiceService invoiceService;
+  @Mock private CustomerRepository customerRepository;
+  @Mock private SupplierRepository supplierRepository;
+  @Mock private TenantRepository tenantRepository;
+  @Mock private PdfService pdfService;
+  @Mock private AuditLogService auditLogService;
+  @Mock private OutboxService outboxService;
+  @Mock private BusinessMetricsService businessMetricsService;
 
-    @InjectMocks
-    private OrderService orderService;
+  @InjectMocks private OrderService orderService;
 
-    @BeforeEach
-    void setUp() {
-        TenantContext.setTenantId(1L);
-    }
+  @BeforeEach
+  void setUp() {
+    TenantContext.setTenantId(1L);
+  }
 
-    @Test
-    void createSalesOrder_ShouldBePendingInitially() {
-        // Arrange
-        Long userId = 100L;
-        Long productId = 1L;
-        CreateOrderRequest request = CreateOrderRequest.builder()
-                .type(OrderType.SALE)
-                .customerId(10L)
-                .items(List.of(OrderItemRequest.builder().productId(productId).quantity(2).build()))
-                .build();
+  @Test
+  void createSalesOrder_ShouldBePendingInitially() {
+    // Arrange
+    Long userId = 100L;
+    Long productId = 1L;
+    CreateOrderRequest request =
+        CreateOrderRequest.builder()
+            .type(OrderType.SALE)
+            .customerId(10L)
+            .items(List.of(OrderItemRequest.builder().productId(productId).quantity(2).build()))
+            .build();
 
-        Product product = Product.builder()
-                .id(productId)
-                .name("Test Product")
-                .stock(10)
-                .salePrice(new BigDecimal("100.00"))
-                .build();
+    Product product =
+        Product.builder()
+            .id(productId)
+            .name("Test Product")
+            .stock(10)
+            .salePrice(new BigDecimal("100.00"))
+            .build();
 
-        when(customerRepository.findByIdAndTenantId(anyLong(), anyLong()))
-                .thenReturn(Optional.of(mock(com.ims.model.Customer.class)));
-        when(productService.findByIdWithLock(productId)).thenReturn(Optional.of(product));
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
-        when(orderRepository.save(any(Order.class)))
-                .thenAnswer(
-                        invocation -> {
-                            Order o = invocation.getArgument(0);
-                            o.setId(1L);
-                            return o;
-                        });
-        when(inventoryService.getAvailableStock(anyLong(), eq(productId))).thenReturn(10);
+    when(customerRepository.findByIdAndTenantId(anyLong(), anyLong()))
+        .thenReturn(Optional.of(mock(com.ims.model.Customer.class)));
+    when(productService.findByIdWithLock(productId)).thenReturn(Optional.of(product));
+    when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+    when(orderRepository.save(any(Order.class)))
+        .thenAnswer(
+            invocation -> {
+              Order o = invocation.getArgument(0);
+              o.setId(1L);
+              return o;
+            });
+    when(inventoryService.getAvailableStock(anyLong(), eq(productId))).thenReturn(10);
 
-        // Act
-        OrderResponse result = orderService.createSalesOrder(1L, request, userId);
+    // Act
+    OrderResponse result = orderService.createSalesOrder(1L, request, userId);
 
-        // Assert
-        assertNotNull(result.getId());
-        assertEquals(OrderStatus.PENDING, result.getStatus());
+    // Assert
+    assertNotNull(result.getId());
+    assertEquals(OrderStatus.PENDING, result.getStatus());
 
-        // Stock should NOT be deducted yet
-        verify(inventoryService, never())
-                .decreaseStock(anyLong(), anyLong(), anyInt(), anyString(), anyLong());
+    // Stock should NOT be deducted yet
+    verify(inventoryService, never())
+        .decreaseStock(anyLong(), anyLong(), anyInt(), anyString(), anyLong());
 
-        // 3. Create order happened as PENDING
-        verify(orderRepository)
-                .save(argThat(o -> o.getType() == OrderType.SALE && o.getStatus() == OrderStatus.PENDING));
+    // 3. Create order happened as PENDING
+    verify(orderRepository)
+        .save(argThat(o -> o.getType() == OrderType.SALE && o.getStatus() == OrderStatus.PENDING));
 
-        // 4. Create order items happened
-        verify(orderItemRepository).save(any(OrderItem.class));
+    // 4. Create order items happened
+    verify(orderItemRepository).save(any(OrderItem.class));
 
-        // 5. Invoice should NOT be generated yet
-        verify(invoiceService, never()).createFromOrder(any(Order.class));
-    }
+    // 5. Invoice should NOT be generated yet
+    verify(invoiceService, never()).createFromOrder(any(Order.class));
+  }
 
-    @Test
-    void createSalesOrder_InsufficientStock_ShouldThrowException() {
-        // Arrange
-        Long userId = 100L;
-        Long productId = 1L;
-        CreateOrderRequest request = CreateOrderRequest.builder()
-                .type(OrderType.SALE)
-                .items(List.of(OrderItemRequest.builder().productId(productId).quantity(20).build()))
-                .build();
+  @Test
+  void createSalesOrder_InsufficientStock_ShouldThrowException() {
+    // Arrange
+    Long userId = 100L;
+    Long productId = 1L;
+    CreateOrderRequest request =
+        CreateOrderRequest.builder()
+            .type(OrderType.SALE)
+            .items(List.of(OrderItemRequest.builder().productId(productId).quantity(20).build()))
+            .build();
 
-        Product product = Product.builder().id(productId).name("Test Product").stock(10).build();
+    Product product = Product.builder().id(productId).name("Test Product").stock(10).build();
 
-        lenient().when(productService.findByIdWithLock(productId)).thenReturn(Optional.of(product));
-        lenient().when(inventoryService.getAvailableStock(anyLong(), eq(productId))).thenReturn(10);
+    lenient().when(productService.findByIdWithLock(productId)).thenReturn(Optional.of(product));
+    lenient().when(inventoryService.getAvailableStock(anyLong(), eq(productId))).thenReturn(10);
 
-        // Act & Assert
-        assertThrows(
-                InsufficientStockException.class, () -> orderService.createSalesOrder(1L, request, userId));
-        verify(inventoryService, never())
-                .decreaseStock(anyLong(), anyLong(), anyInt(), anyString(), anyLong());
-        verify(orderRepository, never()).save(any(Order.class));
-    }
+    // Act & Assert
+    assertThrows(
+        InsufficientStockException.class, () -> orderService.createSalesOrder(1L, request, userId));
+    verify(inventoryService, never())
+        .decreaseStock(anyLong(), anyLong(), anyInt(), anyString(), anyLong());
+    verify(orderRepository, never()).save(any(Order.class));
+  }
 
-    @Test
-    void createPurchaseOrder_ShouldBePendingInitially() {
-        // Arrange
-        Long userId = 100L;
-        Long productId = 1L;
-        Long supplierId = 5L;
-        CreateOrderRequest request = CreateOrderRequest.builder()
-                .type(OrderType.PURCHASE)
-                .supplierId(supplierId)
-                .items(List.of(OrderItemRequest.builder().productId(productId).quantity(5).build()))
-                .build();
+  @Test
+  void createPurchaseOrder_ShouldBePendingInitially() {
+    // Arrange
+    Long userId = 100L;
+    Long productId = 1L;
+    Long supplierId = 5L;
+    CreateOrderRequest request =
+        CreateOrderRequest.builder()
+            .type(OrderType.PURCHASE)
+            .supplierId(supplierId)
+            .items(List.of(OrderItemRequest.builder().productId(productId).quantity(5).build()))
+            .build();
 
-        Product product = Product.builder().id(productId).purchasePrice(new BigDecimal("50.00")).build();
+    Product product =
+        Product.builder().id(productId).purchasePrice(new BigDecimal("50.00")).build();
 
-        when(supplierRepository.findActiveByIdAndTenantId(eq(supplierId), anyLong()))
-                .thenReturn(Optional.of(mock(com.ims.model.Supplier.class)));
-        when(productService.findByIdWithLock(productId)).thenReturn(Optional.of(product));
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
-        when(orderRepository.save(any(Order.class)))
-                .thenAnswer(
-                        invocation -> {
-                            Order o = invocation.getArgument(0);
-                            o.setId(2L);
-                            return o;
-                        });
+    when(supplierRepository.findActiveByIdAndTenantId(eq(supplierId), anyLong()))
+        .thenReturn(Optional.of(mock(com.ims.model.Supplier.class)));
+    when(productService.findByIdWithLock(productId)).thenReturn(Optional.of(product));
+    when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+    when(orderRepository.save(any(Order.class)))
+        .thenAnswer(
+            invocation -> {
+              Order o = invocation.getArgument(0);
+              o.setId(2L);
+              return o;
+            });
 
-        // Act
-        OrderResponse result = orderService.createPurchaseOrder(1L, request, userId);
+    // Act
+    OrderResponse result = orderService.createPurchaseOrder(1L, request, userId);
 
-        // Assert
-        assertNotNull(result.getId());
-        assertEquals(OrderStatus.PENDING, result.getStatus());
-        verify(inventoryService, never())
-                .increaseStock(anyLong(), anyLong(), anyInt(), anyString(), anyLong());
-        verify(orderRepository)
-                .save(
-                        argThat(
-                                o -> o.getType() == OrderType.PURCHASE && o.getStatus() == OrderStatus.PENDING));
-    }
+    // Assert
+    assertNotNull(result.getId());
+    assertEquals(OrderStatus.PENDING, result.getStatus());
+    verify(inventoryService, never())
+        .increaseStock(anyLong(), anyLong(), anyInt(), anyString(), anyLong());
+    verify(orderRepository)
+        .save(
+            argThat(
+                o -> o.getType() == OrderType.PURCHASE && o.getStatus() == OrderStatus.PENDING));
+  }
 }

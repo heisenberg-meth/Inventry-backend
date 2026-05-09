@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.ims.BaseIntegrationTest;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -14,7 +15,7 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
 
 @AutoConfigureMockMvc
-@TestPropertySource(properties = { "app.rate-limit.enabled=false" })
+@TestPropertySource(properties = {"app.rate-limit.enabled=false"})
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
 
@@ -49,7 +50,8 @@ public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
   void testAuthRateLimitEnforcement() throws Exception {
     clearRateLimits();
 
-    String authLoginJson = objectMapper.writeValueAsString(Map.of("email", "root@ims.com", "password", "root123"));
+    String authLoginJson =
+        objectMapper.writeValueAsString(Map.of("email", "root@ims.com", "password", "root123"));
     mockMvc
         .perform(
             post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content(authLoginJson))

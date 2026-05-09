@@ -19,18 +19,21 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
 
   boolean existsByTenantIdAndOrderId(Long tenantId, Long orderId);
 
-  @Query("SELECT i FROM Invoice i JOIN Order o ON i.orderId = o.id "
-      + "WHERE i.tenantId = :tenantId AND o.customerId = :customerId")
+  @Query(
+      "SELECT i FROM Invoice i JOIN Order o ON i.orderId = o.id "
+          + "WHERE i.tenantId = :tenantId AND o.customerId = :customerId")
   List<Invoice> findByTenantIdAndCustomerId(
       @Param("tenantId") Long tenantId, @Param("customerId") Long customerId);
 
-  @Query("SELECT i FROM Invoice i JOIN Order o ON i.orderId = o.id "
-      + "WHERE i.tenantId = :tenantId AND o.supplierId = :supplierId")
+  @Query(
+      "SELECT i FROM Invoice i JOIN Order o ON i.orderId = o.id "
+          + "WHERE i.tenantId = :tenantId AND o.supplierId = :supplierId")
   List<Invoice> findByTenantIdAndSupplierId(
       @Param("tenantId") Long tenantId, @Param("supplierId") Long supplierId);
 
-  @Query("SELECT i FROM Invoice i WHERE i.tenantId = :tenantId "
-      + "AND i.status != :status AND i.dueDate < :date")
+  @Query(
+      "SELECT i FROM Invoice i WHERE i.tenantId = :tenantId "
+          + "AND i.status != :status AND i.dueDate < :date")
   Page<Invoice> findByTenantIdAndStatusNotAndDueDateBefore(
       @Param("tenantId") Long tenantId,
       @Param("status") String status,

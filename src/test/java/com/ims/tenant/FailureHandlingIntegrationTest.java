@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.LoginRequest;
 import org.junit.jupiter.api.BeforeEach;
@@ -101,15 +102,16 @@ class FailureHandlingIntegrationTest extends BaseIntegrationTest {
       loginRequest.setEmail("root@test.com");
       loginRequest.setPassword("root123");
 
-      String responseJson = mockMvc
-          .perform(
-              post("/api/auth/login")
-                  .contentType(MediaType.APPLICATION_JSON)
-                  .content(objectMapper.writeValueAsString(loginRequest)))
-          .andExpect(status().isOk())
-          .andReturn()
-          .getResponse()
-          .getContentAsString();
+      String responseJson =
+          mockMvc
+              .perform(
+                  post("/api/auth/login")
+                      .contentType(MediaType.APPLICATION_JSON)
+                      .content(objectMapper.writeValueAsString(loginRequest)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
 
       assertThat(responseJson).doesNotContain("root123");
     }
@@ -175,7 +177,7 @@ class FailureHandlingIntegrationTest extends BaseIntegrationTest {
                   + "'Root', 'Test', 'ADMIN', true, NOW()) "
                   + "ON CONFLICT (email) DO NOTHING")
           .executeUpdate();
-    } catch (Exception e) {
+    } catch (Exception expected) {
     }
   }
 }
