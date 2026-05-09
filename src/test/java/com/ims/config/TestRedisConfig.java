@@ -2,10 +2,9 @@ package com.ims.config;
 
 import com.ims.shared.ratelimit.RateLimiterService;
 import org.mockito.Mockito;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
-import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.RedisKeyCommands;
@@ -15,8 +14,7 @@ import org.springframework.data.redis.core.ValueOperations;
 import java.util.HashSet;
 import java.util.Set;
 
-@TestConfiguration
-@Profile("test")
+@Configuration
 public class TestRedisConfig {
 
   @Bean
@@ -28,6 +26,7 @@ public class TestRedisConfig {
     RedisServerCommands serverCommands = Mockito.mock(RedisServerCommands.class);
 
     Mockito.when(factory.getConnection()).thenReturn(connection);
+    Mockito.when(connection.ping()).thenReturn("PONG");
     Mockito.when(connection.keyCommands()).thenReturn(keyCommands);
     Mockito.when(connection.serverCommands()).thenReturn(serverCommands);
     
@@ -37,7 +36,7 @@ public class TestRedisConfig {
   @Bean
   @Primary
   @SuppressWarnings("unchecked")
-  public RedisTemplate<String, Object> redisTemplate() {
+  public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory) {
     RedisTemplate<String, Object> template = Mockito.mock(RedisTemplate.class);
     Set<String> blacklistedTokens = new HashSet<>();
     ValueOperations<String, Object> valueOps = Mockito.mock(ValueOperations.class);
@@ -47,7 +46,7 @@ public class TestRedisConfig {
     // Support blacklisting in AuthIntegrationTest
     Mockito.doAnswer(invocation -> {
         String key = invocation.getArgument(0);
-        if (key.startsWith("jwt:blacklist:")) {
+        if (key != null && key.startsWith("jwt:blacklist:")) {
             blacklistedTokens.add(key);
         }
         return null;
@@ -55,7 +54,7 @@ public class TestRedisConfig {
 
     Mockito.when(template.hasKey(Mockito.anyString())).thenAnswer(invocation -> {
         String key = invocation.getArgument(0);
-        return blacklistedTokens.contains(key);
+        return key != null && blacklistedTokens.contains(key);
     });
 
     return template;

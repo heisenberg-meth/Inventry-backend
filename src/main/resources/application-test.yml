@@ -6,6 +6,15 @@ app:
   security:
     allowed-origins: "http://localhost:5173,https://inventory-management-frontend-r3amqhnaf.vercel.app/"
 
+management:
+  health:
+    redis:
+      enabled: false
+    kafka:
+      enabled: false
+    mail:
+      enabled: false
+
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5433/ims_db

@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5433/ims_db
+    username: ims_user
+    password: changeme
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: changeme
+  jpa:
+    hibernate:
+      ddl-auto: none
+
+app:
+  jwt:
+    secret: dev-secret-for-dev-environment-only-change-in-prod
+  security:
+    allowed-origins: "http://localhost:5173"
+  rate-limit:
+    enabled: false

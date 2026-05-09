@@ -1,46 +1,43 @@
 package com.ims.integration;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.ims.BaseIntegrationTest;
+import com.ims.dto.request.CreateProductRequest;
+import com.ims.helper.SecurityTestUtils;
 import com.ims.model.Supplier;
+import com.ims.order.dto.CreateOrderRequest;
+import com.ims.order.dto.OrderItemRequest;
+import com.ims.order.dto.OrderResponse;
+import com.ims.order.entity.OrderType;
+import com.ims.platform.repository.TenantRepository;
+import com.ims.product.ProductService;
 import com.ims.shared.auth.TenantContext;
+import com.ims.tenant.repository.PermissionRepository;
+import com.ims.tenant.service.OrderService;
+import com.ims.tenant.service.ReportService;
+import com.ims.tenant.service.SupplierService;
 import jakarta.transaction.Transactional;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-@org.springframework.security.test.context.support.WithMockUser(
-    username = "admin",
-    authorities = {
-      "ADMIN",
-      "ROLE_ADMIN",
-      "create_product",
-      "view_product",
-      "update_product",
-      "delete_product",
-      "create_order",
-      "view_order",
-      "create_supplier",
-      "view_supplier",
-      "delete_supplier",
-      "manage_stock",
-      "view_stock"
-    })
 public class ProcurementIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired private com.ims.platform.repository.TenantRepository tenantRepository;
+  @Autowired private TenantRepository tenantRepository;
 
-  @Autowired private com.ims.tenant.service.SupplierService supplierService;
+  @Autowired private SupplierService supplierService;
 
-  @Autowired private com.ims.product.ProductService productService;
+  @Autowired private ProductService productService;
 
-  @Autowired private com.ims.tenant.service.OrderService orderService;
+  @Autowired private OrderService orderService;
 
-  @Autowired private com.ims.tenant.service.ReportService reportService;
+  @Autowired private ReportService reportService;
+
+  @Autowired private PermissionRepository permissionRepository;
 
   @Test
   @Transactional
@@ -49,8 +46,8 @@ public class ProcurementIntegrationTest extends BaseIntegrationTest {
     com.ims.model.Tenant tenant =
         com.ims.model.Tenant.builder()
             .name("Test Pharmacy")
-            .workspaceSlug("test-pharmacy")
-            .companyCode("TP001")
+            .workspaceSlug("test-pharmacy-" + java.util.UUID.randomUUID())
+            .companyCode("TP-" + java.util.UUID.randomUUID().toString().substring(0, 4).toUpperCase())
             .businessType("PHARMACY")
             .maxProducts(100)
             .maxUsers(10)
@@ -61,7 +58,7 @@ public class ProcurementIntegrationTest extends BaseIntegrationTest {
     com.ims.model.User user =
         com.ims.model.User.builder()
             .name("Test User")
-            .email("test@example.com")
+            .email("procure-" + java.util.UUID.randomUUID() + "@example.com")
             .passwordHash("secret")
             .role("ADMIN")
             .scope("TENANT")
@@ -72,14 +69,24 @@ public class ProcurementIntegrationTest extends BaseIntegrationTest {
     user = userRepository.save(user);
     Long userId = user.getId();
 
-    com.ims.helper.SecurityTestUtils.setAuthenticatedUser(user);
+    // Assign all permissions to pass @PreAuthorize checks
+    var viewProductPerm = permissionRepository.findByKey("view_product")
+        .orElseGet(() -> permissionRepository.save(com.ims.model.Permission.builder()
+            .key("view_product")
+            .description("View product details")
+            .build()));
+            
+    user.getCustomPermissions().add(viewProductPerm);
+    user = userRepository.saveAndFlush(user);
+
+    SecurityTestUtils.setAuthenticatedUser(user);
     TenantContext.setTenantId(tenantId);
 
     // 2. Create Supplier
     Supplier supplier =
         Supplier.builder()
             .name("Global Parts Inc")
-            .email("info@globalparts.com")
+            .email("info-" + java.util.UUID.randomUUID() + "@globalparts.com")
             .phone("1234567890")
             .tenantId(tenantId)
             .build();
@@ -87,32 +94,31 @@ public class ProcurementIntegrationTest extends BaseIntegrationTest {
     assertNotNull(supplier.getId());
 
     // 3. Create Product
-    com.ims.dto.request.CreateProductRequest productReq =
-        com.ims.dto.request.CreateProductRequest.builder()
+    CreateProductRequest productReq =
+        CreateProductRequest.builder()
             .name("High Speed Gear")
-            .sku("GEAR-001")
+            .sku("GEAR-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase())
             .purchasePrice(new BigDecimal("50.00"))
-            .salePrice(new BigDecimal("100.00"))
-            .reorderLevel(5)
+            .salePrice(new BigDecimal("75.00"))
             .build();
-    var productResp = productService.createProduct(productReq);
-    Long productId = productResp.getId();
+    var product = productService.createProduct(productReq);
+    Long productId = product.getId();
+    assertNotNull(productId);
 
     // 4. Create Purchase Order
-    com.ims.order.dto.CreateOrderRequest orderReq =
-        com.ims.order.dto.CreateOrderRequest.builder()
+    CreateOrderRequest orderReq =
+        CreateOrderRequest.builder()
             .supplierId(supplier.getId())
-            .type(com.ims.order.entity.OrderType.PURCHASE)
+            .type(OrderType.PURCHASE)
             .items(
-                java.util.List.of(
-                    com.ims.order.dto.OrderItemRequest.builder()
+                List.of(
+                    OrderItemRequest.builder()
                         .productId(productId)
                         .quantity(10)
                         .unitPrice(new BigDecimal("50.00"))
                         .build()))
             .build();
-    com.ims.order.dto.OrderResponse orderResult =
-        orderService.createPurchaseOrder(tenantId, orderReq, userId);
+    OrderResponse orderResult = orderService.createPurchaseOrder(tenantId, orderReq, userId);
     Long orderId = orderResult.getId();
     assertNotNull(orderId);
 
@@ -126,7 +132,7 @@ public class ProcurementIntegrationTest extends BaseIntegrationTest {
 
     // 7. Verify Inventory Valuation (Report)
     BigDecimal valuation = reportService.getInventoryValuation();
-    // 10 units * 50.00 purchase price = 500.00
+    // 10 units * 50.0 purchase price = 500.0
     assertEquals(0, new BigDecimal("500.00").compareTo(valuation));
 
     // 8. Supplier Ledger

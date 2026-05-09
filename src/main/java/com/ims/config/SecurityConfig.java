@@ -79,10 +79,9 @@ public class SecurityConfig {
                                                                 "/api/auth/check-email",
                                                                 "/api/auth/check-slug",
                                                                 "/api/auth/check-company-code",
-                                                                "/api/platform/auth/**")
+                                                                "/login")
                                                                 .permitAll()
-                                                                .requestMatchers(
-                                                                                "/api/auth/logout",
+                                                                .requestMatchers(                                                                                "/api/auth/logout",
                                                                                 "/api/auth/me",
                                                                                 "/api/auth/change-password",
                                                                                 "/api/auth/permissions",

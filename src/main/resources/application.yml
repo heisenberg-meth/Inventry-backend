@@ -13,13 +13,13 @@ spring:
     resources:
       add-mappings: false
   datasource:
-    url: jdbc:postgresql://postgres:5432/inventry
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/inventory}
     username: ${DB_USERNAME:ims_user}
-    password: ${DB_PASSWORD}
+    password: ${DB_PASSWORD:changeme}
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
+      minimum-idle: ${DB_POOL_MIN_IDLE:2}
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
@@ -40,9 +40,9 @@ spring:
       cache-null-values: false
   data:
     redis:
-      host: redis
-      port: 6379
-      password: ${REDIS_PASSWORD:}
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:changeme}
       timeout: 2000ms
       repositories:
         enabled: false
@@ -101,7 +101,7 @@ app:
   security:
     allowed-origins: "*"
   jwt:
-    secret: ${JWT_SECRET}
+    secret: ${JWT_SECRET:ZGV2LW9ubHktc2VjcmV0LWNoYW5nZS1tZS1pbi1wcm9kLW1pbi0zMi1jaGFycyEh}
     expiry-seconds: 86400
     refresh-expiry-seconds: 604800
   rate-limit:

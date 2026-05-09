@@ -13,12 +13,15 @@ public class DatabaseCleanupHelper {
         if (jdbcTemplate == null)
             return;
 
+        // We specifically EXCLUDE 'permissions' and 'system_configs' as they contain global seed data
+        // from migrations that the application requires to function.
         String[] CASCADE_TABLES = {
             "order_items", "orders", "customers", "suppliers", "products", "categories",
-            "users", "tenants", "roles", "permissions", "notifications", "alerts",
+            "users", "tenants", "roles", "notifications", "alerts",
             "webhooks", "payments", "subscriptions", "subscription_plans",
             "support_attachments", "support_messages", "support_tickets",
-            "system_configs", "stock_movements", "inventory", "transfer_orders", "invoices"
+            "stock_movements", "inventory", "transfer_orders", "invoices",
+            "user_permissions", "role_permissions"
         };
 
         try {
@@ -31,6 +34,7 @@ public class DatabaseCleanupHelper {
             }
             jdbcTemplate.execute("TRUNCATE TABLE audit_logs CASCADE");
         } catch (Exception e) {
+            // Fallback to DELETE if TRUNCATE fails (e.g. permission issues or non-postgres)
             for (String table : CASCADE_TABLES) {
                 try {
                     jdbcTemplate.execute("DELETE FROM " + table);

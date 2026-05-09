@@ -30,7 +30,7 @@ public class SecurityTestUtils {
                 user.getTenantId(),
                 user.getRole(),
                 user.getScope(),
-                "RETAIL", // Default
+                "PHARMACY", // Updated to match ProcurementIntegrationTest requirements
                 user.getIsPlatformUser() != null && user.getIsPlatformUser());
         auth.setDetails(details);
         auth.setAuthenticated(true);

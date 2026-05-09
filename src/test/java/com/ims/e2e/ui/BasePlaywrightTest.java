@@ -9,19 +9,29 @@ import com.microsoft.playwright.Tracing;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Paths;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.context.annotation.Import;
+import com.ims.config.TestRedisConfig;
+import com.ims.config.TestCacheConfig;
 
 /**
  * Thread-safe base class for all Playwright UI tests using ThreadLocal context. Follows the
  * playwright-java guidelines.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
+    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration"
+})
+@org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Import({TestRedisConfig.class, TestCacheConfig.class})
 public abstract class BasePlaywrightTest {
   @LocalServerPort protected int port;
 
@@ -35,141 +45,68 @@ public abstract class BasePlaywrightTest {
       try {
         URL url = URI.create(frontendUrl).toURL();
         frontendPort = url.getPort() != -1 ? url.getPort() : 80;
-      } catch (Exception e) {
-      }
-
-      if (!isPortOpen("localhost", frontendPort)) {
-        System.out.println("Frontend not detected on " + frontendPort + ". Attempting to start...");
-        startFrontend();
-      } else {
-        System.out.println("Frontend detected on " + frontendPort + ". Continuing...");
+      } catch (Exception ignored) {
       }
     }
   }
 
-  private static boolean isPortOpen(String host, int port) {
-    try (java.net.Socket socket = new java.net.Socket()) {
-      socket.connect(new java.net.InetSocketAddress(host, port), 1000);
-      return true;
-    } catch (java.io.IOException e) {
-      return false;
-    }
+  // Playwright instances
+  private static Playwright playwright;
+  private static Browser browser;
+
+  // ThreadLocal storage for thread safety during parallel execution
+  private final ThreadLocal<BrowserContext> browserContext = new ThreadLocal<>();
+  private final ThreadLocal<Page> threadPage = new ThreadLocal<>();
+
+  @BeforeAll
+  static void launchBrowser() {
+    playwright = Playwright.create();
+    browser = resolveBrowser(playwright).launch(new BrowserType.LaunchOptions().setHeadless(true));
   }
 
-  private static void startFrontend() {
-    // Try to find the frontend directory relative to the current project
-    java.io.File frontendDir = new java.io.File("../inventory-management-frontend");
-    if (!frontendDir.exists()) {
-      frontendDir = new java.io.File("inventory-management-frontend");
-    }
-
-    if (frontendDir.exists()) {
-      try {
-        System.out.println("Starting frontend in: " + frontendDir.getAbsolutePath());
-        String os = System.getProperty("os.name").toLowerCase();
-        String npmCommand = os.contains("win") ? "npm.cmd" : "npm";
-
-        ProcessBuilder pb = new ProcessBuilder(npmCommand, "run", "dev");
-        pb.directory(frontendDir);
-        pb.inheritIO();
-        Process process = pb.start();
-
-        // Give it some time to start up
-        System.out.println("Waiting for frontend to stabilize...");
-        Thread.sleep(5000);
-
-        Runtime.getRuntime()
-            .addShutdownHook(
-                new Thread(
-                    () -> {
-                      System.out.println("Shutting down frontend...");
-                      process.destroy();
-                    }));
-      } catch (Exception e) {
-        System.err.println("FAILED TO START FRONTEND: " + e.getMessage());
-      }
-    } else {
-      System.err.println(
-          "COULD NOT FIND FRONTEND DIRECTORY. Please start manually: cd frontend && npm run dev");
-    }
-  }
-
-  protected String baseUrl() {
-    // UI tests should point to the frontend server (usually Vite on 5173)
-    // Backend port is available if needed for direct API checks
-    String frontendUrl =
-        System.getProperty(
-            "frontendUrl", "https://inventory-management-frontend-r3amqhnaf.vercel.app/");
-    System.out.println(
-        "Using base URL for UI tests: " + frontendUrl + " (Backend is on port " + port + ")");
-    return frontendUrl;
-  }
-
-  protected static ThreadLocal<Playwright> playwrightTL = new ThreadLocal<>();
-  protected static ThreadLocal<Browser> browserTL = new ThreadLocal<>();
-  protected static ThreadLocal<BrowserContext> contextTL = new ThreadLocal<>();
-  protected static ThreadLocal<Page> pageTL = new ThreadLocal<>();
-
-  protected Page page() {
-    return pageTL.get();
+  @AfterAll
+  static void closeBrowser() {
+    if (browser != null) browser.close();
+    if (playwright != null) playwright.close();
   }
 
   @BeforeEach
-  protected void setUp() {
-    System.setProperty("baseUrl", baseUrl());
-    Playwright playwright = Playwright.create();
-    playwrightTL.set(playwright);
+  void createContextAndPage(TestInfo testInfo) {
+    BrowserContext context = browser.newContext();
+    browserContext.set(context);
 
-    // Can be configured to non-headless if needed
-    boolean isHeadless = Boolean.parseBoolean(System.getProperty("headless", "true"));
-    Browser browser =
-        resolveBrowser(playwright).launch(new BrowserType.LaunchOptions().setHeadless(isHeadless));
-    browserTL.set(browser);
+    // Start tracing for each test
+    context.tracing().start(new Tracing.StartOptions()
+        .setScreenshots(true)
+        .setSnapshots(true)
+        .setSources(true));
 
-    BrowserContext context =
-        browser.newContext(
-            new Browser.NewContextOptions()
-                .setViewportSize(1920, 1080)
-                .setRecordVideoDir(Paths.get("target/videos/"))
-                .setLocale("en-US"));
-
-    context
-        .tracing()
-        .start(new Tracing.StartOptions().setScreenshots(true).setSnapshots(true).setSources(true));
-
-    contextTL.set(context);
     Page page = context.newPage();
-
-    // Debugging instrumentation
-    page.onConsoleMessage(msg -> System.out.println("BROWSER CONSOLE: " + msg.text()));
-    page.onPageError(
-        err -> {
-          System.err.println("BROWSER PAGE ERROR: " + err);
-        });
-
-    pageTL.set(page);
+    threadPage.set(page);
   }
 
   @AfterEach
-  protected void tearDown(TestInfo testInfo) {
-    String name = testInfo.getDisplayName().replaceAll("[^a-zA-Z0-9]", "_");
-    contextTL
-        .get()
-        .tracing()
-        .stop(new Tracing.StopOptions().setPath(Paths.get("target/traces/" + name + ".zip")));
-
-    pageTL.get().close();
-    contextTL.get().close();
-    browserTL.get().close();
-    playwrightTL.get().close();
-
-    pageTL.remove();
-    contextTL.remove();
-    browserTL.remove();
-    playwrightTL.remove();
+  void closeContext(TestInfo testInfo) {
+    BrowserContext context = browserContext.get();
+    if (context != null) {
+      String testName = testInfo.getDisplayName().replaceAll("[^a-zA-Z0-9]", "_");
+      context.tracing().stop(new Tracing.StopOptions()
+          .setPath(Paths.get("target/playwright-traces/" + testName + ".zip")));
+      context.close();
+    }
+    browserContext.remove();
+    threadPage.remove();
   }
 
-  private BrowserType resolveBrowser(Playwright pw) {
+  protected Page page() {
+    return threadPage.get();
+  }
+
+  protected String baseUrl() {
+    return System.getProperty("frontendUrl", "http://localhost:" + port);
+  }
+
+  private static BrowserType resolveBrowser(Playwright pw) {
     return switch (System.getProperty("browser", "chromium").toLowerCase()) {
       case "firefox" -> pw.firefox();
       case "webkit" -> pw.webkit();

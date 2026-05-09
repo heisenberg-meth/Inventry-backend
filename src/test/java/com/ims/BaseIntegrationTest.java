@@ -58,7 +58,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @SpringBootTest(classes = ImsApplication.class, webEnvironment = SpringBootTest.WebEnvironment.MOCK, properties = {
     "spring.data.redis.repositories.enabled=false",
-    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration"
+    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration,org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration"
 })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")

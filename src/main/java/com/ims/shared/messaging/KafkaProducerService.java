@@ -4,7 +4,6 @@ import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.retry.annotation.Backoff;
@@ -20,23 +19,19 @@ public class KafkaProducerService {
   private final Counter kafkaSendSuccessCounter;
   private final Counter kafkaSendFailureCounter;
 
-  @Autowired(required = false)
   public KafkaProducerService(
-          KafkaTemplate<String, String> kafkaTemplate, MeterRegistry meterRegistry) {
+      KafkaTemplate<String, String> kafkaTemplate, MeterRegistry meterRegistry) {
     this.kafkaTemplate = kafkaTemplate;
     this.kafkaSendSuccessCounter = Counter.builder("kafka.send.success").register(meterRegistry);
     this.kafkaSendFailureCounter = Counter.builder("kafka.send.failure").register(meterRegistry);
   }
 
   @CircuitBreaker(name = "kafkaService", fallbackMethod = "sendMessageFallback")
-  @Retryable(
-      retryFor = {
-        org.apache.kafka.common.errors.TimeoutException.class,
-        org.apache.kafka.common.errors.NetworkException.class,
-        org.springframework.kafka.KafkaException.class
-      },
-      maxAttempts = 3,
-      backoff = @Backoff(delay = 500, maxDelay = 2000, multiplier = 2))
+  @Retryable(retryFor = {
+      org.apache.kafka.common.errors.TimeoutException.class,
+      org.apache.kafka.common.errors.NetworkException.class,
+      org.springframework.kafka.KafkaException.class
+  }, maxAttempts = 3, backoff = @Backoff(delay = 500, maxDelay = 2000, multiplier = 2))
   public void sendMessage(String topic, String key, String message) {
     log.debug("Sending message to topic {}: key={}", topic, key);
     kafkaTemplate

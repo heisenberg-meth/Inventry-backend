@@ -11,8 +11,15 @@ spring:
   jpa:
     hibernate:
       ddl-auto: none
+  kafka:
+    enabled: false
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
 
 app:
+  outbox:
+    enabled: false
   jwt:
     secret: "ZGV2LW9ubHktc2VjcmV0LWNoYW5nZS1tZS1pbi1wcm9kLW1pbi0zMi1jaGFycyEh"
     expiry-seconds: 86400
