@@ -4,8 +4,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ims.BaseIntegrationTest;
-import com.ims.helper.TestDataFactory;
 import com.ims.dto.request.SignupRequest;
+import com.ims.helper.TestDataFactory;
 import com.ims.shared.auth.SignupService;
 import java.util.Objects;
 import org.junit.jupiter.api.BeforeEach;

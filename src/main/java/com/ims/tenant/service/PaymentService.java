@@ -53,28 +53,7 @@ public class PaymentService {
 
     payment = paymentRepository.save(Objects.requireNonNull(payment));
 
-    BigDecimal totalPaid = paymentRepository.sumAmountByTenantIdAndInvoiceId(tenantId, invoiceId);
-    BigDecimal invoiceAmount = invoice.getAmount();
-    if (invoice.getTaxAmount() != null) {
-      invoiceAmount = invoiceAmount.add(invoice.getTaxAmount());
-    }
-    if (invoice.getDiscount() != null) {
-      invoiceAmount = invoiceAmount.subtract(invoice.getDiscount());
-    }
-
-    if (totalPaid.compareTo(invoiceAmount) >= 0) {
-      invoice.setStatus("PAID");
-      invoice.setPaidAt(LocalDateTime.now());
-    } else if (totalPaid.compareTo(BigDecimal.ZERO) > 0) {
-      invoice.setStatus("PARTIAL");
-    }
-
-    invoiceRepository.save(Objects.requireNonNull(invoice));
-    log.info(
-        "Payment recorded: {} for invoice {}. New status: {}",
-        amount,
-        invoiceId,
-        invoice.getStatus());
+    updateInvoiceStatus(invoiceId);
 
     // Save to Outbox for downstream processing
     outboxService.saveEvent(

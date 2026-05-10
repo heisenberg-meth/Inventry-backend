@@ -39,7 +39,7 @@ public class KafkaConsumers {
       } finally {
         TenantContext.clear();
       }
-    } catch (Exception e) {
+    } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
       log.error("Error processing low stock alert message", e);
     }
   }
@@ -60,7 +60,7 @@ public class KafkaConsumers {
       } finally {
         TenantContext.clear();
       }
-    } catch (Exception e) {
+    } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
       log.error("Error processing invoice generate message", e);
     }
   }

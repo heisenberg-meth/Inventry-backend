@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class NoOpKafkaProducerService {
 
+  @SuppressWarnings("unused")
   private final Counter kafkaSendFailureCounter;
 
   public NoOpKafkaProducerService(MeterRegistry meterRegistry) {

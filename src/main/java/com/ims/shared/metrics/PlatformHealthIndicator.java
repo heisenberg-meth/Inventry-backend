@@ -17,7 +17,8 @@ public class PlatformHealthIndicator implements HealthIndicator {
   private final DataSource dataSource;
   private final RedisTemplate<String, Object> redisTemplate;
 
-  public PlatformHealthIndicator(DataSource dataSource, RedisTemplate<String, Object> redisTemplate) {
+  public PlatformHealthIndicator(
+      DataSource dataSource, RedisTemplate<String, Object> redisTemplate) {
     this.dataSource = dataSource;
     this.redisTemplate = redisTemplate;
   }

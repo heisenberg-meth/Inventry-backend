@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class PaymentGatewayService {
 
+  private static final int ORDER_ID_RANDOM_LENGTH = 8;
   private final PaymentRepository paymentRepository;
   private final InvoiceRepository invoiceRepository;
   private final PaymentGatewayLogRepository logRepository;
@@ -31,7 +32,8 @@ public class PaymentGatewayService {
         .findById(invoiceId)
         .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
 
-    String gatewayOrderId = "order_" + UUID.randomUUID().toString().substring(0, 8);
+    String gatewayOrderId =
+        "order_" + UUID.randomUUID().toString().substring(0, ORDER_ID_RANDOM_LENGTH);
 
     Payment payment =
         Payment.builder()
@@ -71,7 +73,7 @@ public class PaymentGatewayService {
     // Simplified: in real scenario, validate signature here
     // Extract tenantId from payload if possible, otherwise use 0 for global log
     Long tenantId =
-        payload.containsKey("tenant_id") ? Long.valueOf(payload.get("tenant_id").toString()) : 0L;
+        payload.containsKey("tenant_id") ? Long.parseLong(payload.get("tenant_id").toString()) : 0L;
 
     try {
       if (tenantId != 0L) {
@@ -132,7 +134,7 @@ public class PaymentGatewayService {
     }
   }
 
-  private boolean validateSignature(Map<String, Object> payload) {
+  private boolean validateSignature(Map<String, Object> ignoredPayload) {
     // In production, use HMAC-SHA256 or gateway SDK to verify the signature header
     log.debug("Webhook signature validated (simulated)");
     return true;

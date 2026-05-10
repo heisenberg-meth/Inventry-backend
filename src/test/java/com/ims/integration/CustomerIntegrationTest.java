@@ -16,8 +16,12 @@ class CustomerIntegrationTest extends BaseIntegrationTest {
 
   @Test
   void getCustomers_withoutAuth_returns401() throws Exception {
-    mockMvc.perform(get("/api/v1/tenant/customers")
-        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous()))
+    mockMvc
+        .perform(
+            get("/api/v1/tenant/customers")
+                .with(
+                    org.springframework.security.test.web.servlet.request
+                        .SecurityMockMvcRequestPostProcessors.anonymous()))
         .andExpect(status().isUnauthorized());
   }
 }

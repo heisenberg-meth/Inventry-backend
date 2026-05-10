@@ -6,6 +6,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
@@ -90,7 +91,8 @@ public class JwtFilter extends OncePerRequestFilter {
       boolean isPlatformUser = Boolean.TRUE.equals(claims.get("is_platform_user", Boolean.class));
 
       // Normalize to ROLE_ prefix for Spring Security and add granular permissions
-      java.util.List<org.springframework.security.core.GrantedAuthority> authorities = new java.util.ArrayList<>();
+      List<org.springframework.security.core.GrantedAuthority> authorities =
+          new java.util.ArrayList<>();
       if (role != null) {
         String roleWithPrefix = role.startsWith("ROLE_") ? role : "ROLE_" + role;
         String roleWithoutPrefix = role.startsWith("ROLE_") ? role.substring(5) : role;
@@ -128,7 +130,7 @@ public class JwtFilter extends OncePerRequestFilter {
   private String hashToken(String token) {
     try {
       MessageDigest md = MessageDigest.getInstance("SHA-256");
-      byte[] hash = md.digest(token.getBytes());
+      byte[] hash = md.digest(token.getBytes(StandardCharsets.UTF_8));
       return HexFormat.of().formatHex(hash);
     } catch (NoSuchAlgorithmException e) {
       throw new RuntimeException("SHA-256 not available", e);
@@ -148,6 +150,10 @@ public class JwtFilter extends OncePerRequestFilter {
         || path.equals("/api/auth/check-slug")
         || path.equals("/api/auth/check-company-code")
         || path.startsWith("/actuator/health")
-        || path.startsWith("/actuator/info");
+        || path.startsWith("/actuator/info")
+        || path.startsWith("/swagger-ui")
+        || path.startsWith("/v3/api-docs")
+        || path.equals("/swagger-ui.html")
+        || path.startsWith("/api-docs");
   }
 }

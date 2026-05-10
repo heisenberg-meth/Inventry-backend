@@ -8,6 +8,7 @@ import com.ims.model.User;
 import com.ims.platform.repository.TenantRepository;
 import com.ims.shared.audit.AuditAction;
 import com.ims.tenant.repository.UserRepository;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -31,7 +32,7 @@ public class SignupService {
   private final com.ims.shared.utils.CompanyCodeGenerator companyCodeGenerator;
 
   public SignupResponse signup(SignupRequest request) {
-    String normalizedEmail = request.getOwnerEmail().trim().toLowerCase();
+    String normalizedEmail = request.getOwnerEmail().trim().toLowerCase(Locale.ROOT);
 
     String workspaceSlug = generateWorkspaceSlug(request.getBusinessName());
     workspaceSlug = ensureUniqueWorkspaceSlug(workspaceSlug);
@@ -119,7 +120,7 @@ public class SignupService {
     // Generate base slug from business name
     String baseSlug =
         businessName
-            .toLowerCase()
+            .toLowerCase(Locale.ROOT)
             .replaceAll("[^a-z0-9\\s-]", "")
             .replaceAll("\\s+", "-")
             .replaceAll("-+", "-")

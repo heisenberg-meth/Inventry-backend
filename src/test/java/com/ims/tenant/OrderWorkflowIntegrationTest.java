@@ -6,11 +6,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ims.BaseIntegrationTest;
-import com.ims.helper.TestDataFactory;
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.request.SignupRequest;
 import com.ims.dto.response.ProductResponse;
 import com.ims.dto.response.SignupResponse;
+import com.ims.helper.TestDataFactory;
 import com.ims.model.Customer;
 import com.ims.shared.auth.SignupService;
 import com.ims.tenant.service.CustomerService;
@@ -49,8 +49,7 @@ public class OrderWorkflowIntegrationTest extends BaseIntegrationTest {
   @Autowired private CustomerService customerService;
 
   @BeforeEach
-  void setup() {
-  }
+  void setup() {}
 
   @Test
   void testProductAndCustomerCreation() throws Exception {

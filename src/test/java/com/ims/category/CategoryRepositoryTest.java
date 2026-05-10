@@ -12,16 +12,17 @@ import org.springframework.data.domain.PageRequest;
 
 class CategoryRepositoryTest extends BaseIntegrationTest {
 
-  @Autowired
-  private CategoryRepository categoryRepository;
+  @Autowired private CategoryRepository categoryRepository;
 
   @Test
   void findByIdAndTenantId_ShouldReturnCategory() {
     com.ims.shared.auth.TenantContext.setTenantId(testTenant1Id);
-    Category category = Category.builder().name("Electronics").taxRate(BigDecimal.valueOf(18)).build();
+    Category category =
+        Category.builder().name("Electronics").taxRate(BigDecimal.valueOf(18)).build();
     category = categoryRepository.save(category);
 
-    Optional<Category> found = categoryRepository.findByIdAndTenantId(category.getId(), testTenant1Id);
+    Optional<Category> found =
+        categoryRepository.findByIdAndTenantId(category.getId(), testTenant1Id);
 
     assertThat(found).isPresent();
     assertThat(found.get().getName()).isEqualTo("Electronics");
@@ -33,7 +34,8 @@ class CategoryRepositoryTest extends BaseIntegrationTest {
     Category category = Category.builder().name("Electronics").build();
     category = categoryRepository.save(category);
 
-    Optional<Category> found = categoryRepository.findByIdAndTenantId(category.getId(), testTenant2Id);
+    Optional<Category> found =
+        categoryRepository.findByIdAndTenantId(category.getId(), testTenant2Id);
 
     assertThat(found).isEmpty();
   }
@@ -46,7 +48,8 @@ class CategoryRepositoryTest extends BaseIntegrationTest {
     com.ims.shared.auth.TenantContext.setTenantId(testTenant2Id);
     categoryRepository.save(Category.builder().name("C2").build());
 
-    Page<Category> t1Categories = categoryRepository.findByTenantId(testTenant1Id, PageRequest.of(0, 10));
+    Page<Category> t1Categories =
+        categoryRepository.findByTenantId(testTenant1Id, PageRequest.of(0, 10));
 
     assertThat(t1Categories.getContent()).hasSize(1);
     assertThat(t1Categories.getContent().get(0).getName()).isEqualTo("C1");

@@ -5,9 +5,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ims.BaseIntegrationTest;
-import com.ims.helper.TestDataFactory;
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.dto.response.SignupResponse;
+import com.ims.helper.TestDataFactory;
 import com.ims.shared.auth.SignupService;
 import java.math.BigDecimal;
 import java.util.UUID;

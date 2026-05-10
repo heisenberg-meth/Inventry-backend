@@ -15,8 +15,7 @@ import org.springframework.stereotype.Repository;
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
   @Query("SELECT p FROM Payment p WHERE p.tenantId = :tenantId AND p.id = :id")
-  java.util.Optional<Payment> findByIdAndTenantId(
-      @Param("tenantId") Long tenantId, @Param("id") Long id);
+  Optional<Payment> findByIdAndTenantId(@Param("tenantId") Long tenantId, @Param("id") Long id);
 
   @Query("SELECT p FROM Payment p WHERE p.tenantId = :tenantId")
   Page<Payment> findAllByTenantId(@Param("tenantId") Long tenantId, Pageable pageable);

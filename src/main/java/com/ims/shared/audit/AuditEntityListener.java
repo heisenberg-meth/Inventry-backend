@@ -21,7 +21,11 @@ public class AuditEntityListener {
 
   @Autowired
   public void setRepository(AuditLogRepository repository) {
-    AuditEntityListener.staticRepository = repository;
+    setStaticRepository(repository);
+  }
+
+  private static synchronized void setStaticRepository(AuditLogRepository repository) {
+    staticRepository = repository;
   }
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -81,7 +85,9 @@ public class AuditEntityListener {
       var method = entity.getClass().getMethod("getId");
       Object result = method.invoke(entity);
       return result instanceof Long ? (Long) result : null;
-    } catch (Exception e) {
+    } catch (NoSuchMethodException
+        | IllegalAccessException
+        | java.lang.reflect.InvocationTargetException e) {
       return null;
     }
   }

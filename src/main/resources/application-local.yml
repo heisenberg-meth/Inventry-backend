@@ -21,7 +21,7 @@ app:
   outbox:
     enabled: false
   jwt:
-    secret: "ZGV2LW9ubHktc2VjcmV0LWNoYW5nZS1tZS1pbi1wcm9kLW1pbi0zMi1jaGFycyEh"
+    secret: "ZGV2LW9ubHktc2VjcmV0LWNoYW5nZS1tZS1pbi1wcm9kLW1pbi0zMi1jaGFycysr"
     expiry-seconds: 86400
     refresh-expiry-seconds: 604800
   security:

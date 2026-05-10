@@ -13,7 +13,10 @@ import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
 
 @Service
-@ConditionalOnProperty(value = "app.rate-limit.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(
+    value = "app.rate-limit.enabled",
+    havingValue = "true",
+    matchIfMissing = true)
 @Slf4j
 public class RateLimiterService {
 

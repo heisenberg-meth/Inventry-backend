@@ -7,8 +7,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 /**
- * Minimal controller to serve a mock login page for E2E testing.
- * This allows Playwright tests to find the expected elements without a real frontend.
+ * Minimal controller to serve a mock login page for E2E testing. This allows Playwright tests to
+ * find the expected elements without a real frontend.
  */
 @Controller
 @Profile("test")

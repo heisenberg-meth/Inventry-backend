@@ -73,3 +73,9 @@ resilience4j:
         permittedNumberOfCallsInHalfOpenState: 100
         slowCallDurationThreshold: 10000
         slowCallRateThreshold: 100
+
+springdoc:
+  swagger-ui:
+    enabled: true
+  api-docs:
+    enabled: true

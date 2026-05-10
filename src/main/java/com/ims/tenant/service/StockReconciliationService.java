@@ -48,7 +48,7 @@ public class StockReconciliationService {
       calculatedStock = 0;
     }
 
-    if (product.getStock() != calculatedStock) {
+    if (!java.util.Objects.equals(product.getStock(), calculatedStock)) {
       log.error(
           "Stock mismatch for product {} (ID: {}). DB Stock: {}, Calculated: {}",
           product.getName(),

@@ -2,20 +2,20 @@ package com.ims;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ims.category.CategoryRepository;
+import com.ims.config.RedisStateCleaner;
 import com.ims.dto.request.SignupRequest;
-import com.ims.platform.repository.SubscriptionPlanRepository;
-import com.ims.platform.repository.SubscriptionRepository;
-import com.ims.platform.repository.SystemConfigRepository;
-import com.ims.platform.repository.TenantRepository;
-import com.ims.product.ProductRepository;
-import com.ims.shared.audit.AuditLogRepository;
 import com.ims.helper.AuthTestHelper;
 import com.ims.helper.DatabaseCleanupHelper;
 import com.ims.helper.ProductTestHelper;
 import com.ims.helper.SecurityTestUtils;
 import com.ims.helper.TenantTestHelper;
 import com.ims.helper.TestDataFactory;
-import com.ims.config.RedisStateCleaner;
+import com.ims.platform.repository.SubscriptionPlanRepository;
+import com.ims.platform.repository.SubscriptionRepository;
+import com.ims.platform.repository.SystemConfigRepository;
+import com.ims.platform.repository.TenantRepository;
+import com.ims.product.ProductRepository;
+import com.ims.shared.audit.AuditLogRepository;
 import com.ims.tenant.repository.CustomerRepository;
 import com.ims.tenant.repository.InventoryRepository;
 import com.ims.tenant.repository.InvoiceRepository;
@@ -33,6 +33,7 @@ import com.ims.tenant.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.util.function.Supplier;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,10 +41,10 @@ import org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.context.ApplicationContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.annotation.DirtiesContext;
@@ -53,20 +54,25 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-@SpringBootTest(classes = ImsApplication.class, webEnvironment = SpringBootTest.WebEnvironment.MOCK, properties = {
-    "spring.data.redis.repositories.enabled=false",
-    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration,org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration"
-})
+@SpringBootTest(
+    classes = ImsApplication.class,
+    webEnvironment = SpringBootTest.WebEnvironment.MOCK,
+    properties = {
+      "spring.data.redis.repositories.enabled=false",
+      "spring.autoconfigure.exclude="
+          + "org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,"
+          + "org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration,"
+          + "org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration"
+    })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @Import({
-    BaseIntegrationTest.FlywayTestConfig.class,
-    com.ims.config.TestRedisConfig.class,
-    com.ims.config.TestCacheConfig.class
+  BaseIntegrationTest.FlywayTestConfig.class,
+  com.ims.config.TestRedisConfig.class,
+  com.ims.config.TestCacheConfig.class
 })
 public abstract class BaseIntegrationTest {
 
@@ -113,7 +119,8 @@ public abstract class BaseIntegrationTest {
         registry.add("spring.datasource.password", () -> "changeme");
       }
     } else {
-      final String jdbcUrl = String.format("jdbc:postgresql://%s:%d/ims_db", postgresHost, postgresPort);
+      final String jdbcUrl =
+          String.format("jdbc:postgresql://%s:%d/ims_db", postgresHost, postgresPort);
       registry.add("spring.datasource.url", () -> jdbcUrl);
       registry.add("spring.datasource.username", () -> "ims_user");
       registry.add("spring.datasource.password", () -> "changeme");
@@ -137,99 +144,63 @@ public abstract class BaseIntegrationTest {
     tenantTestHelper.clear();
   }
 
-  @Autowired
-  protected TenantRepository tenantRepository;
-  @Autowired
-  protected UserRepository userRepository;
-  @Autowired
-  protected RoleRepository roleRepository;
-  @Autowired
-  protected CustomerRepository customerRepository;
-  @Autowired
-  protected SupplierRepository supplierRepository;
-  @Autowired
-  protected ProductRepository productRepository;
-  @Autowired
-  protected CategoryRepository categoryRepository;
-  @Autowired
-  protected OrderRepository orderRepository;
-  @Autowired
-  protected OrderItemRepository orderItemRepository;
-  @Autowired
-  protected InventoryRepository inventoryRepository;
-  @Autowired
-  protected StockMovementRepository stockMovementRepository;
-  @Autowired
-  protected InvoiceRepository invoiceRepository;
-  @Autowired
-  protected AuditLogRepository auditLogRepository;
-  @Autowired
-  protected PaymentRepository paymentRepository;
-  @Autowired
-  protected TransferOrderRepository transferOrderRepository;
-  @Autowired
-  protected SubscriptionRepository subscriptionRepository;
-  @Autowired
-  protected SubscriptionPlanRepository subscriptionPlanRepository;
-  @Autowired
-  protected SupportAttachmentRepository supportAttachmentRepository;
-  @Autowired
-  protected SupportMessageRepository supportMessageRepository;
-  @Autowired
-  protected SupportTicketRepository supportTicketRepository;
-  @Autowired
-  protected SystemConfigRepository systemConfigRepository;
+  @Autowired protected TenantRepository tenantRepository;
+  @Autowired protected UserRepository userRepository;
+  @Autowired protected RoleRepository roleRepository;
+  @Autowired protected CustomerRepository customerRepository;
+  @Autowired protected SupplierRepository supplierRepository;
+  @Autowired protected ProductRepository productRepository;
+  @Autowired protected CategoryRepository categoryRepository;
+  @Autowired protected OrderRepository orderRepository;
+  @Autowired protected OrderItemRepository orderItemRepository;
+  @Autowired protected InventoryRepository inventoryRepository;
+  @Autowired protected StockMovementRepository stockMovementRepository;
+  @Autowired protected InvoiceRepository invoiceRepository;
+  @Autowired protected AuditLogRepository auditLogRepository;
+  @Autowired protected PaymentRepository paymentRepository;
+  @Autowired protected TransferOrderRepository transferOrderRepository;
+  @Autowired protected SubscriptionRepository subscriptionRepository;
+  @Autowired protected SubscriptionPlanRepository subscriptionPlanRepository;
+  @Autowired protected SupportAttachmentRepository supportAttachmentRepository;
+  @Autowired protected SupportMessageRepository supportMessageRepository;
+  @Autowired protected SupportTicketRepository supportTicketRepository;
+  @Autowired protected SystemConfigRepository systemConfigRepository;
 
-  @Autowired
-  protected EntityManager entityManager;
-  @Autowired
-  protected JdbcTemplate jdbcTemplate;
-  @Autowired
-  protected PasswordEncoder passwordEncoder;
+  @Autowired protected EntityManager entityManager;
+  @Autowired protected JdbcTemplate jdbcTemplate;
+  @Autowired protected PasswordEncoder passwordEncoder;
 
-  @PersistenceContext
-  protected EntityManager em;
+  @PersistenceContext protected EntityManager em;
 
-  @Autowired
-  protected PlatformTransactionManager transactionManager;
-  @Autowired
-  protected TransactionTemplate transactionTemplate;
+  @Autowired protected PlatformTransactionManager transactionManager;
+  @Autowired protected TransactionTemplate transactionTemplate;
 
   protected Long testTenant1Id;
   protected Long testTenant2Id;
   protected Long testUserId;
   protected String testUserToken;
-  @Autowired
-  protected RedisTemplate<String, Object> redisTemplate;
-  @Autowired
-  protected MockMvc mockMvc;
-  @Autowired
-  protected ObjectMapper objectMapper;
-  @Autowired
-  protected AuthTestHelper authTestHelper;
-  @Autowired
-  protected TenantTestHelper tenantTestHelper;
-  @Autowired
-  protected DatabaseCleanupHelper databaseCleanupHelper;
-  @Autowired
-  protected ProductTestHelper productTestHelper;
-  @Autowired
-  protected TestDataFactory testDataFactory;
-  @Autowired
-  protected ApplicationContext applicationContext;
+  @Autowired protected RedisTemplate<String, Object> redisTemplate;
+  @Autowired protected MockMvc mockMvc;
+  @Autowired protected ObjectMapper objectMapper;
+  @Autowired protected AuthTestHelper authTestHelper;
+  @Autowired protected TenantTestHelper tenantTestHelper;
+  @Autowired protected DatabaseCleanupHelper databaseCleanupHelper;
+  @Autowired protected ProductTestHelper productTestHelper;
+  @Autowired protected TestDataFactory testDataFactory;
+  @Autowired protected ApplicationContext applicationContext;
 
   protected String login(String email, String password, String companyCode) throws Exception {
     return authTestHelper.login(email, password, companyCode);
   }
 
-  protected SignupRequest createSignupRequest(
-      String name, String slug, String email) {
+  protected SignupRequest createSignupRequest(String name, String slug, String email) {
     return authTestHelper.createSignupRequest(name, slug, email);
   }
 
   @BeforeEach
   void baseSetUp() {
-    applicationContext.getBeanProvider(RedisStateCleaner.class)
+    applicationContext
+        .getBeanProvider(RedisStateCleaner.class)
         .ifAvailable(RedisStateCleaner::clear);
     cleanupDatabase();
 
@@ -253,7 +224,8 @@ public abstract class BaseIntegrationTest {
 
     // Get a real token for MockMvc calls
     try {
-      testUserToken = authTestHelper.login(user.getEmail(), "password123", tenant1.getCompanyCode());
+      testUserToken =
+          authTestHelper.login(user.getEmail(), "password123", tenant1.getCompanyCode());
     } catch (Exception e) {
       log.error("Failed to generate test token", e);
     }

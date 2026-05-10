@@ -15,9 +15,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
-@ConditionalOnProperty(value = "app.rate-limit.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(
+    value = "app.rate-limit.enabled",
+    havingValue = "true",
+    matchIfMissing = true)
 @Slf4j
-public class RateLimitFilter extends OncePerRequestFilter {
+public final class RateLimitFilter extends OncePerRequestFilter {
 
   private static final int STATUS_TOO_MANY_REQUESTS = 429;
 
@@ -153,7 +156,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
           handleRateLimitExceeded(res, "tenant", tenantKey, tenantRpm);
           return;
         }
-      } catch (Exception e) {
+      } catch (RuntimeException e) {
         log.warn("Rate limiter tenant check failed for key {}. Failing OPEN.", tenantKey);
       }
     }

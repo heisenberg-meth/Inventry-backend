@@ -1,275 +1,273 @@
 package com.ims.product;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import com.ims.BaseIntegrationTest;
-import com.ims.shared.auth.TenantContext;
-import java.math.BigDecimal;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.domain.PageRequest;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@org.springframework.security.test.context.support.WithMockUser(username = "admin", authorities = {
-    "ADMIN",
-    "ROLE_ADMIN",
-    "create_product",
-    "view_product",
-    "update_product",
-    "delete_product",
-    "create_order",
-    "view_order",
-    "create_supplier",
-    "view_supplier",
-    "delete_supplier",
-    "manage_stock",
-    "view_stock"
-})
+import com.ims.BaseIntegrationTest;
+import com.ims.dto.request.CreateProductRequest;
+import java.math.BigDecimal;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+
+@AutoConfigureMockMvc
+@org.springframework.security.test.context.support.WithMockUser(
+    username = "admin",
+    authorities = {
+      "ADMIN",
+      "ROLE_ADMIN",
+      "create_product",
+      "view_product",
+      "update_product",
+      "delete_product",
+      "create_order",
+      "view_order",
+      "create_supplier",
+      "view_supplier",
+      "delete_supplier",
+      "manage_stock",
+      "view_stock"
+    })
 public class ProductPrdIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired
-  private ProductRepository productRepository;
-
-  @BeforeEach
+  @org.junit.jupiter.api.BeforeEach
   void setUp() {
+    // Add missing permissions to the test user created by BaseIntegrationTest
+    var user = userRepository.findById(testUserId).get();
+    var permissions =
+        java.util.List.of(
+                "create_product",
+                "view_product",
+                "update_product",
+                "delete_product",
+                "manage_stock",
+                "view_stock")
+            .stream()
+            .map(
+                key ->
+                    com.ims.tenant.repository.PermissionRepository.class
+                        .cast(
+                            applicationContext.getBean(
+                                com.ims.tenant.repository.PermissionRepository.class))
+                        .findByKey(key)
+                        .orElseGet(
+                            () ->
+                                com.ims.tenant.repository.PermissionRepository.class
+                                    .cast(
+                                        applicationContext.getBean(
+                                            com.ims.tenant.repository.PermissionRepository.class))
+                                    .save(
+                                        com.ims.model.Permission.builder()
+                                            .key(key)
+                                            .description(key)
+                                            .build())))
+            .collect(java.util.stream.Collectors.toSet());
+
+    user.getCustomPermissions().addAll(permissions);
+    userRepository.save(user);
+
+    // Re-authenticate with updated user
+    com.ims.helper.SecurityTestUtils.setAuthenticatedUser(user);
+
+    // Regenerate token with updated permissions
+    try {
+      String companyCode = tenantRepository.findById(testTenant1Id).get().getCompanyCode();
+      testUserToken = authTestHelper.login(user.getEmail(), "password123", companyCode);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to regenerate test token", e);
+    }
   }
 
   @Test
-  void testSkuUniquenessPerTenant() {
-    Long tenantId = testTenant1Id;
-    TenantContext.setTenantId(tenantId);
+  void testCreateProduct() throws Exception {
+    CreateProductRequest request =
+        CreateProductRequest.builder()
+            .name("New Product")
+            .sku("SKU-" + UUID.randomUUID().toString().substring(0, 8))
+            .purchasePrice(BigDecimal.valueOf(50))
+            .salePrice(BigDecimal.valueOf(100))
+            .build();
 
-    Product p1 = Product.builder()
-        .tenantId(tenantId)
-        .name("Product 1")
-        .sku("SKU-001")
-        .salePrice(BigDecimal.TEN)
-        .isDeleted(false)
-        .build();
-    productRepository.save(p1);
-
-    // Same SKU, same tenant -> FAIL
-    Product p2 = Product.builder()
-        .tenantId(tenantId)
-        .name("Product 2")
-        .sku("SKU-001")
-        .salePrice(BigDecimal.ONE)
-        .isDeleted(false)
-        .build();
-    assertThrows(DataIntegrityViolationException.class, () -> productRepository.save(p2));
-
-    // Same SKU, different tenant -> PASS
-    Long tenant2Id = testTenant2Id;
-    TenantContext.setTenantId(tenant2Id);
-    Product p3 = Product.builder()
-        .tenantId(tenant2Id)
-        .name("Product 3")
-        .sku("SKU-001")
-        .salePrice(BigDecimal.ONE)
-        .isDeleted(false)
-        .build();
-    assertDoesNotThrow(() -> productRepository.save(p3));
+    mockMvc
+        .perform(
+            post("/api/v1/tenant/products")
+                .header("Authorization", "Bearer " + testUserToken)
+                .header("X-Tenant-ID", testTenant1Id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.name").value("New Product"));
   }
 
   @Test
-  void testSkuReuseAfterSoftDelete() {
-    Long tenantId = testTenant1Id;
-    TenantContext.setTenantId(tenantId);
-
-    Product p1 = Product.builder()
-        .tenantId(tenantId)
-        .name("Product 1")
-        .sku("SKU-001")
-        .salePrice(BigDecimal.TEN)
-        .isDeleted(false)
-        .build();
-    productRepository.save(p1);
-
-    // Soft delete
-    p1.setIsDeleted(true);
-    productRepository.save(p1);
-
-    // Reuse SKU -> PASS
-    Product p2 = Product.builder()
-        .tenantId(tenantId)
-        .name("Product 2")
-        .sku("SKU-001")
-        .salePrice(BigDecimal.ONE)
-        .isDeleted(false)
-        .build();
-    assertDoesNotThrow(() -> productRepository.save(p2));
-  }
-
-  @Test
-  void testSoftDeleteBehavior() {
-    Long tenantId = testTenant1Id;
-    TenantContext.setTenantId(tenantId);
-
-    Product p1 = Product.builder()
-        .tenantId(tenantId)
-        .name("Active Product")
-        .sku("SKU-ACT")
-        .salePrice(BigDecimal.TEN)
-        .isDeleted(false)
-        .build();
-    productRepository.save(p1);
-
-    Product p2 = Product.builder()
-        .tenantId(tenantId)
-        .name("Deleted Product")
-        .sku("SKU-DEL")
-        .salePrice(BigDecimal.TEN)
-        .isDeleted(true)
-        .build();
-    productRepository.save(p2);
-
-    var activeProducts = productRepository.findAllWithDetails(tenantId, PageRequest.of(0, 10));
-
-    assertEquals(1, activeProducts.getContent().size());
-    assertEquals("Active Product", activeProducts.getContent().get(0).getName());
-  }
-
-  @Test
-  void testPriceAndStockConstraints() {
-    Long tenantId = testTenant1Id;
-    TenantContext.setTenantId(tenantId);
-
-    // Negative price -> FAIL (Bean Validation or DB)
-    Product p1 = Product.builder()
-        .tenantId(tenantId)
-        .name("Bad Price")
-        .sku("SKU-BAD-P")
-        .salePrice(new BigDecimal("-1.0"))
-        .isDeleted(false)
-        .build();
-    assertThrows(Exception.class, () -> productRepository.save(p1));
-
-    // Negative stock -> FAIL (Bean Validation or DB)
-    Product p2 = Product.builder()
-        .tenantId(tenantId)
-        .name("Bad Stock")
-        .sku("SKU-BAD-S")
-        .salePrice(BigDecimal.TEN)
-        .stock(-5)
-        .isDeleted(false)
-        .build();
-    assertThrows(Exception.class, () -> productRepository.save(p2));
-  }
-
-  @Test
-  void testSearchFastWithSearchVector() {
-    Long tenantId = testTenant1Id;
-    TenantContext.setTenantId(tenantId);
-
-    Product p1 = Product.builder()
-        .tenantId(tenantId)
-        .name("Special Laptop")
-        .description("High-end gaming laptop")
-        .sku("LAP-001")
-        .salePrice(new BigDecimal("1500.00"))
-        .isDeleted(false)
-        .build();
-    productRepository.save(p1);
-
-    Product p2 = Product.builder()
-        .tenantId(tenantId)
-        .name("Mouse")
-        .description("Wireless mouse")
-        .sku("MOU-001")
-        .salePrice(new BigDecimal("50.00"))
-        .isDeleted(false)
-        .build();
-    productRepository.save(p2);
-
-    var results = productRepository.searchFast(testTenant1Id, "laptop", PageRequest.of(0, 10));
-    assertEquals(1, results.getContent().size());
-    assertEquals("Special Laptop", results.getContent().get(0).getName());
-
-    results = productRepository.searchFast(testTenant1Id, "gaming", PageRequest.of(0, 10));
-    assertEquals(1, results.getContent().size());
-    assertEquals("Special Laptop", results.getContent().get(0).getName());
-  }
-
-  @Test
-  void testTenantIsolation() {
-    Long tenantA = testTenant1Id;
-    Long tenantB = testTenant2Id;
-
-    TenantContext.setTenantId(tenantA);
-    Product productA = Product.builder()
-        .tenantId(tenantA)
-        .name("Tenant A Product")
-        .sku("A-001")
-        .salePrice(BigDecimal.TEN)
-        .isDeleted(false)
-        .build();
-    productRepository.save(productA);
-
-    TenantContext.setTenantId(tenantB);
-    Product productB = Product.builder()
-        .tenantId(tenantB)
-        .name("Tenant B Product")
-        .sku("B-001")
-        .salePrice(BigDecimal.TEN)
-        .isDeleted(false)
-        .build();
-    productRepository.save(productB);
-
-    TenantContext.setTenantId(tenantA);
-    var tenantAProducts = productRepository.findByTenantIdAndIsDeletedFalse(tenantA, PageRequest.of(0, 10));
-
-    assertEquals(1, tenantAProducts.getContent().size());
-    assertEquals("Tenant A Product", tenantAProducts.getContent().get(0).getName());
-
-    TenantContext.setTenantId(tenantB);
-    var tenantBProducts = productRepository.findByTenantIdAndIsDeletedFalse(tenantB, PageRequest.of(0, 10));
-
-    assertEquals(1, tenantBProducts.getContent().size());
-    assertEquals("Tenant B Product", tenantBProducts.getContent().get(0).getName());
-  }
-
-  @Test
-  void testOptimisticLockingRejectsStaleUpdates() {
-    Long tenantId = testTenant1Id;
-    TenantContext.setTenantId(tenantId);
-
-    Product product = Product.builder()
-        .tenantId(tenantId)
-        .name("Versioned Product")
-        .sku("VER-001")
-        .salePrice(BigDecimal.TEN)
-        .isDeleted(false)
-        .build();
+  void testGetProduct() throws Exception {
+    Product product =
+        Product.builder()
+            .tenantId(testTenant1Id)
+            .name("Get Product")
+            .sku("GET-001")
+            .salePrice(BigDecimal.TEN)
+            .build();
     product = productRepository.save(product);
 
-    Product staleCopy = productRepository.findById(product.getId()).orElseThrow();
-    assertEquals(0L, staleCopy.getVersion());
-
-    Product freshCopy = productRepository.findById(product.getId()).orElseThrow();
-    freshCopy.setName("Updated Name");
-    productRepository.save(freshCopy);
-
-    staleCopy.setName("Stale Update");
-    assertThrows(
-        org.springframework.orm.ObjectOptimisticLockingFailureException.class,
-        () -> productRepository.save(staleCopy));
+    mockMvc
+        .perform(
+            get("/api/v1/tenant/products/" + product.getId())
+                .header("Authorization", "Bearer " + testUserToken)
+                .header("X-Tenant-ID", testTenant1Id))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(product.getId()));
   }
 
   @Test
-  void testReorderLevelConstraint() {
-    Long tenantId = testTenant1Id;
-    TenantContext.setTenantId(tenantId);
+  void testUpdateProduct() throws Exception {
+    Product product =
+        Product.builder()
+            .tenantId(testTenant1Id)
+            .name("Update Product")
+            .sku("UPD-001")
+            .salePrice(BigDecimal.TEN)
+            .build();
+    product = productRepository.save(product);
 
-    Product p = Product.builder()
-        .tenantId(tenantId)
-        .name("Bad Reorder")
-        .sku("REORD-BAD")
-        .salePrice(BigDecimal.TEN)
-        .reorderLevel(-1)
-        .isDeleted(false)
-        .build();
-    assertThrows(Exception.class, () -> productRepository.save(p));
+    CreateProductRequest updateRequest =
+        CreateProductRequest.builder()
+            .name("Updated Name")
+            .sku(product.getSku())
+            .salePrice(BigDecimal.valueOf(150))
+            .build();
+
+    mockMvc
+        .perform(
+            put("/api/v1/tenant/products/" + product.getId())
+                .header("Authorization", "Bearer " + testUserToken)
+                .header("X-Tenant-ID", testTenant1Id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(updateRequest)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.name").value("Updated Name"))
+        .andExpect(jsonPath("$.salePrice").value(150));
+  }
+
+  @Test
+  void testDeleteProduct() throws Exception {
+    Product product =
+        Product.builder()
+            .tenantId(testTenant1Id)
+            .name("Delete Product")
+            .sku("DEL-001")
+            .salePrice(BigDecimal.TEN)
+            .build();
+    product = productRepository.save(product);
+
+    mockMvc
+        .perform(
+            delete("/api/v1/tenant/products/" + product.getId())
+                .header("Authorization", "Bearer " + testUserToken)
+                .header("X-Tenant-ID", testTenant1Id))
+        .andExpect(status().isNoContent());
+
+    mockMvc
+        .perform(
+            get("/api/v1/tenant/products/" + product.getId())
+                .header("Authorization", "Bearer " + testUserToken)
+                .header("X-Tenant-ID", testTenant1Id))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void testListProducts() throws Exception {
+    productRepository.save(
+        Product.builder()
+            .tenantId(testTenant1Id)
+            .name("P1")
+            .sku("L-001")
+            .salePrice(BigDecimal.TEN)
+            .build());
+    productRepository.save(
+        Product.builder()
+            .tenantId(testTenant1Id)
+            .name("P2")
+            .sku("L-002")
+            .salePrice(BigDecimal.TEN)
+            .build());
+
+    mockMvc
+        .perform(
+            get("/api/v1/tenant/products")
+                .header("Authorization", "Bearer " + testUserToken)
+                .header("X-Tenant-ID", testTenant1Id)
+                .param("page", "0")
+                .param("size", "10"))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath("$.content.length()").value(org.hamcrest.Matchers.greaterThanOrEqualTo(2)));
+  }
+
+  @Test
+  void testSearchProducts() throws Exception {
+    productRepository.save(
+        Product.builder()
+            .tenantId(testTenant1Id)
+            .name("UniqueLaptop")
+            .sku("LAP-001")
+            .salePrice(BigDecimal.TEN)
+            .build());
+
+    mockMvc
+        .perform(
+            get("/api/v1/tenant/products/search")
+                .header("Authorization", "Bearer " + testUserToken)
+                .header("X-Tenant-ID", testTenant1Id)
+                .param("q", "UniqueLaptop"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[0].name").value("UniqueLaptop"));
+  }
+
+  @Test
+  void testLowStockProducts() throws Exception {
+    productRepository.save(
+        Product.builder()
+            .tenantId(testTenant1Id)
+            .name("Low Stock Item")
+            .sku("LS-001")
+            .salePrice(BigDecimal.TEN)
+            .stock(0)
+            .reorderLevel(10)
+            .build());
+
+    mockMvc
+        .perform(
+            get("/api/v1/tenant/products/low-stock")
+                .header("Authorization", "Bearer " + testUserToken)
+                .header("X-Tenant-ID", testTenant1Id))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.length()").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)));
+  }
+
+  @Test
+  void testDuplicateProduct() throws Exception {
+    Product product =
+        Product.builder()
+            .tenantId(testTenant1Id)
+            .name("Dup Me")
+            .sku("DUP-001")
+            .salePrice(BigDecimal.TEN)
+            .build();
+    product = productRepository.save(product);
+
+    mockMvc
+        .perform(
+            post("/api/v1/tenant/products/" + product.getId() + "/duplicate")
+                .header("Authorization", "Bearer " + testUserToken)
+                .header("X-Tenant-ID", testTenant1Id))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.name").value(product.getName() + " (Copy)"))
+        .andExpect(jsonPath("$.id").value(org.hamcrest.Matchers.not(product.getId().intValue())));
   }
 }

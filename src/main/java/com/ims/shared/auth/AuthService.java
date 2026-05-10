@@ -13,6 +13,7 @@ import com.ims.shared.audit.AuditAction;
 import com.ims.shared.audit.AuditResource;
 import com.ims.tenant.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -20,6 +21,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -41,6 +43,7 @@ public class AuthService {
   private static final int HASH_LOG_LENGTH = 8;
   private static final int RESET_TOKEN_BYTE_LENGTH = 32;
   private static final int RESET_TOKEN_EXPIRY_MINUTES = 15;
+  private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
   private final UserRepository userRepository;
   private final TenantRepository tenantRepository;
@@ -52,19 +55,20 @@ public class AuthService {
 
   @Transactional(readOnly = true)
   public Map<String, Boolean> checkEmail(String email) {
-    boolean exists = userRepository.findByEmailUnfiltered(email.trim().toLowerCase()).isPresent();
+    boolean exists =
+        userRepository.findByEmailUnfiltered(email.trim().toLowerCase(Locale.ROOT)).isPresent();
     return Map.of("available", !exists);
   }
 
   @Transactional(readOnly = true)
   public Map<String, Boolean> checkSlug(String slug) {
-    boolean exists = tenantRepository.existsByWorkspaceSlug(slug.trim().toLowerCase());
+    boolean exists = tenantRepository.existsByWorkspaceSlug(slug.trim().toLowerCase(Locale.ROOT));
     return Map.of("available", !exists);
   }
 
   @Transactional(readOnly = true)
   public Map<String, Boolean> checkCompanyCode(String code) {
-    boolean exists = tenantRepository.existsByCompanyCode(code.trim().toUpperCase());
+    boolean exists = tenantRepository.existsByCompanyCode(code.trim().toUpperCase(Locale.ROOT));
     return Map.of("exists", exists);
   }
 
@@ -187,55 +191,34 @@ public class AuthService {
     User user =
         userRepository
             .findByEmailUnfiltered(request.getEmail())
-            .orElseThrow(
-                () ->
-                    new org.springframework.security.authentication.BadCredentialsException(
-                        "Invalid email or password"));
+            .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
 
     if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-      throw new org.springframework.security.authentication.BadCredentialsException(
-          "Invalid email or password");
+      throw new BadCredentialsException("Invalid email or password");
     }
 
     if (!Boolean.TRUE.equals(user.getIsActive())) {
-      throw new org.springframework.security.authentication.DisabledException(
-          "Account is deactivated");
+      throw new DisabledException("Account is deactivated");
     }
 
     if (!"PLATFORM".equals(user.getScope())) {
-      throw new org.springframework.security.authentication.BadCredentialsException(
-          "Only platform administrators can log in here");
+      throw new BadCredentialsException("Only platform administrators can log in here");
     }
 
     List<String> permissions =
         user.getCustomPermissions().stream().map(com.ims.model.Permission::getKey).toList();
 
-    String scope = user.getScope();
     String accessToken =
-        jwtUtil.generateToken(user.getId(), null, user.getRole(), permissions, scope, null, true);
+        jwtUtil.generateToken(
+            user.getId(), null, user.getRole(), permissions, "PLATFORM", null, true);
     String refreshToken =
         jwtUtil.generateRefreshToken(
-            user.getId(), null, user.getRole(), permissions, scope, null, true);
+            user.getId(), null, user.getRole(), permissions, "PLATFORM", null, true);
 
-    // Update last login (atomic update, no version increment)
+    // Update last login
     userRepository.updateLastLogin(user.getId(), LocalDateTime.now());
 
-    return LoginResponse.builder()
-        .accessToken(accessToken)
-        .refreshToken(refreshToken)
-        .tokenType("Bearer")
-        .expiresIn(jwtUtil.getExpirySeconds())
-        .user(
-            LoginResponse.UserResponse.builder()
-                .id(user.getId().toString())
-                .name(user.getName())
-                .email(user.getEmail())
-                .phone(user.getPhone())
-                .role(user.getRole())
-                .scope(user.getScope())
-                .isPlatformUser(true)
-                .build())
-        .build();
+    return buildLoginResponse(user, null, accessToken, refreshToken);
   }
 
   @Transactional
@@ -282,12 +265,10 @@ public class AuthService {
     String businessType = null;
     Long tenantId = user.getTenantId();
 
-    if ("TENANT".equals(scope)) {
-      if (tenantId != null) {
-        Tenant tenant = tenantRepository.findById(tenantId).orElse(null);
-        if (tenant != null) {
-          businessType = tenant.getBusinessType();
-        }
+    if ("TENANT".equals(scope) && tenantId != null) {
+      Tenant tenant = tenantRepository.findById(tenantId).orElse(null);
+      if (tenant != null) {
+        businessType = tenant.getBusinessType();
       }
     }
 
@@ -313,9 +294,14 @@ public class AuthService {
             businessType,
             Boolean.TRUE.equals(user.getIsPlatformUser()));
 
-    // Update last login (atomic update, no version increment)
+    // Update last login
     userRepository.updateLastLogin(user.getId(), LocalDateTime.now());
 
+    return buildLoginResponse(user, tenantId, accessToken, refreshToken);
+  }
+
+  private LoginResponse buildLoginResponse(
+      User user, Long tenantId, String accessToken, String refreshToken) {
     LoginResponse.LoginResponseBuilder responseBuilder =
         LoginResponse.builder()
             .accessToken(accessToken)
@@ -352,24 +338,18 @@ public class AuthService {
               });
     }
 
-    auditLogService.log(
-        AuditAction.LOGIN,
-        tenantId,
-        user.getId(),
-        "User logged in: " + user.getEmail() + " (" + user.getScope() + ")");
+    if (refreshToken != null) {
+      auditLogService.log(
+          AuditAction.LOGIN,
+          tenantId,
+          user.getId(),
+          "User logged in: " + user.getEmail() + " (" + user.getScope() + ")");
 
-    log.info(
-        "Login successful: user={} role={} tenant={}", user.getEmail(), user.getRole(), tenantId);
+      log.info(
+          "Login successful: user={} role={} tenant={}", user.getEmail(), user.getRole(), tenantId);
+    }
 
     return responseBuilder.build();
-  }
-
-  public void logout(String token) {
-    String tokenHash = hashToken(token);
-    redisTemplate
-        .opsForValue()
-        .set("jwt:blacklist:" + tokenHash, "revoked", LOGOUT_EXPIRY_HOURS, TimeUnit.HOURS);
-    log.info("Token blacklisted: {}", tokenHash.substring(0, HASH_LOG_LENGTH) + "...");
   }
 
   public LoginResponse refresh(String refreshToken) {
@@ -392,77 +372,37 @@ public class AuthService {
     String businessType = null;
     Long tenantId = user.getTenantId();
 
-    if ("TENANT".equals(scope)) {
-      if (tenantId != null) {
-        Tenant tenant = tenantRepository.findById(tenantId).orElse(null);
-        if (tenant != null) {
-          businessType = tenant.getBusinessType();
-        }
+    if ("TENANT".equals(scope) && tenantId != null) {
+      Tenant tenant = tenantRepository.findById(tenantId).orElse(null);
+      if (tenant != null) {
+        businessType = tenant.getBusinessType();
       }
     }
 
     List<String> permissions =
         user.getCustomPermissions().stream().map(com.ims.model.Permission::getKey).toList();
 
+    boolean isPlatformUser = Boolean.TRUE.equals(user.getIsPlatformUser());
+
     String newAccessToken =
         jwtUtil.generateToken(
-            user.getId(),
-            tenantId,
-            user.getRole(),
-            permissions,
-            scope,
-            businessType,
-            Boolean.TRUE.equals(user.getIsPlatformUser()));
+            user.getId(), tenantId, user.getRole(), permissions, scope, businessType, isPlatformUser);
     String newRefreshToken =
         jwtUtil.generateRefreshToken(
-            user.getId(),
-            tenantId,
-            user.getRole(),
-            permissions,
-            scope,
-            businessType,
-            Boolean.TRUE.equals(user.getIsPlatformUser()));
+            user.getId(), tenantId, user.getRole(), permissions, scope, businessType, isPlatformUser);
 
     // Blacklist old refresh token
     logout(refreshToken);
 
-    LoginResponse.LoginResponseBuilder responseBuilder =
-        LoginResponse.builder()
-            .accessToken(newAccessToken)
-            .refreshToken(newRefreshToken)
-            .tokenType("Bearer")
-            .expiresIn(jwtUtil.getExpirySeconds())
-            .user(
-                LoginResponse.UserResponse.builder()
-                    .id(user.getId().toString())
-                    .name(user.getName())
-                    .email(user.getEmail())
-                    .phone(user.getPhone())
-                    .role(user.getRole())
-                    .scope(user.getScope())
-                    .isPlatformUser(Boolean.TRUE.equals(user.getIsPlatformUser()))
-                    .build());
+    return buildLoginResponse(user, tenantId, newAccessToken, newRefreshToken);
+  }
 
-    if (tenantId != null) {
-      tenantRepository
-          .findById(tenantId)
-          .ifPresent(
-              tenant -> {
-                responseBuilder.tenant(
-                    LoginResponse.TenantResponse.builder()
-                        .id(tenant.getId())
-                        .name(tenant.getName())
-                        .type(tenant.getBusinessType())
-                        .address(tenant.getAddress())
-                        .gstin(tenant.getGstin())
-                        .plan(tenant.getPlan())
-                        .companyCode(tenant.getCompanyCode())
-                        .workspaceSlug(tenant.getWorkspaceSlug())
-                        .build());
-              });
-    }
-
-    return responseBuilder.build();
+  public void logout(String token) {
+    String tokenHash = hashToken(token);
+    redisTemplate
+        .opsForValue()
+        .set("jwt:blacklist:" + tokenHash, "revoked", LOGOUT_EXPIRY_HOURS, TimeUnit.HOURS);
+    log.info("Token blacklisted: {}", tokenHash.substring(0, HASH_LOG_LENGTH) + "...");
   }
 
   /** Get current user profile. */
@@ -547,7 +487,7 @@ public class AuthService {
     }
 
     byte[] tokenBytes = new byte[RESET_TOKEN_BYTE_LENGTH];
-    new SecureRandom().nextBytes(tokenBytes);
+    SECURE_RANDOM.nextBytes(tokenBytes);
     String resetToken = HexFormat.of().formatHex(tokenBytes);
 
     user.setResetToken(resetToken);
@@ -608,7 +548,7 @@ public class AuthService {
   private String hashToken(String token) {
     try {
       MessageDigest md = MessageDigest.getInstance("SHA-256");
-      byte[] hash = md.digest(token.getBytes());
+      byte[] hash = md.digest(token.getBytes(StandardCharsets.UTF_8));
       return HexFormat.of().formatHex(hash);
     } catch (NoSuchAlgorithmException e) {
       throw new RuntimeException("SHA-256 not available", e);

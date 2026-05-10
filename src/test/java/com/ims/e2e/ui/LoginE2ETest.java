@@ -3,8 +3,10 @@ package com.ims.e2e.ui;
 import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
 
 import com.ims.e2e.ui.pages.LoginPage;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+@Tag("e2e")
 class LoginE2ETest extends BasePlaywrightTest {
 
   @Test

@@ -1,6 +1,8 @@
 package com.ims.config;
 
 import com.ims.shared.ratelimit.RateLimiterService;
+import java.util.HashSet;
+import java.util.Set;
 import org.mockito.Mockito;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,8 +13,6 @@ import org.springframework.data.redis.connection.RedisKeyCommands;
 import org.springframework.data.redis.connection.RedisServerCommands;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
-import java.util.HashSet;
-import java.util.Set;
 
 @Configuration
 public class TestRedisConfig {
@@ -29,7 +29,7 @@ public class TestRedisConfig {
     Mockito.when(connection.ping()).thenReturn("PONG");
     Mockito.when(connection.keyCommands()).thenReturn(keyCommands);
     Mockito.when(connection.serverCommands()).thenReturn(serverCommands);
-    
+
     return factory;
   }
 
@@ -42,20 +42,29 @@ public class TestRedisConfig {
     ValueOperations<String, Object> valueOps = Mockito.mock(ValueOperations.class);
 
     Mockito.when(template.opsForValue()).thenReturn(valueOps);
-    
-    // Support blacklisting in AuthIntegrationTest
-    Mockito.doAnswer(invocation -> {
-        String key = invocation.getArgument(0);
-        if (key != null && key.startsWith("jwt:blacklist:")) {
-            blacklistedTokens.add(key);
-        }
-        return null;
-    }).when(valueOps).set(Mockito.anyString(), Mockito.any(), Mockito.anyLong(), Mockito.any(java.util.concurrent.TimeUnit.class));
 
-    Mockito.when(template.hasKey(Mockito.anyString())).thenAnswer(invocation -> {
-        String key = invocation.getArgument(0);
-        return key != null && blacklistedTokens.contains(key);
-    });
+    // Support blacklisting in AuthIntegrationTest
+    Mockito.doAnswer(
+            invocation -> {
+              String key = invocation.getArgument(0);
+              if (key != null && key.startsWith("jwt:blacklist:")) {
+                blacklistedTokens.add(key);
+              }
+              return null;
+            })
+        .when(valueOps)
+        .set(
+            Mockito.anyString(),
+            Mockito.any(),
+            Mockito.anyLong(),
+            Mockito.any(java.util.concurrent.TimeUnit.class));
+
+    Mockito.when(template.hasKey(Mockito.anyString()))
+        .thenAnswer(
+            invocation -> {
+              String key = invocation.getArgument(0);
+              return key != null && blacklistedTokens.contains(key);
+            });
 
     return template;
   }
@@ -70,7 +79,9 @@ public class TestRedisConfig {
   @Primary
   public RateLimiterService rateLimiterService() {
     RateLimiterService mock = Mockito.mock(RateLimiterService.class);
-    Mockito.when(mock.isAllowed(Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyBoolean()))
+    Mockito.when(
+            mock.isAllowed(
+                Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyBoolean()))
         .thenReturn(true);
     Mockito.when(mock.isAllowed(Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt()))
         .thenReturn(true);

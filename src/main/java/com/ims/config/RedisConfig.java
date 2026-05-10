@@ -17,8 +17,7 @@ import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 /**
- * Redis-specific configuration. Active in all profiles where Redis is
- * available. The tenant-aware
+ * Redis-specific configuration. Active in all profiles where Redis is available. The tenant-aware
  * cache resolver is in CacheConfig (active in all profiles).
  */
 @Configuration

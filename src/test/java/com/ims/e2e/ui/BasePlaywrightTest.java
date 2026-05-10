@@ -1,5 +1,7 @@
 package com.ims.e2e.ui;
 
+import com.ims.config.TestCacheConfig;
+import com.ims.config.TestRedisConfig;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.BrowserType;
@@ -9,7 +11,6 @@ import com.microsoft.playwright.Tracing;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Paths;
-import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -17,18 +18,19 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.context.annotation.Import;
-import com.ims.config.TestRedisConfig;
-import com.ims.config.TestCacheConfig;
+import org.springframework.test.context.ActiveProfiles;
 
 /**
  * Thread-safe base class for all Playwright UI tests using ThreadLocal context. Follows the
  * playwright-java guidelines.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
-    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration"
-})
+@SuppressWarnings("unused")
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+    properties = {
+      "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration"
+    })
 @org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Import({TestRedisConfig.class, TestCacheConfig.class})
@@ -61,7 +63,12 @@ public abstract class BasePlaywrightTest {
   @BeforeAll
   static void launchBrowser() {
     playwright = Playwright.create();
-    browser = resolveBrowser(playwright).launch(new BrowserType.LaunchOptions().setHeadless(true));
+    browser =
+        resolveBrowser(playwright)
+            .launch(
+                new BrowserType.LaunchOptions()
+                    .setExecutablePath(Paths.get("/usr/bin/chromium-browser"))
+                    .setHeadless(true));
   }
 
   @AfterAll
@@ -76,10 +83,9 @@ public abstract class BasePlaywrightTest {
     browserContext.set(context);
 
     // Start tracing for each test
-    context.tracing().start(new Tracing.StartOptions()
-        .setScreenshots(true)
-        .setSnapshots(true)
-        .setSources(true));
+    context
+        .tracing()
+        .start(new Tracing.StartOptions().setScreenshots(true).setSnapshots(true).setSources(true));
 
     Page page = context.newPage();
     threadPage.set(page);
@@ -90,8 +96,11 @@ public abstract class BasePlaywrightTest {
     BrowserContext context = browserContext.get();
     if (context != null) {
       String testName = testInfo.getDisplayName().replaceAll("[^a-zA-Z0-9]", "_");
-      context.tracing().stop(new Tracing.StopOptions()
-          .setPath(Paths.get("target/playwright-traces/" + testName + ".zip")));
+      context
+          .tracing()
+          .stop(
+              new Tracing.StopOptions()
+                  .setPath(Paths.get("target/playwright-traces/" + testName + ".zip")));
       context.close();
     }
     browserContext.remove();

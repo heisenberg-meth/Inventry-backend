@@ -47,7 +47,8 @@ public class ProcurementIntegrationTest extends BaseIntegrationTest {
         com.ims.model.Tenant.builder()
             .name("Test Pharmacy")
             .workspaceSlug("test-pharmacy-" + java.util.UUID.randomUUID())
-            .companyCode("TP-" + java.util.UUID.randomUUID().toString().substring(0, 4).toUpperCase())
+            .companyCode(
+                "TP-" + java.util.UUID.randomUUID().toString().substring(0, 4).toUpperCase())
             .businessType("PHARMACY")
             .maxProducts(100)
             .maxUsers(10)
@@ -70,12 +71,17 @@ public class ProcurementIntegrationTest extends BaseIntegrationTest {
     Long userId = user.getId();
 
     // Assign all permissions to pass @PreAuthorize checks
-    var viewProductPerm = permissionRepository.findByKey("view_product")
-        .orElseGet(() -> permissionRepository.save(com.ims.model.Permission.builder()
-            .key("view_product")
-            .description("View product details")
-            .build()));
-            
+    var viewProductPerm =
+        permissionRepository
+            .findByKey("view_product")
+            .orElseGet(
+                () ->
+                    permissionRepository.save(
+                        com.ims.model.Permission.builder()
+                            .key("view_product")
+                            .description("View product details")
+                            .build()));
+
     user.getCustomPermissions().add(viewProductPerm);
     user = userRepository.saveAndFlush(user);
 

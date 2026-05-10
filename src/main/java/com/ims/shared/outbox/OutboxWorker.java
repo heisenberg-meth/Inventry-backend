@@ -3,8 +3,10 @@ package com.ims.shared.outbox;
 import com.ims.shared.messaging.KafkaProducerService;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -14,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Slf4j
 @ConditionalOnProperty(name = "app.outbox.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnBean(KafkaProducerService.class)
 public class OutboxWorker {
 
   private final OutboxEventRepository outboxEventRepository;
@@ -32,7 +35,7 @@ public class OutboxWorker {
     for (OutboxEvent event : events) {
       try {
         String topic =
-            "ims." + event.getAggregateType().toLowerCase() + "." + event.getType().toLowerCase();
+            "ims." + event.getAggregateType().toLowerCase(Locale.ROOT) + "." + event.getType().toLowerCase(Locale.ROOT);
         kafkaProducerService.sendMessage(topic, event.getAggregateId(), event.getPayload());
 
         event.setStatus("SENT");

@@ -78,7 +78,7 @@ public class OrderController {
   @PostMapping("/{id}/confirm")
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Confirm order and deduct stock (for sales)")
-  public ResponseEntity<com.ims.model.Order> confirmOrder(@PathVariable Long id) {
+  public ResponseEntity<Order> confirmOrder(@PathVariable Long id) {
     Long userId = extractUserId();
     Long tenantId = TenantContext.getTenantId();
     return ResponseEntity.ok(orderService.confirmOrder(id, tenantId, userId));
@@ -87,7 +87,7 @@ public class OrderController {
   @PostMapping("/{id}/ship")
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Mark order as shipped")
-  public ResponseEntity<com.ims.model.Order> shipOrder(@PathVariable Long id) {
+  public ResponseEntity<Order> shipOrder(@PathVariable Long id) {
     Long userId = extractUserId();
     Long tenantId = TenantContext.getTenantId();
     return ResponseEntity.ok(orderService.shipOrder(id, tenantId, userId));
@@ -96,7 +96,7 @@ public class OrderController {
   @PostMapping("/{id}/complete")
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Complete order and add stock (for purchases)")
-  public ResponseEntity<com.ims.model.Order> completeOrder(@PathVariable Long id) {
+  public ResponseEntity<Order> completeOrder(@PathVariable Long id) {
     Long userId = extractUserId();
     Long tenantId = TenantContext.getTenantId();
     return ResponseEntity.ok(orderService.completeOrder(id, tenantId, userId));
@@ -105,7 +105,7 @@ public class OrderController {
   @PostMapping("/{id}/cancel")
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
   @Operation(summary = "Cancel order and revert stock if confirmed")
-  public ResponseEntity<com.ims.model.Order> cancelOrder(@PathVariable Long id) {
+  public ResponseEntity<Order> cancelOrder(@PathVariable Long id) {
     Long userId = extractUserId();
     Long tenantId = TenantContext.getTenantId();
     return ResponseEntity.ok(orderService.cancelOrder(id, tenantId, userId));
@@ -122,7 +122,7 @@ public class OrderController {
   @GetMapping("/{id}")
   @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
   @Operation(summary = "Get order detail with items")
-  public ResponseEntity<com.ims.order.dto.OrderResponse> getOrder(@PathVariable Long id) {
+  public ResponseEntity<OrderResponse> getOrder(@PathVariable Long id) {
     Long tenantId = TenantContext.getTenantId();
     return ResponseEntity.ok(orderService.getOrderWithItems(id, tenantId));
   }

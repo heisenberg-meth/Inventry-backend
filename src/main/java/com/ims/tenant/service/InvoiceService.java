@@ -96,47 +96,23 @@ public class InvoiceService {
     return invoiceGenerationTimer.record(
         () -> {
           Long tenantId = TenantContext.getTenantId();
-          Order order =
-              orderRepository
-                  .findByIdAndTenantId(Objects.requireNonNull(request.getOrderId()), tenantId)
-                  .orElseThrow(() -> new EntityNotFoundException("Order not found"));
-
-          if (OrderType.SALE != order.getType()) {
-            throw new IllegalArgumentException("Invoice can only be created for SALE orders");
-          }
+          Order order = getOrder(request.getOrderId(), tenantId);
 
           if (invoiceRepository.existsByTenantIdAndOrderId(tenantId, order.getId())) {
             duplicateInvoiceAttemptCounter.increment();
             throw new IllegalArgumentException("Invoice already exists for this order");
           }
 
-          String invoiceNumber = incrementAndGetInvoiceNumber();
+          LocalDate dueDate =
+              request.getDueDate() != null
+                  ? request.getDueDate()
+                  : LocalDate.now().plusDays(DEFAULT_DUE_DAYS);
+          Invoice invoice = buildInvoice(order, dueDate);
 
-          Invoice invoice =
-              Invoice.builder()
-                  .tenantId(TenantContext.getTenantId())
-                  .orderId(order.getId())
-                  .invoiceNumber(invoiceNumber)
-                  .amount(order.getTotalAmount())
-                  .taxAmount(order.getTaxAmount())
-                  .discount(order.getDiscount())
-                  .status("UNPAID")
-                  .dueDate(
-                      request.getDueDate() != null
-                          ? request.getDueDate()
-                          : LocalDate.now().plusDays(DEFAULT_DUE_DAYS))
-                  .build();
-
-          if (invoice.getTenantId() == null) {
-            throw new IllegalStateException("TenantContext missing - cannot create invoice");
-          }
-
-          log.info("Manual invoice created: {} for order {}", invoiceNumber, order.getId());
+          log.info("Manual invoice created: {} for order {}", invoice.getInvoiceNumber(), order.getId());
           Invoice saved = invoiceRepository.save(invoice);
-
           invoiceGeneratedCounter.increment();
           outboxService.saveEvent("INVOICE", saved.getId().toString(), "GENERATE", saved);
-
           return saved;
         });
   }
@@ -146,47 +122,66 @@ public class InvoiceService {
     return invoiceGenerationTimer.record(
         () -> {
           Long tenantId = TenantContext.getTenantId();
-          Order order =
-              orderRepository
-                  .findByIdAndTenantId(orderId, tenantId)
-                  .orElseThrow(() -> new EntityNotFoundException("Order not found"));
-
-          if (OrderType.SALE != order.getType()) {
-            throw new IllegalArgumentException("Invoice can only be created for SALE orders");
-          }
+          Order order = getOrder(orderId, tenantId);
 
           var existing = invoiceRepository.findByTenantIdAndOrderId(tenantId, order.getId());
           if (existing.isPresent()) {
-            log.warn("Invoice already exists for order {}, returning existing one", order.getId());
             return existing.get();
           }
 
-          String invoiceNumber = incrementAndGetInvoiceNumber();
-
-          Invoice invoice =
-              Invoice.builder()
-                  .tenantId(TenantContext.getTenantId())
-                  .orderId(order.getId())
-                  .invoiceNumber(invoiceNumber)
-                  .amount(order.getTotalAmount())
-                  .taxAmount(order.getTaxAmount())
-                  .discount(order.getDiscount())
-                  .status("UNPAID")
-                  .dueDate(LocalDate.now().plusDays(DEFAULT_DUE_DAYS))
-                  .build();
-
-          if (invoice.getTenantId() == null) {
-            throw new IllegalStateException("TenantContext missing - cannot create invoice");
-          }
-
-          log.info("Invoice created from order: {} for order {}", invoiceNumber, order.getId());
+          Invoice invoice = buildInvoice(order, LocalDate.now().plusDays(DEFAULT_DUE_DAYS));
+          log.info("Invoice created from order: {} for order {}", invoice.getInvoiceNumber(), order.getId());
           Invoice saved = invoiceRepository.save(invoice);
-
           invoiceGeneratedCounter.increment();
           outboxService.saveEvent("INVOICE", saved.getId().toString(), "GENERATE", saved);
-
           return saved;
         });
+  }
+
+  @Transactional
+  public Invoice createFromOrder(Order order) {
+    Long tenantId = TenantContext.getTenantId();
+    var existing = invoiceRepository.findByTenantIdAndOrderId(tenantId, order.getId());
+    if (existing.isPresent()) {
+      return existing.get();
+    }
+
+    Invoice invoice = buildInvoice(order, LocalDate.now().plusDays(DEFAULT_DUE_DAYS));
+    log.info("Invoice created: {} for order {}", invoice.getInvoiceNumber(), order.getId());
+    Invoice saved = invoiceRepository.save(invoice);
+    outboxService.saveEvent("INVOICE", saved.getId().toString(), "GENERATE", saved);
+    return saved;
+  }
+
+  private Order getOrder(Long orderId, Long tenantId) {
+    Order order =
+        orderRepository
+            .findByIdAndTenantId(Objects.requireNonNull(orderId), tenantId)
+            .orElseThrow(() -> new EntityNotFoundException("Order not found"));
+    if (OrderType.SALE != order.getType()) {
+      throw new IllegalArgumentException("Invoice can only be created for SALE orders");
+    }
+    return order;
+  }
+
+  private Invoice buildInvoice(Order order, LocalDate dueDate) {
+    String invoiceNumber = incrementAndGetInvoiceNumber();
+    Invoice invoice =
+        Invoice.builder()
+            .tenantId(TenantContext.getTenantId())
+            .orderId(order.getId())
+            .invoiceNumber(invoiceNumber)
+            .amount(order.getTotalAmount())
+            .taxAmount(order.getTaxAmount())
+            .discount(order.getDiscount())
+            .status("UNPAID")
+            .dueDate(dueDate)
+            .build();
+
+    if (invoice.getTenantId() == null) {
+      throw new IllegalStateException("TenantContext missing - cannot create invoice");
+    }
+    return invoice;
   }
 
   @Transactional
@@ -241,46 +236,6 @@ public class InvoiceService {
   }
 
   @Transactional
-  public Invoice createFromOrder(Order order) {
-    if (OrderType.SALE != order.getType()) {
-      throw new IllegalArgumentException("Invoice can only be created for SALE orders");
-    }
-
-    Long tenantId = TenantContext.getTenantId();
-    var existing = invoiceRepository.findByTenantIdAndOrderId(tenantId, order.getId());
-    if (existing.isPresent()) {
-      log.warn("Invoice already exists for order {}, returning existing one", order.getId());
-      return existing.get();
-    }
-
-    String invoiceNumber = incrementAndGetInvoiceNumber();
-
-    Invoice invoice =
-        Invoice.builder()
-            .tenantId(TenantContext.getTenantId())
-            .orderId(order.getId())
-            .invoiceNumber(invoiceNumber)
-            .amount(order.getTotalAmount())
-            .taxAmount(order.getTaxAmount())
-            .discount(order.getDiscount())
-            .status("UNPAID")
-            .dueDate(LocalDate.now().plusDays(DEFAULT_DUE_DAYS))
-            .build();
-
-    if (invoice.getTenantId() == null) {
-      throw new IllegalStateException("TenantContext missing - cannot create invoice");
-    }
-
-    log.info("Invoice created: {} for order {}", invoiceNumber, order.getId());
-    Invoice saved = invoiceRepository.save(invoice);
-
-    // Trigger async PDF generation or other downstream tasks
-    outboxService.saveEvent("INVOICE", saved.getId().toString(), "GENERATE", saved);
-
-    return saved;
-  }
-
-  @Transactional
   public Invoice createCreditNote(Order returnOrder, Long parentInvoiceId) {
     String invoiceNumber = "CN-" + incrementAndGetInvoiceNumber().substring(4);
 
@@ -313,7 +268,6 @@ public class InvoiceService {
   }
 
   private String incrementAndGetInvoiceNumber() {
-    // Harden sequence generation with a pessimistic lock on the tenant
     Tenant tenant =
         tenantRepository
             .findByIdWithLock(Objects.requireNonNull(TenantContext.getTenantId()))
@@ -333,11 +287,7 @@ public class InvoiceService {
         () -> {
           try {
             Long tenantId = TenantContext.getTenantId();
-            Invoice invoice =
-                invoiceRepository
-                    .findByIdAndTenantId(id, tenantId)
-                    .orElseThrow(() -> new EntityNotFoundException("Invoice not found"));
-
+            Invoice invoice = getInvoiceById(id);
             Order order =
                 orderRepository
                     .findByIdAndTenantId(Objects.requireNonNull(invoice.getOrderId()), tenantId)
@@ -407,10 +357,10 @@ public class InvoiceService {
             context.setVariable("totalAmount", order.getTotalAmount());
 
             return pdfService.generatePdfFromHtml("invoice-template", context);
-          } catch (Exception e) {
+          } catch (RuntimeException e) {
             pdfGenerationFailureCounter.increment();
             log.error("PDF generation failed for invoice {}", id, e);
-            throw new RuntimeException("PDF generation failed", e);
+            throw e;
           }
         });
   }

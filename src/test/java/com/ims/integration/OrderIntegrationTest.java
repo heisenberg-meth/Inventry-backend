@@ -47,8 +47,7 @@ public class OrderIntegrationTest extends BaseIntegrationTest {
     product = productRepository.save(product);
 
     // 2. Add stock
-    inventoryService.increaseStock(
-        testTenant1Id, product.getId(), 10, "Initial stock", testUserId);
+    inventoryService.increaseStock(testTenant1Id, product.getId(), 10, "Initial stock", testUserId);
 
     // 3. Create a sale order
     CreateOrderRequest request =
@@ -103,8 +102,7 @@ public class OrderIntegrationTest extends BaseIntegrationTest {
             .salePrice(new BigDecimal("100.00"))
             .build();
     product = productRepository.save(product);
-    inventoryService.increaseStock(
-        testTenant1Id, product.getId(), 5, "Initial stock", testUserId);
+    inventoryService.increaseStock(testTenant1Id, product.getId(), 5, "Initial stock", testUserId);
 
     // 2. Attempt to buy 10 (only 5 in stock)
     CreateOrderRequest request =

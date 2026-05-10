@@ -20,6 +20,7 @@ import jakarta.persistence.EntityNotFoundException;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -420,19 +421,20 @@ public class TenantService {
         .build();
   }
 
+  private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
   private String generateRandomPassword() {
     String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$";
     StringBuilder sb = new StringBuilder();
-    SecureRandom random = new SecureRandom();
     for (int i = 0; i < 12; i++) {
-      sb.append(chars.charAt(random.nextInt(chars.length())));
+      sb.append(chars.charAt(SECURE_RANDOM.nextInt(chars.length())));
     }
     return sb.toString();
   }
 
   private String generateWorkspaceSlug(String name) {
     String baseSlug =
-        name.toLowerCase()
+        name.toLowerCase(Locale.ROOT)
             .replaceAll("[^a-z0-9\\s-]", "")
             .replaceAll("\\s+", "-")
             .replaceAll("-+", "-")

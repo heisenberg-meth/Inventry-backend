@@ -10,7 +10,6 @@ import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.LoginRequest;
 import com.ims.dto.request.SignupRequest;
 import com.ims.helper.TestDataFactory;
-
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -21,116 +20,117 @@ import org.springframework.test.web.servlet.MvcResult;
 @AutoConfigureMockMvc
 class AuthControllerTest extends BaseIntegrationTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+  @Autowired private MockMvc mockMvc;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+  @Autowired private ObjectMapper objectMapper;
 
-    @Test
-    void shouldRejectUnauthorizedRequest() throws Exception {
-        mockMvc
-                .perform(
-                        post("/api/auth/login")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(
-                                        """
+  @Test
+  void shouldRejectUnauthorizedRequest() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
                                                 {
                                                     "email": "nonexistent@test.com",
                                                     "password": "wrongpassword",
                                                     "companyCode": "INVALID"
                                                 }
                                                 """))
-                .andExpect(status().isUnauthorized());
-    }
+        .andExpect(status().isUnauthorized());
+  }
 
-    @Test
-    void shouldLoginSuccessfully() throws Exception {
-        // 1. Signup
-        String uniqueEmail = TestDataFactory.email();
-        SignupRequest signupRequest = new SignupRequest();
-        signupRequest.setBusinessName("Test Business");
-        signupRequest.setBusinessType("RETAIL");
-        signupRequest.setOwnerName("Test Owner");
-        signupRequest.setOwnerEmail(uniqueEmail);
-        signupRequest.setPassword("password123");
+  @Test
+  void shouldLoginSuccessfully() throws Exception {
+    // 1. Signup
+    String uniqueEmail = TestDataFactory.email();
+    SignupRequest signupRequest = new SignupRequest();
+    signupRequest.setBusinessName("Test Business");
+    signupRequest.setBusinessType("RETAIL");
+    signupRequest.setOwnerName("Test Owner");
+    signupRequest.setOwnerEmail(uniqueEmail);
+    signupRequest.setPassword("password123");
 
-        MvcResult signupResult = mockMvc
-                .perform(
-                        post("/api/auth/signup")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(signupRequest)))
-                .andDo(print())
-                .andExpect(status().isCreated())
-                .andReturn();
-
-        String signupJson = signupResult.getResponse().getContentAsString();
-        com.ims.dto.response.SignupResponse signupResponse = objectMapper.readValue(signupJson,
-                com.ims.dto.response.SignupResponse.class);
-
-        // 2. Verify user and login
-        verifyUser(uniqueEmail);
-
-        LoginRequest loginRequest = new LoginRequest();
-        loginRequest.setEmail(uniqueEmail);
-        loginRequest.setPassword("password123");
-        loginRequest.setCompanyCode(signupResponse.getCompanyCode());
-
+    MvcResult signupResult =
         mockMvc
-                .perform(
-                        post("/api/auth/login")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(loginRequest)))
-                .andDo(print())
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accessToken").exists())
-                .andExpect(jsonPath("$.refreshToken").exists())
-                .andExpect(jsonPath("$.tokenType").value("Bearer"));
-    }
+            .perform(
+                post("/api/auth/signup")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(signupRequest)))
+            .andDo(print())
+            .andExpect(status().isCreated())
+            .andReturn();
 
-    @Test
-    void shouldRejectInvalidToken() throws Exception {
-        // Invalid token should return 401 (unauthorized)
+    String signupJson = signupResult.getResponse().getContentAsString();
+    com.ims.dto.response.SignupResponse signupResponse =
+        objectMapper.readValue(signupJson, com.ims.dto.response.SignupResponse.class);
+
+    // 2. Verify user and login
+    verifyUser(uniqueEmail);
+
+    LoginRequest loginRequest = new LoginRequest();
+    loginRequest.setEmail(uniqueEmail);
+    loginRequest.setPassword("password123");
+    loginRequest.setCompanyCode(signupResponse.getCompanyCode());
+
+    mockMvc
+        .perform(
+            post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginRequest)))
+        .andDo(print())
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.accessToken").exists())
+        .andExpect(jsonPath("$.refreshToken").exists())
+        .andExpect(jsonPath("$.tokenType").value("Bearer"));
+  }
+
+  @Test
+  void shouldRejectInvalidToken() throws Exception {
+    // Invalid token should return 401 (unauthorized)
+    mockMvc
+        .perform(post("/api/auth/logout").header("Authorization", "Bearer invalid_token_here"))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void shouldRejectLoginWithWrongPassword() throws Exception {
+    // Use a valid signup first to get a real company code
+    String uniqueEmail = TestDataFactory.email();
+    SignupRequest signupRequest = new SignupRequest();
+    signupRequest.setBusinessName("Test Biz");
+    signupRequest.setBusinessType("RETAIL");
+    signupRequest.setOwnerName("Owner");
+    signupRequest.setOwnerEmail(uniqueEmail);
+    signupRequest.setPassword("password123");
+
+    MvcResult signupResult =
         mockMvc
-                .perform(post("/api/auth/logout").header("Authorization", "Bearer invalid_token_here"))
-                .andExpect(status().isUnauthorized());
-    }
+            .perform(
+                post("/api/auth/signup")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(signupRequest)))
+            .andDo(print())
+            .andExpect(status().isCreated())
+            .andReturn();
 
-    @Test
-    void shouldRejectLoginWithWrongPassword() throws Exception {
-        // Use a valid signup first to get a real company code
-        String uniqueEmail = TestDataFactory.email();
-        SignupRequest signupRequest = new SignupRequest();
-        signupRequest.setBusinessName("Test Biz");
-        signupRequest.setBusinessType("RETAIL");
-        signupRequest.setOwnerName("Owner");
-        signupRequest.setOwnerEmail(uniqueEmail);
-        signupRequest.setPassword("password123");
+    com.ims.dto.response.SignupResponse signupResponse =
+        objectMapper.readValue(
+            signupResult.getResponse().getContentAsString(),
+            com.ims.dto.response.SignupResponse.class);
 
-        MvcResult signupResult = mockMvc
-                .perform(
-                        post("/api/auth/signup")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(signupRequest)))
-                .andDo(print())
-                .andExpect(status().isCreated())
-                .andReturn();
+    // Now try login with wrong password for existing user
+    LoginRequest loginRequest = new LoginRequest();
+    loginRequest.setEmail(uniqueEmail);
+    loginRequest.setPassword("wrongpassword");
+    loginRequest.setCompanyCode(signupResponse.getCompanyCode());
 
-        com.ims.dto.response.SignupResponse signupResponse = objectMapper.readValue(
-                signupResult.getResponse().getContentAsString(),
-                com.ims.dto.response.SignupResponse.class);
-
-        // Now try login with wrong password for existing user
-        LoginRequest loginRequest = new LoginRequest();
-        loginRequest.setEmail(uniqueEmail);
-        loginRequest.setPassword("wrongpassword");
-        loginRequest.setCompanyCode(signupResponse.getCompanyCode());
-
-        mockMvc
-                .perform(
-                        post("/api/auth/login")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isUnauthorized());
-    }
+    mockMvc
+        .perform(
+            post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginRequest)))
+        .andExpect(status().isUnauthorized());
+  }
 }

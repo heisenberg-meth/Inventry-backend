@@ -31,8 +31,11 @@ public class SecurityHardeningIntegrationTest extends BaseIntegrationTest {
     clearRateLimits();
 
     mockMvc
-        .perform(get("/actuator/metrics")
-            .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous()))
+        .perform(
+            get("/actuator/metrics")
+                .with(
+                    org.springframework.security.test.web.servlet.request
+                        .SecurityMockMvcRequestPostProcessors.anonymous()))
         .andExpect(status().isUnauthorized())
         .andExpect(header().exists("X-Correlation-ID"));
   }

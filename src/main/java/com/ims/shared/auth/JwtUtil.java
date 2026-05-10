@@ -3,8 +3,6 @@ package com.ims.shared.auth;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.security.Keys;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -14,22 +12,34 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
-public class JwtUtil {
+public final class JwtUtil {
 
   private static final long MILLIS_IN_SECOND = 1000L;
 
-  private final SecretKey key;
+  private SecretKey key;
   private final long expirySeconds;
   private final long refreshExpirySeconds;
+  private final String secret;
 
   public JwtUtil(
       @Value("${app.jwt.secret}") String secret,
       @Value("${app.jwt.expiry-seconds}") long expirySeconds,
       @Value("${app.jwt.refresh-expiry-seconds}") long refreshExpirySeconds) {
-    // Use Base64 decoding for production-safe key (must be pre-encoded 256-bit key)
-    this.key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
+    this.secret = secret;
     this.expirySeconds = expirySeconds;
     this.refreshExpirySeconds = refreshExpirySeconds;
+  }
+
+  @jakarta.annotation.PostConstruct
+  public void init() {
+    // Use Base64 decoding for production-safe key, but fall back to raw bytes for resilience
+    byte[] keyBytes;
+    try {
+      keyBytes = io.jsonwebtoken.io.Decoders.BASE64.decode(secret);
+    } catch (Exception e) {
+      keyBytes = secret.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+    this.key = io.jsonwebtoken.security.Keys.hmacShaKeyFor(keyBytes);
   }
 
   public String generateToken(
@@ -40,19 +50,8 @@ public class JwtUtil {
       String scope,
       String businessType,
       boolean isPlatformUser) {
-    Map<String, Object> claims = new HashMap<>();
-    claims.put("user_id", userId);
-    String authoritiesRole = (role != null && !role.startsWith("ROLE_")) ? "ROLE_" + role : role;
-    claims.put("role", authoritiesRole);
-    claims.put("permissions", permissions);
-    claims.put("scope", scope);
-    claims.put("is_platform_user", isPlatformUser);
-    if (tenantId != null) {
-      claims.put("tenant_id", tenantId);
-    }
-    if (businessType != null) {
-      claims.put("business_type", businessType);
-    }
+    Map<String, Object> claims =
+        buildClaims(userId, tenantId, role, permissions, scope, businessType, isPlatformUser);
 
     return Jwts.builder()
         .claims(claims)
@@ -71,20 +70,9 @@ public class JwtUtil {
       String scope,
       String businessType,
       boolean isPlatformUser) {
-    Map<String, Object> claims = new HashMap<>();
-    claims.put("user_id", userId);
-    String authoritiesRole = (role != null && !role.startsWith("ROLE_")) ? "ROLE_" + role : role;
-    claims.put("role", authoritiesRole);
-    claims.put("permissions", permissions);
-    claims.put("scope", scope);
-    claims.put("is_platform_user", isPlatformUser);
+    Map<String, Object> claims =
+        buildClaims(userId, tenantId, role, permissions, scope, businessType, isPlatformUser);
     claims.put("token_type", "refresh");
-    if (tenantId != null) {
-      claims.put("tenant_id", tenantId);
-    }
-    if (businessType != null) {
-      claims.put("business_type", businessType);
-    }
 
     return Jwts.builder()
         .claims(claims)
@@ -93,6 +81,30 @@ public class JwtUtil {
         .expiration(new Date(System.currentTimeMillis() + refreshExpirySeconds * MILLIS_IN_SECOND))
         .signWith(key, Jwts.SIG.HS256)
         .compact();
+  }
+
+  private Map<String, Object> buildClaims(
+      Long userId,
+      Long tenantId,
+      String role,
+      List<String> permissions,
+      String scope,
+      String businessType,
+      boolean isPlatformUser) {
+    Map<String, Object> claims = new HashMap<>();
+    claims.put("user_id", userId);
+    String authoritiesRole = (role != null && !role.startsWith("ROLE_")) ? "ROLE_" + role : role;
+    claims.put("role", authoritiesRole);
+    claims.put("permissions", permissions);
+    claims.put("scope", scope);
+    claims.put("is_platform_user", isPlatformUser);
+    if (tenantId != null) {
+      claims.put("tenant_id", tenantId);
+    }
+    if (businessType != null) {
+      claims.put("business_type", businessType);
+    }
+    return claims;
   }
 
   public boolean validateToken(String token) {

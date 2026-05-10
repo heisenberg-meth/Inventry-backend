@@ -2,6 +2,10 @@ package com.ims.tenant.service;
 
 import com.ims.model.Order;
 import com.ims.model.OrderItem;
+import com.ims.order.dto.CreateOrderRequest;
+import com.ims.order.dto.OrderItemRequest;
+import com.ims.order.dto.OrderItemResponse;
+import com.ims.order.dto.OrderResponse;
 import com.ims.order.entity.OrderStatus;
 import com.ims.order.entity.OrderType;
 import com.ims.product.Product;
@@ -49,8 +53,8 @@ public class OrderService {
 
   /** Phase 5.2.6: PURCHASE ORDER FLOW */
   @Transactional
-  public com.ims.order.dto.OrderResponse createPurchaseOrder(
-      Long tenantId, com.ims.order.dto.CreateOrderRequest request, Long userId) {
+  public OrderResponse createPurchaseOrder(
+      Long tenantId, CreateOrderRequest request, Long userId) {
     Long supplierId = request.getSupplierId();
 
     var supplierOpt = supplierRepository.findActiveByIdAndTenantId(supplierId, tenantId);
@@ -58,35 +62,7 @@ public class OrderService {
       throw new EntityNotFoundException("Supplier not found or does not belong to your tenant");
     }
 
-    BigDecimal totalAmount = BigDecimal.ZERO;
-    BigDecimal taxAmount = BigDecimal.ZERO;
-
-    for (com.ims.order.dto.OrderItemRequest itemReq : request.getItems()) {
-      Long productId = itemReq.getProductId();
-      int qty = itemReq.getQuantity();
-
-      Product product =
-          productService
-              .findByIdWithLock(productId)
-              .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
-
-      BigDecimal unitPrice =
-          itemReq.getUnitPrice() != null
-              ? itemReq.getUnitPrice()
-              : (product.getPurchasePrice() != null ? product.getPurchasePrice() : BigDecimal.ZERO);
-
-      BigDecimal discount = itemReq.getDiscount() != null ? itemReq.getDiscount() : BigDecimal.ZERO;
-      BigDecimal taxRate = itemReq.getTaxRate() != null ? itemReq.getTaxRate() : BigDecimal.ZERO;
-
-      BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(qty)).subtract(discount);
-      BigDecimal itemTax =
-          itemTotal
-              .multiply(taxRate)
-              .divide(BigDecimal.valueOf(PERCENTAGE_BASE), 2, RoundingMode.HALF_UP);
-
-      totalAmount = totalAmount.add(itemTotal);
-      taxAmount = taxAmount.add(itemTax);
-    }
+    BigDecimal[] totals = calculateTotals(tenantId, request, OrderType.PURCHASE);
 
     Order order =
         Order.builder()
@@ -94,43 +70,16 @@ public class OrderService {
             .status(OrderStatus.PENDING)
             .tenantId(tenantId)
             .supplierId(supplierId)
-            .totalAmount(totalAmount)
-            .taxAmount(taxAmount)
+            .totalAmount(totals[0])
+            .taxAmount(totals[1])
             .notes(request.getNotes())
             .createdBy(userId)
             .build();
 
     order = orderRepository.save(order);
+    saveOrderItems(tenantId, order, request, OrderType.PURCHASE);
 
-    for (com.ims.order.dto.OrderItemRequest itemReq : request.getItems()) {
-      Long productId = itemReq.getProductId();
-      int qty = itemReq.getQuantity();
-      Product product = productRepository.findById(productId).orElseThrow();
-
-      BigDecimal unitPrice =
-          itemReq.getUnitPrice() != null
-              ? itemReq.getUnitPrice()
-              : (product.getPurchasePrice() != null ? product.getPurchasePrice() : BigDecimal.ZERO);
-      BigDecimal discount = itemReq.getDiscount() != null ? itemReq.getDiscount() : BigDecimal.ZERO;
-      BigDecimal taxRate = itemReq.getTaxRate() != null ? itemReq.getTaxRate() : BigDecimal.ZERO;
-      BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(qty)).subtract(discount);
-
-      OrderItem orderItem =
-          OrderItem.builder()
-              .tenantId(tenantId)
-              .orderId(order.getId())
-              .productId(productId)
-              .quantity(qty)
-              .unitPrice(unitPrice)
-              .discount(discount)
-              .taxRate(taxRate)
-              .subtotal(itemTotal)
-              .total(itemTotal)
-              .build();
-      orderItemRepository.save(orderItem);
-    }
-
-    log.info("Purchase order created: id={} total={}", order.getId(), totalAmount);
+    log.info("Purchase order created: id={} total={}", order.getId(), totals[0]);
     auditLogService.logAudit(
         AuditAction.CREATE_PURCHASE_ORDER,
         AuditResource.ORDER,
@@ -145,8 +94,7 @@ public class OrderService {
 
   /** Phase 5.2.1: SALE ORDER FLOW */
   @Transactional
-  public com.ims.order.dto.OrderResponse createSalesOrder(
-      Long tenantId, com.ims.order.dto.CreateOrderRequest request, Long userId) {
+  public OrderResponse createSalesOrder(Long tenantId, CreateOrderRequest request, Long userId) {
     Long customerId = request.getCustomerId();
 
     if (customerId != null) {
@@ -155,10 +103,46 @@ public class OrderService {
           .orElseThrow(() -> new EntityNotFoundException("Customer not found"));
     }
 
+    BigDecimal[] totals = calculateTotals(tenantId, request, OrderType.SALE);
+
+    BigDecimal rootDiscount =
+        request.getDiscount() != null ? request.getDiscount() : BigDecimal.ZERO;
+
+    Order order =
+        Order.builder()
+            .type(OrderType.SALE)
+            .status(OrderStatus.PENDING)
+            .tenantId(tenantId)
+            .customerId(customerId)
+            .totalAmount(totals[0])
+            .taxAmount(totals[1])
+            .discount(rootDiscount)
+            .notes(request.getNotes())
+            .createdBy(userId)
+            .build();
+
+    order = orderRepository.save(order);
+    saveOrderItems(tenantId, order, request, OrderType.SALE);
+
+    log.info("Sales order created: id={} total={}", order.getId(), totals[0]);
+    auditLogService.logAudit(
+        AuditAction.CREATE_SALE_ORDER,
+        AuditResource.ORDER,
+        order.getId(),
+        "Created sales order #" + order.getId());
+
+    businessMetricsService.incrementOrdersCreated();
+    outboxService.saveEvent("ORDER", order.getId().toString(), "CREATED", order, tenantId);
+
+    return toOrderResponse(order);
+  }
+
+  private BigDecimal[] calculateTotals(
+      Long tenantId, CreateOrderRequest request, OrderType orderType) {
     BigDecimal totalAmount = BigDecimal.ZERO;
     BigDecimal taxAmount = BigDecimal.ZERO;
 
-    for (com.ims.order.dto.OrderItemRequest itemReq : request.getItems()) {
+    for (OrderItemRequest itemReq : request.getItems()) {
       Long productId = itemReq.getProductId();
       int qty = itemReq.getQuantity();
 
@@ -167,14 +151,15 @@ public class OrderService {
               .findByIdWithLock(productId)
               .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
 
-      int availableStock = inventoryService.getAvailableStock(tenantId, productId);
-      if (availableStock < qty) {
-        throw new InsufficientStockException(
-            "Insufficient stock for " + product.getName(), availableStock, qty);
+      if (orderType == OrderType.SALE) {
+        int availableStock = inventoryService.getAvailableStock(tenantId, productId);
+        if (availableStock < qty) {
+          throw new InsufficientStockException(
+              "Insufficient stock for " + product.getName(), availableStock, qty);
+        }
       }
 
-      BigDecimal unitPrice =
-          itemReq.getUnitPrice() != null ? itemReq.getUnitPrice() : product.getSalePrice();
+      BigDecimal unitPrice = getItemUnitPrice(itemReq, product, orderType);
       BigDecimal discount = itemReq.getDiscount() != null ? itemReq.getDiscount() : BigDecimal.ZERO;
       BigDecimal taxRate = itemReq.getTaxRate() != null ? itemReq.getTaxRate() : BigDecimal.ZERO;
 
@@ -187,32 +172,17 @@ public class OrderService {
       totalAmount = totalAmount.add(itemTotal);
       taxAmount = taxAmount.add(itemTax);
     }
+    return new BigDecimal[] {totalAmount, taxAmount};
+  }
 
-    BigDecimal rootDiscount =
-        request.getDiscount() != null ? request.getDiscount() : BigDecimal.ZERO;
-
-    Order order =
-        Order.builder()
-            .type(OrderType.SALE)
-            .status(OrderStatus.PENDING)
-            .tenantId(tenantId)
-            .customerId(customerId)
-            .totalAmount(totalAmount)
-            .taxAmount(taxAmount)
-            .discount(rootDiscount)
-            .notes(request.getNotes())
-            .createdBy(userId)
-            .build();
-
-    order = orderRepository.save(order);
-
-    for (com.ims.order.dto.OrderItemRequest itemReq : request.getItems()) {
+  private void saveOrderItems(
+      Long tenantId, Order order, CreateOrderRequest request, OrderType orderType) {
+    for (OrderItemRequest itemReq : request.getItems()) {
       Long productId = itemReq.getProductId();
       int qty = itemReq.getQuantity();
       Product product = productRepository.findById(productId).orElseThrow();
 
-      BigDecimal unitPrice =
-          itemReq.getUnitPrice() != null ? itemReq.getUnitPrice() : product.getSalePrice();
+      BigDecimal unitPrice = getItemUnitPrice(itemReq, product, orderType);
       BigDecimal discount = itemReq.getDiscount() != null ? itemReq.getDiscount() : BigDecimal.ZERO;
       BigDecimal taxRate = itemReq.getTaxRate() != null ? itemReq.getTaxRate() : BigDecimal.ZERO;
       BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(qty)).subtract(discount);
@@ -231,18 +201,17 @@ public class OrderService {
               .build();
       orderItemRepository.save(orderItem);
     }
+  }
 
-    log.info("Sales order created: id={} total={}", order.getId(), totalAmount);
-    auditLogService.logAudit(
-        AuditAction.CREATE_SALE_ORDER,
-        AuditResource.ORDER,
-        order.getId(),
-        "Created sales order #" + order.getId());
-
-    businessMetricsService.incrementOrdersCreated();
-    outboxService.saveEvent("ORDER", order.getId().toString(), "CREATED", order, tenantId);
-
-    return toOrderResponse(order);
+  private BigDecimal getItemUnitPrice(OrderItemRequest itemReq, Product product, OrderType type) {
+    if (itemReq.getUnitPrice() != null) {
+      return itemReq.getUnitPrice();
+    }
+    if (type == OrderType.SALE) {
+      return product.getSalePrice() != null ? product.getSalePrice() : BigDecimal.ZERO;
+    } else {
+      return product.getPurchasePrice() != null ? product.getPurchasePrice() : BigDecimal.ZERO;
+    }
   }
 
   @Transactional
@@ -338,13 +307,12 @@ public class OrderService {
     return returnOrder;
   }
 
-  private com.ims.order.dto.OrderResponse toOrderResponse(Order order) {
+  private OrderResponse toOrderResponse(Order order) {
     List<OrderItem> items =
         orderItemRepository.findByOrderIdAndTenantId(order.getId(), order.getTenantId());
-    List<com.ims.order.dto.OrderItemResponse> itemResponses =
-        items.stream().map(this::toOrderItemResponse).toList();
+    List<OrderItemResponse> itemResponses = items.stream().map(this::toOrderItemResponse).toList();
 
-    return com.ims.order.dto.OrderResponse.builder()
+    return OrderResponse.builder()
         .id(order.getId())
         .type(order.getType())
         .status(order.getStatus())
@@ -360,9 +328,9 @@ public class OrderService {
         .build();
   }
 
-  private com.ims.order.dto.OrderItemResponse toOrderItemResponse(OrderItem item) {
+  private OrderItemResponse toOrderItemResponse(OrderItem item) {
     Product product = productRepository.findById(item.getProductId()).orElse(null);
-    return com.ims.order.dto.OrderItemResponse.builder()
+    return OrderItemResponse.builder()
         .id(item.getId())
         .productId(item.getProductId())
         .productName(product != null ? product.getName() : "Unknown")
@@ -383,7 +351,7 @@ public class OrderService {
     return orderRepository.findByTenantIdAndType(tenantId, type, pageable);
   }
 
-  public com.ims.order.dto.OrderResponse getOrderWithItems(Long id, Long tenantId) {
+  public OrderResponse getOrderWithItems(Long id, Long tenantId) {
     Order order =
         orderRepository
             .findByIdAndTenantId(id, tenantId)

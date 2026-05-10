@@ -84,7 +84,8 @@ class StockConcurrencyIntegrationTest extends BaseIntegrationTest {
               TenantContext.setTenantId(testTenant1Id);
               try {
                 stockService.stockOut(
-                    testProduct.getId(), requestQty, "Concurrent test", testUserId);                successCount.incrementAndGet();
+                    testProduct.getId(), requestQty, "Concurrent test", testUserId);
+                successCount.incrementAndGet();
               } catch (InsufficientStockException e) {
                 failCount.incrementAndGet();
               } catch (Exception e) {

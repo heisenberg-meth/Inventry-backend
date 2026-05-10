@@ -5,9 +5,10 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.4.2</version>
+		<version>3.5.14</version>
 		<relativePath/>
 	</parent>
+
 	<groupId>com.ims</groupId>
 	<artifactId>ims-backend</artifactId>
 	<version>1.0.0-SNAPSHOT</version>
@@ -16,9 +17,11 @@
 
 	<properties>
 		<java.version>21</java.version>
-		<jjwt.version>0.12.3</jjwt.version>
+		<jjwt.version>0.12.6</jjwt.version>
 		<testcontainers.version>1.21.4</testcontainers.version>
 		<docker-java.version>3.7.1</docker-java.version>
+		<kafka.version>3.9.0</kafka.version>
+		<postgresql.version>42.7.11</postgresql.version>
 	</properties>
 
 	<dependencies>
@@ -99,6 +102,7 @@
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
+			<version>${postgresql.version}</version>
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
@@ -119,7 +123,7 @@
 		<dependency>
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-			<version>2.8.6</version>
+			<version>2.8.17</version>
 		</dependency>
 
 		<!-- PDF Generation -->
@@ -194,7 +198,7 @@
 		<dependency>
 			<groupId>com.microsoft.playwright</groupId>
 			<artifactId>playwright</artifactId>
-			<version>1.44.0</version>
+			<version>1.53.0</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
@@ -211,6 +215,15 @@
 							<artifactId>lombok</artifactId>
 						</path>
 					</annotationProcessorPaths>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<redirectTestOutputToFile>true</redirectTestOutputToFile>
+					<reuseForks>false</reuseForks>
+					<excludedGroups>e2e</excludedGroups>
 				</configuration>
 			</plugin>
 			<plugin>
@@ -279,7 +292,57 @@
 					<inputEncoding>UTF-8</inputEncoding>
 					<targetJdk>21</targetJdk>
 					<printFailingErrors>true</printFailingErrors>
+					<failOnViolation>true</failOnViolation>
 				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>check</goal>
+							<goal>cpd-check</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<plugin>
+				<groupId>com.github.spotbugs</groupId>
+				<artifactId>spotbugs-maven-plugin</artifactId>
+				<version>4.8.6.6</version>
+				<configuration>
+					<effort>Max</effort>
+					<threshold>Low</threshold>
+					<failOnError>true</failOnError>
+					<xmlOutput>true</xmlOutput>
+					<excludeFilterFile>spotbugs-exclude.xml</excludeFilterFile>
+				</configuration>
+				<executions>
+					<execution>
+						<phase>verify</phase>
+						<goals>
+							<goal>check</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<plugin>
+				<groupId>org.owasp</groupId>
+				<artifactId>dependency-check-maven</artifactId>
+				<version>12.1.0</version>
+				<configuration>
+					<failBuildOnCVSS>7.0</failBuildOnCVSS>
+					<assemblyAnalyzerEnabled>false</assemblyAnalyzerEnabled>
+					<ossindexAnalyzerEnabled>false</ossindexAnalyzerEnabled>
+					<nvdApiKey>${env.NVD_API_KEY}</nvdApiKey>
+					<suppressionFile>dependency-check-suppression.xml</suppressionFile>
+				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>check</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 
 		</plugins>

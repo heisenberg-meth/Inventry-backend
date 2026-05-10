@@ -10,6 +10,7 @@ import com.ims.shared.auth.JwtAuthDetails;
 import com.ims.shared.auth.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.Collections;
+import java.util.Locale;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -90,14 +91,13 @@ public class ProductService {
     Long tenantId = TenantContext.requireTenantId();
 
     // PRD 4.1.1 - SKU Normalization (Trim + Uppercase)
-    String normalizedSku = request.getSku() != null ? request.getSku().trim().toUpperCase() : null;
+    String normalizedSku = request.getSku() != null ? request.getSku().trim().toUpperCase(Locale.ROOT) : null;
 
     // PRD 4.4 - Check for duplicate SKU using dedicated method
-    if (normalizedSku != null && !normalizedSku.isBlank()) {
-      if (productRepository.existsBySkuAndTenantId(normalizedSku, tenantId)) {
-
-        throw new IllegalStateException("SKU already exists");
-      }
+    if (normalizedSku != null
+        && !normalizedSku.isBlank()
+        && productRepository.existsBySkuAndTenantId(normalizedSku, tenantId)) {
+      throw new IllegalStateException("SKU already exists");
     }
 
     // Check product limits
@@ -168,12 +168,10 @@ public class ProductService {
     }
     if (request.getSku() != null) {
       // PRD 4.1.2 - SKU Normalization and Uniqueness Revalidation
-      String normalizedSku = request.getSku().trim().toUpperCase();
-      if (!normalizedSku.equals(product.getSku())) {
-        if (productRepository.existsBySkuAndTenantId(normalizedSku, product.getTenantId())) {
-
-          throw new IllegalStateException("SKU already exists");
-        }
+      String normalizedSku = request.getSku().trim().toUpperCase(Locale.ROOT);
+      if (!normalizedSku.equals(product.getSku())
+          && productRepository.existsBySkuAndTenantId(normalizedSku, product.getTenantId())) {
+        throw new IllegalStateException("SKU already exists");
       }
       product.setSku(normalizedSku);
     }

@@ -11,10 +11,13 @@ spring:
   jpa:
     hibernate:
       ddl-auto: none
+  kafka:
+    listener:
+      auto-startup: false
 
 app:
   jwt:
-    secret: dev-secret-for-dev-environment-only-change-in-prod
+    secret: ${JWT_SECRET:oEWvO7Zun6LpLSYX4MIZbvtWm/gb+qhlWw6nFKHjD5nxb3pwOIyNI0s5eVsSWFGRR5Ntr+o2hymLug4zuYYp4g}
   security:
     allowed-origins: "http://localhost:5173"
   rate-limit:

@@ -12,12 +12,13 @@ import org.springframework.web.client.RestTemplate;
 @Slf4j
 public class NaasService {
 
+  private static final int HTTP_TIMEOUT_MS = 2000;
   private final RestTemplate restTemplate;
 
   public NaasService() {
     SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-    factory.setConnectTimeout(2000); // 2 seconds
-    factory.setReadTimeout(2000); // 2 seconds
+    factory.setConnectTimeout(HTTP_TIMEOUT_MS);
+    factory.setReadTimeout(HTTP_TIMEOUT_MS);
     this.restTemplate = new RestTemplate(factory);
   }
 

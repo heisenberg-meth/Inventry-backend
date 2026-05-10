@@ -31,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class PlatformUserController {
 
+  private static final int MIN_PASSWORD_LENGTH = 8;
   private final PlatformUserService platformUserService;
 
   @PostMapping
@@ -88,8 +89,9 @@ public class PlatformUserController {
   public Map<String, String> resetPassword(
       @PathVariable Long id, @RequestBody Map<String, String> body) {
     String newPassword = body.get("newPassword");
-    if (newPassword == null || newPassword.length() < 8) {
-      throw new IllegalArgumentException("New password must be at least 8 characters");
+    if (newPassword == null || newPassword.length() < MIN_PASSWORD_LENGTH) {
+      throw new IllegalArgumentException(
+          "New password must be at least " + MIN_PASSWORD_LENGTH + " characters");
     }
     return platformUserService.resetPlatformUserPassword(id, newPassword);
   }

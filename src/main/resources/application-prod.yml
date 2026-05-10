@@ -20,6 +20,7 @@ spring:
     show-sql: false
   flyway:
     enabled: true
+    repair-on-migrate: true
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
 
@@ -42,3 +43,9 @@ logging:
     "[com.ims]": INFO
     "[org.springframework.web]": INFO
     "[org.hibernate.SQL]": ERROR
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

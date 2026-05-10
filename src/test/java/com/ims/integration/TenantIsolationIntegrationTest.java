@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.CreateProductRequest;
 import com.ims.shared.auth.TenantContext;
@@ -12,37 +13,42 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 
-@org.springframework.security.test.context.support.WithMockUser(username = "admin", authorities = {
-    "ADMIN",
-    "ROLE_ADMIN",
-    "create_product",
-    "view_product",
-    "update_product",
-    "delete_product",
-    "create_order",
-    "view_order",
-    "create_supplier",
-    "view_supplier",
-    "delete_supplier",
-    "manage_stock",
-    "view_stock"
-})
+@org.springframework.security.test.context.support.WithMockUser(
+    username = "admin",
+    authorities = {
+      "ADMIN",
+      "ROLE_ADMIN",
+      "create_product",
+      "view_product",
+      "update_product",
+      "delete_product",
+      "create_order",
+      "view_order",
+      "create_supplier",
+      "view_supplier",
+      "delete_supplier",
+      "manage_stock",
+      "view_stock"
+    })
 public class TenantIsolationIntegrationTest extends BaseIntegrationTest {
 
-  @Autowired
-  private com.ims.product.ProductService productService;
+  @Autowired private com.ims.product.ProductService productService;
 
-  @Autowired
-  private com.ims.tenant.repository.PermissionRepository permissionRepository;
+  @Autowired private com.ims.tenant.repository.PermissionRepository permissionRepository;
 
   @Test
   void shouldPreventCrossTenantDataAccess() {
     // 0. Ensure 'view_product' permission exists
-    var viewProductPerm = permissionRepository.findByKey("view_product")
-        .orElseGet(() -> permissionRepository.save(com.ims.model.Permission.builder()
-            .key("view_product")
-            .description("View products")
-            .build()));
+    var viewProductPerm =
+        permissionRepository
+            .findByKey("view_product")
+            .orElseGet(
+                () ->
+                    permissionRepository.save(
+                        com.ims.model.Permission.builder()
+                            .key("view_product")
+                            .description("View products")
+                            .build()));
 
     // 1. Create product in Tenant 1
     var tenant1User = userRepository.findFirstByTenantIdAndRole(testTenant1Id, "ADMIN").get();
@@ -54,12 +60,13 @@ public class TenantIsolationIntegrationTest extends BaseIntegrationTest {
     com.ims.helper.SecurityTestUtils.setAuthenticatedUser(tenant1User);
     TenantContext.setTenantId(testTenant1Id);
 
-    CreateProductRequest req1 = CreateProductRequest.builder()
-        .name("Tenant 1 Product")
-        .sku("T1-PROD")
-        .purchasePrice(BigDecimal.TEN)
-        .salePrice(BigDecimal.valueOf(20))
-        .build();
+    CreateProductRequest req1 =
+        CreateProductRequest.builder()
+            .name("Tenant 1 Product")
+            .sku("T1-PROD")
+            .purchasePrice(BigDecimal.TEN)
+            .salePrice(BigDecimal.valueOf(20))
+            .build();
     var resp1 = productService.createProduct(req1);
     Long product1Id = resp1.getId();
 
@@ -74,12 +81,13 @@ public class TenantIsolationIntegrationTest extends BaseIntegrationTest {
     com.ims.helper.SecurityTestUtils.setAuthenticatedUser(tenant2User);
     TenantContext.setTenantId(testTenant2Id);
 
-    CreateProductRequest req2 = CreateProductRequest.builder()
-        .name("Tenant 2 Product")
-        .sku("T2-PROD")
-        .purchasePrice(BigDecimal.TEN)
-        .salePrice(BigDecimal.valueOf(20))
-        .build();
+    CreateProductRequest req2 =
+        CreateProductRequest.builder()
+            .name("Tenant 2 Product")
+            .sku("T2-PROD")
+            .purchasePrice(BigDecimal.TEN)
+            .salePrice(BigDecimal.valueOf(20))
+            .build();
     var resp2 = productService.createProduct(req2);
     Long product2Id = resp2.getId();
 

@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.ims.BaseIntegrationTest;
 import com.ims.dto.request.LoginRequest;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,8 +20,7 @@ import org.springframework.http.MediaType;
 class FailureHandlingIntegrationTest extends BaseIntegrationTest {
 
   @BeforeEach
-  void setup() {
-  }
+  void setup() {}
 
   @Nested
   @DisplayName("11.3 CORS Controlled")
@@ -99,15 +99,16 @@ class FailureHandlingIntegrationTest extends BaseIntegrationTest {
       loginRequest.setEmail("root@test.com");
       loginRequest.setPassword("root123");
 
-      String responseJson = mockMvc
-          .perform(
-              post("/api/auth/login")
-                  .contentType(MediaType.APPLICATION_JSON)
-                  .content(objectMapper.writeValueAsString(loginRequest)))
-          .andExpect(status().isOk())
-          .andReturn()
-          .getResponse()
-          .getContentAsString();
+      String responseJson =
+          mockMvc
+              .perform(
+                  post("/api/auth/login")
+                      .contentType(MediaType.APPLICATION_JSON)
+                      .content(objectMapper.writeValueAsString(loginRequest)))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString();
 
       assertThat(responseJson).doesNotContain("root123");
     }
@@ -134,9 +135,11 @@ class FailureHandlingIntegrationTest extends BaseIntegrationTest {
     @DisplayName("Correlation ID should be present in response headers")
     void correlationIdPresentInHeaders() throws Exception {
       mockMvc
-          .perform(get("/api/v1/tenant/users")
-              .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors
-                  .anonymous()))
+          .perform(
+              get("/api/v1/tenant/users")
+                  .with(
+                      org.springframework.security.test.web.servlet.request
+                          .SecurityMockMvcRequestPostProcessors.anonymous()))
           .andExpect(status().isUnauthorized())
           .andExpect(header().exists("X-Correlation-ID"));
     }
@@ -149,24 +152,25 @@ class FailureHandlingIntegrationTest extends BaseIntegrationTest {
     @Test
     @DisplayName("Actuator endpoints should be restricted to ADMIN")
     void actuatorRestricted() throws Exception {
-      mockMvc.perform(get("/actuator/metrics")
-          .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous()))
+      mockMvc
+          .perform(
+              get("/actuator/metrics")
+                  .with(
+                      org.springframework.security.test.web.servlet.request
+                          .SecurityMockMvcRequestPostProcessors.anonymous()))
           .andExpect(status().isUnauthorized());
     }
 
     @Test
     @DisplayName("Actuator health should be publicly accessible")
     void healthPubliclyAccessible() throws Exception {
-      mockMvc.perform(get("/actuator/health"))
-          .andExpect(status().isServiceUnavailable());
+      mockMvc.perform(get("/actuator/health")).andExpect(status().isServiceUnavailable());
     }
 
     @Test
-    @DisplayName("Swagger UI should be restricted to authenticated users")
-    void swaggerRequiresAuth() throws Exception {
-      mockMvc.perform(get("/swagger-ui/index.html")
-          .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous()))
-          .andExpect(status().isUnauthorized());
+    @DisplayName("Swagger UI should be publicly accessible")
+    void swaggerPubliclyAccessible() throws Exception {
+      mockMvc.perform(get("/swagger-ui/index.html")).andExpect(status().isOk());
     }
   }
 

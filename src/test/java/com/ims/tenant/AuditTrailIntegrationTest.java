@@ -37,8 +37,7 @@ public class AuditTrailIntegrationTest extends BaseIntegrationTest {
   @Autowired private PermissionRepository permissionRepository;
 
   @BeforeEach
-  void setup() {
-  }
+  void setup() {}
 
   private void assignAuditPermissions(String email) {
     User user =

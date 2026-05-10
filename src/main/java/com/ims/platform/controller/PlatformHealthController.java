@@ -34,7 +34,7 @@ public class PlatformHealthController {
     Map<String, Object> health = new LinkedHashMap<>();
 
     // 1. Database Health
-    try (var conn = dataSource.getConnection()) {
+    try (var ignored = dataSource.getConnection()) {
       health.put("database", Map.of("status", "UP", "message", "Connection successful"));
     } catch (Exception e) {
       health.put("database", Map.of("status", "DOWN", "error", e.getMessage()));
@@ -52,7 +52,7 @@ public class PlatformHealthController {
     }
 
     // 3. Disk Space
-    File root = new File("/");
+    File root = new File(".");
     long total = root.getTotalSpace();
     long free = root.getUsableSpace();
     health.put(

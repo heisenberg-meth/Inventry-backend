@@ -27,11 +27,14 @@ public class KafkaProducerService {
   }
 
   @CircuitBreaker(name = "kafkaService", fallbackMethod = "sendMessageFallback")
-  @Retryable(retryFor = {
-      org.apache.kafka.common.errors.TimeoutException.class,
-      org.apache.kafka.common.errors.NetworkException.class,
-      org.springframework.kafka.KafkaException.class
-  }, maxAttempts = 3, backoff = @Backoff(delay = 500, maxDelay = 2000, multiplier = 2))
+  @Retryable(
+      retryFor = {
+        org.apache.kafka.common.errors.TimeoutException.class,
+        org.apache.kafka.common.errors.NetworkException.class,
+        org.springframework.kafka.KafkaException.class
+      },
+      maxAttempts = 3,
+      backoff = @Backoff(delay = 500, maxDelay = 2000, multiplier = 2))
   public void sendMessage(String topic, String key, String message) {
     log.debug("Sending message to topic {}: key={}", topic, key);
     kafkaTemplate

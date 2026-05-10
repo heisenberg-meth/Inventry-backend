@@ -15,6 +15,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -78,7 +79,7 @@ public class CustomerService {
 
     if (customer.getEmail() != null
         && customerRepository.existsByTenantIdAndEmailAndIsDeletedFalse(
-            tenantId, customer.getEmail().toLowerCase())) {
+            tenantId, customer.getEmail().toLowerCase(Locale.ROOT))) {
       duplicateEmailCounter.increment();
       throw new IllegalArgumentException("Customer with this email already exists");
     }
@@ -105,7 +106,7 @@ public class CustomerService {
       Long tenantId = TenantContext.getTenantId();
       normalizeEmail(updates);
       if (customerRepository.existsByTenantIdAndEmailAndIsDeletedFalse(
-          tenantId, updates.getEmail().toLowerCase())) {
+          tenantId, updates.getEmail().toLowerCase(Locale.ROOT))) {
         duplicateEmailCounter.increment();
         throw new IllegalArgumentException("Customer with this email already exists");
       }
@@ -189,7 +190,7 @@ public class CustomerService {
 
   private void normalizeEmail(Customer customer) {
     if (customer.getEmail() != null) {
-      customer.setEmail(customer.getEmail().trim().toLowerCase());
+      customer.setEmail(customer.getEmail().trim().toLowerCase(Locale.ROOT));
     }
   }
 }
