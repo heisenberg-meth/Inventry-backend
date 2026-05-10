@@ -36,12 +36,15 @@ spring:
   main:
     lazy-initialization: true
 
+  cache:
+    type: none
+
 app:
   kafka:
     enabled: false
 
   redis:
-    enabled: true
+    enabled: false
 
   jwt:
     secret: ${JWT_SECRET}

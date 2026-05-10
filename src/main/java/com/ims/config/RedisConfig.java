@@ -25,7 +25,10 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
  */
 @Configuration
 @Profile("!test")
-@ConditionalOnProperty(name = "app.redis.enabled", havingValue = "true")
+@ConditionalOnProperty(
+    name = "app.redis.enabled",
+    havingValue = "true"
+)
 public class RedisConfig {
 
   private static final int TTL_PRODUCTS_MINUTES = 15;
