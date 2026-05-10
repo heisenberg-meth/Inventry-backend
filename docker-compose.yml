@@ -40,7 +40,7 @@ services:
     container_name: ims_backend
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ims_db
-      SPRING_DATASOURCE_USERNAME: ims_user
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       SPRING_DATA_REDIS_HOST: valkey
       SPRING_DATA_REDIS_PORT: 6379

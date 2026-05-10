@@ -18,18 +18,23 @@ spring:
       host: ${REDIS_HOST:}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: none
     show-sql: false
+    open-in-view: false
 
   flyway:
     enabled: true
     repair-on-migrate: true
 
-  kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:}
+  main:
+    lazy-initialization: true
 
 app:
   kafka:
@@ -42,7 +47,7 @@ app:
     allowed-origins: ${ALLOWED_ORIGINS:*}
 
   rate-limit:
-    enabled: true
+    enabled: false
     auth-rpm: ${RATE_LIMIT_AUTH_RPM:20}
     public-rpm: ${RATE_LIMIT_PUBLIC_RPM:50}
     authenticated-rpm: ${RATE_LIMIT_AUTHENTICATED_RPM:200}
