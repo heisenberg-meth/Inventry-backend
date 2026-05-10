@@ -40,6 +40,9 @@ app:
   kafka:
     enabled: false
 
+  redis:
+    enabled: true
+
   jwt:
     secret: ${JWT_SECRET}
 

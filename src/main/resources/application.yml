@@ -111,6 +111,8 @@ app:
     tenant-rpm: ${RATE_LIMIT_TENANT_RPM:1000}
     window-seconds: ${RATE_LIMIT_WINDOW_SECONDS:60}
 
+  redis:
+    enabled: true
 logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %highlight(%-5level) %cyan(%logger{36}) - %msg %n"

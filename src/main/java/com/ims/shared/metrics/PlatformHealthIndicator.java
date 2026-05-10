@@ -1,24 +1,24 @@
 package com.ims.shared.metrics;
 
 import java.sql.Connection;
+import java.util.Optional;
+
 import javax.sql.DataSource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnBean(RedisTemplate.class)
 @Slf4j
 public class PlatformHealthIndicator implements HealthIndicator {
 
   private final DataSource dataSource;
-  private final RedisTemplate<String, Object> redisTemplate;
+  private final Optional<RedisTemplate<String, Object>> redisTemplate;
 
   public PlatformHealthIndicator(
-      DataSource dataSource, RedisTemplate<String, Object> redisTemplate) {
+      DataSource dataSource, Optional<RedisTemplate<String, Object>> redisTemplate) {
     this.dataSource = dataSource;
     this.redisTemplate = redisTemplate;
   }
@@ -51,12 +51,12 @@ public class PlatformHealthIndicator implements HealthIndicator {
   }
 
   private boolean checkRedis() {
+    if (redisTemplate.isEmpty()) {
+      return true; // Redis is disabled, so it's not "unhealthy"
+    }
     try {
-      if (redisTemplate == null) {
-        log.warn("RedisTemplate not available - marking Redis as DOWN but continuing");
-        return false;
-      }
-      var connectionFactory = redisTemplate.getConnectionFactory();
+      var template = redisTemplate.get();
+      var connectionFactory = template.getConnectionFactory();
       if (connectionFactory == null) {
         log.error("Redis connection factory is null");
         return false;

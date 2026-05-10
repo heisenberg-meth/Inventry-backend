@@ -31,17 +31,8 @@ build/
 
 ### VS Code ###
 .vscode/
-index.html
-.planning/
-New Fix.md
-CLAUDE.md
-IMS_PRD_Complete.docx
 PRD.md
-IMS_PRD_Complete (1).docx
 .env
-Redo.md
-progress.txt
-PRD_Tenant_Onboarding_Hardening.docx
 
 ### Secrets - NEVER COMMIT ###
 k8s/secrets.yaml
@@ -50,11 +41,5 @@ k8s/**/*-secret*.yaml
 *.key
 *.pem
 .env.*
-secrets/
 skills
 docs
-.m2
-TASKS.md
-fix_tests.py
-m2
-cp.txt

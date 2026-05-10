@@ -22,3 +22,6 @@ app:
     allowed-origins: "http://localhost:5173"
   rate-limit:
     enabled: false
+
+  redis:
+    enabled: true

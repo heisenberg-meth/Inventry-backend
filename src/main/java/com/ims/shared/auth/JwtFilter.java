@@ -11,9 +11,9 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.MDC;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.Order;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpHeaders;
@@ -30,12 +30,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class JwtFilter extends OncePerRequestFilter {
 
   private final JwtUtil jwtUtil;
-  private RedisTemplate<String, Object> redisTemplate;
-
-  @Autowired(required = false)
-  public void setRedisTemplate(RedisTemplate<String, Object> redisTemplate) {
-    this.redisTemplate = redisTemplate;
-  }
+  private final Optional<RedisTemplate<String, Object>> redisTemplate;
 
   private static final int BEARER_PREFIX_LENGTH = 7;
 
@@ -66,8 +61,8 @@ public class JwtFilter extends OncePerRequestFilter {
       String tokenHash = hashToken(token);
       Boolean isBlacklisted = false;
       try {
-        if (redisTemplate != null) {
-          isBlacklisted = redisTemplate.hasKey("jwt:blacklist:" + tokenHash);
+        if (redisTemplate.isPresent()) {
+          isBlacklisted = redisTemplate.get().hasKey("jwt:blacklist:" + tokenHash);
         }
       } catch (Exception e) {
         log.warn(
@@ -91,8 +86,7 @@ public class JwtFilter extends OncePerRequestFilter {
       boolean isPlatformUser = Boolean.TRUE.equals(claims.get("is_platform_user", Boolean.class));
 
       // Normalize to ROLE_ prefix for Spring Security and add granular permissions
-      List<org.springframework.security.core.GrantedAuthority> authorities =
-          new java.util.ArrayList<>();
+      List<org.springframework.security.core.GrantedAuthority> authorities = new java.util.ArrayList<>();
       if (role != null) {
         String roleWithPrefix = role.startsWith("ROLE_") ? role : "ROLE_" + role;
         String roleWithoutPrefix = role.startsWith("ROLE_") ? role.substring(5) : role;

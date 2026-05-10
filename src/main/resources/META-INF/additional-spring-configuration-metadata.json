@@ -108,5 +108,10 @@
     "name": "app.kafka.enabled",
     "type": "java.lang.String",
     "description": "A description for 'app.kafka.enabled'"
+  },
+  {
+    "name": "app.redis.enabled",
+    "type": "java.lang.String",
+    "description": "A description for 'app.redis.enabled'"
   }
 ]}

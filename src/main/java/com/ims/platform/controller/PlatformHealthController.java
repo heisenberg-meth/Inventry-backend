@@ -7,6 +7,7 @@ import java.io.File;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 import javax.sql.DataSource;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.connection.RedisConnection;
@@ -25,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class PlatformHealthController {
 
   private final DataSource dataSource;
-  private final RedisTemplate<String, Object> redisTemplate;
+  private final Optional<RedisTemplate<String, Object>> redisTemplate;
 
   @GetMapping("/extended")
   @PreAuthorize("hasRole('ROOT')")
@@ -41,14 +42,18 @@ public class PlatformHealthController {
     }
 
     // 2. Redis Health
-    try {
-      redisTemplate.execute(
-          (RedisConnection connection) -> {
-            return connection.serverCommands().info();
-          });
-      health.put("redis", Map.of("status", "UP"));
-    } catch (Exception e) {
-      health.put("redis", Map.of("status", "DOWN", "error", e.getMessage()));
+    if (redisTemplate.isPresent()) {
+      try {
+        redisTemplate.get().execute(
+            (RedisConnection connection) -> {
+              return connection.serverCommands().info();
+            });
+        health.put("redis", Map.of("status", "UP"));
+      } catch (Exception e) {
+        health.put("redis", Map.of("status", "DOWN", "error", e.getMessage()));
+      }
+    } else {
+      health.put("redis", Map.of("status", "DISABLED", "message", "Redis is not enabled"));
     }
 
     // 3. Disk Space
