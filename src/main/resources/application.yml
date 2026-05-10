@@ -7,8 +7,6 @@ spring:
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
-  profiles:
-    active: ${SPRING_PROFILES_ACTIVE:local}
   web:
     resources:
       add-mappings: false
@@ -68,6 +66,7 @@ spring:
         "[max.poll.interval.ms]": 300000
 
 server:
+  port: ${PORT:8080}
   shutdown: graceful
 
 management:
