@@ -40,6 +40,12 @@ public class JwtFilter extends OncePerRequestFilter {
       @NonNull HttpServletResponse response,
       @NonNull FilterChain chain)
       throws ServletException, IOException {
+
+    if (shouldNotFilter(request)) {
+      chain.doFilter(request, response);
+      return;
+    }
+
     String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
 
     if (authHeader == null || !authHeader.startsWith("Bearer ")) {

@@ -44,33 +44,31 @@ public class SignupService {
     String companyCode = generateUniqueCompanyCode(request.getBusinessName());
 
     // 1. Save tenant in its own committed transaction
-    Tenant tenant =
-        Tenant.builder()
-            .name(request.getBusinessName())
-            .businessType(request.getBusinessType())
-            .workspaceSlug(workspaceSlug)
-            .companyCode(companyCode)
-            .status("ACTIVE")
-            .plan("FREE")
-            .address(request.getAddress())
-            .gstin(request.getGstin())
-            .build();
+    Tenant tenant = Tenant.builder()
+        .name(request.getBusinessName())
+        .businessType(request.getBusinessType())
+        .workspaceSlug(workspaceSlug)
+        .companyCode(companyCode)
+        .status("ACTIVE")
+        .plan("FREE")
+        .address(request.getAddress())
+        .gstin(request.getGstin())
+        .build();
 
     tenant = tenantPersistenceService.saveTenant(tenant); // commits immediately
     log.info("Signup: Created tenant id={} name={}", tenant.getId(), tenant.getName());
 
     // 2. Now user insert can see the committed tenant
-    User user =
-        User.builder()
-            .name(request.getOwnerName())
-            .email(normalizedEmail)
-            .phone(request.getOwnerPhone())
-            .passwordHash(passwordEncoder.encode(request.getPassword()))
-            .role("ADMIN")
-            .scope("TENANT")
-            .tenantId(tenant.getId())
-            .isActive(true)
-            .build();
+    User user = User.builder()
+        .name(request.getOwnerName())
+        .email(normalizedEmail)
+        .phone(request.getOwnerPhone())
+        .passwordHash(passwordEncoder.encode(request.getPassword()))
+        .role("ADMIN")
+        .scope("TENANT")
+        .tenantId(tenant.getId())
+        .isActive(true)
+        .build();
 
     try {
       TenantContext.setTenantId(tenant.getId());
@@ -85,12 +83,11 @@ public class SignupService {
 
       // Generate email verification token
       String verificationToken = java.util.UUID.randomUUID().toString();
-      EmailVerification verification =
-          EmailVerification.builder()
-              .userId(user.getId())
-              .token(verificationToken)
-              .expiresAt(java.time.LocalDateTime.now().plusHours(24))
-              .build();
+      EmailVerification verification = EmailVerification.builder()
+          .userId(user.getId())
+          .token(verificationToken)
+          .expiresAt(java.time.LocalDateTime.now().plusHours(24))
+          .build();
       emailVerificationRepository.save(verification);
       log.info("Signup: Email verification token created");
 
@@ -118,13 +115,12 @@ public class SignupService {
 
   private String generateWorkspaceSlug(String businessName) {
     // Generate base slug from business name
-    String baseSlug =
-        businessName
-            .toLowerCase(Locale.ROOT)
-            .replaceAll("[^a-z0-9\\s-]", "")
-            .replaceAll("\\s+", "-")
-            .replaceAll("-+", "-")
-            .replaceAll("^-|-$", "");
+    String baseSlug = businessName
+        .toLowerCase(Locale.ROOT)
+        .replaceAll("[^a-z0-9\\s-]", "")
+        .replaceAll("\\s+", "-")
+        .replaceAll("-+", "-")
+        .replaceAll("^-|-$", "");
 
     // Add short UUID suffix to avoid collisions
     String suffix = java.util.UUID.randomUUID().toString().substring(0, 4);
