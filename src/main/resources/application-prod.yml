@@ -7,8 +7,8 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     hikari:
-      maximum-pool-size: 10
-      minimum-idle: 2
+      maximum-pool-size: 3
+      minimum-idle: 1
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
@@ -32,12 +32,29 @@ spring:
   flyway:
     enabled: true
     repair-on-migrate: true
+    validate-on-migrate: false
+    baseline-on-migrate: true
 
   main:
     lazy-initialization: true
+    banner-mode: off
 
   cache:
     type: none
+
+management:
+  endpoints:
+    enabled-by-default: false
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      enabled: true
+    info:
+      enabled: true
+    prometheus:
+      enabled: true
 
 app:
   kafka:
@@ -63,9 +80,10 @@ app:
 logging:
   level:
     root: INFO
-    "[com.ims]": INFO
-    "[org.springframework.web]": INFO
-    "[org.hibernate.SQL]": ERROR
+    org.springframework: WARN
+    org.hibernate: WARN
+    com.zaxxer.hikari: WARN
+    com.ims: INFO
 
 springdoc:
   api-docs:

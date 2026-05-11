@@ -1,24 +1,25 @@
 FROM maven:3.9-eclipse-temurin-21 AS builder
 WORKDIR /app
 
+# Cache dependencies
 COPY pom.xml .
 RUN mvn dependency:go-offline -q
 
+# Build application
 COPY src ./src
 RUN mvn clean package -Dmaven.test.skip=true -q
 
-FROM eclipse-temurin:21-jre-alpine
+# Final stage
+FROM eclipse-temurin:21-jre
 WORKDIR /app
 
-RUN apk add --no-cache wget
-RUN addgroup -S ims && adduser -S ims -G ims
+# Create a non-root user
+RUN groupadd -r ims && useradd -r -g ims ims
+USER ims
 
 COPY --from=builder /app/target/*.jar app.jar
 
-USER ims
-EXPOSE 8080
+EXPOSE 10000
 
-HEALTHCHECK --interval=5m --timeout=30s --start-period=10m \
-  CMD wget -q --spider http://localhost:8080/actuator/health || exit 1
-
-ENTRYPOINT ["java", "-Xmx512m", "-Xms256m", "-jar", "app.jar"]
+# Enable CDS and optimize memory for small instances
+ENTRYPOINT ["java", "-Xshare:on", "-Xmx512m", "-Xms256m", "-jar", "app.jar"]
