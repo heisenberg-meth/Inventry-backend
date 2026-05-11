@@ -1,15 +1,15 @@
 FROM maven:3.9-eclipse-temurin-21 AS builder
 WORKDIR /app
 
-# Cache dependencies
+# Optimize dependency resolution
 COPY pom.xml .
-RUN mvn dependency:go-offline -q
+RUN mvn -q -DskipTests dependency:resolve
 
 # Build application
 COPY src ./src
 RUN mvn clean package -Dmaven.test.skip=true -q
 
-# Final stage
+# Final stage (Debian-based for performance)
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 
@@ -21,5 +21,7 @@ COPY --from=builder /app/target/*.jar app.jar
 
 EXPOSE 10000
 
-# Enable CDS and optimize memory for small instances
-ENTRYPOINT ["java", "-Xshare:on", "-Xmx512m", "-Xms256m", "-jar", "app.jar"]
+# Optimize for low-memory/low-CPU environments like Render Free Tier
+# SerialGC: Faster startup, lower overhead for single-core/small instances
+# Xshare:on: Enables Class Data Sharing
+ENTRYPOINT ["java", "-XX:+UseSerialGC", "-Xshare:on", "-Xmx512m", "-Xms256m", "-jar", "app.jar"]

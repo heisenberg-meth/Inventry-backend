@@ -105,8 +105,16 @@ public class SecurityConfig {
                                                                 .requestMatchers("/actuator/**")
                                                                 .hasRole("ADMIN")
                                                                 .requestMatchers(
-                                                                                "/swagger-ui/**", "/api-docs/**",
-                                                                                "/swagger-ui.html", "/v3/api-docs/**")
+                                                                                "/v1/swagger-ui/**",
+                                                                                "/v1/v3/api-docs/**",
+                                                                                "/v1/swagger-ui.html",
+                                                                                "/v1/api-docs/**",
+                                                                                "/swagger-ui/**",
+                                                                                "/api-docs/**",
+                                                                                "/swagger-ui.html",
+                                                                                "/v3/api-docs/**",
+                                                                                "/**/swagger-ui/**",
+                                                                                "/**/v3/api-docs/**")
                                                                 .permitAll()
                                                                 .anyRequest()
                                                                 .authenticated())

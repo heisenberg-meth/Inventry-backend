@@ -139,7 +139,15 @@ public class JwtFilter extends OncePerRequestFilter {
 
   @Override
   protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
-    String path = request.getRequestURI();
+    String path = request.getServletPath();
+    if (path == null || path.isEmpty()) {
+      path = request.getRequestURI();
+      String ctx = request.getContextPath();
+      if (ctx != null && !ctx.isEmpty() && path.startsWith(ctx)) {
+        path = path.substring(ctx.length());
+      }
+    }
+
     return path.equals("/api/auth/login")
         || path.equals("/api/auth/signup")
         || path.equals("/api/auth/forgot-password")
@@ -149,11 +157,15 @@ public class JwtFilter extends OncePerRequestFilter {
         || path.equals("/api/auth/check-email")
         || path.equals("/api/auth/check-slug")
         || path.equals("/api/auth/check-company-code")
+        || path.startsWith("/api/auth/v1/login")
+        || path.startsWith("/api/auth/v1/signup")
         || path.startsWith("/actuator/health")
         || path.startsWith("/actuator/info")
         || path.startsWith("/swagger-ui")
         || path.startsWith("/v3/api-docs")
         || path.equals("/swagger-ui.html")
-        || path.startsWith("/api-docs");
+        || path.startsWith("/api-docs")
+        || path.startsWith("/v1/swagger-ui")
+        || path.startsWith("/v1/v3/api-docs");
   }
 }

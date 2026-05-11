@@ -1,0 +1,14 @@
+target
+.git
+.github
+.mvn
+.vscode
+.idea
+*.log
+*.md
+Dockerfile
+docker-compose.yml
+mvnw
+mvnw.cmd
+pom.xml.bak
+node_modules

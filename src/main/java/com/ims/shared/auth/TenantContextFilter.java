@@ -31,10 +31,21 @@ public class TenantContextFilter extends OncePerRequestFilter {
 
   @Override
   protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
-    String path = request.getRequestURI();
+    String path = request.getServletPath();
+    if (path == null || path.isEmpty()) {
+      path = request.getRequestURI();
+      String ctx = request.getContextPath();
+      if (ctx != null && !ctx.isEmpty() && path.startsWith(ctx)) {
+        path = path.substring(ctx.length());
+      }
+    }
+
     return path.contains(".")
         || path.startsWith("/actuator/")
         || path.startsWith("/swagger-ui")
-        || path.startsWith("/api-docs");
+        || path.startsWith("/api-docs")
+        || path.startsWith("/v3/api-docs")
+        || path.startsWith("/v1/swagger-ui")
+        || path.startsWith("/v1/v3/api-docs");
   }
 }
